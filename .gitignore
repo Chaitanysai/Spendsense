@@ -48,3 +48,4 @@ app.*.map.json
 CLAUDE.md
 android/app/google-services.json
 android/build/
+release/*.apk
