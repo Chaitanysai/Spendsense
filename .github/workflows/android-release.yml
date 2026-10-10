@@ -24,9 +24,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          
           channel: 'stable'
-
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -40,16 +38,20 @@ jobs:
         run: flutter test
 
       - name: Prepare keystore for release signing
+        id: prepare_keystore
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           if [ -n "$SIGNING_KEY" ]; then
             echo "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
+            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
           else
             echo "Skipping keystore creation as SIGNING_KEY secret is not found."
+            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
           fi
 
-      - name: Build release APK
+      - name: Build release APK (Secured)
+        if: env.HAS_KEYSTORE == 'true'
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -57,7 +59,12 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: flutter build apk --release
 
-      - name: Verify APK
+      - name: Build debug-signed sideload APK (Fallback)
+        if: env.HAS_KEYSTORE == 'false'
+        run: flutter build apk --release # Will fallback to debug cert since env.KEY_PATH is missing
+
+      - name: Verify and Re-label APK
+        id: verify_apk
         run: |
           APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then
@@ -70,16 +77,27 @@ jobs:
             exit 1
           fi
           echo "APK generated successfully. Size: $SIZE bytes."
+          
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-release.apk"
+            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-release.apk" >> $GITHUB_ENV
+            echo "ARTIFACT_NAME=spendsense-release.apk" >> $GITHUB_ENV
+          else
+            echo "::warning::Private signing key not provided. APK is signed with debug key and should only be used for testing/sideloading."
+            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk"
+            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
+            echo "ARTIFACT_NAME=spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spendsense-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: ${{ env.ARTIFACT_PATH }}
           generate_release_notes: true
