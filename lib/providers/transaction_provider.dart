@@ -89,11 +89,15 @@ class TransactionProvider with ChangeNotifier {
           t.date.month == now.month &&
           t.date.year == now.year);
     }
+    
+    final exactStart = DateTime(period.start.year, period.start.month, period.start.day);
+    final exactEnd = DateTime(period.end.year, period.end.month, period.end.day).add(const Duration(days: 1));
+    
     return _transactions.where((t) =>
         t.type == TransactionType.expense &&
         !t.isExcluded &&
-        !t.date.isBefore(period.start) &&
-        !t.date.isAfter(period.end));
+        !t.date.isBefore(exactStart) &&
+        t.date.isBefore(exactEnd));
   }
 
   double totalExpensesForPeriod(DateTimeRange? period) =>

@@ -324,12 +324,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return list;
   }
 
-  /// Inclusive date-only range check.
+  /// Inclusive start, exclusive end boundary date check.
   bool _isWithinRange(DateTime date, DateTimeRange range) {
-    final d = DateTime(date.year, date.month, date.day);
     final s = DateTime(range.start.year, range.start.month, range.start.day);
-    final e = DateTime(range.end.year, range.end.month, range.end.day);
-    return !d.isBefore(s) && !d.isAfter(e);
+    final e = DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1));
+    return !date.isBefore(s) && date.isBefore(e);
   }
 
   void _clearFilters() {

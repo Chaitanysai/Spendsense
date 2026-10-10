@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/period_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/transaction_tile.dart';
@@ -157,6 +158,61 @@ class _HomeScreenState extends State<HomeScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // ── Budget gauge ─────────────────────────────────────────
+                  Consumer<PeriodProvider>(
+                    builder: (context, periodProvider, child) {
+                      if (periodProvider.mode == PeriodMode.custom) return const SizedBox.shrink();
+                      
+                      final currentCycle = periodProvider.currentPeriod;
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      // Period ends on the penultimate day. The next salary is one day after period ends.
+                      final endDay = DateTime(currentCycle.end.year, currentCycle.end.month, currentCycle.end.day);
+                      final nextSalaryDate = endDay.add(const Duration(days: 1));
+                      final daysLeft = nextSalaryDate.difference(today).inDays;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceColor(context),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.account_balance_wallet_rounded, 
+                                      color: AppColors.primaryTeal, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Next salary drops',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                daysLeft <= 0 
+                                  ? 'Today' 
+                                  : daysLeft == 1 
+                                    ? 'Tomorrow' 
+                                    : 'in $daysLeft days',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryTeal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   SummaryCard(
                     total: provider.totalTrackedExpenses,
                     count: trackedExpenses.length,

@@ -106,71 +106,76 @@ class SummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
 
           // ── Arc gauge ─────────────────────────────────────────────────────
-          Center(
-            child: SizedBox(
-              height: 180,
-              width: 260,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(260, 180),
-                    painter: _ArcGaugePainter(
-                      fraction: fraction,
-                      isOver: isOver,
-                      trackColor: AppColors.surfaceAlt(context),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 26,
-                    child: Column(
-                      children: [
-                        Text(
-                          Formatters.currency.format(total),
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary(context),
-                            letterSpacing: -0.5,
-                          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final gaugeWidth = constraints.maxWidth;
+              final gaugeHeight = gaugeWidth * 0.65;
+              return Center(
+                child: SizedBox(
+                  height: gaugeHeight,
+                  width: gaugeWidth,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: Size(gaugeWidth, gaugeHeight),
+                        painter: _ArcGaugePainter(
+                          fraction: fraction,
+                          isOver: isOver,
+                          trackColor: AppColors.surfaceAlt(context),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Total Spent',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary(context),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: (isOver ? AppColors.accentOrange : AppColors.primaryTeal)
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isOver
-                                  ? AppColors.accentOrange
-                                  : AppColors.primaryTeal,
+                      ),
+                      Positioned(
+                        bottom: gaugeHeight * 0.15,
+                        child: Column(
+                          children: [
+                            Text(
+                              Formatters.currency.format(total),
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary(context),
+                                letterSpacing: -0.5,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Total Spent',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary(context),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (isOver ? AppColors.accentOrange : AppColors.primaryTeal)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                subtitle,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isOver
+                                      ? AppColors.accentOrange
+                                      : AppColors.primaryTeal,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-
           const SizedBox(height: 12),
 
           // ── Legend row ────────────────────────────────────────────────────

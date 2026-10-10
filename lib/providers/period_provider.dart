@@ -60,19 +60,18 @@ class PeriodProvider with ChangeNotifier {
   // ── Core: the active DateTimeRange ───────────────────────────────────────
   //
   // "1 month, salary-day aligned" means:
-  //   • If today is ON or AFTER the salary day  → period starts this month on
-  //     salary day, ends the day before next month's salary day.
-  //   • If today is BEFORE the salary day       → period started last month on
-  //     salary day, ends yesterday (day before today's salary day).
-  //
-  // Example — salary day = 25:
-  //   Today = Apr 10  → period: Mar 25 00:00 … Apr 24 23:59
-  //   Today = Apr 28  → period: Apr 25 00:00 … May 24 23:59
+  //   ? Salary arrives on the last calendar day of every month.
+  //   ? If today is ON or AFTER the salary day  ' period starts this month on
+  //     salary day, ends the penultimate calendar day of next month.
+  //   ? If today is BEFORE the salary day       ' period started last month on
+  //     salary day, ends the penultimate calendar day of this month.
 
   DateTimeRange get currentPeriod {
     if (_mode == PeriodMode.custom && _custom != null) {
       return _custom!;
     }
+    return salaryAlignedPeriod(_salaryDay, months: 1);
+  }
     return salaryAlignedPeriod(_salaryDay, months: 1);
   }
 
@@ -99,36 +98,20 @@ class PeriodProvider with ChangeNotifier {
   static DateTimeRange salaryAlignedPeriod(int salaryDay,
       {required int months}) {
     final today = DateTime.now();
-
-    // Clamp salary day to valid day in a given month
-    int clampedDay(int year, int month) {
-      final daysInMonth = DateUtils.getDaysInMonth(year, month);
-      return salaryDay.clamp(1, daysInMonth);
-    }
-
-    final currentMonthSalaryDay = clampedDay(today.year, today.month);
+    final currentMonthLastDay = DateUtils.getDaysInMonth(today.year, today.month);
 
     DateTime periodStart;
-    if (today.day >= currentMonthSalaryDay) {
-      // We're in or past the salary day this month → current cycle started
-      // this month on salary day.
-      periodStart = DateTime(
-          today.year, today.month, clampedDay(today.year, today.month));
+    if (today.day == currentMonthLastDay) {
+      periodStart = DateTime(today.year, today.month, currentMonthLastDay);
     } else {
-      // We haven't reached salary day yet → current cycle started last month.
-      final prevMonth = DateTime(today.year, today.month - 1);
-      periodStart = DateTime(prevMonth.year, prevMonth.month,
-          clampedDay(prevMonth.year, prevMonth.month));
+      final prevMonthDate = DateTime(today.year, today.month - 1, 1);
+      final prevMonthLastDay = DateUtils.getDaysInMonth(prevMonthDate.year, prevMonthDate.month);
+      periodStart = DateTime(prevMonthDate.year, prevMonthDate.month, prevMonthLastDay);
     }
 
-    // End = one day before the NEXT salary day after periodStart
-    final nextSalaryMonth =
-        DateTime(periodStart.year, periodStart.month + months);
-    final nextSalaryDay =
-        clampedDay(nextSalaryMonth.year, nextSalaryMonth.month);
-    final periodEnd =
-        DateTime(nextSalaryMonth.year, nextSalaryMonth.month, nextSalaryDay)
-            .subtract(const Duration(days: 1));
+    final nextSalaryMonth = DateTime(periodStart.year, periodStart.month + months, 1);
+    final nextMonthLastDay = DateUtils.getDaysInMonth(nextSalaryMonth.year, nextSalaryMonth.month);
+    final periodEnd = DateTime(nextSalaryMonth.year, nextSalaryMonth.month, nextMonthLastDay - 1);
 
     return DateTimeRange(
       start: periodStart,
