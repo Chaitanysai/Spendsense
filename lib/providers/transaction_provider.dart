@@ -5,30 +5,35 @@ import '../services/sms_service.dart';
 import '../services/smart_parser.dart';
 import '../services/gemini_service.dart';
 import '../services/transaction_cache_service.dart';
+import '../services/budget_monitor_service.dart';
 
 class TransactionProvider with ChangeNotifier {
+  static const _smsScanStartKey = 'sms_scan_start_date';
+
   List<TransactionModel> _transactions = [];
   bool _isSyncing = false;
-  bool _isLoadingCache = true; // true only during cold-boot cache read
+  bool _isLoadingCache = true;
   DateTime? _lastSynced;
+  DateTime? _smsScanStartDate;
   double _monthlyBudget = 20000.0;
-  int _newThisSync = 0; // how many new messages were AI-parsed last sync
+  int _newThisSync = 0;
 
   final TransactionCacheService _cache = TransactionCacheService();
+  final BudgetMonitorService _budgetMonitor = BudgetMonitorService();
   late final Future<void> _initialization;
 
   List<TransactionModel> get transactions => _transactions;
   bool get isSyncing => _isSyncing;
   bool get isLoadingCache => _isLoadingCache;
   DateTime? get lastSynced => _lastSynced;
+  DateTime? get smsScanStartDate => _smsScanStartDate;
+  bool get hasSmsScanStartDate => _smsScanStartDate != null;
   double get monthlyBudget => _monthlyBudget;
   int get newThisSync => _newThisSync;
 
   TransactionProvider() {
     _initialization = _init();
   }
-
-  // ─── INIT — instant cache load on startup ─────────────────────────────────
 
   Future<void> _init() async {
     await _cache.init();
@@ -42,15 +47,15 @@ class TransactionProvider with ChangeNotifier {
     final cached = await _cache.loadAll();
     if (cached.isNotEmpty) {
       _transactions = cached;
-      print('📦 Loaded ${cached.length} transactions from cache');
+      debugPrint('📦 Loaded ${cached.length} transactions from local DB');
     }
   }
-
-  // ─── BUDGET ───────────────────────────────────────────────────────────────
 
   Future<void> _loadBudget() async {
     final prefs = await SharedPreferences.getInstance();
     _monthlyBudget = prefs.getDouble('monthly_budget') ?? 20000.0;
+    final startRaw = prefs.getString(_smsScanStartKey);
+    _smsScanStartDate = startRaw == null ? null : DateTime.tryParse(startRaw);
   }
 
   Future<void> setMonthlyBudget(double amount) async {
@@ -60,33 +65,53 @@ class TransactionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── COMPUTED GETTERS ─────────────────────────────────────────────────────
+  Future<void> setSmsScanStartDate(
+    DateTime date, {
+    bool resync = true,
+  }) async {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_smsScanStartKey, normalized.toIso8601String());
+    _smsScanStartDate = normalized;
+    notifyListeners();
 
-  double get totalExpenses {
-    final now = DateTime.now();
-    return _transactions
-        .where((t) =>
-            t.type == TransactionType.expense &&
-            !t.isExcluded &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
-        .fold(0.0, (sum, t) => sum + t.amount);
+    if (resync) {
+      await forceFullResync();
+    }
   }
 
-  String get topCategory {
-    if (_transactions.isEmpty) return "None";
-    final now = DateTime.now();
-    final Map<String, double> totals = {};
-    for (var t in _transactions.where((t) =>
+  Iterable<TransactionModel> expensesInPeriod(DateTimeRange? period) {
+    if (period == null) {
+      final now = DateTime.now();
+      return _transactions.where((t) =>
+          t.type == TransactionType.expense &&
+          !t.isExcluded &&
+          t.date.month == now.month &&
+          t.date.year == now.year);
+    }
+    return _transactions.where((t) =>
         t.type == TransactionType.expense &&
         !t.isExcluded &&
-        t.date.month == now.month &&
-        t.date.year == now.year)) {
+        !t.date.isBefore(period.start) &&
+        !t.date.isAfter(period.end));
+  }
+
+  double totalExpensesForPeriod(DateTimeRange? period) =>
+      expensesInPeriod(period).fold(0.0, (sum, t) => sum + t.amount);
+
+  double get totalExpenses => totalExpensesForPeriod(null);
+
+  String topCategoryForPeriod(DateTimeRange? period) {
+    if (_transactions.isEmpty) return "None";
+    final Map<String, double> totals = {};
+    for (final t in expensesInPeriod(period)) {
       totals[t.category] = (totals[t.category] ?? 0) + t.amount;
     }
     if (totals.isEmpty) return "None";
     return totals.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
+
+  String get topCategory => topCategoryForPeriod(null);
 
   List<String> get availableCategories {
     final cats = _transactions.map((t) => t.category).toSet().toList();
@@ -94,15 +119,23 @@ class TransactionProvider with ChangeNotifier {
     return cats;
   }
 
-  // ─── INCREMENTAL SYNC ─────────────────────────────────────────────────────
-  //
-  // Flow:
-  //   1. Load already-seen SMS IDs from disk
-  //   2. Fetch inbox from device
-  //   3. Keep ONLY IDs not seen before → these are genuinely new
-  //   4. Parse new ones (regex → AI fallback)
-  //   5. Merge into existing list
-  //   6. Persist updated transactions + ID set to disk
+  Iterable<TransactionModel> get trackedTransactions =>
+      _transactions.where((t) => !t.isExcluded);
+
+  Iterable<TransactionModel> get trackedExpenses =>
+      trackedTransactions.where((t) => t.type == TransactionType.expense);
+
+  double get totalTrackedExpenses =>
+      trackedExpenses.fold(0.0, (sum, t) => sum + t.amount);
+
+  String get topTrackedCategory {
+    final totals = <String, double>{};
+    for (final t in trackedExpenses) {
+      totals[t.category] = (totals[t.category] ?? 0) + t.amount;
+    }
+    if (totals.isEmpty) return 'None';
+    return totals.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+  }
 
   Future<void> syncFromSms() async {
     await _initialization;
@@ -122,30 +155,16 @@ class TransactionProvider with ChangeNotifier {
         return;
       }
 
-      // 1. Fetch inbox
-      final messages = await smsService.fetchTransactionSms();
+      final messages = await smsService.fetchTransactionSms(
+        fromDate: _smsScanStartDate,
+      );
 
-      // 2. Financial filter
-      final financial = messages.where((msg) {
-        final body = msg.body.toLowerCase();
-        final isDebit = body.contains("debited") ||
-            body.contains("spent") ||
-            body.contains("paid");
-        final isInvalid = body.contains("otp") ||
-            body.contains("credited") ||
-            body.contains("refund");
-        final hasAmount =
-            body.contains("rs") || body.contains("₹") || body.contains("inr");
-        return isDebit && !isInvalid && hasAmount;
-      }).toList();
-
-      // 3. New only
-      final newMessages = financial
+      final newMessages = messages
           .where((msg) => msg.id.isNotEmpty && !_cache.contains(msg.id))
           .toList();
 
-      print('📩 Financial SMS total: ${financial.length}');
-      print('🆕 New to parse: ${newMessages.length}');
+      debugPrint('📩 SMS fetched: ${messages.length}');
+      debugPrint('🆕 New to process: ${newMessages.length}');
 
       if (newMessages.isEmpty) {
         _lastSynced = DateTime.now();
@@ -155,27 +174,31 @@ class TransactionProvider with ChangeNotifier {
         return;
       }
 
-      // 4. Parse new messages
       final newTxs = <TransactionModel>[];
 
       for (final msg in newMessages) {
-        TransactionModel? parsed;
-
-        // Regex first (fast, no tokens)
-        parsed = await smartParser.parse(msg.body, msg.id, msg.date);
-
-        // AI if regex failed or got Unknown merchant
-        if (parsed == null || parsed.merchant == "Unknown") {
-          final aiResult = await aiParser.parseSms(msg.body, msg.id, msg.date);
-          if (aiResult != null) parsed = aiResult;
+        if (!SmartParser.isDebitExpenseSms(msg.body)) {
+          debugPrint(
+            'SMS FILTER: REJECT reason=${SmartParser.debitSmsRejectionReason(msg.body)}',
+          );
+          continue;
         }
+        final localResult = await smartParser.parse(msg.body, msg.id, msg.date);
 
-        if (parsed != null) {
-          newTxs.add(parsed);
+        if (localResult != null && localResult.confidence >= 0.8) {
+          newTxs.add(localResult);
+          debugPrint(
+              '⚡ Local High-Confidence (${localResult.confidence}): ${localResult.merchant} ₹${localResult.amount}');
+        } else if (localResult != null) {
+          final aiResult = await aiParser.parseSms(msg.body, msg.id, msg.date);
+          if (aiResult != null && aiResult.type == TransactionType.expense) {
+            newTxs.add(aiResult);
+          } else {
+            newTxs.add(localResult.copyWith(needsReview: true));
+          }
         }
       }
 
-      // 5. Merge — remove stale duplicates then add new
       final newIds = newTxs.map((t) => t.id).toSet();
       _transactions.removeWhere((t) => newIds.contains(t.id));
       _transactions.addAll(newTxs);
@@ -183,25 +206,23 @@ class TransactionProvider with ChangeNotifier {
 
       _newThisSync = newTxs.length;
 
-      // 6. Persist cache and sync metadata
       await Future.wait([
         _cache.putAll(newTxs),
         _cache.updateSyncMeta(),
       ]);
 
       _lastSynced = DateTime.now();
-      print('✅ Sync complete — ${newTxs.length} new transactions');
+      debugPrint(
+          '✅ Sync complete — ${newTxs.length} new transactions saved locally');
+
+      await _budgetMonitor.checkBudgetAlert(this);
     } catch (e) {
-      print('❌ Sync error: $e');
+      debugPrint('❌ Sync error: $e');
     } finally {
       _isSyncing = false;
       notifyListeners();
     }
   }
-
-  // ─── FORCE FULL RE-SYNC ───────────────────────────────────────────────────
-  // Clears all caches and re-parses everything with AI.
-  // Useful after prompt improvements or category changes.
 
   Future<void> forceFullResync() async {
     await _initialization;
@@ -211,8 +232,6 @@ class TransactionProvider with ChangeNotifier {
     notifyListeners();
     await syncFromSms();
   }
-
-  // ─── MUTATIONS ────────────────────────────────────────────────────────────
 
   Future<void> toggleExclude(String id) async {
     await _initialization;
@@ -232,10 +251,35 @@ class TransactionProvider with ChangeNotifier {
     if (index != -1) {
       _transactions[index] = _transactions[index].copyWith(
         category: newCategory,
+        needsReview: false,
       );
       await _cache.put(_transactions[index]);
       notifyListeners();
     }
+  }
+
+  Future<void> updateTransaction(
+    String id, {
+    required int amount,
+    required String merchant,
+    required String category,
+    required TransactionType type,
+    required bool isExcluded,
+  }) async {
+    await _initialization;
+    final index = _transactions.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+
+    _transactions[index] = _transactions[index].copyWith(
+      amount: amount,
+      merchant: merchant,
+      category: category,
+      type: type,
+      isExcluded: isExcluded,
+      needsReview: false,
+    );
+    await _cache.put(_transactions[index]);
+    notifyListeners();
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
@@ -254,4 +298,25 @@ class TransactionProvider with ChangeNotifier {
     await _cache.clearAll();
     notifyListeners();
   }
+
+  // ─── BACKUP EXPORT / IMPORT HELPERS ───────────────────────────────────────
+
+  Future<String> exportBackupJson() async {
+    await _initialization;
+    return await _cache.exportToJsonString();
+  }
+
+  Future<int> importBackupJson(String jsonString,
+      {bool replace = false}) async {
+    await _initialization;
+    final count =
+        await _cache.importFromJsonString(jsonString, replace: replace);
+    await _loadFromCache();
+    notifyListeners();
+    return count;
+  }
+
+  // Aliases for SettingsScreen compatibility
+  Future<String> exportToJson() => exportBackupJson();
+  Future<int> importFromJson(String jsonString) => importBackupJson(jsonString);
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -31,12 +32,18 @@ class SmsService {
   }
 
   // 📩 Fetch SMS from inbox
-  Future<List<SmsMessageModel>> fetchTransactionSms() async {
+  Future<List<SmsMessageModel>> fetchTransactionSms({
+    DateTime? fromDate,
+  }) async {
     try {
       final messages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
         count: 200,
       );
+
+      final normalizedFromDate = fromDate == null
+          ? null
+          : DateTime(fromDate.year, fromDate.month, fromDate.day);
 
       return messages.map((msg) {
         // ─── FIX: msg.date from flutter_sms_inbox is DateTime?, NOT int ───
@@ -49,9 +56,13 @@ class SmsService {
           body: msg.body ?? "",
           date: resolvedDate,
         );
+      }).where((msg) {
+        if (normalizedFromDate == null) return true;
+        final smsDay = DateTime(msg.date.year, msg.date.month, msg.date.day);
+        return !smsDay.isBefore(normalizedFromDate);
       }).toList();
     } catch (e) {
-      print("❌ SMS fetch error: $e");
+      debugPrint("❌ SMS fetch error: $e");
       return [];
     }
   }

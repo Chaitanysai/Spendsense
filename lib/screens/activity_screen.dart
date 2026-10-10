@@ -62,8 +62,11 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _sortMode = 'Date'; // Date | Amount
+  bool _sortDescending = true;
   String? _selectedCategory;
+  TransactionType? _selectedType;
   DateTimeRange? _selectedDateRange;
   _DatePreset? _activePreset; // tracks which preset chip is active
   String _searchQuery = '';
@@ -71,9 +74,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
   @override
   void initState() {
     super.initState();
+    // FIX: guard with mounted before using context across the async microtask gap
     Future.microtask(() {
+      if (!mounted) return;
       Provider.of<TransactionProvider>(context, listen: false).syncFromSms();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // ─── BUILD ─────────────────────────────────────────────────────────────────
@@ -84,17 +95,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
     final displayList = _getProcessedList(provider.transactions);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffold(context),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         title: Text(
           'SpendSense',
           style: TextStyle(
-              color: AppColors.primaryPink, fontWeight: FontWeight.bold),
+            color: AppColors.textPrimary(context),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           if (_selectedCategory != null ||
+              _selectedType != null ||
               _selectedDateRange != null ||
               _activePreset != null)
             TextButton(
@@ -122,17 +134,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     style:
                         TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                 Text('Track every penny across your accounts',
-                    style: TextStyle(color: Colors.grey)),
+                    style: TextStyle(color: AppColors.textSecondary(context))),
                 SizedBox(height: 20),
 
                 // ── SEARCH ────────────────────────────────────────────────
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Color(0xFFF1F3F6),
+                    color: AppColors.surfaceAlt(context),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: TextField(
+                    controller: _searchController,
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
                       icon: Icon(Icons.search, color: Colors.grey),
@@ -162,6 +175,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         onTap: () => setState(() => _sortMode = 'Amount'),
                       ),
                       SizedBox(width: 10),
+                      _typeFilterChip(),
+                      SizedBox(width: 10),
+                      _sortDirectionChip(),
+                      SizedBox(width: 10),
                       _categoryFilterChip(provider),
                       SizedBox(width: 10),
                       // ── DATE RANGE CHIP ──────────────────────────────────
@@ -174,6 +191,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
                 // ── ACTIVE FILTER BADGES ──────────────────────────────────
                 if (_selectedCategory != null ||
+                    _selectedType != null ||
                     _selectedDateRange != null ||
                     _activePreset != null)
                   Padding(
@@ -185,6 +203,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
                           _activeBadge(
                             '📂 $_selectedCategory',
                             () => setState(() => _selectedCategory = null),
+                          ),
+                        if (_selectedType != null)
+                          _activeBadge(
+                            '💳 ${_selectedType == TransactionType.expense ? 'Expense' : 'Income'}',
+                            () => setState(() => _selectedType = null),
                           ),
                         if (_activePreset != null || _selectedDateRange != null)
                           _activeBadge(
@@ -209,9 +232,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
             child: Text(
               '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
               style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500),
+                color: AppColors.textSecondary(context),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           SizedBox(height: 8),
@@ -266,12 +290,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
     List<TransactionModel> list = all.where((t) {
+      final query = _searchQuery.trim().toLowerCase();
       final matchesSearch =
-          t.merchant.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              t.category.toLowerCase().contains(_searchQuery.toLowerCase());
+          query.isEmpty ||
+          t.merchant.toLowerCase().contains(query) ||
+          t.category.toLowerCase().contains(query) ||
+          t.paymentMethod.toLowerCase().contains(query) ||
+          t.amount.toString().contains(query);
 
       final matchesCategory =
           _selectedCategory == null || t.category == _selectedCategory;
+      final matchesType = _selectedType == null || t.type == _selectedType;
 
       // FIX: compare only date components (ignore time) to avoid off-by-one
       // on the end-date boundary. Previously "end + 1 day" was a workaround
@@ -279,13 +308,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
       final matchesDate = _selectedDateRange == null ||
           _isWithinRange(t.date, _selectedDateRange!);
 
-      return matchesSearch && matchesCategory && matchesDate;
+      return matchesSearch && matchesCategory && matchesType && matchesDate;
     }).toList();
 
     if (_sortMode == 'Amount') {
-      list.sort((a, b) => b.amount.compareTo(a.amount));
+      list.sort((a, b) => _sortDescending
+          ? b.amount.compareTo(a.amount)
+          : a.amount.compareTo(b.amount));
     } else {
-      list.sort((a, b) => b.date.compareTo(a.date));
+      list.sort((a, b) => _sortDescending
+          ? b.date.compareTo(a.date)
+          : a.date.compareTo(b.date));
     }
 
     return list;
@@ -302,8 +335,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
   void _clearFilters() {
     setState(() {
       _selectedCategory = null;
+      _selectedType = null;
       _selectedDateRange = null;
       _activePreset = null;
+      _searchQuery = '';
+      _searchController.clear();
     });
   }
 
@@ -326,7 +362,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? Color(0xFFE8F5E9) : Color(0xFFE8ECEF),
+          color: isActive ? Color(0xFFE8F5E9) : AppColors.surfaceAlt(context),
           borderRadius: BorderRadius.circular(20),
           border: isActive ? Border.all(color: Colors.green, width: 1.5) : null,
         ),
@@ -390,6 +426,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               SizedBox(height: 16),
 
               // Preset options
+              // FIX: removed .toList() — spread operator doesn't need it
               ..._DatePreset.values.map((preset) {
                 final isSelected = _activePreset == preset;
                 return ListTile(
@@ -432,7 +469,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     }
                   },
                 );
-              }).toList(),
+              }), // FIX: removed unnecessary .toList() in spread
 
               // Clear option if something is active
               if (_activePreset != null || _selectedDateRange != null) ...[
@@ -539,7 +576,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Color(0xFFE0E0FF) : Color(0xFFE8ECEF),
+          color: isSelected ? Color(0xFFE0E0FF) : AppColors.surfaceAlt(context),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -560,6 +597,84 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
+  Widget _typeFilterChip() {
+    final isActive = _selectedType != null;
+    final label = switch (_selectedType) {
+      TransactionType.expense => 'Expense',
+      TransactionType.income => 'Income',
+      null => 'Type',
+    };
+
+    return GestureDetector(
+      onTap: _showTypeSheet,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Color(0xFFE8F5E9) : AppColors.surfaceAlt(context),
+          borderRadius: BorderRadius.circular(20),
+          border:
+              isActive ? Border.all(color: Colors.green, width: 1.5) : null,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.swap_horiz_rounded,
+                size: 16,
+                color: isActive ? Colors.green[700] : Colors.black54),
+            SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: isActive ? Colors.green[700] : Colors.black54,
+              ),
+            ),
+            SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down,
+                size: 16,
+                color: isActive ? Colors.green[700] : Colors.black54),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sortDirectionChip() {
+    final isDateSort = _sortMode == 'Date';
+    final label = _sortDescending
+        ? (isDateSort ? 'Newest First' : 'Highest First')
+        : (isDateSort ? 'Oldest First' : 'Lowest First');
+
+    return GestureDetector(
+      onTap: () => setState(() => _sortDescending = !_sortDescending),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt(context),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _sortDescending ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              size: 16,
+              color: Colors.black54,
+            ),
+            SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _categoryFilterChip(TransactionProvider provider) {
     final isActive = _selectedCategory != null;
     return GestureDetector(
@@ -567,7 +682,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? Color(0xFFFFE0F0) : Color(0xFFE8ECEF),
+          color: isActive ? Color(0xFFFFE0F0) : AppColors.surfaceAlt(context),
           borderRadius: BorderRadius.circular(20),
           border: isActive
               ? Border.all(color: AppColors.primaryPink, width: 1.5)
@@ -647,7 +762,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   Navigator.pop(ctx);
                 },
               );
-            }).toList(),
+            }), // FIX: removed unnecessary .toList() in spread
             SizedBox(height: 8),
           ],
         ),
@@ -655,13 +770,84 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
+  void _showTypeSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Filter by Transaction Type',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor:
+                    _selectedType == null ? AppColors.primaryPurple : Colors.grey[200],
+                child: Icon(Icons.select_all,
+                    color: _selectedType == null ? Colors.white : Colors.grey,
+                    size: 18),
+              ),
+              title: Text('All Transactions',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                setState(() => _selectedType = null);
+                Navigator.pop(ctx);
+              },
+            ),
+            _typeOptionTile(
+              ctx: ctx,
+              type: TransactionType.expense,
+              label: 'Expense',
+              icon: Icons.arrow_upward_rounded,
+              color: AppColors.primaryPink,
+            ),
+            _typeOptionTile(
+              ctx: ctx,
+              type: TransactionType.income,
+              label: 'Income',
+              icon: Icons.arrow_downward_rounded,
+              color: Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _typeOptionTile({
+    required BuildContext ctx,
+    required TransactionType type,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = _selectedType == type;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: isSelected ? color : color.withValues(alpha: 0.12),
+        child: Icon(icon, color: isSelected ? Colors.white : color, size: 18),
+      ),
+      title: Text(label, style: TextStyle(fontWeight: FontWeight.w500)),
+      trailing: isSelected ? Icon(Icons.check_circle, color: color) : null,
+      onTap: () {
+        setState(() => _selectedType = type);
+        Navigator.pop(ctx);
+      },
+    );
+  }
+
   Widget _activeBadge(String label, VoidCallback onRemove) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -704,12 +890,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Icon(Icons.search_off_rounded, size: 48, color: Colors.grey[300]),
             SizedBox(height: 12),
             Text('No transactions found',
-                style:
-                    TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                  color: AppColors.textSecondary(context),
+                  fontWeight: FontWeight.bold,
+                )),
             SizedBox(height: 4),
             Text('Try adjusting your filters',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                style: TextStyle(
+                  color: AppColors.textSecondary(context),
+                  fontSize: 12,
+                )),
             if (_selectedCategory != null ||
+                _selectedType != null ||
                 _selectedDateRange != null ||
                 _activePreset != null) ...[
               SizedBox(height: 16),

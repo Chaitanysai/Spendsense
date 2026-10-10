@@ -1,199 +1,445 @@
+import 'package:flutter/foundation.dart';
 import '../models/transaction_model.dart';
 import 'package:intl/intl.dart';
 
-/// SmartParser — local regex-based fallback parser.
-/// Used when AI providers are unavailable or rate-limited.
-/// For best results the AI path (GeminiService) is preferred;
-/// this parser handles the long tail of unrecognised SMS patterns.
+/// SpendSense 2.0 Enhanced SmartParser
+/// Performs local regex extraction of amount, type, merchant, category,
+/// payment method, bank, account, reference, and computes a real confidence score.
 class SmartParser {
-  // ─── PUBLIC API ────────────────────────────────────────────────────────────
+  static const _negativePatterns = <String>[
+    'credited',
+    'credit',
+    'received',
+    'deposited',
+    'salary',
+    'cashback',
+    'refund',
+    'refunded',
+    'reversal',
+    'reversed',
+    'interest credited',
+    'amount received',
+    'money received',
+  ];
+  static const _securityPatterns = <String>[
+    'otp',
+    'one time password',
+    'verification code',
+    'verification',
+    'pin',
+    'cvv',
+    'login code',
+    'authentication code',
+    'do not share',
+    'valid for',
+  ];
+  static const _nonTransactionPatterns = <String>[
+    'not debited',
+    'not deducted',
+    'declined',
+    'failed',
+    'unsuccessful',
+    'could not be processed',
+    'unable to process',
+    'pending',
+    'scheduled',
+  ];
+  static const _boundaries = <String>[
+    'txn id',
+    'transaction id',
+    'ref no',
+    'reference',
+    'ref',
+    'utr',
+    'upi ref',
+    'imps ref',
+    'available balance',
+    'available bal',
+    'closing balance',
+    'current balance',
+    'balance',
+    'bal:',
+    'bal ',
+    'call ',
+    'not you?',
+    'for help',
+    'customer care',
+  ];
 
-  /// Returns null if the SMS does not look like a debit/credit transaction.
+  /// The SMS must describe money leaving the account. This check deliberately
+  /// runs before amount extraction and is also used to gate AI parsing.
+  static bool isDebitExpenseSms(String sms) {
+    final lower = sms.toLowerCase();
+    if (_negativePatterns.any(lower.contains) ||
+        _securityPatterns.any(lower.contains) ||
+        _nonTransactionPatterns.any(lower.contains)) {
+      return false;
+    }
+    if (RegExp(r'\b(?:offer|promo(?:tional)?|limited time|cashback)\b',
+            caseSensitive: false)
+        .hasMatch(lower)) {
+      return false;
+    }
+    return _hasDebitSignal(sms);
+  }
+
+  static String debitSmsRejectionReason(String sms) {
+    final lower = sms.toLowerCase();
+    if (_negativePatterns.any(lower.contains)) return 'CREDIT';
+    if (_securityPatterns.any(lower.contains)) return 'OTP_SECURITY';
+    if (_nonTransactionPatterns.any(lower.contains)) return 'NOT_COMPLETED';
+    if (RegExp(r'\b(?:offer|promo(?:tional)?|limited time|cashback)\b')
+        .hasMatch(lower)) {
+      return 'PROMO';
+    }
+    if (RegExp(r'\b(?:balance|bal|available bal)\b').hasMatch(lower) &&
+        !_hasDebitSignal(sms)) {
+      return 'BALANCE_ONLY';
+    }
+    return 'UNKNOWN';
+  }
+
+  static bool _hasDebitSignal(String text) {
+    final lower = text.toLowerCase();
+    return RegExp(
+          r'\b(?:debited|debit|deducted|deduction|spent|paid|purchase|withdrawn|withdrawal|charged)\b|'
+          r'\b(?:a/c|account)\s+(?:has\s+been\s+)?debited\b|'
+          r'\b(?:sent\s+(?:to|via\s+upi)|transferred\s+to|transferred)\b',
+          caseSensitive: false,
+        ).hasMatch(lower) ||
+        RegExp(r'\bDR\b').hasMatch(text);
+  }
+
+  /// Returns null if the SMS does not look like a financial transaction.
+  /// Otherwise returns a TransactionModel with confidence scoring.
   Future<TransactionModel?> parse(
     String smsText,
     String smsId,
     DateTime smsDate,
   ) async {
-    final text = smsText.toLowerCase();
+    if (!isDebitExpenseSms(smsText)) {
+      debugPrint(
+        'SMS FILTER: REJECT reason=${debitSmsRejectionReason(smsText)}',
+      );
+      return null;
+    }
 
-    // ── Determine transaction type ──────────────────────────────────────────
-    final bool isExpense = _isExpense(text);
-    final bool isIncome = _isIncome(text);
-
-    // Skip entirely if it doesn't look financial
-    if (!isExpense && !isIncome) return null;
-
-    // ── Amount ──────────────────────────────────────────────────────────────
     final amount = _extractAmount(smsText);
-    if (amount == null || amount <= 0) return null;
+    if (amount == null || amount <= 0) {
+      debugPrint('SMS FILTER: REJECT reason=NO_CONTEXTUAL_DEBIT_AMOUNT');
+      return null;
+    }
 
-    // ── Merchant & Category ─────────────────────────────────────────────────
     final merchant = detectMerchant(smsText);
     final category = detectCategory(smsText, merchant);
+    final paymentMethod = _detectPaymentMethod(smsText.toLowerCase());
+    final bank = _detectBank(smsText);
+    final account = _extractAccount(smsText);
+    final reference = _extractReference(smsText);
 
-    return TransactionModel(
+    // Compute confidence score (0.0 to 1.0)
+    double confidence = 0.7; // explicit debit + contextual amount
+    if (merchant != 'Bank Debit') confidence += 0.1;
+    if (paymentMethod != 'Other') confidence += 0.05;
+    if (bank != null) confidence += 0.1;
+    if (reference != null) confidence += 0.05;
+    if (confidence > 1.0) confidence = 1.0;
+
+    final bool needsReview = confidence < 0.8;
+
+    final result = TransactionModel(
       id: smsId,
-      amount: amount,
-      type: isIncome ? TransactionType.income : TransactionType.expense,
+      amount: amount.toInt(),
+      type: TransactionType.expense,
       merchant: merchant,
       category: category,
-      paymentMethod: _detectPaymentMethod(text),
+      paymentMethod: paymentMethod,
       date: smsDate,
       time: DateFormat('HH:mm').format(smsDate),
       originalSms: smsText,
       isExcluded: false,
+      bank: bank,
+      account: account,
+      reference: reference,
+      source: 'SMS-Parser',
+      confidence: confidence,
+      needsReview: needsReview,
     );
+    debugPrint(
+        'SMS FILTER: ACCEPT reason=DEBIT amount=${amount.toStringAsFixed(2)} merchant=$merchant bank=${bank ?? "unknown"} reference=${reference ?? "none"} confidence=$confidence');
+    return result;
   }
+
+  /// Exposes the same contextual amount check for validating AI responses.
+  double? extractDebitAmount(String sms) => _extractAmount(sms);
 
   // ─── TRANSACTION TYPE ──────────────────────────────────────────────────────
 
-  bool _isExpense(String lower) =>
-      lower.contains('debited') ||
-      lower.contains('deducted') ||
-      lower.contains('spent') ||
-      lower.contains('paid') ||
-      lower.contains('payment') ||
-      lower.contains('purchase') ||
-      lower.contains('withdrawn') ||
-      lower.contains('charged');
-
-  bool _isIncome(String lower) =>
-      lower.contains('credited') ||
-      lower.contains('received') ||
-      lower.contains('deposited') ||
-      lower.contains('refund') ||
-      lower.contains('cashback');
-
-  // ─── AMOUNT ────────────────────────────────────────────────────────────────
-
   double? _extractAmount(String sms) {
-    // Matches: ₹1,234.56 | Rs.1234 | INR 1234 | Rs 1,234
-    final patterns = [
-      RegExp(r'(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false),
-      RegExp(r'([\d,]+(?:\.\d{1,2})?)\s*(?:₹|rs\.?|inr)', caseSensitive: false),
-      // "amount of 1234"
-      RegExp(r'amount\s+(?:of\s+)?(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d{1,2})?)',
-          caseSensitive: false),
-    ];
-
-    for (final re in patterns) {
-      final m = re.firstMatch(sms);
-      if (m != null) {
-        final raw = m.group(1)?.replaceAll(',', '') ?? '';
-        final val = double.tryParse(raw);
-        if (val != null && val > 0) return val;
-      }
+    final lower = sms.toLowerCase();
+    var transactionEnd = sms.length;
+    for (final boundary in _boundaries) {
+      final index = lower.indexOf(boundary);
+      if (index >= 0 && index < transactionEnd) transactionEnd = index;
+    }
+    final prefix = lower.substring(0, transactionEnd);
+    final rupee = String.fromCharCode(0x20B9);
+    final currencyAmount = RegExp(
+      '(?:$rupee|\\b(?:rs\\.?|inr\\.?)\\s*)([\\d,]+(?:\\.\\d{1,2})?)',
+      caseSensitive: false,
+    );
+    for (final match in currencyAmount.allMatches(prefix)) {
+      final start = match.start;
+      final end = match.end;
+      final leftContext = lower.substring((start - 100).clamp(0, start), start);
+      final rightContext =
+          lower.substring(end, (end + 45).clamp(end, transactionEnd));
+      final eventBefore = RegExp(
+            r'\b(?:debited|debit|deducted|deduction|spent|paid|purchase|withdrawn|withdrawal|charged)\b|'
+            r'\b(?:sent\s+(?:to|via\s+upi)|transferred(?:\s+to)?)\b',
+          ).hasMatch(leftContext) ||
+          RegExp(r'\bDR\b').hasMatch(sms.substring(
+            (start - 100).clamp(0, start),
+            start,
+          ));
+      final eventAfter = RegExp(
+            r'^\s*(?:has\s+been\s+)?(?:debited|debit|deducted|spent|paid|charged|withdrawn)\b|'
+            r'^\s*(?:sent\s+(?:to|via\s+upi)|transferred(?:\s+to)?)\b',
+          ).hasMatch(rightContext) ||
+          RegExp(r'^\s*DR\b').hasMatch(
+              sms.substring(end, (end + 45).clamp(end, transactionEnd)));
+      if (!eventBefore && !eventAfter) continue;
+      final amount = double.tryParse(match.group(1)!.replaceAll(',', ''));
+      if (amount != null && amount > 0) return amount;
     }
     return null;
   }
 
-  // ─── PAYMENT METHOD ────────────────────────────────────────────────────────
-
   String _detectPaymentMethod(String lower) {
-    if (lower.contains('upi')) return 'UPI';
-    if (lower.contains('neft')) return 'NEFT';
-    if (lower.contains('imps')) return 'IMPS';
-    if (lower.contains('rtgs')) return 'RTGS';
-    if (lower.contains('credit card') || lower.contains('cc '))
+    if (lower.contains('upi')) {
+      return 'UPI';
+    }
+    if (lower.contains('neft')) {
+      return 'NEFT';
+    }
+    if (lower.contains('imps')) {
+      return 'IMPS';
+    }
+    if (lower.contains('rtgs')) {
+      return 'RTGS';
+    }
+    if (lower.contains('credit card') || lower.contains('cc ')) {
       return 'Credit Card';
-    if (lower.contains('debit card')) return 'Debit Card';
-    if (lower.contains('atm')) return 'ATM';
-    if (lower.contains('net banking') || lower.contains('netbanking'))
+    }
+    if (lower.contains('debit card')) {
+      return 'Debit Card';
+    }
+    if (lower.contains('atm')) {
+      return 'ATM';
+    }
+    if (lower.contains('net banking') || lower.contains('netbanking')) {
       return 'Net Banking';
-    return 'SMS';
+    }
+    if (lower.contains('wallet') || lower.contains('paytm wallet')) {
+      return 'Wallet';
+    }
+    return 'Other';
+  }
+
+  // ─── BANK DETECTION ────────────────────────────────────────────────────────
+
+  String? _detectBank(String sms) {
+    final upper = sms.toUpperCase();
+    if (upper.contains('HDFC')) return 'HDFC Bank';
+    if (upper.contains('SBI') || upper.contains('STATE BANK')) return 'SBI';
+    if (upper.contains('ICICI')) return 'ICICI Bank';
+    if (upper.contains('AXIS')) return 'Axis Bank';
+    if (upper.contains('FEDERAL BANK')) return 'Federal Bank';
+    if (upper.contains('AIRTEL PAYMENTS BANK')) return 'Airtel Payments Bank';
+    if (upper.contains('KOTAK')) return 'Kotak Mahindra Bank';
+    if (upper.contains('PAYTM') || upper.contains('PPBL')) {
+      return 'Paytm Payments Bank';
+    }
+    if (upper.contains('PHONEPE')) return 'PhonePe';
+    if (upper.contains('GPAY') || upper.contains('GOOGLE PAY')) {
+      return 'Google Pay';
+    }
+    if (upper.contains('BOB') || upper.contains('BANK OF BARODA')) {
+      return 'Bank of Baroda';
+    }
+    if (upper.contains('PNB')) return 'Punjab National Bank';
+    return null;
+  }
+
+  // ─── ACCOUNT EXTRACTION ────────────────────────────────────────────────────
+
+  String? _extractAccount(String sms) {
+    final match = RegExp(
+      r'(?:a\/c|acct|account|card)\s*(?:no\.?|ending)?\s*([x\*\d]{4,16})',
+      caseSensitive: false,
+    ).firstMatch(sms);
+    if (match != null) {
+      final digits = match.group(1)!.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 4) return digits.substring(digits.length - 4);
+    }
+    return null;
+  }
+
+  // ─── REFERENCE / UTR EXTRACTION ───────────────────────────────────────────
+
+  String? _extractReference(String sms) {
+    final match = RegExp(
+      r'(?:upi\s*ref|imps\s*ref|ref(?:erence)?|utr|txn(?:\s*id)?|transaction\s*id)\s*(?:no\.?|[:#])?\s*([a-z0-9]{6,20})',
+      caseSensitive: false,
+    ).firstMatch(sms);
+    if (match != null) {
+      return match.group(1);
+    }
+    return null;
   }
 
   // ─── MERCHANT DETECTION ────────────────────────────────────────────────────
 
-  /// Priority order:
-  /// 1. Known brand keyword match
-  /// 2. UPI VPA extraction  (e.g. "zomato@icici" → "Zomato")
-  /// 3. "at <Merchant>" pattern
-  /// 4. "to <Merchant>" pattern
-  /// 5. Generic label
   String detectMerchant(String sms) {
     final lower = sms.toLowerCase();
 
-    // 1. Known brands — check these first so we always return a real name
+    final towardsMatch = RegExp(
+      '\\btowards\\s+(.+?)\\s+for\\s+(?:${String.fromCharCode(0x20B9)}|rs\\.?|inr\\.?|the amount)',
+      caseSensitive: false,
+    ).firstMatch(sms);
+    if (towardsMatch != null) {
+      final value =
+          towardsMatch.group(1)!.trim().replaceAll(RegExp(r'[.,;]+$'), '');
+      if (value.isNotEmpty && !value.contains('@')) {
+        return _normalizeMerchantName(value);
+      }
+    }
+    if (lower.contains('airtel payments bank')) return 'Bank Debit';
+
     const brands = {
-      // Food & Beverage
-      'swiggy': 'Swiggy', 'zomato': 'Zomato', 'dunzo': 'Dunzo',
-      'bigbasket': 'BigBasket', 'blinkit': 'Blinkit', 'zepto': 'Zepto',
-      'dominos': "Domino's", 'mcdonald': "McDonald's", 'kfc': 'KFC',
-      'subway': 'Subway', 'starbucks': 'Starbucks',
-      // Shopping & E-commerce
-      'amazon': 'Amazon', 'flipkart': 'Flipkart', 'myntra': 'Myntra',
-      'ajio': 'Ajio', 'nykaa': 'Nykaa', 'meesho': 'Meesho',
-      'snapdeal': 'Snapdeal', 'tatacliq': 'Tata CLiQ',
-      // Travel
-      'uber': 'Uber', 'ola': 'Ola', 'rapido': 'Rapido',
-      'makemytrip': 'MakeMyTrip', 'irctc': 'IRCTC',
-      'redbus': 'RedBus', 'yatra': 'Yatra',
-      'oyo': 'OYO', 'airbnb': 'Airbnb',
-      // Fuel
-      'hpcl': 'HPCL', 'bpcl': 'BPCL', 'iocl': 'IOCL',
-      'petrol': 'Fuel Station', 'fuel': 'Fuel Station',
+      'swiggy': 'Swiggy',
+      'zomato': 'Zomato',
+      'dunzo': 'Dunzo',
+      'bigbasket': 'BigBasket',
+      'blinkit': 'Blinkit',
+      'zepto': 'Zepto',
+      'dominos': "Domino's",
+      'mcdonald': "McDonald's",
+      'kfc': 'KFC',
+      'subway': 'Subway',
+      'starbucks': 'Starbucks',
+      'amazon': 'Amazon',
+      'flipkart': 'Flipkart',
+      'myntra': 'Myntra',
+      'ajio': 'Ajio',
+      'nykaa': 'Nykaa',
+      'meesho': 'Meesho',
+      'snapdeal': 'Snapdeal',
+      'tatacliq': 'Tata CLiQ',
+      'uber': 'Uber',
+      'ola': 'Ola',
+      'rapido': 'Rapido',
+      'makemytrip': 'MakeMyTrip',
+      'irctc': 'IRCTC',
+      'redbus': 'RedBus',
+      'yatra': 'Yatra',
+      'oyo': 'OYO',
+      'airbnb': 'Airbnb',
+      'hpcl': 'HPCL',
+      'bpcl': 'BPCL',
+      'iocl': 'IOCL',
+      'petrol': 'Fuel Station',
+      'fuel': 'Fuel Station',
       'reliance fuel': 'Reliance Fuel',
-      // Bills & Utilities
-      'airtel': 'Airtel', 'jio': 'Jio', 'bsnl': 'BSNL', 'vi ': 'Vi',
-      'tata power': 'Tata Power', 'bescom': 'BESCOM', 'msedcl': 'MSEDCL',
-      'mahanagar gas': 'Mahanagar Gas', 'indraprastha gas': 'IGL',
+      'airtel': 'Airtel',
+      'jio': 'Jio',
+      'bsnl': 'BSNL',
+      'vi ': 'Vi',
+      'tata power': 'Tata Power',
+      'bescom': 'BESCOM',
+      'msedcl': 'MSEDCL',
+      'mahanagar gas': 'Mahanagar Gas',
+      'indraprastha gas': 'IGL',
       'dth': 'DTH',
-      // Health
-      'apollo': 'Apollo', 'practo': 'Practo', 'netmeds': 'Netmeds',
-      'pharmeasy': 'PharmEasy', '1mg': '1mg', 'medplus': 'MedPlus',
-      // Entertainment
-      'netflix': 'Netflix', 'hotstar': 'Hotstar', 'prime video': 'Prime Video',
-      'spotify': 'Spotify', 'youtube premium': 'YouTube Premium',
-      'bookmyshow': 'BookMyShow', 'pvr': 'PVR', 'inox': 'INOX',
-      // Finance & Payments
-      'phonepe': 'PhonePe', 'gpay': 'Google Pay', 'paytm': 'Paytm',
-      'cred': 'CRED', 'slice': 'Slice',
+      'apollo': 'Apollo',
+      'practo': 'Practo',
+      'netmeds': 'Netmeds',
+      'pharmeasy': 'PharmEasy',
+      '1mg': '1mg',
+      'medplus': 'MedPlus',
+      'netflix': 'Netflix',
+      'hotstar': 'Hotstar',
+      'prime video': 'Prime Video',
+      'spotify': 'Spotify',
+      'youtube premium': 'YouTube Premium',
+      'bookmyshow': 'BookMyShow',
+      'pvr': 'PVR',
+      'inox': 'INOX',
+      'phonepe': 'PhonePe',
+      'gpay': 'Google Pay',
+      'paytm': 'Paytm',
+      'cred': 'CRED',
+      'slice': 'Slice',
     };
 
     for (final kv in brands.entries) {
-      if (lower.contains(kv.key)) return kv.value;
+      if (lower.contains(kv.key)) {
+        return kv.value;
+      }
     }
 
-    // 2. UPI VPA: "to zomato@icici" → "Zomato"
     final vpaMatch = RegExp(
       r'(?:to|paid\s+to)\s+([a-z0-9._-]+)@([a-z0-9]+)',
       caseSensitive: false,
     ).firstMatch(sms);
     if (vpaMatch != null) {
       final handle = vpaMatch.group(1) ?? '';
-      if (handle.length > 2) return _capitalize(handle);
+      if (handle.length > 2) {
+        return _capitalize(handle);
+      }
     }
 
-    // 3. "at <Title Case Name>" — typical POS/card messages
+    final upiRecipientMatch = RegExp(
+      r'(?:sent|paid|transferred)\s+via\s+upi\s+to\s+([a-z0-9&._\-\s]{2,40}?)(?:\s+(?:ref|utr|on|from|a/c|acct|avl|bal)|[,.]|$)',
+      caseSensitive: false,
+    ).firstMatch(sms);
+    if (upiRecipientMatch != null) {
+      final name = upiRecipientMatch.group(1)?.trim() ?? '';
+      if (name.length > 2) {
+        return _normalizeMerchantName(name);
+      }
+    }
+
     final atMatch = RegExp(
       r'\bat\s+([A-Z][A-Za-z0-9&\s]{2,25}?)(?:\s+on|\s+for|[,.]|$)',
     ).firstMatch(sms);
     if (atMatch != null) {
       final name = atMatch.group(1)?.trim() ?? '';
-      if (name.length > 2) return name;
+      if (name.length > 2) {
+        return name;
+      }
     }
 
-    // 4. "to <Name>" — UPI P2P or NEFT
     final toMatch = RegExp(
-      r'\bto\s+([A-Z][A-Za-z\s]{2,25}?)(?:\s+(?:via|on|for|using)|[,.]|$)',
+      r'\bto\s+([a-z][a-z0-9&.\-\s]{2,40}?)(?:\s+(?:via|on|for|using|ref|utr|from|a/c|acct|avl|bal)|[,.]|$)',
+      caseSensitive: false,
     ).firstMatch(sms);
     if (toMatch != null) {
       final name = toMatch.group(1)?.trim() ?? '';
-      if (name.length > 2) return name;
+      if (name.length > 2) {
+        return _normalizeMerchantName(name);
+      }
     }
 
-    return 'SMS Transaction';
+    return 'Bank Debit';
   }
 
   // ─── CATEGORY DETECTION ────────────────────────────────────────────────────
 
-  /// Two-pass: first match on merchant (more specific), then raw SMS text.
   String detectCategory(String sms, [String? resolvedMerchant]) {
     final lower = sms.toLowerCase();
     final merch = (resolvedMerchant ?? '').toLowerCase();
 
-    // Food
     if (_anyOf(merch, [
       'swiggy',
       'zomato',
@@ -208,8 +454,10 @@ class SmartParser {
       'starbucks',
       'restaurant',
       'cafe',
-      'dhaba'
-    ])) return 'Food';
+      'dhaba',
+    ])) {
+      return 'Food';
+    }
     if (_anyOf(lower, [
       'restaurant',
       'cafe',
@@ -224,10 +472,11 @@ class SmartParser {
       'kitchen',
       'pizza',
       'burger',
-      'biryani'
-    ])) return 'Food';
+      'biryani',
+    ])) {
+      return 'Food';
+    }
 
-    // Shopping
     if (_anyOf(merch, [
       'amazon',
       'flipkart',
@@ -236,8 +485,10 @@ class SmartParser {
       'nykaa',
       'meesho',
       'snapdeal',
-      'tatacliq'
-    ])) return 'Shopping';
+      'tatacliq',
+    ])) {
+      return 'Shopping';
+    }
     if (_anyOf(lower, [
       'shopping',
       'mart',
@@ -247,10 +498,11 @@ class SmartParser {
       'purchase',
       'order',
       'apparel',
-      'cloth'
-    ])) return 'Shopping';
+      'cloth',
+    ])) {
+      return 'Shopping';
+    }
 
-    // Travel
     if (_anyOf(merch, [
       'uber',
       'ola',
@@ -260,8 +512,10 @@ class SmartParser {
       'redbus',
       'yatra',
       'oyo',
-      'airbnb'
-    ])) return 'Travel';
+      'airbnb',
+    ])) {
+      return 'Travel';
+    }
     if (_anyOf(lower, [
       'cab',
       'taxi',
@@ -272,17 +526,19 @@ class SmartParser {
       'bus',
       'hotel',
       'booking',
-      'travel'
-    ])) return 'Travel';
+      'travel',
+    ])) {
+      return 'Travel';
+    }
 
-    // Fuel
     if (_anyOf(
-        merch, ['hpcl', 'bpcl', 'iocl', 'fuel station', 'reliance fuel']))
+        merch, ['hpcl', 'bpcl', 'iocl', 'fuel station', 'reliance fuel'])) {
       return 'Fuel';
-    if (_anyOf(lower, ['petrol', 'diesel', 'fuel', 'gas station', 'pump']))
+    }
+    if (_anyOf(lower, ['petrol', 'diesel', 'fuel', 'gas station', 'pump'])) {
       return 'Fuel';
+    }
 
-    // Bills & Utilities
     if (_anyOf(merch, [
       'airtel',
       'jio',
@@ -293,8 +549,10 @@ class SmartParser {
       'msedcl',
       'mahanagar gas',
       'igl',
-      'dth'
-    ])) return 'Bills';
+      'dth',
+    ])) {
+      return 'Bills';
+    }
     if (_anyOf(lower, [
       'recharge',
       'bill',
@@ -308,13 +566,15 @@ class SmartParser {
       'prepaid',
       'emi',
       'insurance',
-      'premium'
-    ])) return 'Bills';
+      'premium',
+    ])) {
+      return 'Bills';
+    }
 
-    // Health
-    if (_anyOf(
-        merch, ['apollo', 'practo', 'netmeds', 'pharmeasy', '1mg', 'medplus']))
+    if (_anyOf(merch,
+        ['apollo', 'practo', 'netmeds', 'pharmeasy', '1mg', 'medplus'])) {
       return 'Health';
+    }
     if (_anyOf(lower, [
       'hospital',
       'clinic',
@@ -325,11 +585,10 @@ class SmartParser {
       'health',
       'lab',
       'diagnostic',
-      'chemist',
-      'drug'
-    ])) return 'Health';
+    ])) {
+      return 'Health';
+    }
 
-    // Entertainment
     if (_anyOf(merch, [
       'netflix',
       'hotstar',
@@ -338,8 +597,10 @@ class SmartParser {
       'youtube premium',
       'bookmyshow',
       'pvr',
-      'inox'
-    ])) return 'Entertainment';
+      'inox',
+    ])) {
+      return 'Entertainment';
+    }
     if (_anyOf(lower, [
       'subscription',
       'ott',
@@ -347,14 +608,15 @@ class SmartParser {
       'cinema',
       'ticket',
       'entertainment',
-      'gaming',
-      'game'
-    ])) return 'Entertainment';
+      'gaming'
+    ])) {
+      return 'Entertainment';
+    }
 
-    // ATM / Cash
-    if (_anyOf(lower, ['atm', 'cash withdrawal', 'withdrawn'])) return 'Cash';
+    if (_anyOf(lower, ['atm', 'cash withdrawal', 'withdrawn'])) {
+      return 'Cash';
+    }
 
-    // Transfer (UPI P2P / NEFT / IMPS)
     if (_anyOf(lower, [
       'upi',
       'neft',
@@ -363,12 +625,12 @@ class SmartParser {
       'fund transfer',
       'transferred to',
       'sent to'
-    ])) return 'Transfer';
+    ])) {
+      return 'Transfer';
+    }
 
     return 'Other';
   }
-
-  // ─── HELPERS ───────────────────────────────────────────────────────────────
 
   bool _anyOf(String text, List<String> keywords) =>
       keywords.any((k) => text.contains(k));
@@ -376,5 +638,18 @@ class SmartParser {
   String _capitalize(String s) {
     if (s.isEmpty) return s;
     return s[0].toUpperCase() + s.substring(1).toLowerCase();
+  }
+
+  String _normalizeMerchantName(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (cleaned.isEmpty) return cleaned;
+    if (cleaned == cleaned.toUpperCase() &&
+        RegExp(r'[A-Z]').hasMatch(cleaned)) {
+      return cleaned;
+    }
+    return cleaned.split(' ').where((part) => part.isNotEmpty).map((part) {
+      final lower = part.toLowerCase();
+      return lower[0].toUpperCase() + lower.substring(1);
+    }).join(' ');
   }
 }

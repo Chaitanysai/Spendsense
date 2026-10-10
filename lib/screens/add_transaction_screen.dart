@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../utils/app_colors.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -26,6 +27,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffold(context),
       appBar: AppBar(title: Text("Add Transaction")),
       body: Padding(
         padding: EdgeInsets.all(16),
@@ -58,10 +60,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 final amount = double.tryParse(_amountController.text) ?? 0;
 
                 if (amount <= 0) return;
+                final provider = context.read<TransactionProvider>();
+                final navigator = Navigator.of(context);
 
                 final tx = TransactionModel(
                   id: DateTime.now().toString(),
-                  amount: amount,
+                  amount: amount.toInt(),
                   type: TransactionType.expense,
                   merchant: _merchantController.text.isEmpty
                       ? "Manual"
@@ -74,10 +78,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   isExcluded: false,
                 );
 
-                await context.read<TransactionProvider>().addTransaction(tx);
-                if (!mounted) return;
-
-                Navigator.pop(context);
+                await provider.addTransaction(tx);
+                if (mounted) {
+                  navigator.pop();
+                }
               },
               child: Text("Add"),
             )

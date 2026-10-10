@@ -1,135 +1,299 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/formatters.dart';
+import '../utils/app_colors.dart';
 
-class TransactionDetailsScreen extends StatelessWidget {
+class TransactionDetailsScreen extends StatefulWidget {
   final TransactionModel transaction;
+
   const TransactionDetailsScreen({super.key, required this.transaction});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<TransactionProvider>(context);
+  State<TransactionDetailsScreen> createState() =>
+      _TransactionDetailsScreenState();
+}
 
+class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
+  late final TextEditingController _merchantController;
+  late final TextEditingController _amountController;
+  late String _category;
+  late TransactionType _type;
+  late bool _isExcluded;
+  bool _saving = false;
+
+  static const _categories = [
+    'Shopping',
+    'Food',
+    'Entertainment',
+    'Travel',
+    'Bills',
+    'Transfer',
+    'Fuel',
+    'Health',
+    'Investment',
+    'Other',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _merchantController =
+        TextEditingController(text: widget.transaction.merchant);
+    _amountController =
+        TextEditingController(text: widget.transaction.amount.toString());
+    _category = _normalizedCategory(widget.transaction.category);
+    _type = widget.transaction.type;
+    _isExcluded = widget.transaction.isExcluded;
+  }
+
+  @override
+  void dispose() {
+    _merchantController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffold(context),
       appBar: AppBar(
-          title: Text("Transaction"),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.black),
+        title: const Text('Edit Transaction'),
+        foregroundColor: AppColors.textPrimary(context),
+      ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-                radius: 35,
-                backgroundColor: Color(0xFF6B38FB).withOpacity(0.1),
-                child: Icon(Icons.shopping_bag,
-                    size: 30, color: Color(0xFF6B38FB))),
-            SizedBox(height: 24),
-            Text(transaction.merchant,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            Text("\$ ${transaction.amount}",
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                  color: Color(0xFFE0E0FF),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text("PENDING",
-                  style: TextStyle(
-                      color: Color(0xFF6B38FB),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12)),
+            _headerCard(context),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _merchantController,
+              decoration: const InputDecoration(
+                labelText: 'Merchant',
+                prefixIcon: Icon(Icons.storefront_outlined),
+              ),
             ),
-            SizedBox(height: 40),
-            _infoRow(Icons.calendar_today, "Date & Time",
-                "${Formatters.date(transaction.date)} • ${transaction.time}"),
-            _categoryPicker(context, provider),
-            _infoRow(Icons.account_balance_wallet_outlined, "Payment Method",
-                transaction.paymentMethod),
-            SizedBox(height: 24),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                prefixIcon: Icon(Icons.currency_rupee_rounded),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<TransactionType>(
+              initialValue: _type,
+              decoration: const InputDecoration(
+                labelText: 'Type',
+                prefixIcon: Icon(Icons.swap_vert_rounded),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: TransactionType.expense,
+                  child: Text('Expense'),
+                ),
+                DropdownMenuItem(
+                  value: TransactionType.income,
+                  child: Text('Income'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _type = value);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _category,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                prefixIcon: Icon(Icons.category_outlined),
+              ),
+              items: _categories
+                  .map((item) =>
+                      DropdownMenuItem(value: item, child: Text(item)))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _category = value);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceColor(context),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Date & Time',
+                    style: TextStyle(
+                      color: AppColors.textSecondary(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${Formatters.date(widget.transaction.date)} • ${widget.transaction.time}',
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Payment Method',
+                    style: TextStyle(
+                      color: AppColors.textSecondary(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.transaction.paymentMethod,
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             SwitchListTile(
-              title: Text("Exclude from Insights"),
-              subtitle: Text("Don't count this in monthly totals"),
-              value: transaction.isExcluded,
-              onChanged: (_) => provider.toggleExclude(transaction.id),
+              contentPadding: EdgeInsets.zero,
+              title: const Text("Exclude from Insights"),
+              subtitle: const Text("Don't count this transaction in totals"),
+              value: _isExcluded,
+              onChanged: (value) => setState(() => _isExcluded = value),
             ),
-            SizedBox(height: 32),
-            Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Original Receipt Log",
-                    style: TextStyle(fontWeight: FontWeight.bold))),
-            SizedBox(height: 12),
+            const SizedBox(height: 24),
+            Text(
+              'Original SMS',
+              style: TextStyle(
+                color: AppColors.textPrimary(context),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
             Container(
-              padding: EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(16)),
-              child: Text(transaction.originalSms,
-                  style: TextStyle(color: Colors.black54, height: 1.5)),
-            )
+                color: AppColors.surfaceAlt(context),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                widget.transaction.originalSms,
+                style: TextStyle(
+                  color: AppColors.textSecondary(context),
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Save changes'),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
+  Widget _headerCard(BuildContext context) {
+    final isExpense = _type == TransactionType.expense;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppColors.brandGradient,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-              backgroundColor: Colors.grey[100],
-              child: Icon(icon, color: Colors.grey)),
-          SizedBox(width: 16),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(color: Colors.grey, fontSize: 12)),
-            Text(value, style: TextStyle(fontWeight: FontWeight.bold)),
-          ])
+          Text(
+            isExpense ? 'Expense' : 'Income',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _merchantController.text.isEmpty
+                ? 'Unknown merchant'
+                : _merchantController.text,
+            style: const TextStyle(color: Colors.white70),
+          ),
         ],
       ),
     );
   }
 
-  Widget _categoryPicker(BuildContext context, TransactionProvider provider) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-              backgroundColor: Colors.grey[100],
-              child: Icon(Icons.category_outlined, color: Colors.grey)),
-          SizedBox(width: 16),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text("Category",
-                  style: TextStyle(color: Colors.grey, fontSize: 12)),
-              DropdownButton<String>(
-                value: transaction.category,
-                isExpanded: true,
-                underline: SizedBox(),
-                items: [
-                  "Shopping",
-                  "Food",
-                  "Entertainment",
-                  "Travel",
-                  "Bills",
-                  "Transfer",
-                  "Others"
-                ]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (val) =>
-                    provider.updateCategory(transaction.id, val!),
-              ),
-            ]),
-          )
-        ],
-      ),
-    );
+  String _normalizedCategory(String category) {
+    if (_categories.contains(category)) return category;
+    if (category == 'Others') return 'Other';
+    return 'Other';
+  }
+
+  Future<void> _save() async {
+    final amount = int.tryParse(_amountController.text.trim());
+    final merchant = _merchantController.text.trim();
+
+    if (amount == null || amount <= 0 || merchant.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid merchant and amount')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    await context.read<TransactionProvider>().updateTransaction(
+          widget.transaction.id,
+          amount: amount,
+          merchant: merchant,
+          category: _category,
+          type: _type,
+          isExcluded: _isExcluded,
+        );
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 }

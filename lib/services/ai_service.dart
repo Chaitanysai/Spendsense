@@ -1,115 +1,129 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
+import '../models/ai_chat_message.dart';
 import '../models/transaction_model.dart';
 
-/// Provider config — swap keys here only
+/// Provider config — keys are resolved at runtime from AppConfig.
 class _Provider {
   final String name;
   final String url;
   final String apiKey;
   final String model;
-  final Map<String, String> headers;
+  final Map<String, String> Function(String key) _headerBuilder;
 
-  const _Provider({
+  _Provider({
     required this.name,
     required this.url,
     required this.apiKey,
     required this.model,
-    required this.headers,
-  });
+    required Map<String, String> Function(String key) headerBuilder,
+  }) : _headerBuilder = headerBuilder;
+
+  Map<String, String> get headers => _headerBuilder(apiKey);
 }
 
 class AIService {
-  // Configure provider keys locally before enabling network calls.
-  static const _groqKey = "YOUR_GROQ_KEY";
-  static const _geminiKey = "YOUR_GEMINI_KEY";
-  static const _openrouterKey = "YOUR_OPENROUTER_KEY";
+  // 🔑 Keys are loaded from .env (dev) or --dart-define (CI/release).
+  // Never hardcode keys here. See lib/config/app_config.dart.
+  static List<_Provider> get _providers => [
+        // 1️⃣  Groq — fastest, try first
+        _Provider(
+          name: 'Groq',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          apiKey: AppConfig.groqKey,
+          model: 'llama-3.3-70b-versatile',
+          headerBuilder: (key) => {
+            'Authorization': 'Bearer $key',
+            'Content-Type': 'application/json',
+          },
+        ),
 
-  static final List<_Provider> _providers = [
-    // 1️⃣  Groq — fastest, try first
-    _Provider(
-      name: "Groq",
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      apiKey: _groqKey,
-      model: "llama-3.3-70b-versatile",
-      headers: {
-        "Authorization": "Bearer $_groqKey",
-        "Content-Type": "application/json",
-      },
-    ),
+        // 2️⃣  Gemini Flash — high quality, generous free tier
+        _Provider(
+          name: 'Gemini',
+          url:
+              'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+          apiKey: AppConfig.geminiKey,
+          model: 'gemini-2.5-flash',
+          headerBuilder: (key) => {
+            'Authorization': 'Bearer $key',
+            'Content-Type': 'application/json',
+          },
+        ),
 
-    // 2️⃣  Gemini Flash — high quality, generous free tier
-    _Provider(
-      name: "Gemini",
-      url:
-          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      apiKey: _geminiKey,
-      model: "gemini-2.5-flash",
-      headers: {
-        "Authorization": "Bearer $_geminiKey",
-        "Content-Type": "application/json",
-      },
-    ),
-
-    // 3️⃣  OpenRouter (free Llama model) — last resort fallback
-    _Provider(
-      name: "OpenRouter",
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      apiKey: _openrouterKey,
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-      headers: {
-        "Authorization": "Bearer $_openrouterKey",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "com.yourapp.spendsense", // your app package name
-      },
-    ),
-  ];
+        // 3️⃣  OpenRouter (free Llama model) — last resort fallback
+        _Provider(
+          name: 'OpenRouter',
+          url: 'https://openrouter.ai/api/v1/chat/completions',
+          apiKey: AppConfig.openRouterKey,
+          model: 'meta-llama/llama-3.3-70b-instruct:free',
+          headerBuilder: (key) => {
+            'Authorization': 'Bearer $key',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'com.yourapp.spendsense',
+          },
+        ),
+      ];
 
   /// Tries each provider in order. Returns the first successful response.
   /// Falls back to the next provider on: timeout, HTTP error, or empty reply.
-  Future<String> askAI(String query, List<TransactionModel> txs) async {
-    final prompt = _buildPrompt(query, txs);
+  Future<String> askAI(
+    List<AIChatMessage> history,
+    List<TransactionModel> txs,
+  ) async {
+    final result = await tryAskAI(history, txs);
+    return result ??
+        "I couldn't get an answer right now. "
+            "Check your internet connection or try again shortly.";
+  }
+
+  Future<String?> tryAskAI(
+    List<AIChatMessage> history,
+    List<TransactionModel> txs,
+  ) async {
+    final promptMessages = _buildMessages(history, txs);
 
     for (final provider in _providers) {
-      final result = await _tryProvider(provider, prompt);
+      final result = await _tryProvider(provider, promptMessages);
       if (result != null) {
-        print("✅ AI answered via ${provider.name}");
+        debugPrint('✅ AI answered via ${provider.name}');
         return result;
       }
-      print("⚠️ ${provider.name} failed — trying next provider...");
+      debugPrint('⚠️ ${provider.name} failed — trying next provider...');
     }
 
-    // All 3 providers exhausted
-    return "I couldn't get an answer right now. "
-        "Check your internet connection or try again shortly.";
+    return null;
   }
 
   /// Attempts one provider. Returns null on any failure so the chain continues.
-  Future<String?> _tryProvider(_Provider provider, String prompt) async {
+  Future<String?> _tryProvider(
+    _Provider provider,
+    List<Map<String, String>> messages,
+  ) async {
     try {
       final response = await http
           .post(
             Uri.parse(provider.url),
             headers: provider.headers,
             body: jsonEncode({
-              "model": provider.model,
-              "max_tokens": 150,
-              "temperature": 0,
-              "messages": [
-                {"role": "user", "content": prompt}
-              ],
+              'model': provider.model,
+              'max_tokens': 150,
+              'temperature': 0,
+              'messages': messages,
             }),
           )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 429) {
         // Rate limited — skip to next provider immediately, no wait
-        print("🔴 ${provider.name} rate limited (429)");
+        debugPrint('🔴 ${provider.name} rate limited (429)');
         return null;
       }
 
       if (response.statusCode != 200) {
-        print("🔴 ${provider.name} HTTP ${response.statusCode}");
+        debugPrint('🔴 ${provider.name} HTTP ${response.statusCode}');
         return null;
       }
 
@@ -118,17 +132,20 @@ class AIService {
 
       if (choices == null || choices is! List || choices.isEmpty) return null;
 
-      final content = choices[0]['message']?['content'] as String? ?? "";
+      final content = choices[0]['message']?['content'] as String? ?? '';
       if (content.trim().isEmpty) return null;
 
       return content.trim();
     } catch (e) {
-      print("🔴 ${provider.name} error: $e");
+      debugPrint('🔴 ${provider.name} error: $e');
       return null; // triggers next provider in chain
     }
   }
 
-  String _buildPrompt(String query, List<TransactionModel> txs) {
+  List<Map<String, String>> _buildMessages(
+    List<AIChatMessage> history,
+    List<TransactionModel> txs,
+  ) {
     final now = DateTime.now();
 
     // Only send current month transactions to keep token usage minimal
@@ -140,22 +157,43 @@ class AIService {
         .take(40)
         .toList();
 
-    final summary = monthTx.isEmpty
-        ? "No transactions this month."
-        : monthTx.map((t) {
-            return "• ${t.category}: ₹${t.amount.toStringAsFixed(0)}"
-                " at ${t.merchant} on ${t.date.day}/${t.date.month}";
-          }).join("\n");
+    final expenseTx =
+        monthTx.where((t) => t.type == TransactionType.expense).toList();
+    final incomeTx =
+        monthTx.where((t) => t.type == TransactionType.income).toList();
 
-    return """
-You are a personal finance assistant for an Indian user.
-Answer the question in 1-2 sentences using ONLY the data below.
-Use ₹ for currency. Be direct and specific.
+    final summary = [
+      if (expenseTx.isEmpty)
+        'Expenses: none this month.'
+      else
+        'Expenses:\n${expenseTx.map((t) {
+          return '- ${t.category}: ₹${t.amount.toStringAsFixed(0)}'
+              ' at ${t.merchant} on ${t.date.day}/${t.date.month}';
+        }).join('\n')}',
+      if (incomeTx.isNotEmpty)
+        'Income:\n${incomeTx.map((t) {
+          return '- ₹${t.amount.toStringAsFixed(0)}'
+              ' from ${t.merchant} on ${t.date.day}/${t.date.month}';
+        }).join('\n')}',
+    ].join('\n');
 
-Question: $query
-
-This month's transactions:
-$summary
-""";
+    return [
+      {
+        'role': 'system',
+        'content':
+            'You are SpendSense AI, a concise personal finance assistant '
+                'for an Indian user. Answer using only the spending snapshot '
+                'provided in this chat. Use ₹ for currency. If the user asks '
+                'about something not present in the data, say that clearly.',
+      },
+      {
+        'role': 'system',
+        'content': 'Current month transaction snapshot:\n$summary',
+      },
+      ...history.map((message) => {
+            'role': message.role,
+            'content': message.content,
+          }),
+    ];
   }
 }

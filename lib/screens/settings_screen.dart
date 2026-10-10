@@ -1,133 +1,205 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../providers/transaction_provider.dart';
-import '../utils/app_colors.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:intl/intl.dart';
 
-class SettingsScreen extends StatelessWidget {
+import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/transaction_provider.dart';
+import '../widgets/sms_import_prompt.dart';
+import '../utils/app_colors.dart';
+import '../widgets/profile_avatar.dart';
+
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isConnected = true;
+  String _connectionType = 'WiFi';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    setState(() {
+      _isConnected = result != ConnectivityResult.none;
+      _connectionType =
+          _isConnected ? _getConnectionLabel(result) : 'No Connection';
+    });
+  }
+
+  String _getConnectionLabel(ConnectivityResult result) {
+    switch (result) {
+      case ConnectivityResult.wifi:
+        return 'WiFi';
+      case ConnectivityResult.mobile:
+        return 'Mobile Data';
+      case ConnectivityResult.ethernet:
+        return 'Ethernet';
+      case ConnectivityResult.bluetooth:
+        return 'Bluetooth';
+      case ConnectivityResult.vpn:
+        return 'VPN';
+      case ConnectivityResult.other:
+      case ConnectivityResult.none:
+        return 'No Connection';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
+    final auth = context.watch<AuthProvider>();
+    final theme = context.watch<ThemeProvider>();
+    final transactions = context.watch<TransactionProvider>();
+    final scanStart = transactions.smsScanStartDate;
+    final scanLabel = scanStart == null
+        ? 'Not set'
+        : DateFormat('dd MMM yyyy').format(scanStart);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffold(context),
       body: CustomScrollView(
         slivers: [
-          // ── COLLAPSIBLE HEADER ──────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 200,
-            floating: false,
             pinned: true,
             backgroundColor: AppColors.primaryPurple,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               background: _ProfileHeader(auth: auth),
             ),
-            title: Text(
+            title: const Text(
               'Settings',
               style:
                   TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
-
-          // ── BODY ─────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // PREFERENCES SECTION
                   _sectionLabel('Preferences'),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   _SettingsCard(
                     children: [
                       _SettingsTile(
+                        icon: Icons.photo_camera_back_rounded,
+                        iconColor: const Color(0xFF0F766E),
+                        title: 'Profile Photo',
+                        subtitle: auth.hasProfileImage
+                            ? 'Change your profile image'
+                            : 'Add your profile image',
+                        onTap: () => _pickProfilePhoto(context),
+                      ),
+                      _divider(),
+                      _SettingsTile(
+                        icon: Icons.sms_rounded,
+                        iconColor: const Color(0xFFC2185B),
+                        title: 'SMS Start Date',
+                        subtitle: 'Currently checking messages from $scanLabel',
+                        onTap: () => SmsImportPrompt.show(context),
+                      ),
+                      _divider(),
+                      _SettingsTile(
                         icon: Icons.palette_outlined,
-                        iconColor: Color(0xFF7C3AED),
+                        iconColor: const Color(0xFF7C3AED),
                         title: 'Theme',
-                        subtitle: 'Light',
-                        onTap: () => _comingSoon(context, 'Theme'),
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.currency_rupee_rounded,
-                        iconColor: Color(0xFF059669),
-                        title: 'Currency',
-                        subtitle: 'INR (₹)',
-                        onTap: () => _comingSoon(context, 'Currency'),
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.language_rounded,
-                        iconColor: Color(0xFF0284C7),
-                        title: 'Language',
-                        subtitle: 'English',
-                        onTap: () => _comingSoon(context, 'Language'),
+                        subtitle: theme.isDarkMode ? 'Dark' : 'Light',
+                        onTap: theme.toggle,
+                        trailing: Switch.adaptive(
+                          value: theme.isDarkMode,
+                          onChanged: theme.setDarkMode,
+                          activeThumbColor: AppColors.primaryPurple,
+                        ),
+                        showArrow: false,
                       ),
                     ],
                   ),
-
-                  SizedBox(height: 24),
-
-                  // SMS & PRIVACY SECTION
-                  _sectionLabel('SMS & Privacy'),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 24),
+                  _sectionLabel('Network'),
+                  const SizedBox(height: 10),
                   _SettingsCard(
                     children: [
                       _SettingsTile(
-                        icon: Icons.sms_outlined,
-                        iconColor: Color(0xFFD97706),
-                        title: 'SMS Permissions',
-                        subtitle: 'Manage access',
-                        onTap: () => _comingSoon(context, 'SMS Permissions'),
+                        icon: _isConnected ? Icons.wifi : Icons.wifi_off,
+                        iconColor: _isConnected
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFDC2626),
+                        title: 'Internet Connection',
+                        subtitle: _isConnected
+                            ? 'Connected via $_connectionType'
+                            : 'No internet connection',
+                        onTap: _checkConnectivity,
+                      ),
+                      _divider(),
+                      _SettingsTile(
+                        icon: Icons.cloud_outlined,
+                        iconColor: const Color(0xFF6366F1),
+                        title: 'AI Services',
+                        subtitle: 'Groq & Gemini Fallback API configured',
+                        onTap: null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _sectionLabel('Data & Backup'),
+                  const SizedBox(height: 10),
+                  _SettingsCard(
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.upload_file_rounded,
+                        iconColor: const Color(0xFF2563EB),
+                        title: 'Export JSON Backup',
+                        subtitle: 'Save all transactions to backup JSON',
+                        onTap: () => _exportBackup(context, transactions),
+                      ),
+                      _divider(),
+                      _SettingsTile(
+                        icon: Icons.download_rounded,
+                        iconColor: const Color(0xFF059669),
+                        title: 'Import JSON Backup',
+                        subtitle: 'Restore transactions from backup JSON',
+                        onTap: () => _importBackup(context, transactions),
                       ),
                       _divider(),
                       _SettingsTile(
                         icon: Icons.delete_sweep_outlined,
-                        iconColor: Color(0xFFDC2626),
-                        title: 'Clear Transaction Cache',
-                        subtitle: 'Remove locally stored data',
+                        iconColor: const Color(0xFFDC2626),
+                        title: 'Clear Transaction Database',
+                        subtitle: 'Remove locally stored transaction data',
                         onTap: () => _showClearCacheDialog(context),
                       ),
                     ],
                   ),
-
-                  SizedBox(height: 24),
-
-                  // ABOUT SECTION
+                  const SizedBox(height: 24),
                   _sectionLabel('About'),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   _SettingsCard(
-                    children: [
+                    children: const [
                       _SettingsTile(
                         icon: Icons.info_outline_rounded,
                         iconColor: Color(0xFF6B7280),
                         title: 'App Version',
-                        subtitle: '1.0.0',
+                        subtitle: '2.0.0 (Local-First)',
                         onTap: null,
                         showArrow: false,
                       ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.privacy_tip_outlined,
-                        iconColor: Color(0xFF6B7280),
-                        title: 'Privacy Policy',
-                        onTap: () => _comingSoon(context, 'Privacy Policy'),
-                      ),
                     ],
                   ),
-
-                  SizedBox(height: 32),
-
-                  // LOGOUT BUTTON
-                  _LogoutButton(
-                    onPressed: () => _showLogoutDialog(context, auth),
-                  ),
-
-                  SizedBox(height: 20),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -143,21 +215,115 @@ class SettingsScreen extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: Colors.grey[500],
+        color: AppColors.textSecondary(context),
         letterSpacing: 1.2,
       ),
     );
   }
 
-  Widget _divider() => Divider(height: 1, indent: 56, color: Colors.grey[100]);
+  Widget _divider() => Divider(
+        height: 1,
+        indent: 56,
+        color: AppColors.border(context),
+      );
 
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature — coming soon'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
+  Future<void> _exportBackup(BuildContext context, TransactionProvider provider) async {
+    final jsonStr = await provider.exportToJson();
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Export JSON Backup'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Copy your backup JSON data below:'),
+              const SizedBox(height: 12),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      jsonStr,
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: jsonStr));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Backup copied to clipboard!')),
+              );
+            },
+            child: const Text('Copy to Clipboard'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _importBackup(BuildContext context, TransactionProvider provider) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Import JSON Backup'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Paste your backup JSON data below:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  hintText: '{"version": 2, "transactions": [...]}',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final text = controller.text.trim();
+              Navigator.pop(ctx);
+              if (text.isEmpty) return;
+              final count = await provider.importFromJson(text);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Successfully imported $count transactions!')),
+              );
+            },
+            child: const Text('Restore'),
+          ),
+        ],
       ),
     );
   }
@@ -167,68 +333,53 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Clear Cache?'),
-        content: Text('This will remove all locally stored transaction data. '
-            'Your SMS inbox is unaffected.'),
+        title: const Text('Clear Database?'),
+        content: const Text(
+          'This will remove all locally stored transactions. Your SMS inbox is unaffected.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFDC2626),
-              shape: StadiumBorder(),
+              backgroundColor: const Color(0xFFDC2626),
+              shape: const StadiumBorder(),
             ),
             onPressed: () async {
               Navigator.pop(ctx);
               await context.read<TransactionProvider>().clearAll();
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Cache cleared')),
+                const SnackBar(content: Text('Database cleared')),
               );
             },
-            child: Text('Clear', style: TextStyle(color: Colors.white)),
+            child: const Text('Clear', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  void _showLogoutDialog(BuildContext context, AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Log out?'),
-        content: Text('You will be returned to the login screen.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: StadiumBorder(),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              auth.logout();
-            },
-            child: Text('Log out', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+  Future<void> _pickProfilePhoto(BuildContext context) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 800,
     );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (!context.mounted) return;
+    await context.read<AuthProvider>().updateProfileImage(base64Encode(bytes));
   }
 }
 
-// ─── PROFILE HEADER ────────────────────────────────────────────────────────
-
 class _ProfileHeader extends StatelessWidget {
   final AuthProvider auth;
-  const _ProfileHeader({super.key, required this.auth});
+
+  const _ProfileHeader({required this.auth});
 
   @override
   Widget build(BuildContext context) {
@@ -242,30 +393,25 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 60, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
           child: Row(
             children: [
-              // Avatar with initials
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.25),
                   border: Border.all(color: Colors.white54, width: 2),
                 ),
-                child: Center(
-                  child: Text(
-                    _initials(auth.name),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                child: ClipOval(
+                  child: ProfileAvatar(
+                    imageBytes: auth.profileImageBytes,
+                    name: auth.name,
+                    radius: 31,
                   ),
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,25 +419,20 @@ class _ProfileHeader extends StatelessWidget {
                   children: [
                     Text(
                       auth.name,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       auth.email,
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
                 ),
-              ),
-              // Edit profile button
-              IconButton(
-                icon: Icon(Icons.edit_outlined, color: Colors.white70),
-                onPressed: () {},
-                tooltip: 'Edit profile',
               ),
             ],
           ),
@@ -299,32 +440,24 @@ class _ProfileHeader extends StatelessWidget {
       ),
     );
   }
-
-  String _initials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
 }
-
-// ─── SETTINGS CARD ─────────────────────────────────────────────────────────
 
 class _SettingsCard extends StatelessWidget {
   final List<Widget> children;
-  const _SettingsCard({super.key, required this.children});
+
+  const _SettingsCard({required this.children});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: AppColors.shadow(context),
             blurRadius: 8,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -333,8 +466,6 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
-// ─── SETTINGS TILE ─────────────────────────────────────────────────────────
-
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -342,15 +473,16 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final bool showArrow;
+  final Widget? trailing;
 
   const _SettingsTile({
-    super.key,
     required this.icon,
     required this.iconColor,
     required this.title,
     this.subtitle,
     this.onTap,
     this.showArrow = true,
+    this.trailing,
   });
 
   @override
@@ -359,70 +491,46 @@ class _SettingsTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Icon badge
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 18, color: iconColor),
             ),
-            SizedBox(width: 14),
-            // Text
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                   if (subtitle != null) ...[
-                    SizedBox(height: 2),
-                    Text(subtitle!,
-                        style:
-                            TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: AppColors.textSecondary(context),
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
+            if (trailing != null) trailing!,
             if (showArrow && onTap != null)
               Icon(Icons.chevron_right_rounded,
                   color: Colors.grey[400], size: 20),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── LOGOUT BUTTON ─────────────────────────────────────────────────────────
-
-class _LogoutButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _LogoutButton({super.key, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(Icons.logout_rounded, size: 18),
-        label: Text('Log out', style: TextStyle(fontSize: 15)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFFFEF2F2),
-          foregroundColor: Color(0xFFDC2626),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Color(0xFFFECACA)),
-          ),
         ),
       ),
     );

@@ -1,68 +1,37 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction_model.dart';
 
+/// SpendSense 2.0 Local Database & Repository
 /// Persists parsed transactions locally so the app never re-parses or
-/// re-calls the AI for SMS messages it has already processed.
-///
-/// Storage layout (SharedPreferences):
-///   "tx_cache_ids"   → JSON list of all cached SMS IDs  (quick existence check)
-///   "tx_<id>"        → JSON object for each transaction
-///   "tx_cache_meta"  → JSON object { lastSyncMs, count }
-///
-/// Usage:
-///   final cache = TransactionCacheService();
-///   await cache.init();
-///
-///   // Check before parsing
-///   if (await cache.contains(smsId)) {
-///     final tx = await cache.get(smsId);
-///     ...
-///   }
-///
-///   // Save after parsing
-///   await cache.put(transaction);
-///
-///   // Load everything on app start
-///   final all = await cache.loadAll();
+/// re-calls the AI for SMS messages already processed.
+/// Also supports JSON export and import for backup/restore.
 class TransactionCacheService {
   static const _idsKey = 'tx_cache_ids';
   static const _metaKey = 'tx_cache_meta';
   static const _prefix = 'tx_';
 
   late SharedPreferences _prefs;
-  // In-memory ID set for O(1) lookups — avoids a prefs read per SMS
   final Set<String> _cachedIds = {};
-
   bool _initialised = false;
-
-  // ─── INIT ──────────────────────────────────────────────────────────────────
 
   Future<void> init() async {
     if (_initialised) return;
     _prefs = await SharedPreferences.getInstance();
-    // Load the ID set into memory
     final raw = _prefs.getString(_idsKey);
     if (raw != null) {
       final list = (jsonDecode(raw) as List).cast<String>();
       _cachedIds.addAll(list);
     }
     _initialised = true;
-    print('📦 Cache init — ${_cachedIds.length} transactions already cached');
+    debugPrint('📦 Local DB init — ${_cachedIds.length} transactions cached');
   }
 
-  // ─── EXISTENCE CHECK ───────────────────────────────────────────────────────
-
-  /// O(1) check — uses in-memory set, no disk read.
   bool contains(String smsId) => _cachedIds.contains(smsId);
 
-  /// Returns the IDs present in cache so the caller can skip them.
   Set<String> get cachedIds => Set.unmodifiable(_cachedIds);
 
-  // ─── READ ──────────────────────────────────────────────────────────────────
-
-  /// Loads a single cached transaction by SMS ID.
-  /// Returns null if not found.
   Future<TransactionModel?> get(String smsId) async {
     _assertInit();
     final raw = _prefs.getString('$_prefix$smsId');
@@ -70,14 +39,12 @@ class TransactionCacheService {
     try {
       return TransactionModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (e) {
-      print('⚠️ Cache corrupt for $smsId — evicting');
+      debugPrint('⚠️ DB corrupt for $smsId — evicting');
       await _evict(smsId);
       return null;
     }
   }
 
-  /// Loads ALL cached transactions in one pass.
-  /// Call this on app start to populate the provider immediately.
   Future<List<TransactionModel>> loadAll() async {
     _assertInit();
     final results = <TransactionModel>[];
@@ -85,24 +52,19 @@ class TransactionCacheService {
       final tx = await get(id);
       if (tx != null) results.add(tx);
     }
-    print('📦 Cache loaded ${results.length} transactions');
+    results.sort((a, b) => b.date.compareTo(a.date));
+    debugPrint('📦 Local DB loaded ${results.length} transactions');
     return results;
   }
 
-  // ─── WRITE ─────────────────────────────────────────────────────────────────
-
-  /// Persists a single transaction.
   Future<void> put(TransactionModel tx) async {
     _assertInit();
     await _prefs.setString('$_prefix${tx.id}', jsonEncode(tx.toJson()));
     if (_cachedIds.add(tx.id)) {
-      // ID is new — persist the updated ID list
       await _flushIds();
     }
   }
 
-  /// Batch-persist many transactions (more efficient than calling put() in a loop
-  /// because _flushIds is called only once at the end).
   Future<void> putAll(List<TransactionModel> txs) async {
     _assertInit();
     bool dirty = false;
@@ -111,18 +73,14 @@ class TransactionCacheService {
       if (_cachedIds.add(tx.id)) dirty = true;
     }
     if (dirty) await _flushIds();
-    print('📦 Cache saved ${txs.length} new transactions');
+    debugPrint('📦 Local DB saved ${txs.length} transactions');
   }
 
-  // ─── INVALIDATION ──────────────────────────────────────────────────────────
-
-  /// Removes a single transaction from cache (e.g. user manually deleted it).
   Future<void> remove(String smsId) async {
     _assertInit();
     await _evict(smsId);
   }
 
-  /// Wipes the entire cache — use on "Clear data" in settings.
   Future<void> clearAll() async {
     _assertInit();
     for (final id in List.of(_cachedIds)) {
@@ -131,10 +89,8 @@ class TransactionCacheService {
     _cachedIds.clear();
     await _prefs.remove(_idsKey);
     await _prefs.remove(_metaKey);
-    print('🗑️ Cache cleared');
+    debugPrint('🗑️ Local DB cleared');
   }
-
-  // ─── METADATA ──────────────────────────────────────────────────────────────
 
   Future<void> updateSyncMeta() async {
     _assertInit();
@@ -147,7 +103,6 @@ class TransactionCacheService {
     );
   }
 
-  /// Returns the DateTime of the last successful sync, or null if never synced.
   DateTime? get lastSyncTime {
     final raw = _prefs.getString(_metaKey);
     if (raw == null) return null;
@@ -157,7 +112,53 @@ class TransactionCacheService {
 
   int get cachedCount => _cachedIds.length;
 
-  // ─── PRIVATE ───────────────────────────────────────────────────────────────
+  // ─── JSON EXPORT / IMPORT BACKUP ──────────────────────────────────────────
+
+  /// Exports all stored transactions as a formatted JSON string.
+  Future<String> exportToJsonString() async {
+    _assertInit();
+    final allTxs = await loadAll();
+    final exportData = {
+      'version': '2.0',
+      'exportedAt': DateTime.now().toIso8601String(),
+      'count': allTxs.length,
+      'transactions': allTxs.map((t) => t.toJson()).toList(),
+    };
+    return const JsonEncoder.withIndent('  ').convert(exportData);
+  }
+
+  /// Imports transactions from a JSON backup string, merging or replacing.
+  Future<int> importFromJsonString(String jsonString, {bool replace = false}) async {
+    _assertInit();
+    try {
+      final decoded = jsonDecode(jsonString);
+      List<dynamic> txList;
+      if (decoded is Map && decoded.containsKey('transactions')) {
+        txList = decoded['transactions'] as List<dynamic>;
+      } else if (decoded is List) {
+        txList = decoded;
+      } else {
+        throw FormatException('Invalid backup format');
+      }
+
+      if (replace) {
+        await clearAll();
+      }
+
+      final importedTxs = txList
+          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      await putAll(importedTxs);
+      debugPrint('📥 Successfully imported ${importedTxs.length} transactions');
+      return importedTxs.length;
+    } catch (e) {
+      debugPrint('❌ Import backup error: $e');
+      rethrow;
+    }
+  }
+
+  // ─── PRIVATE ────────────────────────────────_______________
 
   Future<void> _evict(String smsId) async {
     await _prefs.remove('$_prefix$smsId');

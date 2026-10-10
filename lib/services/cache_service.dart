@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction_model.dart';
 
@@ -20,7 +21,7 @@ class CacheService {
       final encoded = jsonEncode(txs.map((t) => _txToJson(t)).toList());
       await prefs.setString(_txKey, encoded);
     } catch (e) {
-      print('⚠️ Cache save error: $e');
+      debugPrint('⚠️ Cache save error: $e');
     }
   }
 
@@ -37,7 +38,7 @@ class CacheService {
           .whereType<TransactionModel>()
           .toList();
     } catch (e) {
-      print('⚠️ Cache load error: $e');
+      debugPrint('⚠️ Cache load error: $e');
       return [];
     }
   }
@@ -74,7 +75,7 @@ class CacheService {
 
       await prefs.setStringList(_parsedIdsKey, merged);
     } catch (e) {
-      print('⚠️ markParsed error: $e');
+      debugPrint('⚠️ markParsed error: $e');
     }
   }
 
@@ -102,7 +103,7 @@ class CacheService {
     try {
       return TransactionModel(
         id: j['id'] as String,
-        amount: (j['amount'] as num).toDouble(),
+        amount: (j['amount'] as num).toInt(),
         type: j['type'] == 'income'
             ? TransactionType.income
             : TransactionType.expense,
@@ -115,7 +116,7 @@ class CacheService {
         isExcluded: j['isExcluded'] as bool? ?? false,
       );
     } catch (e) {
-      print('⚠️ Failed to deserialize transaction: $e');
+      debugPrint('⚠️ Failed to deserialize transaction: $e');
       return null;
     }
   }
