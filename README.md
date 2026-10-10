@@ -1,63 +1,52 @@
 # SpendSense
 
-SpendSense is a Flutter expense tracking app focused on Indian bank and UPI transaction workflows. It reads transaction SMS messages from the device, extracts expense entries, caches them locally, and presents spending activity, insights, budget tracking, and manual transaction management in a mobile UI.
+SpendSense is an offline-first Flutter expense tracking app focused on Indian bank and UPI transaction workflows. It reliably reads transaction SMS messages from the Android device inbox, extracts expense entries locally, caches them locally, and presents spending activity, insights, budget tracking, and manual transaction management in a mobile UI.
 
 ## Features
 
-- SMS-based transaction sync from the device inbox
-- Smart transaction parsing with regex-first parsing and AI fallback
-- Local caching for faster startup and incremental sync
-- Monthly budget tracking
-- Activity, home, insights, and settings screens
-- Manual transaction entry
-- Firebase authentication with login flow
-- AI-powered finance query support
+- Local-first SMS-based transaction sync from the device inbox
+- Smart transaction parsing with strict regex-first rule validation and debit filtering
+- Optional local AI fallback strictly for ambiguous debit messages matching context
+- Persistent local SQLite caching with real-time UI updates
+- Monthly budget tracking & historical insights
+- Offline-first architecture - works without internet, no Firebase login required 
+- Full manual transaction entry and history search
+- Fast start times and automatic background synchronization
 
 ## Tech Stack
 
-- Flutter
+- Flutter & Dart
 - Provider for state management
-- Firebase Core and Firebase Auth
-- Google Sign-In
-- Shared Preferences
-- `flutter_sms_inbox` for inbox access
-- `permission_handler` for runtime SMS permission
+- `sqflite` for robust local database caching
+- `flutter_dotenv` for configurable API keys (kept out of source control)
+- `shared_preferences` for fast local configurations
+- `flutter_sms_inbox` & `permission_handler` for local text extraction
 - `fl_chart` for insights and charts
-- `http` for AI provider requests
 
 ## Project Structure
 
 ```text
 lib/
-  main.dart                         App entrypoint and navigation shell
-  models/transaction_model.dart     Transaction model definitions
+  main.dart                         App entrypoint and initialization
+  models/transaction_model.dart     Transaction data configurations
   providers/
-    auth_provider.dart              Authentication state
-    transaction_provider.dart       Transaction sync, cache, budget state
+    transaction_provider.dart       Heart of transactions: sync, logic & caching
+    theme_provider.dart             Dynamic theme and appearance logic
+    period_provider.dart            Date/period filters for UI
   screens/
-    home_screen.dart
-    activity_screen.dart
-    add_transaction_screen.dart
-    insights_screen.dart
-    login_screen.dart
-    settings_screen.dart
-    transaction_details_screen.dart
+    home_screen.dart                Main dashboard
+    activity_screen.dart            List of synced and manual transactions
+    insights_screen.dart            Analytics and categorization
+    settings_screen.dart            App config and backup
   services/
-    sms_service.dart                SMS permission and inbox fetch
-    smart_parser.dart               Fast rule-based parser
-    gemini_service.dart             SMS parsing fallback via AI providers
-    ai_service.dart                 User-facing AI finance queries
-    cache_service.dart
-    transaction_cache_service.dart  Local transaction persistence
-  utils/
-    app_colors.dart
-    formatters.dart
-  widgets/
-    summary_card.dart
-    transaction_tile.dart
+    smart_parser.dart               Strict rule-based debit parser
+    sms_service.dart                Android inbox access
+    gemini_service.dart             LLM fallback for edge extraction
+    database_service.dart           SQLite driver
+    transaction_cache_service.dart  Db operations
 ```
 
-## Setup
+## Setup & Build
 
 ### 1. Install Flutter dependencies
 
@@ -65,73 +54,43 @@ lib/
 flutter pub get
 ```
 
-### 2. Add Firebase config
+### 2. Configure Local AI keys (Optional)
 
-This repository intentionally does not include local Firebase secrets.
+We use `.env` to supply local AI keys. 
 
-- Place your Android Firebase config at `android/app/google-services.json`
-- Ensure your Firebase project matches the Android package configured for the app
-- If you support iOS later, add the matching `GoogleService-Info.plist`
+1. Copy `.env.example` to `.env`
+2. Open `.env` and fill in your keys (e.g. Gemini, Groq)
+3. Your `.env` will safely remain untracked via `.gitignore`
 
-### 3. Configure AI keys locally
-
-The code uses placeholders instead of committed secrets.
-
-Update the provider keys in:
-
-- `lib/services/ai_service.dart`
-- `lib/services/gemini_service.dart`
-
-Replace the placeholder values such as `YOUR_GROQ_KEY`, `YOUR_GEMINI_KEY`, and `YOUR_OPENROUTER_KEY` with local values only. Do not commit real keys.
-
-### 4. Android permissions
+### 3. Android permissions
 
 The app requires SMS read permission on Android devices for transaction sync. Test on a real device with transaction SMS messages available in the inbox.
 
-## Running the App
+### 4. Running the App
 
 ```bash
 flutter run
 ```
 
-## Development Commands
+### 5. Automated Cloud Android Builds
 
-Analyze:
+This repository is configured with a GitHub Actions workflow `.github/workflows/android-release.yml` that automatically:
+- Checks out the latest code
+- Runs static analysis (`flutter analyze`) and tests (`flutter test`)
+- Securely builds signed Release APKs
+- Publishes automated GitHub Releases containing the `.apk` on every new version tag (`v*.*.*`)
+- Validates the build outputs 
 
-```bash
-flutter analyze
-```
+To sign effectively, the workflow expects GitHub Action Secrets:
+- `SIGNING_KEY` (Base64 of your upload-keystore.jks)
+- `KEY_ALIAS` 
+- `KEY_PASSWORD`
+- `STORE_PASSWORD`
 
-Format:
-
-```bash
-dart format .
-```
-
-Test:
-
-```bash
-flutter test
-```
-
-## How It Works
-
-1. The app initializes Firebase and Provider state in `lib/main.dart`.
-2. `TransactionProvider` loads cached transactions and budget settings on startup.
-3. During sync, `SmsService` fetches inbox messages after SMS permission is granted.
-4. Messages are filtered to likely financial transactions.
-5. `SmartParser` attempts a fast local parse first.
-6. If parsing fails or merchant detection is weak, AI parsing is used as a fallback.
-7. Parsed transactions are cached locally and surfaced in the UI.
-
-## Important Notes
-
-- This project is Android-first because SMS inbox access is part of the core workflow.
-- Generated build artifacts and local secret files are excluded from version control.
-- Previously exposed keys should be rotated and kept out of source control permanently.
+If they are missing, it safely falls back to the debug keystore for testing without failing the build.
 
 ## Version
 
 Current app version in `pubspec.yaml`:
 
-- `1.0.4+4`
+- `2.0.0`

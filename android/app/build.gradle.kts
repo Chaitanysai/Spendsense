@@ -4,7 +4,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 
     // 🔥 Firebase plugin
-    id("com.google.gms.google-services")
+    // id("com.google.gms.google-services")
+}
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = java.util.Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -29,10 +35,28 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+    
+    signingConfigs {
+        create("release") {
+            keyAlias = System.getenv("KEY_ALIAS") ?: keystoreProperties["keyAlias"] as String?
+            keyPassword = System.getenv("KEY_PASSWORD") ?: keystoreProperties["keyPassword"] as String?
+            val storeFilePath = System.getenv("KEY_PATH") ?: keystoreProperties["storeFile"] as String?
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+            } else {
+                storeFile = file("upload-keystore.jks")
+            }
+            storePassword = System.getenv("STORE_PASSWORD") ?: keystoreProperties["storePassword"] as String?
+        }
+    }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            if (System.getenv("KEY_ALIAS") != null || System.getenv("KEY_PATH") != null || keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
