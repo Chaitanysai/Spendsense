@@ -24,11 +24,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.x' # ensure compatible with dart 3.11/flutter 3.4
+          
           channel: 'stable'
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
 
       - name: Get Flutter dependencies
         run: flutter pub get
