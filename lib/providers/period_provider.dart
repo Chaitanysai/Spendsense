@@ -70,9 +70,9 @@ class PeriodProvider with ChangeNotifier {
     if (_mode == PeriodMode.custom && _custom != null) {
       return _custom!;
     }
-    return salaryAlignedPeriod(_salaryDay, months: 1);
+    return salaryAlignedPeriod(months: 1);
   }
-    return salaryAlignedPeriod(_salaryDay, months: 1);
+    return salaryAlignedPeriod(months: 1);
   }
 
   // ── Human-readable label for the chip ────────────────────────────────────
