@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import '../models/ai_chat_message.dart';
 import '../models/transaction_model.dart';
 import '../utils/formatters.dart';

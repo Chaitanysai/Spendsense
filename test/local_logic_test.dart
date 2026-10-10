@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
 import 'package:spendsense/services/ai_service.dart';
 import 'package:spendsense/models/ai_chat_message.dart';
 import 'package:spendsense/models/transaction_model.dart';
