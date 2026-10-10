@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../config/app_config.dart';
 import '../models/ai_chat_message.dart';
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../services/ai_query_service.dart';
-import '../services/ai_service.dart';
 import '../utils/app_colors.dart';
 import '../widgets/app_logo.dart';
 
@@ -22,16 +20,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AIQueryService _localAI = AIQueryService();
-  final AIService _cloudAI = AIService();
-  late final bool _cloudAvailable = AppConfig.hasAnyAiProviderConfigured;
-
   late final List<_ChatEntry> _messages = [
     _ChatEntry(
       message: AIChatMessage(
         role: 'assistant',
-        content: _cloudAvailable
-            ? 'I can answer follow-up questions about your spending and keep the context of this conversation.'
-            : 'I can answer quick questions from your local transaction data. Cloud AI is not configured on this build yet.',
+        content:
+            'I can answer questions from your locally stored transactions.',
       ),
     ),
   ];
@@ -482,17 +476,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _cloudAvailable
-                          ? const Color(0xFFDCFCE7)
-                          : AppColors.surfaceAlt(context),
+                      color: AppColors.surfaceAlt(context),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      _cloudAvailable ? 'AI ONLINE' : 'LOCAL ONLY',
+                      'LOCAL ONLY',
                       style: TextStyle(
-                        color: _cloudAvailable
-                            ? const Color(0xFF166534)
-                            : AppColors.textSecondary(context),
+                        color: AppColors.textSecondary(context),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -695,30 +685,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
     _scrollToBottom();
 
     try {
-      if (_cloudAvailable) {
-        final history = _messages
-            .map((entry) => entry.message)
-            .skip(_messages.length > 12 ? _messages.length - 12 : 0)
-            .toList();
-        final cloudResponse =
-            await _cloudAI.askAI(history, provider.transactions);
-
-        if (cloudResponse != null) {
-          setState(() {
-            _messages.add(
-              _ChatEntry(
-                message: AIChatMessage(
-                  role: 'assistant',
-                  content: cloudResponse,
-                ),
-                usedCloud: true,
-              ),
-            );
-          });
-          return;
-        }
-      }
-
       final localResponse = _localAI.tryAnswer(cleaned, provider.transactions);
 
       if (localResponse != null) {
@@ -739,7 +705,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               message: AIChatMessage(
                 role: 'assistant',
                 content:
-                    "I couldn't answer that from the current data. Try syncing more transactions or asking in a more specific way.",
+                    "I can only answer supported spending questions from your local transactions. Try asking about total spent, categories, averages, income, or transaction counts.",
               ),
             ),
           );

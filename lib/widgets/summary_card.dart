@@ -61,7 +61,8 @@ class SummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt(context),
                   borderRadius: BorderRadius.circular(20),
@@ -75,7 +76,9 @@ class SummaryCard extends StatelessWidget {
                       height: 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isOver ? AppColors.accentOrange : AppColors.primaryTeal,
+                        color: isOver
+                            ? AppColors.accentOrange
+                            : AppColors.primaryTeal,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -112,7 +115,7 @@ class SummaryCard extends StatelessWidget {
               final gaugeHeight = gaugeWidth * 0.65;
               return Center(
                 child: SizedBox(
-                  height: gaugeHeight,
+                  height: gaugeHeight + 18,
                   width: gaugeWidth,
                   child: Stack(
                     alignment: Alignment.center,
@@ -126,7 +129,7 @@ class SummaryCard extends StatelessWidget {
                         ),
                       ),
                       Positioned(
-                        bottom: gaugeHeight * 0.15,
+                        bottom: 2,
                         child: Column(
                           children: [
                             Text(
@@ -150,9 +153,12 @@ class SummaryCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 3),
                               decoration: BoxDecoration(
-                                color: (isOver ? AppColors.accentOrange : AppColors.primaryTeal)
+                                color: (isOver
+                                        ? AppColors.accentOrange
+                                        : AppColors.primaryTeal)
                                     .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),

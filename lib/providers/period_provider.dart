@@ -93,27 +93,44 @@ class PeriodProvider with ChangeNotifier {
 
   // ── Helper: build a salary-aligned range ─────────────────────────────────
 
-  static DateTimeRange salaryAlignedPeriod({int months = 1}) {
-    final today = DateTime.now();
-    final currentMonthLastDay = DateUtils.getDaysInMonth(today.year, today.month);
+  static DateTimeRange salaryAlignedPeriod({int months = 1, DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final currentMonthLastDay =
+        DateUtils.getDaysInMonth(today.year, today.month);
 
     DateTime periodStart;
     if (today.day == currentMonthLastDay) {
       periodStart = DateTime(today.year, today.month, currentMonthLastDay);
     } else {
       final prevMonthDate = DateTime(today.year, today.month - 1, 1);
-      final prevMonthLastDay = DateUtils.getDaysInMonth(prevMonthDate.year, prevMonthDate.month);
-      periodStart = DateTime(prevMonthDate.year, prevMonthDate.month, prevMonthLastDay);
+      final prevMonthLastDay =
+          DateUtils.getDaysInMonth(prevMonthDate.year, prevMonthDate.month);
+      periodStart =
+          DateTime(prevMonthDate.year, prevMonthDate.month, prevMonthLastDay);
     }
 
-    final nextSalaryMonth = DateTime(periodStart.year, periodStart.month + months, 1);
-    final nextMonthLastDay = DateUtils.getDaysInMonth(nextSalaryMonth.year, nextSalaryMonth.month);
-    final periodEnd = DateTime(nextSalaryMonth.year, nextSalaryMonth.month, nextMonthLastDay - 1);
+    final nextSalaryMonth =
+        DateTime(periodStart.year, periodStart.month + months, 1);
+    final nextMonthLastDay =
+        DateUtils.getDaysInMonth(nextSalaryMonth.year, nextSalaryMonth.month);
+    final periodEnd = DateTime(
+        nextSalaryMonth.year, nextSalaryMonth.month, nextMonthLastDay - 1);
 
     return DateTimeRange(
       start: periodStart,
       end: DateTime(periodEnd.year, periodEnd.month, periodEnd.day, 23, 59, 59),
     );
+  }
+
+  static DateTime nextSalaryDate({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final today = DateTime(current.year, current.month, current.day);
+    final lastDay = DateUtils.getDaysInMonth(today.year, today.month);
+    final thisSalary = DateTime(today.year, today.month, lastDay);
+    if (!today.isAfter(thisSalary)) return thisSalary;
+    final nextMonth = DateTime(today.year, today.month + 1, 1);
+    return DateTime(nextMonth.year, nextMonth.month,
+        DateUtils.getDaysInMonth(nextMonth.year, nextMonth.month));
   }
 
   // ── Month abbreviation ────────────────────────────────────────────────────

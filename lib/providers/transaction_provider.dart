@@ -86,18 +86,27 @@ class TransactionProvider with ChangeNotifier {
       return _transactions.where((t) =>
           t.type == TransactionType.expense &&
           !t.isExcluded &&
-          t.date.month == now.month &&
-          t.date.year == now.year);
+          _isLocalMonth(t.date, now));
     }
-    
-    final exactStart = DateTime(period.start.year, period.start.month, period.start.day);
-    final exactEnd = DateTime(period.end.year, period.end.month, period.end.day).add(const Duration(days: 1));
-    
+
+    final exactStart =
+        DateTime(period.start.year, period.start.month, period.start.day);
+    final exactEnd = DateTime(period.end.year, period.end.month, period.end.day)
+        .add(const Duration(days: 1));
+
     return _transactions.where((t) =>
         t.type == TransactionType.expense &&
         !t.isExcluded &&
-        !t.date.isBefore(exactStart) &&
-        t.date.isBefore(exactEnd));
+        !_localDate(t.date).isBefore(exactStart) &&
+        _localDate(t.date).isBefore(exactEnd));
+  }
+
+  DateTime _localDate(DateTime date) => date.toLocal();
+
+  bool _isLocalMonth(DateTime value, DateTime day) {
+    final local = _localDate(value);
+    return local.year == day.year &&
+        local.month == day.month;
   }
 
   double totalExpensesForPeriod(DateTimeRange? period) =>

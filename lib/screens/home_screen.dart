@@ -111,8 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Row(
                             children: [
                               Icon(Icons.sync_rounded,
-                                  size: 14,
-                                  color: AppColors.primaryTeal),
+                                  size: 14, color: AppColors.primaryTeal),
                               const SizedBox(width: 4),
                               Text(
                                 txProvider.lastSynced == null
@@ -160,31 +159,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   // ── Budget gauge ─────────────────────────────────────────
                   Consumer<PeriodProvider>(
                     builder: (context, periodProvider, child) {
-                      if (periodProvider.mode == PeriodMode.custom) return const SizedBox.shrink();
-                      
-                      final currentCycle = periodProvider.currentPeriod;
+                      if (periodProvider.mode == PeriodMode.custom)
+                        return const SizedBox.shrink();
+
                       final now = DateTime.now();
                       final today = DateTime(now.year, now.month, now.day);
-                      // Period ends on the penultimate day. The next salary is one day after period ends.
-                      final endDay = DateTime(currentCycle.end.year, currentCycle.end.month, currentCycle.end.day);
-                      final nextSalaryDate = endDay.add(const Duration(days: 1));
+                      final nextSalaryDate =
+                          PeriodProvider.nextSalaryDate(now: today);
                       final daysLeft = nextSalaryDate.difference(today).inDays;
-                      
+
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceColor(context),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: AppColors.primaryTeal
+                                    .withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.account_balance_wallet_rounded, 
+                                  Icon(Icons.account_balance_wallet_rounded,
                                       color: AppColors.primaryTeal, size: 20),
                                   const SizedBox(width: 10),
                                   Text(
@@ -197,11 +198,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ),
                               Text(
-                                daysLeft <= 0 
-                                  ? 'Today' 
-                                  : daysLeft == 1 
-                                    ? 'Tomorrow' 
-                                    : 'in $daysLeft days',
+                                daysLeft <= 0
+                                    ? 'Today'
+                                    : daysLeft == 1
+                                        ? 'Tomorrow'
+                                        : 'in $daysLeft days',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primaryTeal,
@@ -213,10 +214,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  SummaryCard(
-                    total: provider.totalTrackedExpenses,
-                    count: trackedExpenses.length,
-                    topCat: provider.topTrackedCategory,
+                  Consumer<PeriodProvider>(
+                    builder: (context, periodProvider, child) {
+                      final cycleExpenses = provider
+                          .expensesInPeriod(periodProvider.currentPeriod)
+                          .toList();
+                      final total = cycleExpenses.fold<double>(
+                        0,
+                        (sum, transaction) => sum + transaction.amount,
+                      );
+                      final categories = <String, double>{};
+                      for (final transaction in cycleExpenses) {
+                        categories[transaction.category] =
+                            (categories[transaction.category] ?? 0) +
+                                transaction.amount;
+                      }
+                      final topCategory = categories.isEmpty
+                          ? 'None'
+                          : categories.entries
+                              .reduce((a, b) => a.value > b.value ? a : b)
+                              .key;
+                      return SummaryCard(
+                        total: total,
+                        count: cycleExpenses.length,
+                        topCat: topCategory,
+                        budget: provider.monthlyBudget,
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 20),
@@ -318,8 +342,7 @@ class _CategoryBreakdownCard extends StatelessWidget {
       totals[t.category] = (totals[t.category] ?? 0) + t.amount;
     }
 
-    final grandTotal =
-        totals.values.fold<double>(0, (s, v) => s + v);
+    final grandTotal = totals.values.fold<double>(0, (s, v) => s + v);
 
     final colors = [
       AppColors.primaryTeal,
@@ -432,8 +455,7 @@ class _CategoryBreakdownCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
-                                    color:
-                                        colors[e.key % colors.length],
+                                    color: colors[e.key % colors.length],
                                   ),
                                 ),
                                 Text(

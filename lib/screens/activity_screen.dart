@@ -291,8 +291,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
     List<TransactionModel> list = all.where((t) {
       final query = _searchQuery.trim().toLowerCase();
-      final matchesSearch =
-          query.isEmpty ||
+      final matchesSearch = query.isEmpty ||
           t.merchant.toLowerCase().contains(query) ||
           t.category.toLowerCase().contains(query) ||
           t.paymentMethod.toLowerCase().contains(query) ||
@@ -327,8 +326,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
   /// Inclusive start, exclusive end boundary date check.
   bool _isWithinRange(DateTime date, DateTimeRange range) {
     final s = DateTime(range.start.year, range.start.month, range.start.day);
-    final e = DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1));
-    return !date.isBefore(s) && date.isBefore(e);
+    final e = DateTime(range.end.year, range.end.month, range.end.day)
+        .add(const Duration(days: 1));
+    final local = date.toLocal();
+    return !local.isBefore(s) && local.isBefore(e);
   }
 
   void _clearFilters() {
@@ -611,14 +612,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
         decoration: BoxDecoration(
           color: isActive ? Color(0xFFE8F5E9) : AppColors.surfaceAlt(context),
           borderRadius: BorderRadius.circular(20),
-          border:
-              isActive ? Border.all(color: Colors.green, width: 1.5) : null,
+          border: isActive ? Border.all(color: Colors.green, width: 1.5) : null,
         ),
         child: Row(
           children: [
             Icon(Icons.swap_horiz_rounded,
-                size: 16,
-                color: isActive ? Colors.green[700] : Colors.black54),
+                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
             SizedBox(width: 6),
             Text(
               label,
@@ -630,8 +629,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
             SizedBox(width: 4),
             Icon(Icons.arrow_drop_down,
-                size: 16,
-                color: isActive ? Colors.green[700] : Colors.black54),
+                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
           ],
         ),
       ),
@@ -655,7 +653,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: Row(
           children: [
             Icon(
-              _sortDescending ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              _sortDescending
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
               size: 16,
               color: Colors.black54,
             ),
@@ -785,8 +785,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
             SizedBox(height: 16),
             ListTile(
               leading: CircleAvatar(
-                backgroundColor:
-                    _selectedType == null ? AppColors.primaryPurple : Colors.grey[200],
+                backgroundColor: _selectedType == null
+                    ? AppColors.primaryPurple
+                    : Colors.grey[200],
                 child: Icon(Icons.select_all,
                     color: _selectedType == null ? Colors.white : Colors.grey,
                     size: 18),
