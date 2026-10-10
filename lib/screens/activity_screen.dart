@@ -242,7 +242,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
           // ── TRANSACTION LIST ─────────────────────────────────────────────
           Expanded(
-            child: provider.isSyncing
+            child: displayList.isEmpty && provider.isSyncing
                 ? Center(child: CircularProgressIndicator())
                 : displayList.isEmpty
                     ? _emptyState()

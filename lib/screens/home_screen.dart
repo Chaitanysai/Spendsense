@@ -200,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 12),
 
                   // ── Transaction list ──────────────────────────────────────
-                  if (provider.isSyncing)
+                  if (trackedTransactions.isEmpty && provider.isSyncing)
                     const Center(
                         child: Padding(
                       padding: EdgeInsets.all(24),
@@ -218,6 +218,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         .map((tx) => TransactionTile(transaction: tx)),
                 ]),
               ),
+              if (trackedTransactions.isNotEmpty && provider.isSyncing)
+                SliverToBoxAdapter(
+                  child: const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
             ),
           ],
         ),

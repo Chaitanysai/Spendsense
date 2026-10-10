@@ -181,33 +181,41 @@ class TransactionProvider with ChangeNotifier {
           debugPrint(
             'SMS FILTER: REJECT reason=${SmartParser.debitSmsRejectionReason(msg.body)}',
           );
+          await _cache.markRejected(msg.id);
           continue;
         }
         final localResult = await smartParser.parse(msg.body, msg.id, msg.date);
 
+        TransactionModel? finalResult;
         if (localResult != null && localResult.confidence >= 0.8) {
-          newTxs.add(localResult);
+          finalResult = localResult;
           debugPrint(
               '⚡ Local High-Confidence (${localResult.confidence}): ${localResult.merchant} ₹${localResult.amount}');
         } else if (localResult != null) {
           final aiResult = await aiParser.parseSms(msg.body, msg.id, msg.date);
           if (aiResult != null && aiResult.type == TransactionType.expense) {
-            newTxs.add(aiResult);
+            finalResult = aiResult;
           } else {
-            newTxs.add(localResult.copyWith(needsReview: true));
+            finalResult = localResult.copyWith(needsReview: true);
           }
+        }
+
+        if (finalResult != null) {
+          newTxs.add(finalResult);
+          final newIds = {finalResult.id};
+          _transactions.removeWhere((t) => newIds.contains(t.id));
+          _transactions.add(finalResult);
+          _transactions.sort((a, b) => b.date.compareTo(a.date));
+          _newThisSync++;
+          await _cache.put(finalResult);
+          notifyListeners(); // Yield to UI
+        } else {
+          // Both local and AI rejected this valid-looking debit
+          await _cache.markRejected(msg.id);
         }
       }
 
-      final newIds = newTxs.map((t) => t.id).toSet();
-      _transactions.removeWhere((t) => newIds.contains(t.id));
-      _transactions.addAll(newTxs);
-      _transactions.sort((a, b) => b.date.compareTo(a.date));
-
-      _newThisSync = newTxs.length;
-
       await Future.wait([
-        _cache.putAll(newTxs),
         _cache.updateSyncMeta(),
       ]);
 

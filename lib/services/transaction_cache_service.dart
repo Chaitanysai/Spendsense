@@ -9,11 +9,13 @@ import '../models/transaction_model.dart';
 /// Also supports JSON export and import for backup/restore.
 class TransactionCacheService {
   static const _idsKey = 'tx_cache_ids';
+  static const _rejectedIdsKey = 'tx_rejected_ids';
   static const _metaKey = 'tx_cache_meta';
   static const _prefix = 'tx_';
 
   late SharedPreferences _prefs;
   final Set<String> _cachedIds = {};
+  final Set<String> _rejectedIds = {};
   bool _initialised = false;
 
   Future<void> init() async {
@@ -24,11 +26,16 @@ class TransactionCacheService {
       final list = (jsonDecode(raw) as List).cast<String>();
       _cachedIds.addAll(list);
     }
+    final rawRejected = _prefs.getString(_rejectedIdsKey);
+    if (rawRejected != null) {
+      final list = (jsonDecode(rawRejected) as List).cast<String>();
+      _rejectedIds.addAll(list);
+    }
     _initialised = true;
-    debugPrint('📦 Local DB init — ${_cachedIds.length} transactions cached');
+    debugPrint('📦 Local DB init — ${_cachedIds.length} txs, ${_rejectedIds.length} rejected');
   }
 
-  bool contains(String smsId) => _cachedIds.contains(smsId);
+  bool contains(String smsId) => _cachedIds.contains(smsId) || _rejectedIds.contains(smsId);
 
   Set<String> get cachedIds => Set.unmodifiable(_cachedIds);
 
@@ -79,6 +86,18 @@ class TransactionCacheService {
   Future<void> remove(String smsId) async {
     _assertInit();
     await _evict(smsId);
+  }
+
+  Future<void> markRejected(String smsId) async {
+    _assertInit();
+    if (_rejectedIds.add(smsId)) {
+      if (_rejectedIds.length > 5000) {
+        final list = _rejectedIds.toList();
+        _rejectedIds.clear();
+        _rejectedIds.addAll(list.skip(1000));
+      }
+      await _prefs.setString(_rejectedIdsKey, jsonEncode(_rejectedIds.toList()));
+    }
   }
 
   Future<void> clearAll() async {
