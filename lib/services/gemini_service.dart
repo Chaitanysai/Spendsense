@@ -25,27 +25,40 @@ class _ParseProvider {
 }
 
 class GeminiService {
-  static List<_ParseProvider> get _providers => [
-        _ParseProvider(
-          name: 'Groq',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          apiKey: AppConfig.groqKey,
-          model: 'llama-3.3-70b-versatile',
-        ),
-        _ParseProvider(
-          name: 'Gemini',
-          url:
-              'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-          apiKey: AppConfig.geminiKey,
-          model: 'gemini-2.5-flash',
-        ),
-        _ParseProvider(
-          name: 'OpenRouter',
-          url: 'https://openrouter.ai/api/v1/chat/completions',
-          apiKey: AppConfig.openRouterKey,
-          model: 'meta-llama/llama-3.3-70b-instruct:free',
-        ),
-      ];
+  static Future<List<_ParseProvider>> _getProviders() async {
+    final groqKey = await AppConfig.getGroqKey();
+    final cerebrasKey = await AppConfig.getCerebrasKey();
+    final geminiKey = await AppConfig.getGeminiKey();
+    final openRouterKey = await AppConfig.getOpenRouterKey();
+
+    return [
+      _ParseProvider(
+        name: 'Groq',
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        apiKey: groqKey,
+        model: 'llama-3.3-70b-versatile',
+      ),
+      _ParseProvider(
+        name: 'Cerebras',
+        url: 'https://api.cerebras.ai/v1/chat/completions',
+        apiKey: cerebrasKey,
+        model: 'llama3.1-8b',
+      ),
+      _ParseProvider(
+        name: 'Gemini',
+        url:
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        apiKey: geminiKey,
+        model: 'gemini-2.5-flash',
+      ),
+      _ParseProvider(
+        name: 'OpenRouter',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        apiKey: openRouterKey,
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
+      ),
+    ];
+  }
 
   /// Sanitizes SMS text by stripping sensitive data (OTP, PIN, CVV, full card/account numbers)
   /// before sending to cloud LLM providers (SpendSense 2.0 Privacy Mandate).
@@ -80,7 +93,8 @@ class GeminiService {
     if (confirmedAmount == null) return null;
     final cleanSms = sanitizeSms(sms);
 
-    for (final provider in _providers) {
+    final providers = await _getProviders();
+    for (final provider in providers) {
       if (provider.apiKey.isEmpty) continue;
       final result = await _tryProvider(
         provider,

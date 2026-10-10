@@ -25,47 +25,66 @@ class _Provider {
 }
 
 class AIService {
-  // 🔑 Keys are loaded from .env (dev) or --dart-define (CI/release).
+  // 🔑 Keys are loaded from secure storage (priority) or .env/--dart-define (fallback).
   // Never hardcode keys here. See lib/config/app_config.dart.
-  static List<_Provider> get _providers => [
-        // 1️⃣  Groq — fastest, try first
-        _Provider(
-          name: 'Groq',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          apiKey: AppConfig.groqKey,
-          model: 'llama-3.3-70b-versatile',
-          headerBuilder: (key) => {
-            'Authorization': 'Bearer $key',
-            'Content-Type': 'application/json',
-          },
-        ),
+  static Future<List<_Provider>> _getProviders() async {
+    final groqKey = await AppConfig.getGroqKey();
+    final cerebrasKey = await AppConfig.getCerebrasKey();
+    final geminiKey = await AppConfig.getGeminiKey();
+    final openRouterKey = await AppConfig.getOpenRouterKey();
 
-        // 2️⃣  Gemini Flash — high quality, generous free tier
-        _Provider(
-          name: 'Gemini',
-          url:
-              'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-          apiKey: AppConfig.geminiKey,
-          model: 'gemini-2.5-flash',
-          headerBuilder: (key) => {
-            'Authorization': 'Bearer $key',
-            'Content-Type': 'application/json',
-          },
-        ),
+    return [
+      // 1️⃣  Groq — fastest, try first
+      _Provider(
+        name: 'Groq',
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        apiKey: groqKey,
+        model: 'llama-3.3-70b-versatile',
+        headerBuilder: (key) => {
+          'Authorization': 'Bearer $key',
+          'Content-Type': 'application/json',
+        },
+      ),
 
-        // 3️⃣  OpenRouter (free Llama model) — last resort fallback
-        _Provider(
-          name: 'OpenRouter',
-          url: 'https://openrouter.ai/api/v1/chat/completions',
-          apiKey: AppConfig.openRouterKey,
-          model: 'meta-llama/llama-3.3-70b-instruct:free',
-          headerBuilder: (key) => {
-            'Authorization': 'Bearer $key',
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'com.yourapp.spendsense',
-          },
-        ),
-      ];
+      // 2️⃣  Cerebras — fast and cost-effective
+      _Provider(
+        name: 'Cerebras',
+        url: 'https://api.cerebras.ai/v1/chat/completions',
+        apiKey: cerebrasKey,
+        model: 'llama3.1-8b',
+        headerBuilder: (key) => {
+          'Authorization': 'Bearer $key',
+          'Content-Type': 'application/json',
+        },
+      ),
+
+      // 3️⃣  Gemini Flash — high quality, generous free tier
+      _Provider(
+        name: 'Gemini',
+        url:
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        apiKey: geminiKey,
+        model: 'gemini-2.5-flash',
+        headerBuilder: (key) => {
+          'Authorization': 'Bearer $key',
+          'Content-Type': 'application/json',
+        },
+      ),
+
+      // 4️⃣  OpenRouter (free Llama model) — last resort fallback
+      _Provider(
+        name: 'OpenRouter',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        apiKey: openRouterKey,
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        headerBuilder: (key) => {
+          'Authorization': 'Bearer $key',
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'com.yourapp.spendsense',
+        },
+      ),
+    ];
+  }
 
   /// Tries each provider in order. Returns the first successful response.
   /// Falls back to the next provider on: timeout, HTTP error, or empty reply.
@@ -84,8 +103,10 @@ class AIService {
     List<TransactionModel> txs,
   ) async {
     final promptMessages = _buildMessages(history, txs);
+    final providers = await _getProviders();
 
-    for (final provider in _providers) {
+    for (final provider in providers) {
+      if (provider.apiKey.isEmpty) continue;
       final result = await _tryProvider(provider, promptMessages);
       if (result != null) {
         debugPrint('✅ AI answered via ${provider.name}');

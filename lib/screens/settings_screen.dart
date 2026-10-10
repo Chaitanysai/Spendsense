@@ -12,6 +12,7 @@ import '../providers/transaction_provider.dart';
 import '../widgets/sms_import_prompt.dart';
 import '../utils/app_colors.dart';
 import '../widgets/profile_avatar.dart';
+import 'ai_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -125,6 +126,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           activeThumbColor: AppColors.primaryPurple,
                         ),
                         showArrow: false,
+                      ),
+                      _divider(),
+                      _SettingsTile(
+                        icon: Icons.key_rounded,
+                        iconColor: const Color(0xFFEA580C),
+                        title: 'AI Provider Settings',
+                        subtitle: 'Configure API keys for AI parsing',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AISettingsScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

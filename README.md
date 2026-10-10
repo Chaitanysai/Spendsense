@@ -54,13 +54,22 @@ lib/
 flutter pub get
 ```
 
-### 2. Configure Local AI keys (Optional)
+### 2. Configure AI Provider Keys (Optional)
 
-We use `.env` to supply local AI keys. 
+SpendSense supports multiple AI providers for intelligent transaction parsing: **Groq**, **Cerebras**, **Gemini**, and **OpenRouter**.
 
+**🔐 Recommended:** Configure keys at runtime via the in-app settings:
+1. Launch the app
+2. Go to **Settings → AI Provider Settings**
+3. Enter your API keys securely (stored in platform-encrypted storage)
+4. Keys never leave your device and are not compiled into the APK
+
+**Alternative (Development Only):** Use `.env` files:
 1. Copy `.env.example` to `.env`
-2. Open `.env` and fill in your keys (e.g. Gemini, Groq)
-3. Your `.env` will safely remain untracked via `.gitignore`
+2. Fill in your keys (e.g., `GROQ_API_KEY`, `CEREBRAS_API_KEY`)
+3. `.env` remains untracked via `.gitignore`
+
+**Priority:** Secure Storage > .env > --dart-define (CI/CD)
 
 ### 3. Android permissions
 
