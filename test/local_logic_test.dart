@@ -91,7 +91,7 @@ void main() {
   group('PeriodProvider Cycle Boundary', () {
     test('Calculates last day of month correctly', () {
       // Create a mock DateTime overrides or just test generic output
-      final range = PeriodProvider.salaryAlignedPeriod(months: 1);
+      final range = PeriodProvider.salaryAlignedPeriod();
       
       final start = range.start;
       final end = range.end;

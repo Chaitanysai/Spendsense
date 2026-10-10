@@ -95,8 +95,7 @@ class PeriodProvider with ChangeNotifier {
 
   // ── Helper: build a salary-aligned range ─────────────────────────────────
 
-  static DateTimeRange salaryAlignedPeriod(
-      {required int months}) {
+  static DateTimeRange salaryAlignedPeriod({int months = 1}) {
     final today = DateTime.now();
     final currentMonthLastDay = DateUtils.getDaysInMonth(today.year, today.month);
 

@@ -173,7 +173,7 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
 
   /// Shows e.g. "Your period: 25 Mar – 24 Apr" based on today
   String _periodPreview(int day) {
-    final range = PeriodProvider.salaryAlignedPeriod(months: 1);
+    final range = PeriodProvider.salaryAlignedPeriod();
     final s = range.start;
     final e = range.end;
     const months = ['','Jan','Feb','Mar','Apr','May','Jun',
