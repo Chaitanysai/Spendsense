@@ -72,8 +72,6 @@ class PeriodProvider with ChangeNotifier {
     }
     return salaryAlignedPeriod(months: 1);
   }
-    return salaryAlignedPeriod(months: 1);
-  }
 
   // ── Human-readable label for the chip ────────────────────────────────────
 
