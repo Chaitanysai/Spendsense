@@ -218,16 +218,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         .map((tx) => TransactionTile(transaction: tx)),
                 ]),
               ),
-              if (trackedTransactions.isNotEmpty && provider.isSyncing)
-                SliverToBoxAdapter(
-                  child: const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
+            ),
+            if (trackedTransactions.isNotEmpty && provider.isSyncing)
+              SliverToBoxAdapter(
+                child: const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-            ),
+              ),
           ],
         ),
       ),
