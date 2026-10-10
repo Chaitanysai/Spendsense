@@ -14,7 +14,7 @@ void main() {
       final txs = [
         TransactionModel(
           id: '1',
-          originalSms: 'food', paymentMethod: null, time: '12:00 PM',
+          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
           merchant: 'KFC',
           amount: 500,
           date: DateTime(now.year, now.month, now.day - 1),
@@ -24,7 +24,7 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          originalSms: 'travel', paymentMethod: null, time: '12:00 PM',
+          originalSms: 'travel', paymentMethod: 'UPI', time: '12:00 PM',
           merchant: 'Uber',
           amount: 250,
           date: DateTime(now.year, now.month, now.day),
@@ -48,7 +48,7 @@ void main() {
       final txs = [
         TransactionModel(
           id: '1',
-          originalSms: 'food', paymentMethod: null, time: '12:00 PM',
+          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
           merchant: 'KFC',
           amount: 100,
           date: now,
@@ -58,7 +58,7 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          originalSms: 'food', paymentMethod: null, time: '12:00 PM',
+          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
           merchant: 'KFC',
           amount: 200,
           date: now,
@@ -68,7 +68,7 @@ void main() {
         ),
         TransactionModel(
           id: '3',
-          originalSms: 'clothes', paymentMethod: null, time: '12:00 PM',
+          originalSms: 'clothes', paymentMethod: 'UPI', time: '12:00 PM',
           merchant: 'Zara',
           amount: 150,
           date: now,
