@@ -32,7 +32,9 @@ jobs:
         run: flutter pub get
 
       - name: Run static analysis
-        run: flutter analyze
+        run: |
+          touch .env
+          flutter analyze
 
       - name: Run unit tests
         run: flutter test
