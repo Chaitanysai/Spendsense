@@ -756,10 +756,8 @@ class _InsightMetrics {
 
 class _ChatEntry {
   final AIChatMessage message;
-  final bool usedCloud;
 
   const _ChatEntry({
     required this.message,
-    this.usedCloud = false,
   });
 }

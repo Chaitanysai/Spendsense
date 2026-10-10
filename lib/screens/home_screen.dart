@@ -159,8 +159,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   // ── Budget gauge ─────────────────────────────────────────
                   Consumer<PeriodProvider>(
                     builder: (context, periodProvider, child) {
-                      if (periodProvider.mode == PeriodMode.custom)
+                      if (periodProvider.mode == PeriodMode.custom) {
                         return const SizedBox.shrink();
+                      }
 
                       final now = DateTime.now();
                       final today = DateTime(now.year, now.month, now.day);
