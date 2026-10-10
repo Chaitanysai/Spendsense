@@ -14,7 +14,7 @@ void main() {
       final txs = [
         TransactionModel(
           id: '1',
-          body: 'food',
+          originalSms: 'food', paymentMethod: PaymentMethod.upi, time: '12:00 PM',
           merchant: 'KFC',
           amount: 500,
           date: DateTime(now.year, now.month, now.day - 1),
@@ -24,7 +24,7 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          body: 'travel',
+          originalSms: 'travel', paymentMethod: PaymentMethod.upi, time: '12:00 PM',
           merchant: 'Uber',
           amount: 250,
           date: DateTime(now.year, now.month, now.day),
@@ -48,7 +48,7 @@ void main() {
       final txs = [
         TransactionModel(
           id: '1',
-          body: 'food',
+          originalSms: 'food', paymentMethod: PaymentMethod.upi, time: '12:00 PM',
           merchant: 'KFC',
           amount: 100,
           date: now,
@@ -58,7 +58,7 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          body: 'food',
+          originalSms: 'food', paymentMethod: PaymentMethod.upi, time: '12:00 PM',
           merchant: 'KFC',
           amount: 200,
           date: now,
@@ -68,7 +68,7 @@ void main() {
         ),
         TransactionModel(
           id: '3',
-          body: 'clothes',
+          originalSms: 'clothes', paymentMethod: PaymentMethod.upi, time: '12:00 PM',
           merchant: 'Zara',
           amount: 150,
           date: now,
@@ -91,7 +91,7 @@ void main() {
   group('PeriodProvider Cycle Boundary', () {
     test('Calculates last day of month correctly', () {
       // Create a mock DateTime overrides or just test generic output
-      final range = PeriodProvider.salaryAlignedPeriod(1, months: 1);
+      final range = PeriodProvider.salaryAlignedPeriod(months: 1);
       
       final start = range.start;
       final end = range.end;

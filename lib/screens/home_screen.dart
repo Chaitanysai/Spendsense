@@ -177,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.surfaceColor(context),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
+                            border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

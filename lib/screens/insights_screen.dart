@@ -701,7 +701,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             .skip(_messages.length > 12 ? _messages.length - 12 : 0)
             .toList();
         final cloudResponse =
-            await _cloudAI.tryAskAI(history, provider.transactions);
+            await _cloudAI.askAI(history, provider.transactions);
 
         if (cloudResponse != null) {
           setState(() {
