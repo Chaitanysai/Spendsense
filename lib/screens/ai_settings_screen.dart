@@ -50,6 +50,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     final gemini = await _storage.getGeminiKey();
     final openRouter = await _storage.getOpenRouterKey();
 
+    if (!mounted) return;
+
     setState(() {
       _groqConfigured = groq != null && groq.isNotEmpty;
       _cerebrasConfigured = cerebras != null && cerebras.isNotEmpty;
@@ -74,20 +76,17 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     }
 
     final success = await saveFn(value);
+    if (!mounted) return;
     if (success) {
       setState(() => setConfigured(true));
       controller.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$providerName key saved securely')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$providerName key saved securely')),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save $providerName key')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save $providerName key')),
+      );
     }
   }
 
@@ -97,12 +96,48 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     Function(bool) setConfigured,
   ) async {
     await _storage.deleteApiKey(keyName);
+    if (!mounted) return;
     setState(() => setConfigured(false));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$providerName key cleared')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$providerName key cleared')),
+    );
+  }
+
+  Future<void> _clearAllKeys() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear All Keys?'),
+        content: const Text(
+          'This will remove all stored API keys. You can add them again later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    await _storage.clearAll();
+    if (!mounted) return;
+    setState(() {
+      _groqConfigured = false;
+      _cerebrasConfigured = false;
+      _geminiConfigured = false;
+      _openRouterConfigured = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('All API keys cleared'),
+      ),
+    );
   }
 
   @override
@@ -122,7 +157,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   'Configure API keys for AI-powered transaction parsing. '
                   'Keys are stored securely on your device and never leave your control.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -225,44 +260,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
 
                 // Clear all button
                 OutlinedButton.icon(
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Clear All Keys?'),
-                        content: const Text(
-                          'This will remove all stored API keys. You can add them again later.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Clear All'),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirm == true) {
-                      await _storage.clearAll();
-                      setState(() {
-                        _groqConfigured = false;
-                        _cerebrasConfigured = false;
-                        _geminiConfigured = false;
-                        _openRouterConfigured = false;
-                      });
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('All API keys cleared'),
-                          ),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: _clearAllKeys,
                   icon: const Icon(Icons.delete_sweep),
                   label: const Text('Clear All Keys'),
                 ),
@@ -298,7 +296,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.green),
                 ),
@@ -314,16 +312,16 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withOpacity(0.05),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.onSurface.withOpacity(0.2),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Text(
                   'Not configured',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -333,7 +331,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
         Text(
           description,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 12),
