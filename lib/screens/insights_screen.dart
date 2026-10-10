@@ -649,17 +649,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ],
           ),
-          if (!isUser && entry.usedCloud)
-            Padding(
-              padding: const EdgeInsets.only(left: 42, top: 4),
-              child: Text(
-                'via cloud AI',
-                style: TextStyle(
-                  color: AppColors.textSecondary(context),
-                  fontSize: 11,
-                ),
-              ),
-            ),
         ],
       ),
     );
