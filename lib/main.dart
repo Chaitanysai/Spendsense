@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -16,6 +17,11 @@ import 'screens/insights_screen.dart';
 import 'screens/recurring_screen.dart';
 
 import 'utils/app_colors.dart';
+import 'utils/app_spacing.dart';
+import 'widgets/app_background.dart';
+import 'widgets/app_page_route.dart';
+import 'widgets/fade_indexed_stack.dart';
+import 'widgets/floating_nav_bar.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
 void main() async {
@@ -65,17 +71,22 @@ class SpendSenseApp extends StatelessWidget {
     );
 
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primaryPurple,
+      seedColor: AppColors.crimson,
       brightness: brightness,
     ).copyWith(
-      primary: AppColors.primaryPurple,
+      primary: AppColors.crimson,
       onPrimary: Colors.white,
-      secondary: AppColors.primaryPink,
+      secondary: AppColors.orange,
       onSecondary: Colors.white,
-      error: const Color(0xFFDC2626),
+      error: AppColors.danger,
       onError: Colors.white,
       surface: isDark ? AppColors.darkSurface : Colors.white,
-      onSurface: isDark ? Colors.white : const Color(0xFF111827),
+      onSurface: isDark ? const Color(0xFFF7F0EE) : const Color(0xFF1A1113),
+    );
+
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: BorderSide(color: AppColors.borderDarkOrLight(isDark)),
     );
 
     return ThemeData(
@@ -88,10 +99,23 @@ class SpendSenseApp extends StatelessWidget {
       ),
       scaffoldBackgroundColor:
           isDark ? AppColors.darkBackground : AppColors.background,
-      primaryColor: AppColors.primaryPurple,
+      primaryColor: AppColors.crimson,
+      splashColor: AppColors.crimson.withValues(alpha: 0.08),
+      highlightColor: AppColors.crimson.withValues(alpha: 0.04),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
         foregroundColor: scheme.onSurface,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: baseTextTheme.titleLarge?.copyWith(
@@ -99,55 +123,79 @@ class SpendSenseApp extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-        selectedItemColor: AppColors.primaryPurple,
-        unselectedItemColor:
-            isDark ? const Color(0xFF8F96A3) : const Color(0xFF6B7280),
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-      ),
       cardColor: isDark ? AppColors.darkSurface : Colors.white,
-      dividerColor: isDark ? const Color(0xFF2B3345) : const Color(0xFFE5E7EB),
+      dividerColor: isDark ? AppColors.borderDark : AppColors.borderLight,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? AppColors.darkSurfaceAlt : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? const Color(0xFF2B3345) : const Color(0xFFE5E7EB),
-          ),
+        hintStyle: TextStyle(
+          color: isDark ? const Color(0xFF8A7A77) : const Color(0xFFA89693),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? const Color(0xFF2B3345) : const Color(0xFFE5E7EB),
-          ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.lg,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide:
-              const BorderSide(color: AppColors.primaryPurple, width: 1.6),
+        border: fieldBorder,
+        enabledBorder: fieldBorder,
+        focusedBorder: fieldBorder.copyWith(
+          borderSide: const BorderSide(color: AppColors.crimson, width: 1.6),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryPurple,
+          backgroundColor: AppColors.crimson,
           foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.crimson),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.crimson,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? AppColors.crimson : null,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.crimson.withValues(alpha: 0.4)
+              : AppColors.borderDarkOrLight(isDark),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor:
-            isDark ? AppColors.darkSurfaceAlt : const Color(0xFF111827),
+            isDark ? AppColors.darkSurfaceAlt : const Color(0xFF1A1113),
         contentTextStyle: const TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
       ),
     );
   }
@@ -163,39 +211,54 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
+  static const _actionIndex = 3;
+
+  static const List<NavItem> _navItems = [
+    NavItem(Icons.home_rounded, 'HOME'),
+    NavItem(Icons.receipt_long_rounded, 'ACTIVITY'),
+    NavItem(Icons.insights_rounded, 'INSIGHTS'),
+    NavItem(Icons.add_rounded, 'ADD'),
+    NavItem(Icons.repeat_rounded, 'RECURRING'),
+    NavItem(Icons.settings_rounded, 'SETTINGS'),
+  ];
+
   final List<Widget> _screens = const [
     HomeScreen(),
     ActivityScreen(),
     InsightsScreen(),
-    AddTransactionScreen(),
+    SizedBox.shrink(), // centre action is a pushed route, not a tab
     RecurringScreen(),
     SettingsScreen(),
   ];
 
+  void _onTap(int index) {
+    if (index == _actionIndex) {
+      Navigator.of(context).push(
+        AppPageRoute(builder: (_) => const AddTransactionScreen()),
+      );
+      return;
+    }
+    if (index != _currentIndex) {
+      setState(() => _currentIndex = index);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      backgroundColor: Colors.transparent,
+      extendBody: true,
+      body: AppBackground(
+        child: FadeIndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: FloatingNavBar(
+        items: _navItems,
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "HOME"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long), label: "ACTIVITY"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.smart_toy_rounded), label: "AI"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle),
-            label: "ADD",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.repeat), label: "RECURRING"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: "SETTINGS"),
-        ],
+        actionIndex: _actionIndex,
+        onTap: _onTap,
       ),
     );
   }

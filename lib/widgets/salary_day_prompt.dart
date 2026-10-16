@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/period_provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import 'app_button.dart';
 
 /// Shows a bottom sheet asking the user which day of the month their salary
 /// arrives. Call once on first launch (when PeriodProvider.isSetupDone == false).
@@ -41,49 +44,46 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        left: AppSpacing.page,
+        right: AppSpacing.page,
+        top: AppSpacing.md,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Drag handle
           Container(
-            width: 36, height: 4,
+            width: 36,
+            height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: AppColors.border(context),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
 
-          // Title
           Text(
             'When do you get your salary?',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary(context),
-            ),
+            style: AppText.h2(context),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'This sets the start of your monthly spending period. '
             'You can change it later in Settings.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary(context),
-            ),
+            style: AppText.body(context).copyWith(height: 1.4),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSpacing.xl),
 
-          // Day picker — scrollable horizontal chip grid
+          // Day picker — chip grid
           SizedBox(
             height: 180,
             child: GridView.builder(
@@ -101,23 +101,21 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
                 return GestureDetector(
                   onTap: () => setState(() => _selected = day),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
+                    duration: AppMotion.respect(context, AppMotion.fast),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primaryPurple
-                          : AppColors.scaffold(context),
-                      borderRadius: BorderRadius.circular(10),
+                      gradient: isSelected ? AppColors.brandGradient : null,
+                      color: isSelected ? null : AppColors.surfaceAlt(context),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.primaryPurple
+                            ? Colors.transparent
                             : AppColors.border(context),
                       ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       '$day',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
+                      style: AppText.label(context).copyWith(
                         fontSize: 13,
                         color: isSelected
                             ? Colors.white
@@ -130,41 +128,23 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
 
-          // Helper text for the selected day
           Text(
             _periodPreview(_selected),
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary(context),
-            ),
+            textAlign: TextAlign.center,
+            style: AppText.body(context).copyWith(fontSize: 12),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
 
-          // Confirm button
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () async {
-                await context.read<PeriodProvider>().setSalaryDay(_selected);
-                if (context.mounted) Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryPurple,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Set salary day',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
+          AppPrimaryButton(
+            label: 'Set salary day',
+            icon: Icons.check_rounded,
+            onPressed: () async {
+              await context.read<PeriodProvider>().setSalaryDay(_selected);
+              if (context.mounted) Navigator.pop(context);
+            },
           ),
         ],
       ),
@@ -176,8 +156,21 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
     final range = PeriodProvider.salaryAlignedPeriod();
     final s = range.start;
     final e = range.end;
-    const months = ['','Jan','Feb','Mar','Apr','May','Jun',
-                       'Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return 'Current period: ${s.day} ${months[s.month]} – ${e.day} ${months[e.month]}';
   }
 }

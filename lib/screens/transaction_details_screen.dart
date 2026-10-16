@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/formatters.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import '../widgets/app_background.dart';
+import '../widgets/app_button.dart';
+import '../widgets/gradient_hero_card.dart';
 
 class TransactionDetailsScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -47,6 +53,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     _category = _normalizedCategory(widget.transaction.category);
     _type = widget.transaction.type;
     _isExcluded = widget.transaction.isExcluded;
+    _amountController.addListener(() => setState(() {}));
+    _merchantController.addListener(() => setState(() {}));
   }
 
   @override
@@ -61,206 +69,235 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     return Scaffold(
       backgroundColor: AppColors.scaffold(context),
       appBar: AppBar(
-        title: const Text('Edit Transaction'),
-        foregroundColor: AppColors.textPrimary(context),
+        title: const Text('Edit transaction'),
+        backgroundColor: Colors.transparent,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _headerCard(context),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _merchantController,
-              decoration: const InputDecoration(
-                labelText: 'Merchant',
-                prefixIcon: Icon(Icons.storefront_outlined),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                prefixIcon: Icon(Icons.currency_rupee_rounded),
-              ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<TransactionType>(
-              initialValue: _type,
-              decoration: const InputDecoration(
-                labelText: 'Type',
-                prefixIcon: Icon(Icons.swap_vert_rounded),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: TransactionType.expense,
-                  child: Text('Expense'),
-                ),
-                DropdownMenuItem(
-                  value: TransactionType.income,
-                  child: Text('Income'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _type = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _category,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                prefixIcon: Icon(Icons.category_outlined),
-              ),
-              items: _categories
-                  .map((item) =>
-                      DropdownMenuItem(value: item, child: Text(item)))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _category = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor(context),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Date & Time',
-                    style: TextStyle(
-                      color: AppColors.textSecondary(context),
-                      fontSize: 12,
-                    ),
+      body: AppBackground(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.sm,
+                    AppSpacing.page,
+                    AppSpacing.xl,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${Formatters.date(widget.transaction.date)} • ${widget.transaction.time}',
-                    style: TextStyle(
-                      color: AppColors.textPrimary(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Payment Method',
-                    style: TextStyle(
-                      color: AppColors.textSecondary(context),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.transaction.paymentMethod,
-                    style: TextStyle(
-                      color: AppColors.textPrimary(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text("Exclude from Insights"),
-              subtitle: const Text("Don't count this transaction in totals"),
-              value: _isExcluded,
-              onChanged: (value) => setState(() => _isExcluded = value),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Original SMS',
-              style: TextStyle(
-                color: AppColors.textPrimary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt(context),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                widget.transaction.originalSms,
-                style: TextStyle(
-                  color: AppColors.textSecondary(context),
-                  height: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _headerCard(context),
+                      const SizedBox(height: AppSpacing.xl),
+                      TextField(
+                        controller: _merchantController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Merchant',
+                          prefixIcon: Icon(Icons.storefront_outlined),
                         ),
-                      )
-                    : const Text('Save changes'),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      TextField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Amount',
+                          prefixIcon: Icon(Icons.currency_rupee_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      DropdownButtonFormField<TransactionType>(
+                        initialValue: _type,
+                        decoration: const InputDecoration(
+                          labelText: 'Type',
+                          prefixIcon: Icon(Icons.swap_vert_rounded),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: TransactionType.expense,
+                            child: Text('Expense'),
+                          ),
+                          DropdownMenuItem(
+                            value: TransactionType.income,
+                            child: Text('Income'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _type = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      DropdownButtonFormField<String>(
+                        initialValue: _category,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          prefixIcon: Icon(Icons.category_outlined),
+                        ),
+                        items: _categories
+                            .map((item) => DropdownMenuItem(
+                                value: item, child: Text(item)))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _category = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceColor(context),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.border(context)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _metaLabel('Date & time'),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${Formatters.date(widget.transaction.date)} • ${widget.transaction.time}',
+                              style:
+                                  AppText.title(context).copyWith(fontSize: 14),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            _metaLabel('Payment method'),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.transaction.paymentMethod,
+                              style:
+                                  AppText.title(context).copyWith(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceColor(context),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.border(context)),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md),
+                          title: Text('Exclude from Insights',
+                              style: AppText.title(context)
+                                  .copyWith(fontSize: 14)),
+                          subtitle: Text("Don't count this in totals",
+                              style:
+                                  AppText.body(context).copyWith(fontSize: 12)),
+                          value: _isExcluded,
+                          onChanged: (value) =>
+                              setState(() => _isExcluded = value),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text('Original SMS', style: AppText.title(context)),
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceAlt(context),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Text(
+                          widget.transaction.originalSms.isEmpty
+                              ? 'No source message (manually added).'
+                              : widget.transaction.originalSms,
+                          style: AppText.body(context).copyWith(height: 1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  0,
+                  AppSpacing.page,
+                  AppSpacing.lg,
+                ),
+                child: AppPrimaryButton(
+                  label: 'Save changes',
+                  icon: Icons.save_rounded,
+                  loading: _saving,
+                  onPressed: _saving ? null : _save,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget _metaLabel(String text) => Text(
+        text.toUpperCase(),
+        style: AppText.overline(context),
+      );
+
   Widget _headerCard(BuildContext context) {
     final isExpense = _type == TransactionType.expense;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppColors.brandGradient,
-        borderRadius: BorderRadius.circular(28),
-      ),
+    return GradientHeroCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            isExpense ? 'Expense' : 'Income',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  isExpense ? 'Expense' : 'Income',
+                  style: AppText.onGradient(size: 11, weight: FontWeight.w700),
+                ),
+              ),
+              const Spacer(),
+              if (widget.transaction.needsReview)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text('Needs review',
+                      style: AppText.onGradient(
+                          size: 11, weight: FontWeight.w700)),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
+              style: AppText.onGradient(size: 38, weight: FontWeight.w800),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             _merchantController.text.isEmpty
                 ? 'Unknown merchant'
                 : _merchantController.text,
-            style: const TextStyle(color: Colors.white70),
+            style: AppText.onGradient(size: 14, opacity: 0.9),
           ),
         ],
       ),

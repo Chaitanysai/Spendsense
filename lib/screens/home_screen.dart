@@ -10,8 +10,14 @@ import '../providers/transaction_provider.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/profile_avatar.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/section_header.dart';
+import '../widgets/app_states.dart';
+import '../widgets/fade_slide_in.dart';
 import '../widgets/sms_import_prompt.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -43,54 +49,39 @@ class _HomeScreenState extends State<HomeScreen> {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     final now = DateTime.now();
-    final dateLabel =
-        DateFormat('EEEE, d MMMM').format(now); // e.g. "Wednesday, 8 April"
+    final dateLabel = DateFormat('EEEE, d MMMM').format(now);
     final logCount = trackedTransactions.length;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffold(context),
-      body: RefreshIndicator(
-        color: AppColors.primaryTeal,
+      backgroundColor: Colors.transparent,
+      body: AppRefreshIndicator(
         onRefresh: () => provider.syncFromSms(),
         child: CustomScrollView(
           slivers: [
-            // ── Top app-bar ────────────────────────────────────────────────
             SliverAppBar(
               pinned: false,
               floating: true,
-              backgroundColor: AppColors.scaffold(context),
+              backgroundColor: Colors.transparent,
               elevation: 0,
+              scrolledUnderElevation: 0,
               leadingWidth: 0,
               automaticallyImplyLeading: false,
               title: Row(
                 children: [
-                  const AppLogo(size: 28),
-                  const SizedBox(width: 10),
+                  const AppLogo(size: 30),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(dateLabel, style: AppText.title(context)),
                         Text(
-                          dateLabel,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary(context),
-                          ),
-                        ),
-                        Text(
-                          '$logCount LOGS TODAY',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary(context),
-                            letterSpacing: 0.8,
-                          ),
+                          '$logCount logs · pull to sync',
+                          style: AppText.overline(context),
                         ),
                       ],
                     ),
                   ),
-                  // Streak / sync pill
                   Consumer<TransactionProvider>(
                     builder: (_, txProvider, __) {
                       return GestureDetector(
@@ -99,29 +90,33 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceColor(context),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.shadow(context),
-                                blurRadius: 8,
-                              )
-                            ],
+                            color: AppColors.crimson.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.sync_rounded,
-                                  size: 14, color: AppColors.primaryTeal),
+                              if (txProvider.isSyncing)
+                                const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.crimson,
+                                  ),
+                                )
+                              else
+                                const Icon(Icons.sync_rounded,
+                                    size: 14, color: AppColors.crimson),
                               const SizedBox(width: 4),
                               Text(
                                 txProvider.lastSynced == null
                                     ? 'Sync'
                                     : DateFormat('hh:mm a')
                                         .format(txProvider.lastSynced!),
-                                style: TextStyle(
+                                style: AppText.label(context).copyWith(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary(context),
+                                  color: AppColors.crimson,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
@@ -130,39 +125,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  const SizedBox(width: 8),
-                  // Add button
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary(context),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.add,
-                        color: AppColors.scaffold(context), size: 20),
-                  ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   ProfileAvatar(
                     imageBytes: auth.profileImageBytes,
                     name: auth.name,
-                    radius: 17,
+                    radius: 18,
                   ),
                 ],
               ),
             ),
-
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                4,
+                AppSpacing.page,
+                AppSpacing.navClearance,
+              ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // ── Budget gauge ─────────────────────────────────────────
+                  // ── Next salary banner (glass) ──────────────────────────
                   Consumer<PeriodProvider>(
                     builder: (context, periodProvider, child) {
                       if (periodProvider.mode == PeriodMode.custom) {
                         return const SizedBox.shrink();
                       }
-
                       final now = DateTime.now();
                       final today = DateTime(now.year, now.month, now.day);
                       final nextSalaryDate =
@@ -170,33 +156,32 @@ class _HomeScreenState extends State<HomeScreen> {
                       final daysLeft = nextSalaryDate.difference(today).inDays;
 
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Container(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: GlassCard(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceColor(context),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color: AppColors.primaryTeal
-                                    .withValues(alpha: 0.3)),
-                          ),
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.md),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.account_balance_wallet_rounded,
-                                      color: AppColors.primaryTeal, size: 20),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Next salary drops',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary(context),
-                                    ),
-                                  ),
-                                ],
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.amber.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.account_balance_wallet_rounded,
+                                  color: Color(0xFFB87A00),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Text('Next salary drops',
+                                    style: AppText.title(context)
+                                        .copyWith(fontSize: 14)),
                               ),
                               Text(
                                 daysLeft <= 0
@@ -204,10 +189,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : daysLeft == 1
                                         ? 'Tomorrow'
                                         : 'in $daysLeft days',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryTeal,
-                                ),
+                                style: AppText.amount(context,
+                                    size: 14, color: AppColors.crimson),
                               ),
                             ],
                           ),
@@ -215,6 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+
+                  // ── Hero summary ────────────────────────────────────────
                   Consumer<PeriodProvider>(
                     builder: (context, periodProvider, child) {
                       final cycleExpenses = provider
@@ -235,94 +220,72 @@ class _HomeScreenState extends State<HomeScreen> {
                           : categories.entries
                               .reduce((a, b) => a.value > b.value ? a : b)
                               .key;
-                      return SummaryCard(
-                        total: total,
-                        count: cycleExpenses.length,
-                        topCat: topCategory,
-                        budget: provider.monthlyBudget,
+                      return FadeSlideIn(
+                        child: SummaryCard(
+                          total: total,
+                          count: cycleExpenses.length,
+                          topCat: topCategory,
+                          budget: provider.monthlyBudget,
+                        ),
                       );
                     },
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xxl),
 
-                  // ── Category breakdown card ───────────────────────────────
+                  // ── Category breakdown ──────────────────────────────────
+                  const SectionHeader(title: 'Spending by category'),
                   _CategoryBreakdownCard(expenses: trackedExpenses),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.xxl),
 
-                  // ── Daily spend bar ───────────────────────────────────────
+                  // ── Daily spend ────────────────────────────────────────
+                  const SectionHeader(title: 'Last 7 days'),
                   _DailySpendCard(expenses: trackedExpenses),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xxl),
 
-                  // ── Recent transactions header ────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Today logs',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary(context),
-                        ),
-                      ),
-                      Text(
-                        '${trackedTransactions.length} items',
-                        style: TextStyle(
-                          color: AppColors.textSecondary(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  // ── Recent activity ────────────────────────────────────
+                  SectionHeader(
+                    title: 'Recent activity',
+                    actionLabel: '${trackedTransactions.length} total',
                   ),
-                  const SizedBox(height: 12),
-
-                  // ── Transaction list ──────────────────────────────────────
                   if (trackedTransactions.isEmpty && provider.isSyncing)
-                    const Center(
-                        child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
-                    ))
+                    const SkeletonList(count: 4)
                   else if (!provider.hasSmsScanStartDate)
-                    _emptyMsg(context,
-                        'Pick an SMS start date to begin scanning your messages.')
+                    AppEmptyState(
+                      icon: Icons.sms_rounded,
+                      title: 'No transactions yet',
+                      message:
+                          'Pick an SMS start date and SpendSense will build your transactions automatically.',
+                      actionLabel: 'Choose start date',
+                      onAction: () => SmsImportPrompt.show(context),
+                    )
                   else if (trackedTransactions.isEmpty)
-                    _emptyMsg(context,
-                        'No transactions found after your selected SMS start date.')
+                    AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'Nothing found',
+                      message:
+                          'No transactions were detected after your selected SMS start date.',
+                      actionLabel: 'Sync now',
+                      onAction: () => provider.syncFromSms(),
+                    )
                   else
                     ...trackedTransactions
                         .take(20)
                         .map((tx) => TransactionTile(transaction: tx)),
+                  if (trackedTransactions.isNotEmpty && provider.isSyncing)
+                    const Padding(
+                      padding: EdgeInsets.only(top: AppSpacing.sm),
+                      child: Center(
+                        child:
+                            CircularProgressIndicator(color: AppColors.crimson),
+                      ),
+                    ),
                 ]),
               ),
             ),
-            if (trackedTransactions.isNotEmpty && provider.isSyncing)
-              SliverToBoxAdapter(
-                child: const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _emptyMsg(BuildContext context, String text) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary(context)),
         ),
       ),
     );
@@ -342,148 +305,133 @@ class _CategoryBreakdownCard extends StatelessWidget {
     for (final t in expenses) {
       totals[t.category] = (totals[t.category] ?? 0) + t.amount;
     }
-
     final grandTotal = totals.values.fold<double>(0, (s, v) => s + v);
-
-    final colors = [
-      AppColors.primaryTeal,
-      AppColors.accentBlue,
-      AppColors.accentOrange,
-      AppColors.primaryGreen,
-      const Color(0xFFEF4444),
-      const Color(0xFF8B5CF6),
-    ];
-
     final entries = totals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
-    final top3 = entries.take(3).toList();
+    final top = entries.take(4).toList();
 
     final sections = entries.isEmpty
         ? [
             PieChartSectionData(
-              color: Colors.grey[300]!,
+              color: AppColors.surfaceAlt(context),
               value: 100,
-              radius: 22,
+              radius: 16,
               showTitle: false,
             )
           ]
         : entries.asMap().entries.map((e) {
             return PieChartSectionData(
-              color: colors[e.key % colors.length],
+              color:
+                  AppColors.chartPalette[e.key % AppColors.chartPalette.length],
               value: grandTotal > 0 ? e.value.value / grandTotal * 100 : 0,
-              radius: 22,
+              radius: 16,
               showTitle: false,
             );
           }).toList();
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primaryTeal,
+              SizedBox(
+                width: 116,
+                height: 116,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: AppMotion.respect(context, AppMotion.chart),
+                      curve: AppMotion.emphasized,
+                      builder: (context, t, _) {
+                        final animated = sections
+                            .map((s) => PieChartSectionData(
+                                  color: s.color,
+                                  value: s.value * t,
+                                  radius: s.radius,
+                                  showTitle: s.showTitle,
+                                ))
+                            .toList();
+                        return PieChart(
+                          PieChartData(
+                            sectionsSpace: 3,
+                            centerSpaceRadius: 40,
+                            startDegreeOffset: -90,
+                            sections: animated,
+                          ),
+                        );
+                      },
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _compact(grandTotal),
+                          style: AppText.amount(context, size: 16),
+                        ),
+                        Text('total',
+                            style:
+                                AppText.label(context).copyWith(fontSize: 10)),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Category Breakdown',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary(context),
-                ),
-              ),
-              const Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 13, color: AppColors.textSecondary(context)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Donut + stats
-          Row(
-            children: [
-              // Top-3 category amounts
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: top3.isEmpty
-                      ? [
-                          Text('No data',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary(context)))
-                        ]
-                      : top3.asMap().entries.map((e) {
+                child: top.isEmpty
+                    ? Text('No spending data yet', style: AppText.body(context))
+                    : Column(
+                        children: top.map((e) {
                           final pct = grandTotal > 0
-                              ? (e.value.value / grandTotal * 100)
-                                  .toStringAsFixed(0)
-                              : '0';
+                              ? (e.value / grandTotal * 100)
+                              : 0.0;
+                          final color = AppColors.chartPalette[
+                              entries.indexOf(e) %
+                                  AppColors.chartPalette.length];
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
                               children: [
-                                Text(
-                                  e.value.key,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary(context),
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '₹${e.value.value.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: colors[e.key % colors.length],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    e.key,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.label(context)
+                                        .copyWith(fontSize: 12),
                                   ),
                                 ),
                                 Text(
-                                  '$pct%',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary(context),
+                                  '₹${_compact(e.value)}',
+                                  style: AppText.amount(context, size: 12),
+                                ),
+                                const SizedBox(width: 6),
+                                SizedBox(
+                                  width: 34,
+                                  child: Text(
+                                    '${pct.toStringAsFixed(0)}%',
+                                    textAlign: TextAlign.right,
+                                    style: AppText.label(context)
+                                        .copyWith(fontSize: 11),
                                   ),
                                 ),
                               ],
                             ),
                           );
                         }).toList(),
-                ),
-              ),
-
-              // Donut chart
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: PieChart(
-                  PieChartData(
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 28,
-                    sections: sections,
-                  ),
-                ),
+                      ),
               ),
             ],
           ),
@@ -491,9 +439,15 @@ class _CategoryBreakdownCard extends StatelessWidget {
       ),
     );
   }
+
+  static String _compact(double v) {
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
+    return v.toStringAsFixed(0);
+  }
 }
 
-// ── Daily Spend bar card (replaces "Active Calories") ────────────────────────
+// ── Daily Spend bar card ─────────────────────────────────────────────────────
 
 class _DailySpendCard extends StatelessWidget {
   final List<TransactionModel> expenses;
@@ -503,8 +457,6 @@ class _DailySpendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-
-    // Build 7-day totals
     final dailyTotals = List.generate(7, (i) {
       final day = DateTime(now.year, now.month, now.day)
           .subtract(Duration(days: 6 - i));
@@ -521,111 +473,92 @@ class _DailySpendCard extends StatelessWidget {
     final max = dailyTotals
         .map((d) => d.amount)
         .fold<double>(0, (m, v) => v > m ? v : m);
-    final barMax = max <= 0 ? 100.0 : max * 1.3;
+    final barMax = max <= 0 ? 100.0 : max * 1.25;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.accentOrange,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Daily Spend',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary(context),
-                ),
-              ),
+              Text('Today',
+                  style: AppText.label(context).copyWith(fontSize: 12)),
               const Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 13, color: AppColors.textSecondary(context)),
+              Text(
+                '₹${todayTotal.toStringAsFixed(0)}',
+                style:
+                    AppText.amount(context, size: 18, color: AppColors.crimson),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-
-          // Mini bar chart row
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
-            height: 40,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: BarChart(
-                    BarChartData(
-                      maxY: barMax,
-                      alignment: BarChartAlignment.spaceAround,
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                      titlesData: const FlTitlesData(
-                        topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        leftTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+            height: 92,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: AppMotion.respect(context, AppMotion.chart),
+              curve: AppMotion.emphasized,
+              builder: (context, t, _) {
+                return BarChart(
+                  BarChartData(
+                    maxY: barMax,
+                    alignment: BarChartAlignment.spaceAround,
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 22,
+                          getTitlesWidget: (value, meta) {
+                            final i = value.toInt();
+                            if (i < 0 || i >= dailyTotals.length) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                DateFormat('E')
+                                    .format(dailyTotals[i].day)
+                                    .substring(0, 1),
+                                style: AppText.label(context)
+                                    .copyWith(fontSize: 10),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      barGroups: dailyTotals.asMap().entries.map((e) {
-                        final isToday = e.key == 6;
-                        return BarChartGroupData(
-                          x: e.key,
-                          barRods: [
-                            BarChartRodData(
-                              toY: e.value.amount,
-                              width: 12,
-                              borderRadius: BorderRadius.circular(4),
-                              color: isToday
-                                  ? AppColors.accentOrange
-                                  : AppColors.accentOrange
-                                      .withValues(alpha: 0.25),
-                            ),
-                          ],
-                        );
-                      }).toList(),
                     ),
+                    barGroups: dailyTotals.asMap().entries.map((e) {
+                      final isToday = e.key == 6;
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: e.value.amount * t,
+                            width: 14,
+                            borderRadius: BorderRadius.circular(6),
+                            gradient: isToday
+                                ? AppColors.flameGradient
+                                : LinearGradient(
+                                    colors: [
+                                      AppColors.orange.withValues(alpha: 0.35),
+                                      AppColors.orange.withValues(alpha: 0.18),
+                                    ],
+                                  ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Row(
-                  children: [
-                    Icon(Icons.local_fire_department_rounded,
-                        color: AppColors.accentOrange, size: 16),
-                    const SizedBox(width: 3),
-                    Text(
-                      '₹${todayTotal.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -637,6 +570,5 @@ class _DailySpendCard extends StatelessWidget {
 class _DayBar {
   final DateTime day;
   final double amount;
-
   const _DayBar({required this.day, required this.amount});
 }

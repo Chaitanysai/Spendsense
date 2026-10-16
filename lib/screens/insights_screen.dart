@@ -7,38 +7,18 @@ import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../services/ai_query_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/app_background.dart';
+import '../widgets/app_page_route.dart';
+import '../widgets/category_bubble.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/gradient_hero_card.dart';
+import '../widgets/glass_card.dart';
 
-class InsightsScreen extends StatefulWidget {
+class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});
-
-  @override
-  State<InsightsScreen> createState() => _InsightsScreenState();
-}
-
-class _InsightsScreenState extends State<InsightsScreen> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final AIQueryService _localAI = AIQueryService();
-  late final List<_ChatEntry> _messages = [
-    _ChatEntry(
-      message: AIChatMessage(
-        role: 'assistant',
-        content:
-            'I can answer questions from your locally stored transactions.',
-      ),
-    ),
-  ];
-
-  bool _isLoading = false;
-  bool _isAssistantExpanded = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,81 +26,97 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final metrics = _buildMetrics(provider);
 
     return Scaffold(
-      backgroundColor: AppColors.scaffold(context),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const AppLogo(size: 28),
-            const SizedBox(width: 12),
-            Text(
-              'Insights & AI',
-              style: TextStyle(
-                color: AppColors.textPrimary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 166,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _statCard(
-                          context,
-                          title: 'This Month',
-                          value: '₹${metrics.currentTotal.toStringAsFixed(0)}',
-                          subtitle:
-                              DateFormat('MMMM yyyy').format(DateTime.now()),
-                          gradient: AppColors.brandGradient,
-                          icon: Icons.calendar_month_rounded,
-                        ),
-                        _statCard(
-                          context,
-                          title: 'Change',
-                          value: '${metrics.percentChange.toStringAsFixed(1)}%',
-                          subtitle: metrics.percentChange >= 0
-                              ? 'Spending is up vs last month'
-                              : 'Spending is down vs last month',
-                          gradient: LinearGradient(
-                            colors: metrics.percentChange >= 0
-                                ? const [Color(0xFFEF4444), Color(0xFFF97316)]
-                                : const [Color(0xFF059669), Color(0xFF11B5A4)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          icon: metrics.percentChange >= 0
-                              ? Icons.trending_up_rounded
-                              : Icons.trending_down_rounded,
-                        ),
-                        _statCard(
-                          context,
-                          title: 'Top Category',
-                          value: metrics.topCategory,
-                          subtitle: 'Highest-spend category this month',
-                          gradient: AppColors.altGradient,
-                          icon: Icons.auto_awesome_rounded,
-                        ),
-                      ],
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.md,
+            AppSpacing.page,
+            AppSpacing.navClearance,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: const [AppLogo(size: 34, showWordmark: true)]),
+              const SizedBox(height: AppSpacing.xl),
+              Text('Insights', style: AppText.h1(context)),
+              const SizedBox(height: 4),
+              Text('Understand your spending at a glance',
+                  style: AppText.body(context)),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Stat cards ────────────────────────────────────────────
+              SizedBox(
+                height: 168,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    FadeSlideIn(
+                      child: _statCard(
+                        context,
+                        title: 'This month',
+                        value: '₹${metrics.currentTotal.toStringAsFixed(0)}',
+                        subtitle:
+                            DateFormat('MMMM yyyy').format(DateTime.now()),
+                        gradient: AppColors.heroGradient,
+                        icon: Icons.calendar_month_rounded,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSmartTip(context, metrics),
-                  const SizedBox(height: 16),
-                  _buildAssistantLauncherCard(context),
-                ],
+                    FadeSlideIn(
+                      child: _statCard(
+                        context,
+                        title: 'Change',
+                        value: '${metrics.percentChange.toStringAsFixed(1)}%',
+                        subtitle: metrics.percentChange >= 0
+                            ? 'Up vs last month'
+                            : 'Down vs last month',
+                        gradient: metrics.percentChange >= 0
+                            ? AppColors.flameGradient
+                            : const LinearGradient(
+                                colors: [
+                                  Color(0xFF12B76A),
+                                  Color(0xFF0E9F6E),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        glowColor: metrics.percentChange >= 0
+                            ? null
+                            : const Color(0xFF12B76A),
+                        icon: metrics.percentChange >= 0
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                      ),
+                    ),
+                    FadeSlideIn(
+                      child: _statCard(
+                        context,
+                        title: 'Top category',
+                        value: metrics.topCategory,
+                        subtitle: 'Highest spend this month',
+                        gradient: const LinearGradient(
+                          colors: [AppColors.crimsonDeep, AppColors.crimson],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        glowColor: AppColors.crimson,
+                        icon: Icons.auto_awesome_rounded,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            _buildAssistantOverlay(context, provider),
-          ],
+              const SizedBox(height: AppSpacing.xl),
+              _buildCategoryBubbles(context, metrics),
+              const SizedBox(height: AppSpacing.lg),
+              FadeSlideIn(child: _buildSmartTip(context, metrics)),
+              const SizedBox(height: AppSpacing.lg),
+              FadeSlideIn(child: _buildAssistantLauncherCard(context)),
+            ],
+          ),
         ),
       ),
     );
@@ -158,14 +154,18 @@ class _InsightsScreenState extends State<InsightsScreen> {
       categoryMap[t.category] = (categoryMap[t.category] ?? 0) + t.amount;
     }
 
-    final topCategory = categoryMap.isEmpty
-        ? 'No data'
-        : categoryMap.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+    final sortedCategories = categoryMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final topCategory =
+        sortedCategories.isEmpty ? 'No data' : sortedCategories.first.key;
 
     return _InsightMetrics(
       currentTotal: currentTotal,
       percentChange: percentChange,
       topCategory: topCategory,
+      totalCategories: currentTotal,
+      categories: sortedCategories.take(6).toList(),
     );
   }
 
@@ -176,189 +176,138 @@ class _InsightsScreenState extends State<InsightsScreen> {
     required String subtitle,
     required Gradient gradient,
     required IconData icon,
+    Color? glowColor,
   }) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 16,
-            offset: const Offset(0, 10),
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.md),
+      child: SizedBox(
+        width: 220,
+        child: GradientHeroCard(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          gradient: gradient,
+          glowColor: glowColor,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(title,
+                      style: AppText.onGradient(
+                          size: 12, weight: FontWeight.w600, opacity: 0.9)),
+                  const Spacer(),
+                  Icon(icon,
+                      color: Colors.white.withValues(alpha: 0.9), size: 20),
+                ],
+              ),
+              const Spacer(),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value,
+                    style:
+                        AppText.onGradient(size: 28, weight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 6),
+              Text(subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.onGradient(
+                      size: 11, weight: FontWeight.w500, opacity: 0.9)),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildCategoryBubbles(BuildContext context, _InsightMetrics metrics) {
+    final total = metrics.totalCategories;
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Icon(icon, color: Colors.white70),
+              Text('Top categories', style: AppText.title(context)),
+              const Spacer(),
+              Text('THIS MONTH', style: AppText.overline(context)),
             ],
           ),
-          const Spacer(),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
+          const SizedBox(height: AppSpacing.lg),
+          if (metrics.categories.isEmpty)
+            Text('No spending data yet this month.',
+                style: AppText.body(context))
+          else
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: metrics.categories.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.lg),
+                itemBuilder: (context, i) {
+                  final entry = metrics.categories[i];
+                  final pct = total > 0 ? entry.value / total * 100 : 0.0;
+                  return SizedBox(
+                    width: 64,
+                    child: CategoryBubble(
+                      category: entry.key,
+                      size: 52,
+                      label: entry.key,
+                      percentLabel: '${pct.toStringAsFixed(0)}%',
+                      highlighted: i == 0,
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildAssistantLauncherCard(BuildContext context) {
-    return GestureDetector(
-      onTap: _openAssistant,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: AppColors.brandGradient,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow(context),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.smart_toy_rounded,
-                    color: Colors.white,
-                  ),
+    return GradientHeroCard(
+      onTap: () => _openAssistant(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'Tap to open',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                child: const Icon(Icons.smart_toy_rounded, color: Colors.white),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Chat with AI Bot',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
+                child: Text('Tap to open',
+                    style:
+                        AppText.onGradient(size: 11, weight: FontWeight.w700)),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _messages.last.message.content,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white70,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAssistantOverlay(
-    BuildContext context,
-    TransactionProvider provider,
-  ) {
-    return IgnorePointer(
-      ignoring: !_isAssistantExpanded,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 220),
-        opacity: _isAssistantExpanded ? 1 : 0,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _closeAssistant,
-          child: Container(
-            color: Colors.black.withValues(alpha: 0.28),
-            padding: const EdgeInsets.all(12),
-            child: Center(
-              child: GestureDetector(
-                onTap: () {},
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  scale: _isAssistantExpanded ? 1 : 0.92,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height * 0.8,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceColor(context),
-                      borderRadius: BorderRadius.circular(34),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.16),
-                          blurRadius: 24,
-                          offset: const Offset(0, 16),
-                        ),
-                      ],
-                    ),
-                    child: _buildAssistantPanel(context, provider),
-                  ),
-                ),
-              ),
-            ),
+            ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Ask SpendSense AI',
+              style: AppText.onGradient(size: 24, weight: FontWeight.w800)),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Ask about your top categories, largest merchants, or how this month compares — all answered on-device.',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.onGradient(size: 13, opacity: 0.9, height: 1.4),
+          ),
+        ],
       ),
     );
   }
@@ -371,18 +320,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
           'High spending detected. Ask the bot for top merchants and trim ideas.';
     } else if (metrics.percentChange > 20) {
       tip =
-          'This month jumped sharply. A follow-up question about categories will help.';
+          'This month jumped sharply. A follow-up about categories will help.';
     } else if (metrics.percentChange < -10) {
       tip = 'You are spending less than last month. Ask what improved most.';
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.panel(context),
-        borderRadius: BorderRadius.circular(24),
-      ),
+    return GlassCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -390,28 +333,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              gradient: AppColors.altGradient,
+              gradient: AppColors.amberGradient,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.lightbulb_rounded, color: Colors.white),
+            child:
+                const Icon(Icons.lightbulb_rounded, color: Color(0xFF5A3B00)),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Smart Tip',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary(context),
-                  ),
-                ),
+                Text('Smart tip', style: AppText.title(context)),
                 const SizedBox(height: 6),
-                Text(
-                  tip,
-                  style: TextStyle(color: AppColors.textSecondary(context)),
-                ),
+                Text(tip, style: AppText.body(context)),
               ],
             ),
           ),
@@ -420,81 +355,121 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildAssistantPanel(
-    BuildContext context,
-    TransactionProvider provider,
-  ) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+  void _openAssistant(BuildContext context) {
+    Navigator.of(context).push(
+      AppPageRoute(builder: (_) => const _AssistantChatScreen()),
+    );
+  }
+}
+
+/// Full-screen, self-contained assistant chat. Rendered as its own route so it
+/// sits above the shell's floating nav bar and gets correct keyboard insets.
+class _AssistantChatScreen extends StatefulWidget {
+  const _AssistantChatScreen();
+
+  @override
+  State<_AssistantChatScreen> createState() => _AssistantChatScreenState();
+}
+
+class _AssistantChatScreenState extends State<_AssistantChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final AIQueryService _localAI = AIQueryService();
+  late final List<_ChatEntry> _messages = [
+    _ChatEntry(
+      message: AIChatMessage(
+        role: 'assistant',
+        content:
+            'I can answer questions from your locally stored transactions.',
+      ),
+    ),
+  ];
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<TransactionProvider>();
+
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          titleSpacing: 0,
+          title: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppColors.heroGradient,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(Icons.smart_toy_rounded,
+                    color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('SpendSense Bot', style: AppText.title(context)),
+                    Text('Answers from your local data',
+                        style: AppText.body(context).copyWith(fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.brandGradient,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.smart_toy_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'SpendSense Bot',
-                          style: TextStyle(
-                            color: AppColors.textPrimary(context),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          'Understands follow-up messages in this chat',
-                          style: TextStyle(
-                            color: AppColors.textSecondary(context),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _closeAssistant,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt(context),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      'LOCAL ONLY',
-                      style: TextStyle(
-                        color: AppColors.textSecondary(context),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page, 0, AppSpacing.page, AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceAlt(context),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_outline_rounded,
+                              size: 13,
+                              color: AppColors.textSecondary(context)),
+                          const SizedBox(width: 6),
+                          Text('LOCAL ONLY',
+                              style: AppText.overline(context)
+                                  .copyWith(fontSize: 10)),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
               SizedBox(
                 height: 36,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.page),
                   children: [
                     _promptChip(
                       context,
@@ -517,65 +492,68 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            itemCount: _messages.length,
-            itemBuilder: (context, index) {
-              final entry = _messages[index];
-              return _messageBubble(context, entry);
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+              const SizedBox(height: AppSpacing.md),
+              Divider(height: 1, color: AppColors.border(context)),
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) =>
-                      _submitQuery(provider, _controller.text.trim()),
-                  decoration: const InputDecoration(
-                    hintText: 'Ask a follow-up about your spending...',
-                  ),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.page,
+                      AppSpacing.lg, AppSpacing.page, AppSpacing.md),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) =>
+                      _messageBubble(context, _messages[index]),
                 ),
               ),
-              const SizedBox(width: 10),
-              FilledButton(
-                onPressed: _isLoading
-                    ? null
-                    : () => _submitQuery(provider, _controller.text.trim()),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(54, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.page,
+                    AppSpacing.sm, AppSpacing.page, AppSpacing.md),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) =>
+                            _submitQuery(provider, _controller.text.trim()),
+                        decoration: const InputDecoration(
+                          hintText: 'Ask about your spending…',
                         ),
-                      )
-                    : const Icon(Icons.arrow_upward_rounded),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.flameGradient,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: IconButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () =>
+                                _submitQuery(provider, _controller.text.trim()),
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.arrow_upward_rounded,
+                                color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -585,11 +563,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: ActionChip(
         backgroundColor: AppColors.surfaceAlt(context),
         side: BorderSide(color: AppColors.border(context)),
-        label: Text(label),
+        label:
+            Text(label, style: AppText.label(context).copyWith(fontSize: 12)),
         onPressed: onTap,
       ),
     );
@@ -598,56 +577,43 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Widget _messageBubble(BuildContext context, _ChatEntry entry) {
     final isUser = entry.message.role == 'user';
     final bubbleColor =
-        isUser ? AppColors.primaryPurple : AppColors.surfaceAlt(context);
+        isUser ? AppColors.crimson : AppColors.surfaceAlt(context);
     final textColor = isUser ? Colors.white : AppColors.textPrimary(context);
-    final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: align,
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isUser) ...[
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.brandGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.smart_toy_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bubbleColor,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Text(
-                    entry.message.content,
-                    style: TextStyle(
-                      color: textColor,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
+          if (!isUser) ...[
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: AppColors.heroGradient,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
+              child: const Icon(Icons.smart_toy_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Text(
+                entry.message.content,
+                style: AppText.body(context)
+                    .copyWith(color: textColor, height: 1.4),
+              ),
+            ),
           ),
         ],
       ),
@@ -665,9 +631,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     setState(() {
       _messages.add(
-        _ChatEntry(
-          message: AIChatMessage(role: 'user', content: cleaned),
-        ),
+        _ChatEntry(message: AIChatMessage(role: 'user', content: cleaned)),
       );
       _isLoading = true;
     });
@@ -676,35 +640,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
     try {
       final localResponse = _localAI.tryAnswer(cleaned, provider.transactions);
 
-      if (localResponse != null) {
-        setState(() {
-          _messages.add(
-            _ChatEntry(
-              message: AIChatMessage(
-                role: 'assistant',
-                content: localResponse,
-              ),
+      setState(() {
+        _messages.add(
+          _ChatEntry(
+            message: AIChatMessage(
+              role: 'assistant',
+              content: localResponse ??
+                  "I can only answer supported spending questions from your local transactions. Try asking about total spent, categories, averages, income, or transaction counts.",
             ),
-          );
-        });
-      } else {
-        setState(() {
-          _messages.add(
-            const _ChatEntry(
-              message: AIChatMessage(
-                role: 'assistant',
-                content:
-                    "I can only answer supported spending questions from your local transactions. Try asking about total spent, categories, averages, income, or transaction counts.",
-              ),
-            ),
-          );
-        });
-      }
+          ),
+        );
+      });
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
       _scrollToBottom();
     }
@@ -716,18 +665,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent + 120,
         duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
+        curve: AppMotion.easeOut,
       );
     });
-  }
-
-  void _openAssistant() {
-    setState(() => _isAssistantExpanded = true);
-  }
-
-  void _closeAssistant() {
-    if (!_isAssistantExpanded) return;
-    setState(() => _isAssistantExpanded = false);
   }
 }
 
@@ -735,18 +675,20 @@ class _InsightMetrics {
   final double currentTotal;
   final double percentChange;
   final String topCategory;
+  final double totalCategories;
+  final List<MapEntry<String, double>> categories;
 
   const _InsightMetrics({
     required this.currentTotal,
     required this.percentChange,
     required this.topCategory,
+    required this.totalCategories,
+    required this.categories,
   });
 }
 
 class _ChatEntry {
   final AIChatMessage message;
 
-  const _ChatEntry({
-    required this.message,
-  });
+  const _ChatEntry({required this.message});
 }
