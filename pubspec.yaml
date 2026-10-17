@@ -29,15 +29,13 @@ dependencies:
   reactive_forms: ^17.0.0
 
   # 🔑 API key management
-  flutter_dotenv: ^5.1.0
   flutter_secure_storage: ^9.0.0
 
 flutter:
   uses-material-design: true
 
   assets:
-    - shorebird.yaml
-    - .env          # loaded at runtime for dev; excluded from release via .gitignore
+    - shorebird.yaml    # Shorebird code-push config; contains no secrets.
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3

@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'providers/transaction_provider.dart';
 import 'providers/auth_provider.dart';
@@ -24,13 +23,12 @@ import 'widgets/fade_indexed_stack.dart';
 import 'widgets/floating_nav_bar.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
+///
+/// API keys are never bundled with the app: they come from --dart-define
+/// (CI/development) or from the in-app AI settings, which persist them in
+/// platform-encrypted storage on the user's device.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // Release builds can rely on --dart-define instead of bundling .env.
-  }
 
   runApp(
     MultiProvider(

@@ -64,13 +64,26 @@ jobs:
         with:
           channel: 'stable'
 
-      # .env is declared as a Flutter asset in pubspec.yaml; an empty placeholder
-      # keeps release builds reproducible without bundling any real credentials.
-      - name: Create empty .env placeholder
-        run: touch .env
-
       - name: Get Flutter dependencies
         run: flutter pub get
+
+      # The repo tracks pubspec.lock, but developer laptops do not have Flutter
+      # installed. When this commit's dependency manifest changed the resolved
+      # lock, upload the refreshed lock so it can be committed back remotely.
+      - name: Upload refreshed pubspec.lock when resolution changed
+        if: always()
+        run: |
+          if ! git diff --quiet -- pubspec.lock; then
+            cp pubspec.lock /tmp/pubspec.lock.ci
+          fi
+
+      - name: Upload pubspec.lock artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pubspec.lock
+          path: /tmp/pubspec.lock.ci
+          if-no-files-found: ignore
 
       - name: Run static analysis
         run: flutter analyze
@@ -141,12 +154,39 @@ jobs:
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
 
           echo "── APK badging ──"
-          "$AAPT" dump badging "$ARTIFACT_PATH" | grep -E "^package:|^application-label:|^launchable-activity:" || true
+          "$AAPT" dump badging "$ARTIFACT_PATH" | grep -E "^package:|^application-label:|^launchable-activity:"
 
           echo "── APK signature ──"
-          "$APKSIGNER" verify --print-certs "$ARTIFACT_PATH" | grep -E "Signer #1 (certificate DN|SHA-256)" || true
+          "$APKSIGNER" verify "$ARTIFACT_PATH" || { echo "::error::APK signature verification failed"; exit 1; }
+          "$APKSIGNER" verify --print-certs "$ARTIFACT_PATH" | grep -E "Signer #1 (certificate DN|SHA-256 digest)"
 
           echo "Signing status recorded by the build: $SIGNING_STATUS"
+
+      # Regression gate for the "no secret material in the APK" security fix:
+      # .env entries and known provider API-key patterns must be absent.
+      # Only counts are printed - secret values are never echoed.
+      - name: Verify no secret material is bundled in the APK
+        env:
+          ARTIFACT_PATH: ${{ env.ARTIFACT_PATH }}
+        run: |
+          echo "── Bundled .env check ──"
+          ENV_HITS=$(unzip -l "$ARTIFACT_PATH" | grep -acE "flutter_assets/\.env|^.*[[:space:]]\.env[[:space:]]*$" || true)
+          echo ".env entries found in APK: $ENV_HITS"
+          if [ "$ENV_HITS" -ne 0 ]; then
+            echo "::error::.env is bundled inside the APK; release builds must not ship it"
+            exit 1
+          fi
+          echo "OK: no .env entry in the APK"
+
+          echo "── Known secret-pattern scan over every APK entry ──"
+          # Gemini (AIza...), Groq (gsk_...), Cerebras (csk-...), OpenRouter (sk-or-...)
+          SECRET_HITS=$(unzip -p "$ARTIFACT_PATH" "*" | grep -aEc "AIza[0-9A-Za-z_-]{35}|gsk_[0-9A-Za-z]{40,}|csk-[0-9A-Za-z]{40,}|sk-or-[0-9A-Za-z-]{20,}" || true)
+          echo "Secret-pattern matches across the APK: $SECRET_HITS"
+          if [ "$SECRET_HITS" -ne 0 ]; then
+            echo "::error::Bundled APK content matches API-key patterns"
+            exit 1
+          fi
+          echo "OK: no provider key patterns found in the APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
