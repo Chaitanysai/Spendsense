@@ -16,10 +16,15 @@ class TransactionTile extends StatelessWidget {
   final TransactionModel transaction;
   final bool dense;
 
+  /// Activity groups rows under date headers, so it hides the per-row date and
+  /// uses the space for the bank. Home has no headers and keeps the date.
+  final bool showDate;
+
   const TransactionTile({
     super.key,
     required this.transaction,
     this.dense = false,
+    this.showDate = true,
   });
 
   @override
@@ -123,28 +128,51 @@ class TransactionTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt(context),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            transaction.category,
-                            style:
-                                AppText.label(context).copyWith(fontSize: 10),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceAlt(context),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              transaction.category,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  AppText.label(context).copyWith(fontSize: 10),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
+                        // Bank stays a separate, compact label from category and
+                        // payment method, falling back to 'Others' when unknown.
                         Flexible(
                           child: Text(
-                            Formatters.date(transaction.date),
+                            '· ${transaction.bankName}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppText.body(context).copyWith(fontSize: 12),
+                            style: AppText.label(context).copyWith(
+                              fontSize: 10.5,
+                              color: AppColors.textSecondary(context),
+                            ),
                           ),
                         ),
+                        if (showDate) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              Formatters.date(transaction.date),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(context).copyWith(
+                                fontSize: 12,
+                                color: AppColors.textTertiary(context),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -154,35 +182,47 @@ class TransactionTile extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
 
               // Amount + payment pill
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
-                    style: AppText.amount(
-                      context,
-                      size: 16,
-                      color: amountColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: amountColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      transaction.paymentMethod,
-                      style: AppText.label(context).copyWith(
-                        fontSize: 10,
-                        color: amountColor,
-                        fontWeight: FontWeight.w700,
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Scale down rather than ellipsize: a long merchant must
+                    // never truncate the amount itself.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppText.amount(
+                          context,
+                          size: 16,
+                          color: amountColor,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: amountColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        transaction.paymentMethod,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(context).copyWith(
+                          fontSize: 10,
+                          color: amountColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

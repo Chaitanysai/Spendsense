@@ -34,7 +34,7 @@ class InsightsScreen extends StatelessWidget {
             AppSpacing.page,
             AppSpacing.md,
             AppSpacing.page,
-            AppSpacing.navClearance,
+            AppSpacing.fabClearance,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,26 +69,32 @@ class InsightsScreen extends StatelessWidget {
                       child: _statCard(
                         context,
                         title: 'Change',
-                        value: '${metrics.percentChange.toStringAsFixed(1)}%',
-                        subtitle: metrics.percentChange >= 0
-                            ? 'Up vs last month'
-                            : 'Down vs last month',
-                        gradient: metrics.percentChange >= 0
-                            ? AppColors.flameGradient
-                            : const LinearGradient(
-                                colors: [
-                                  Color(0xFF12B76A),
-                                  Color(0xFF0E9F6E),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        glowColor: metrics.percentChange >= 0
-                            ? null
-                            : const Color(0xFF12B76A),
-                        icon: metrics.percentChange >= 0
-                            ? Icons.trending_up_rounded
-                            : Icons.trending_down_rounded,
+                        // With no comparable previous month there is no delta to
+                        // report, so show a neutral placeholder rather than a
+                        // misleading "0.0% up".
+                        value: metrics.hasPreviousMonth
+                            ? '${metrics.percentChange.toStringAsFixed(1)}%'
+                            : '—',
+                        subtitle: !metrics.hasPreviousMonth
+                            ? 'No prior month data'
+                            : metrics.percentChange > 0
+                                ? 'Up vs last month'
+                                : metrics.percentChange < 0
+                                    ? 'Down vs last month'
+                                    : 'Same as last month',
+                        gradient: (!metrics.hasPreviousMonth ||
+                                metrics.percentChange >= 0)
+                            ? AppColors.electricGradient
+                            : AppColors.successGradient,
+                        glowColor: metrics.hasPreviousMonth &&
+                                metrics.percentChange < 0
+                            ? AppColors.incomeGreen
+                            : null,
+                        icon: !metrics.hasPreviousMonth
+                            ? Icons.timeline_rounded
+                            : metrics.percentChange >= 0
+                                ? Icons.trending_up_rounded
+                                : Icons.trending_down_rounded,
                       ),
                     ),
                     FadeSlideIn(
@@ -98,11 +104,11 @@ class InsightsScreen extends StatelessWidget {
                         value: metrics.topCategory,
                         subtitle: 'Highest spend this month',
                         gradient: const LinearGradient(
-                          colors: [AppColors.crimsonDeep, AppColors.crimson],
+                          colors: [AppColors.navyDeep, AppColors.brand],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        glowColor: AppColors.crimson,
+                        glowColor: AppColors.brand,
                         icon: Icons.auto_awesome_rounded,
                       ),
                     ),
@@ -110,7 +116,7 @@ class InsightsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              _buildCategoryBubbles(context, metrics),
+              FadeSlideIn(child: _buildCategoryBubbles(context, metrics)),
               const SizedBox(height: AppSpacing.lg),
               FadeSlideIn(child: _buildSmartTip(context, metrics)),
               const SizedBox(height: AppSpacing.lg),
@@ -163,6 +169,7 @@ class InsightsScreen extends StatelessWidget {
     return _InsightMetrics(
       currentTotal: currentTotal,
       percentChange: percentChange,
+      hasPreviousMonth: lastTotal > 0,
       topCategory: topCategory,
       totalCategories: currentTotal,
       categories: sortedCategories.take(6).toList(),
@@ -228,8 +235,13 @@ class InsightsScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Top categories', style: AppText.title(context)),
-              const Spacer(),
+              Expanded(
+                child: Text('Top categories',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.title(context)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Text('THIS MONTH', style: AppText.overline(context)),
             ],
           ),
@@ -526,7 +538,7 @@ class _AssistantChatScreenState extends State<_AssistantChatScreen> {
                     const SizedBox(width: AppSpacing.md),
                     Container(
                       decoration: BoxDecoration(
-                        gradient: AppColors.flameGradient,
+                        gradient: AppColors.electricGradient,
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: IconButton(
@@ -577,7 +589,7 @@ class _AssistantChatScreenState extends State<_AssistantChatScreen> {
   Widget _messageBubble(BuildContext context, _ChatEntry entry) {
     final isUser = entry.message.role == 'user';
     final bubbleColor =
-        isUser ? AppColors.crimson : AppColors.surfaceAlt(context);
+        isUser ? AppColors.brand : AppColors.surfaceAlt(context);
     final textColor = isUser ? Colors.white : AppColors.textPrimary(context);
 
     return Padding(
@@ -674,6 +686,7 @@ class _AssistantChatScreenState extends State<_AssistantChatScreen> {
 class _InsightMetrics {
   final double currentTotal;
   final double percentChange;
+  final bool hasPreviousMonth;
   final String topCategory;
   final double totalCategories;
   final List<MapEntry<String, double>> categories;
@@ -681,6 +694,7 @@ class _InsightMetrics {
   const _InsightMetrics({
     required this.currentTotal,
     required this.percentChange,
+    required this.hasPreviousMonth,
     required this.topCategory,
     required this.totalCategories,
     required this.categories,

@@ -165,16 +165,16 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: AppColors.crimson.withValues(alpha: 0.08),
+                      color: AppColors.brand.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                          color: AppColors.crimson.withValues(alpha: 0.25)),
+                          color: AppColors.brand.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.shield_outlined,
-                            color: AppColors.crimson, size: 20),
+                            color: AppColors.brand, size: 20),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
@@ -190,7 +190,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   Text(
                     'Provider Chain Order: Groq → Cerebras → Gemini → OpenRouter',
                     style: AppText.label(context).copyWith(
-                      color: AppColors.crimson,
+                      color: AppColors.brand,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

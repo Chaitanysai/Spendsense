@@ -5,14 +5,38 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider with ChangeNotifier {
+  /// Neutral placeholder shown when the user has not set a personal name. It is
+  /// never used as a greeting name.
+  static const String defaultName = 'SpendSense User';
+  static const String guestName = 'Guest';
+
   bool _isLoggedIn =
       true; // Default to logged in for SpendSense 2.0 offline-first
-  String _name = "SpendSense User";
+  String _name = defaultName;
   String _email = "user@spendsense.local";
   String? _profileImageBase64;
 
   bool get isLoggedIn => _isLoggedIn;
-  String get name => _name;
+
+  /// Profile name: the trimmed stored value, or [defaultName] when the user has
+  /// not set (or has cleared) a name.
+  String get name {
+    final trimmed = _name.trim();
+    return trimmed.isEmpty ? defaultName : trimmed;
+  }
+
+  /// Name suitable for a personalised greeting, or '' when no personal name is
+  /// set — letting callers omit the suffix instead of printing "User".
+  String get greetingName {
+    final trimmed = _name.trim();
+    if (trimmed.isEmpty ||
+        trimmed == defaultName ||
+        trimmed == guestName) {
+      return '';
+    }
+    return trimmed;
+  }
+
   String get email => _email;
   String? get profileImageBase64 => _profileImageBase64;
   bool get hasProfileImage =>
@@ -27,7 +51,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     _isLoggedIn = prefs.getBool('loggedIn') ?? true;
-    _name = prefs.getString('name') ?? "SpendSense User";
+    _name = prefs.getString('name') ?? defaultName;
     _email = prefs.getString('email') ?? "user@spendsense.local";
     _profileImageBase64 = prefs.getString('profileImageBase64');
     notifyListeners();
@@ -56,6 +80,16 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves the user's preferred display name. An empty value clears it back to
+  /// the neutral placeholder; the greeting then drops the name suffix.
+  Future<void> updateName(String value) async {
+    final trimmed = value.trim();
+    _name = trimmed;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('name', trimmed);
+    notifyListeners();
+  }
+
   Future<void> updateProfileImage(String? base64Image) async {
     final prefs = await SharedPreferences.getInstance();
     if (base64Image == null || base64Image.isEmpty) {
@@ -73,7 +107,7 @@ class AuthProvider with ChangeNotifier {
     await prefs.setBool('loggedIn', false);
 
     _isLoggedIn = false;
-    _name = "Guest";
+    _name = guestName;
     _email = "";
     _profileImageBase64 = null;
 

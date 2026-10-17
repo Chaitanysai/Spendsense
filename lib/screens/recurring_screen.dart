@@ -24,7 +24,9 @@ class RecurringScreen extends StatelessWidget {
     final others = recurring.where((r) => !subscriptions.contains(r)).toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Opaque themed background: this screen is pushed as an opaque route, so a
+      // transparent scaffold would expose an unpainted/blank surface behind it.
+      backgroundColor: AppColors.scaffold(context),
       body: SafeArea(
         bottom: false,
         child: ListView(
@@ -32,7 +34,10 @@ class RecurringScreen extends StatelessWidget {
             AppSpacing.page,
             AppSpacing.md,
             AppSpacing.page,
-            AppSpacing.navClearance,
+            // Pushed route: the shell's nav bar and Add button are not on screen
+            // here, so this matches the other pushed routes instead of reserving
+            // a phantom 108px nav gap.
+            AppSpacing.xxl,
           ),
           children: [
             Text('Recurring', style: AppText.h1(context)),
@@ -165,7 +170,7 @@ class _SubscriptionCard extends StatelessWidget {
                 children: [
                   Text('₹${sub.averageAmount.toStringAsFixed(0)}',
                       style: AppText.amount(context,
-                          size: 18, color: AppColors.crimson)),
+                          size: 18, color: AppColors.brand)),
                   const SizedBox(height: 2),
                   Text('${sub.occurrenceCount} payments',
                       style: AppText.body(context).copyWith(fontSize: 11)),

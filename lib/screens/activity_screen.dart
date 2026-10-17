@@ -10,6 +10,8 @@ import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_states.dart';
+import '../widgets/pressable.dart';
+import '../widgets/sms_import_prompt.dart';
 
 // ─── Date filter presets ───────────────────────────────────────────────────
 enum _DatePreset { today, thisWeek, thisMonth, last3Months, custom }
@@ -113,19 +115,21 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       Text('Activity', style: AppText.h1(context)),
                       const Spacer(),
                       if (hasFilters)
-                        GestureDetector(
+                        Pressable(
                           onTap: _clearFilters,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.pill),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                                horizontal: 14, vertical: 9),
                             decoration: BoxDecoration(
-                              color: AppColors.crimson.withValues(alpha: 0.12),
+                              color: AppColors.brand.withValues(alpha: 0.12),
                               borderRadius:
                                   BorderRadius.circular(AppRadius.pill),
                             ),
                             child: Text('Clear',
                                 style: AppText.label(context).copyWith(
-                                    color: AppColors.crimson,
+                                    color: AppColors.brand,
                                     fontWeight: FontWeight.w700)),
                           ),
                         ),
@@ -247,13 +251,29 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       child: SkeletonList(count: 5),
                     )
                   : displayList.isEmpty
-                      ? AppEmptyState(
-                          icon: Icons.search_off_rounded,
-                          title: 'No transactions found',
-                          message: 'Try adjusting your search or filters.',
-                          actionLabel: hasFilters ? 'Clear all filters' : null,
-                          onAction: hasFilters ? _clearFilters : null,
-                        )
+                      ? (hasFilters
+                          ? AppEmptyState(
+                              icon: Icons.search_off_rounded,
+                              title: 'No transactions found',
+                              message: 'Try adjusting your search or filters.',
+                              actionLabel: 'Clear all filters',
+                              onAction: _clearFilters,
+                            )
+                          : provider.hasSmsScanStartDate
+                              ? const AppEmptyState(
+                                  icon: Icons.receipt_long_rounded,
+                                  title: 'Nothing here yet',
+                                  message:
+                                      'No transactions were found after your selected SMS start date.',
+                                )
+                              : AppEmptyState(
+                                  icon: Icons.sms_rounded,
+                                  title: 'No transactions yet',
+                                  message:
+                                      'Pick an SMS start date and SpendSense will build your transactions automatically.',
+                                  actionLabel: 'Choose start date',
+                                  onAction: () => SmsImportPrompt.show(context),
+                                ))
                       : AppRefreshIndicator(
                           onRefresh: () => Provider.of<TransactionProvider>(
                                   context,
@@ -264,7 +284,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                               AppSpacing.page,
                               0,
                               AppSpacing.page,
-                              AppSpacing.navClearance,
+                              AppSpacing.fabClearance,
                             ),
                             itemCount: displayList.length,
                             itemBuilder: (context, index) {
@@ -287,7 +307,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                   if (showHeader)
                                     _sectionHeader(DateFormat('EEE, d MMM')
                                         .format(tx.date)),
-                                  TransactionTile(transaction: tx),
+                                  TransactionTile(
+                                    transaction: tx,
+                                    showDate: false,
+                                  ),
                                 ],
                               );
                             },
@@ -309,6 +332,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           t.merchant.toLowerCase().contains(query) ||
           t.category.toLowerCase().contains(query) ||
           t.paymentMethod.toLowerCase().contains(query) ||
+          t.bankName.toLowerCase().contains(query) ||
           t.amount.toString().contains(query);
 
       final matchesCategory =
@@ -370,19 +394,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
     required VoidCallback onTap,
     IconData? trailing,
   }) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
       child: AnimatedContainer(
         duration: AppMotion.respect(context, AppMotion.fast),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: active
-              ? AppColors.crimson.withValues(alpha: 0.14)
+              ? AppColors.brand.withValues(alpha: 0.14)
               : AppColors.surfaceColor(context),
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
             color: active
-                ? AppColors.crimson.withValues(alpha: 0.4)
+                ? AppColors.brand.withValues(alpha: 0.4)
                 : AppColors.border(context),
           ),
         ),
@@ -391,16 +416,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Icon(icon,
                 size: 15,
                 color: active
-                    ? AppColors.crimson
+                    ? AppColors.brand
                     : AppColors.textSecondary(context)),
             const SizedBox(width: 6),
             Text(
               label,
               style: AppText.label(context).copyWith(
                 fontSize: 12,
-                color: active
-                    ? AppColors.crimson
-                    : AppColors.textSecondary(context),
+                color:
+                    active ? AppColors.brand : AppColors.textSecondary(context),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -409,7 +433,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               Icon(trailing,
                   size: 15,
                   color: active
-                      ? AppColors.crimson
+                      ? AppColors.brand
                       : AppColors.textSecondary(context)),
             ],
           ],
@@ -479,7 +503,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
       builder: (ctx) {
-        return Padding(
+        // Scrollable so every preset stays reachable even when the clear
+        // action is appended and the sheet is height-capped.
+        return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
           child: Column(
@@ -551,7 +577,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: ColorScheme.light(
-            primary: AppColors.crimson,
+            primary: AppColors.brand,
             onPrimary: Colors.white,
             surface: Colors.white,
           ),
@@ -576,7 +602,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       shape: const RoundedRectangleBorder(
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
-      builder: (ctx) => Padding(
+      builder: (ctx) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
         child: Column(
@@ -672,7 +698,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     Color? iconColor,
     bool danger = false,
   }) {
-    final color = danger ? AppColors.danger : (iconColor ?? AppColors.crimson);
+    final color = danger ? AppColors.danger : (iconColor ?? AppColors.brand);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Container(
@@ -726,28 +752,36 @@ class _ActivityScreenState extends State<ActivityScreen> {
   // ─── SMALL WIDGETS ───────────────────────────────────────────────────────
 
   Widget _activeBadge(IconData icon, String label, VoidCallback onRemove) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.crimson),
-          const SizedBox(width: 6),
-          Text(label,
-              style: AppText.label(context).copyWith(
-                  fontSize: 12, color: AppColors.textPrimary(context))),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: onRemove,
-            child: Icon(Icons.close_rounded,
-                size: 14, color: AppColors.textTertiary(context)),
+    // The whole chip removes the filter: the close icon alone was a ~23px
+    // target, far under the 48dp guideline, and it carried no semantics.
+    return Pressable(
+      onTap: onRemove,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Semantics(
+        button: true,
+        label: 'Remove $label filter',
+        excludeSemantics: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceColor(context),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: AppColors.border(context)),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: AppColors.brand),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: AppText.label(context).copyWith(
+                      fontSize: 12, color: AppColors.textPrimary(context))),
+              const SizedBox(width: 6),
+              Icon(Icons.close_rounded,
+                  size: 15, color: AppColors.textTertiary(context)),
+            ],
+          ),
+        ),
       ),
     );
   }

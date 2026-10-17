@@ -46,6 +46,10 @@ android/app/google-services.json
 android/build/
 release/*.apk
 
+# Local agent/IDE session state (never publish)
+.omo/
+.opencode/
+
 # SECRETS
 .env
 *.jks

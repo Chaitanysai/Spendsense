@@ -29,9 +29,17 @@ class SectionHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(title, style: AppText.h2(context)),
-          const Spacer(),
-          if ((actionLabel != null || actionIcon != null) && onAction != null)
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.h2(context),
+            ),
+          ),
+          if ((actionLabel != null || actionIcon != null) &&
+              onAction != null) ...[
+            const SizedBox(width: AppSpacing.sm),
             Pressable(
               onTap: onAction,
               child: Row(
@@ -41,18 +49,19 @@ class SectionHeader extends StatelessWidget {
                     Text(
                       actionLabel!,
                       style: AppText.label(context).copyWith(
-                        color: AppColors.crimson,
+                        color: AppColors.brand,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   if (actionIcon != null) ...[
                     if (actionLabel != null)
                       const SizedBox(width: AppSpacing.xs),
-                    Icon(actionIcon, size: 16, color: AppColors.crimson),
+                    Icon(actionIcon, size: 16, color: AppColors.brand),
                   ],
                 ],
               ),
             ),
+          ],
         ],
       ),
     );

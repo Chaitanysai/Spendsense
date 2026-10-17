@@ -14,8 +14,11 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/profile_avatar.dart';
+import '../widgets/app_page_route.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../utils/formatters.dart';
 import 'ai_settings_screen.dart';
+import 'recurring_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -80,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             AppSpacing.page,
             AppSpacing.md,
             AppSpacing.page,
-            AppSpacing.navClearance,
+            AppSpacing.fabClearance,
           ),
           children: [
             Text('Settings', style: AppText.h1(context)),
@@ -126,13 +129,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('Personalisation'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: AppColors.brand,
+                  title: 'Your name',
+                  subtitle: auth.greetingName.isEmpty
+                      ? 'Not set — used in your Home greeting'
+                      : 'Greeting you as ${auth.name}',
+                  onTap: () => _editName(context, auth),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
             _sectionLabel('Preferences'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
               children: [
                 _SettingsTile(
                   icon: Icons.photo_camera_back_rounded,
-                  iconColor: AppColors.crimson,
+                  iconColor: AppColors.brand,
                   title: 'Profile photo',
                   subtitle: auth.hasProfileImage
                       ? 'Change your profile image'
@@ -142,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _divider(context),
                 _SettingsTile(
                   icon: Icons.sms_rounded,
-                  iconColor: AppColors.orange,
+                  iconColor: AppColors.cyan,
                   title: 'SMS start date',
                   subtitle: 'Checking messages from $scanLabel',
                   onTap: () => SmsImportPrompt.show(context),
@@ -150,14 +170,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _divider(context),
                 _SettingsTile(
                   icon: Icons.palette_outlined,
-                  iconColor: AppColors.vermilion,
+                  iconColor: AppColors.azure,
                   title: 'Dark mode',
                   subtitle: theme.isDarkMode ? 'On' : 'Off',
                   onTap: theme.toggle,
                   trailing: Switch.adaptive(
                     value: theme.isDarkMode,
                     onChanged: theme.setDarkMode,
-                    activeThumbColor: AppColors.crimson,
+                    activeThumbColor: AppColors.brand,
                   ),
                   showArrow: false,
                 ),
@@ -170,9 +190,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const AISettingsScreen(),
-                      ),
+                      AppPageRoute(builder: (_) => const AISettingsScreen()),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.savings_rounded,
+                  iconColor: AppColors.incomeGreen,
+                  title: 'Monthly budget',
+                  subtitle: transactions.monthlyBudget > 0
+                      ? '${Formatters.currency.format(transactions.monthlyBudget)} per cycle'
+                      : 'Not set — the dashboard gauge needs one',
+                  onTap: () => _editBudget(context, transactions),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.repeat_rounded,
+                  iconColor: AppColors.brandBright,
+                  title: 'Recurring expenses',
+                  subtitle: 'Review repeat payments detected from your SMS',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const RecurringScreen()),
                     );
                   },
                 ),
@@ -197,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _divider(context),
                 _SettingsTile(
                   icon: Icons.cloud_outlined,
-                  iconColor: AppColors.crimson,
+                  iconColor: AppColors.brand,
                   title: 'AI services',
                   subtitle: 'Groq & Gemini fallback configured',
                   onTap: null,
@@ -212,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _SettingsTile(
                   icon: Icons.upload_file_rounded,
-                  iconColor: AppColors.crimson,
+                  iconColor: AppColors.brand,
                   title: 'Export JSON backup',
                   subtitle: 'Save all transactions to backup JSON',
                   onTap: () => _exportBackup(context, transactions),
@@ -243,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: const [
                 _SettingsTile(
                   icon: Icons.info_outline_rounded,
-                  iconColor: Color(0xFF8A7A77),
+                  iconColor: Color(0xFF8FA3C4),
                   title: 'App version',
                   subtitle: '2.0.0 (Local-First)',
                   onTap: null,
@@ -269,6 +310,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: AppColors.border(context),
       );
 
+  Future<void> _editName(BuildContext context, AuthProvider auth) async {
+    final controller = TextEditingController(text: auth.greetingName);
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Your name', style: AppText.title(context)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Chaitanya',
+            helperText: 'Shown in your Home greeting. Leave blank to remove it.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (saved == null || !context.mounted) return;
+    await auth.updateName(saved);
+  }
+
+  Future<void> _editBudget(
+      BuildContext context, TransactionProvider provider) async {
+    final controller = TextEditingController(
+      text: provider.monthlyBudget > 0
+          ? provider.monthlyBudget.toStringAsFixed(0)
+          : '',
+    );
+    final saved = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Monthly budget', style: AppText.title(context)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          ],
+          decoration: const InputDecoration(
+            hintText: 'e.g. 25000',
+            helperText: 'Used for the dashboard budget gauge.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, int.tryParse(controller.text.trim())),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (saved == null || !context.mounted) return;
+    if (saved <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a budget greater than zero')),
+      );
+      return;
+    }
+    await provider.setMonthlyBudget(saved.toDouble());
+  }
+
   Future<void> _exportBackup(
       BuildContext context, TransactionProvider provider) async {
     final jsonStr = await provider.exportToJson();
@@ -276,7 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Export JSON backup'),
+        title: Text('Export JSON backup', style: AppText.title(ctx)),
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
@@ -328,7 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Import JSON backup'),
+        title: Text('Import JSON backup', style: AppText.title(ctx)),
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
@@ -356,13 +478,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final text = controller.text.trim();
               Navigator.pop(ctx);
               if (text.isEmpty) return;
-              final count = await provider.importFromJson(text);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content:
-                        Text('Successfully imported $count transactions!')),
-              );
+              try {
+                final count = await provider.importFromJson(text);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('Successfully imported $count transactions!')),
+                );
+              } catch (_) {
+                // A malformed backup must fail loudly instead of throwing an
+                // uncaught error and leaving the user with no feedback.
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Import failed — the backup JSON could not be read.'),
+                  ),
+                );
+              }
             },
             child: const Text('Restore'),
           ),
@@ -375,7 +509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear database?'),
+        title: Text('Clear database?', style: AppText.title(ctx)),
         content: const Text(
           'This will remove all locally stored transactions. Your SMS inbox is unaffected.',
         ),
@@ -423,6 +557,7 @@ class _SettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
         borderRadius: BorderRadius.circular(AppRadius.lg),

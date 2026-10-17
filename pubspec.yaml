@@ -26,6 +26,7 @@ dependencies:
   connectivity_plus: ^5.0.2
   flutter_local_notifications: ^18.0.0
   image_picker: ^1.1.2
+  reactive_forms: ^17.0.0
 
   # 🔑 API key management
   flutter_dotenv: ^5.1.0

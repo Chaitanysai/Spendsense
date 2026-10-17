@@ -25,6 +25,7 @@ class TransactionDetailsScreen extends StatefulWidget {
 class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   late final TextEditingController _merchantController;
   late final TextEditingController _amountController;
+  late final TextEditingController _bankController;
   late String _category;
   late TransactionType _type;
   late bool _isExcluded;
@@ -50,6 +51,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
         TextEditingController(text: widget.transaction.merchant);
     _amountController =
         TextEditingController(text: widget.transaction.amount.toString());
+    _bankController = TextEditingController(
+      text: widget.transaction.bank?.trim() ?? '',
+    );
     _category = _normalizedCategory(widget.transaction.category);
     _type = widget.transaction.type;
     _isExcluded = widget.transaction.isExcluded;
@@ -61,6 +65,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   void dispose() {
     _merchantController.dispose();
     _amountController.dispose();
+    _bankController.dispose();
     super.dispose();
   }
 
@@ -150,6 +155,16 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                             setState(() => _category = value);
                           }
                         },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      TextField(
+                        controller: _bankController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Bank',
+                          prefixIcon: Icon(Icons.account_balance_rounded),
+                          helperText: 'Leave blank if unknown',
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       Container(
@@ -329,6 +344,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
           category: _category,
           type: _type,
           isExcluded: _isExcluded,
+          // Empty string clears the bank; the model then renders 'Others'.
+          bank: _bankController.text.trim(),
         );
     if (!mounted) return;
     Navigator.of(context).pop();

@@ -73,6 +73,18 @@ class PeriodProvider with ChangeNotifier {
     return salaryAlignedPeriod(months: 1);
   }
 
+  /// The salary-aligned window immediately before [currentPeriod], used for the
+  /// dashboard's cycle-over-cycle delta. Null in custom mode, where the user's
+  /// arbitrary window has no well-defined predecessor.
+  DateTimeRange? get previousPeriod {
+    if (_mode == PeriodMode.custom) return null;
+    final current = currentPeriod;
+    return salaryAlignedPeriod(
+      months: 1,
+      now: current.start.subtract(const Duration(days: 1)),
+    );
+  }
+
   // ── Human-readable label for the chip ────────────────────────────────────
 
   String get periodLabel {

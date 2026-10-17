@@ -4,7 +4,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import 'pressable.dart';
 
-/// Rich gradient card (the reference's "premium red-to-orange" hero surface):
+/// Rich gradient card (the reference's navy-to-electric-blue hero surface):
 /// layered gradient, diagonal sheen, soft coloured glow shadow, and optional
 /// press feedback. Text inside should use [AppText.onGradient].
 class GradientHeroCard extends StatelessWidget {
@@ -39,8 +39,7 @@ class GradientHeroCard extends StatelessWidget {
         boxShadow: glow
             ? [
                 BoxShadow(
-                  color:
-                      (glowColor ?? AppColors.crimson).withValues(alpha: 0.32),
+                  color: (glowColor ?? AppColors.brand).withValues(alpha: 0.32),
                   blurRadius: 26,
                   offset: const Offset(0, 14),
                 ),

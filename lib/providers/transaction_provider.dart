@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction_model.dart';
+import '../utils/bank_recognizer.dart';
 import '../services/sms_service.dart';
 import '../services/smart_parser.dart';
 import '../services/gemini_service.dart';
@@ -23,6 +24,15 @@ class TransactionProvider with ChangeNotifier {
   late final Future<void> _initialization;
 
   List<TransactionModel> get transactions => _transactions;
+
+  /// Replaces the in-memory list without touching the database or SMS pipeline,
+  /// so aggregation behaviour can be tested without platform plugins.
+  @visibleForTesting
+  void debugSeed(List<TransactionModel> seed) {
+    _transactions = List.of(seed);
+    notifyListeners();
+  }
+
   bool get isSyncing => _isSyncing;
   bool get isLoadingCache => _isLoadingCache;
   DateTime? get lastSynced => _lastSynced;
@@ -105,8 +115,7 @@ class TransactionProvider with ChangeNotifier {
 
   bool _isLocalMonth(DateTime value, DateTime day) {
     final local = _localDate(value);
-    return local.year == day.year &&
-        local.month == day.month;
+    return local.year == day.year && local.month == day.month;
   }
 
   double totalExpensesForPeriod(DateTimeRange? period) =>
@@ -148,6 +157,33 @@ class TransactionProvider with ChangeNotifier {
     }
     if (totals.isEmpty) return 'None';
     return totals.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+  }
+
+  /// Roll-up of tracked transactions by a payment attribute — method, bank or
+  /// account. Kept here so the grouping rule (excluded transactions never
+  /// count, a blank attribute means "Other") has a single owner.
+  Map<String, InstrumentStat> statsBy(
+      String? Function(TransactionModel transaction) keyOf) {
+    final stats = <String, InstrumentStat>{};
+    for (final t in trackedTransactions) {
+      final raw = keyOf(t)?.trim();
+      // Null, blank and the literal unknown label (case-insensitive) all share
+      // the existing 'Other' bucket, so a stored "Others" never splits off.
+      final key = (raw == null ||
+              raw.isEmpty ||
+              raw.toLowerCase() ==
+                  TransactionModel.unknownBankLabel.toLowerCase())
+          ? 'Other'
+          : raw;
+      final stat = stats.putIfAbsent(key, InstrumentStat.new);
+      stat.count++;
+      if (t.type == TransactionType.income) {
+        stat.received += t.amount;
+      } else {
+        stat.spent += t.amount;
+      }
+    }
+    return stats;
   }
 
   Future<void> syncFromSms() async {
@@ -207,7 +243,9 @@ class TransactionProvider with ChangeNotifier {
         } else if (localResult != null) {
           final aiResult = await aiParser.parseSms(msg.body, msg.id, msg.date);
           if (aiResult != null && aiResult.type == TransactionType.expense) {
-            finalResult = aiResult;
+            // The AI path may not return a bank; keep the locally detected one
+            // rather than silently dropping it.
+            finalResult = _preferBank(aiResult, localResult);
           } else {
             finalResult = localResult.copyWith(needsReview: true);
           }
@@ -247,9 +285,19 @@ class TransactionProvider with ChangeNotifier {
 
   Future<void> forceFullResync() async {
     await _initialization;
+    // A rescan can only rebuild transactions that came from SMS. Manually added
+    // entries have no source message to re-parse, so keep them rather than
+    // destroying user data when the scan date is changed.
+    final manual = _transactions
+        .where((t) => t.source == 'Manual')
+        .toList(growable: false);
     await _cache.clearAll();
     _transactions.clear();
     _lastSynced = null;
+    if (manual.isNotEmpty) {
+      _transactions.addAll(manual);
+      await _cache.putAll(manual);
+    }
     notifyListeners();
     await syncFromSms();
   }
@@ -286,6 +334,7 @@ class TransactionProvider with ChangeNotifier {
     required String category,
     required TransactionType type,
     required bool isExcluded,
+    String? bank,
   }) async {
     await _initialization;
     final index = _transactions.indexWhere((t) => t.id == id);
@@ -298,6 +347,9 @@ class TransactionProvider with ChangeNotifier {
       type: type,
       isExcluded: isExcluded,
       needsReview: false,
+      // A supplied value (including an empty string, which clears the bank)
+      // wins; omitting it preserves whatever was already stored.
+      bank: bank,
     );
     await _cache.put(_transactions[index]);
     notifyListeners();
@@ -309,6 +361,20 @@ class TransactionProvider with ChangeNotifier {
     _transactions.sort((a, b) => b.date.compareTo(a.date));
     await _cache.put(transaction);
     notifyListeners();
+  }
+
+  /// Deterministic bank merge: a known bank is never replaced by an unknown one.
+  /// Used where a later parsing path (AI) may lack the bank the local parser
+  /// already found.
+  TransactionModel _preferBank(
+    TransactionModel primary,
+    TransactionModel fallback,
+  ) {
+    if (BankRecognizer.isKnown(primary.bank)) return primary;
+    if (BankRecognizer.isKnown(fallback.bank)) {
+      return primary.copyWith(bank: fallback.bank);
+    }
+    return primary;
   }
 
   Future<void> clearAll() async {
@@ -340,4 +406,11 @@ class TransactionProvider with ChangeNotifier {
   // Aliases for SettingsScreen compatibility
   Future<String> exportToJson() => exportBackupJson();
   Future<int> importFromJson(String jsonString) => importBackupJson(jsonString);
+}
+
+/// Mutable accumulator produced by [TransactionProvider.statsBy].
+class InstrumentStat {
+  double spent = 0;
+  double received = 0;
+  int count = 0;
 }

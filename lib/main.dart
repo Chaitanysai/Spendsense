@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -14,7 +13,7 @@ import 'screens/activity_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/add_transaction_screen.dart';
 import 'screens/insights_screen.dart';
-import 'screens/recurring_screen.dart';
+import 'screens/cards_screen.dart';
 
 import 'utils/app_colors.dart';
 import 'utils/app_spacing.dart';
@@ -71,17 +70,17 @@ class SpendSenseApp extends StatelessWidget {
     );
 
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.crimson,
+      seedColor: AppColors.brand,
       brightness: brightness,
     ).copyWith(
-      primary: AppColors.crimson,
+      primary: AppColors.brand,
       onPrimary: Colors.white,
-      secondary: AppColors.orange,
+      secondary: AppColors.cyan,
       onSecondary: Colors.white,
       error: AppColors.danger,
       onError: Colors.white,
       surface: isDark ? AppColors.darkSurface : Colors.white,
-      onSurface: isDark ? const Color(0xFFF7F0EE) : const Color(0xFF1A1113),
+      onSurface: isDark ? const Color(0xFFEAF1FF) : const Color(0xFF0A1734),
     );
 
     final fieldBorder = OutlineInputBorder(
@@ -99,9 +98,9 @@ class SpendSenseApp extends StatelessWidget {
       ),
       scaffoldBackgroundColor:
           isDark ? AppColors.darkBackground : AppColors.background,
-      primaryColor: AppColors.crimson,
-      splashColor: AppColors.crimson.withValues(alpha: 0.08),
-      highlightColor: AppColors.crimson.withValues(alpha: 0.04),
+      primaryColor: AppColors.brand,
+      splashColor: AppColors.brand.withValues(alpha: 0.08),
+      highlightColor: AppColors.brand.withValues(alpha: 0.04),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -129,7 +128,7 @@ class SpendSenseApp extends StatelessWidget {
         filled: true,
         fillColor: isDark ? AppColors.darkSurfaceAlt : Colors.white,
         hintStyle: TextStyle(
-          color: isDark ? const Color(0xFF8A7A77) : const Color(0xFFA89693),
+          color: isDark ? const Color(0xFF74879F) : const Color(0xFF8391AC),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
@@ -138,12 +137,12 @@ class SpendSenseApp extends StatelessWidget {
         border: fieldBorder,
         enabledBorder: fieldBorder,
         focusedBorder: fieldBorder.copyWith(
-          borderSide: const BorderSide(color: AppColors.crimson, width: 1.6),
+          borderSide: const BorderSide(color: AppColors.brand, width: 1.6),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.crimson,
+          backgroundColor: AppColors.brand,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -152,11 +151,11 @@ class SpendSenseApp extends StatelessWidget {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.crimson),
+        style: TextButton.styleFrom(foregroundColor: AppColors.brand),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.crimson,
+          backgroundColor: AppColors.brand,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -165,11 +164,11 @@ class SpendSenseApp extends StatelessWidget {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
           (states) =>
-              states.contains(WidgetState.selected) ? AppColors.crimson : null,
+              states.contains(WidgetState.selected) ? AppColors.brand : null,
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? AppColors.crimson.withValues(alpha: 0.4)
+              ? AppColors.brand.withValues(alpha: 0.4)
               : AppColors.borderDarkOrLight(isDark),
         ),
       ),
@@ -190,7 +189,7 @@ class SpendSenseApp extends StatelessWidget {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor:
-            isDark ? AppColors.darkSurfaceAlt : const Color(0xFF1A1113),
+            isDark ? AppColors.darkSurfaceAlt : const Color(0xFF0A1734),
         contentTextStyle: const TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -211,14 +210,11 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
-  static const _actionIndex = 3;
-
   static const List<NavItem> _navItems = [
     NavItem(Icons.home_rounded, 'HOME'),
     NavItem(Icons.receipt_long_rounded, 'ACTIVITY'),
     NavItem(Icons.insights_rounded, 'INSIGHTS'),
-    NavItem(Icons.add_rounded, 'ADD'),
-    NavItem(Icons.repeat_rounded, 'RECURRING'),
+    NavItem(Icons.credit_card_rounded, 'CARDS'),
     NavItem(Icons.settings_rounded, 'SETTINGS'),
   ];
 
@@ -226,21 +222,20 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     HomeScreen(),
     ActivityScreen(),
     InsightsScreen(),
-    SizedBox.shrink(), // centre action is a pushed route, not a tab
-    RecurringScreen(),
+    CardsScreen(),
     SettingsScreen(),
   ];
 
   void _onTap(int index) {
-    if (index == _actionIndex) {
-      Navigator.of(context).push(
-        AppPageRoute(builder: (_) => const AddTransactionScreen()),
-      );
-      return;
-    }
     if (index != _currentIndex) {
       setState(() => _currentIndex = index);
     }
+  }
+
+  void _openAddTransaction() {
+    Navigator.of(context).push(
+      AppPageRoute(builder: (_) => const AddTransactionScreen()),
+    );
   }
 
   @override
@@ -254,10 +249,39 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           children: _screens,
         ),
       ),
+      // End-floated rather than centre-floated: with five destinations the
+      // centre slot is Insights and a centred button would cover its label.
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openAddTransaction,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        highlightElevation: 0,
+        tooltip: 'Add transaction',
+        child: Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            gradient: AppColors.electricGradient,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brandBright.withValues(alpha: 0.42),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: FloatingNavBar(
         items: _navItems,
         currentIndex: _currentIndex,
-        actionIndex: _actionIndex,
         onTap: _onTap,
       ),
     );

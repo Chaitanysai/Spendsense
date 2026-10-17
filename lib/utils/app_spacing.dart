@@ -17,6 +17,11 @@ class AppSpacing {
 
   /// Bottom gutter that clears the floating navigation bar.
   static const double navClearance = 108;
+
+  /// Bottom gutter that clears both the floating navigation bar *and* the
+  /// end-floated Add button stacked above it. Every tab that scrolls to the
+  /// bottom must use this so the last row is never hidden behind the FAB.
+  static const double fabClearance = navClearance + 56;
 }
 
 /// Corner radii.

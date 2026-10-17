@@ -32,7 +32,7 @@ class AppLogo extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 // FIX: replaced withOpacity() with withValues(alpha:)
-                color: AppColors.primaryPurple.withValues(alpha: 0.28),
+                color: AppColors.brand.withValues(alpha: 0.28),
                 blurRadius: 14,
                 offset: const Offset(0, 8),
               ),

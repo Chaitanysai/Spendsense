@@ -21,7 +21,7 @@ class ProfileAvatar extends StatelessWidget {
     final hasImage = imageBytes != null && imageBytes!.isNotEmpty;
     return CircleAvatar(
       radius: radius,
-      backgroundColor: AppColors.crimson,
+      backgroundColor: AppColors.brand,
       backgroundImage: hasImage ? MemoryImage(imageBytes!) : null,
       child: hasImage
           ? null

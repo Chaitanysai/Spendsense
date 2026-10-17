@@ -25,7 +25,7 @@ class AppBackground extends StatelessWidget {
               top: -120,
               left: -90,
               child: _Glow(
-                color: AppColors.crimson,
+                color: AppColors.brand,
                 size: 340,
                 opacity: glow,
               ),
@@ -34,7 +34,7 @@ class AppBackground extends StatelessWidget {
               top: 180,
               right: -120,
               child: _Glow(
-                color: AppColors.orange,
+                color: AppColors.cyan,
                 size: 300,
                 opacity: glow * 0.85,
               ),

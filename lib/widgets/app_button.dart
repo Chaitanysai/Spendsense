@@ -39,12 +39,12 @@ class AppPrimaryButton extends StatelessWidget {
           width: expand ? double.infinity : null,
           height: 54,
           decoration: BoxDecoration(
-            gradient: gradient ?? AppColors.flameGradient,
+            gradient: gradient ?? AppColors.electricGradient,
             borderRadius: borderRadius,
             boxShadow: enabled
                 ? [
                     BoxShadow(
-                      color: AppColors.vermilion.withValues(alpha: 0.35),
+                      color: AppColors.azure.withValues(alpha: 0.35),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -113,10 +113,10 @@ class AppGhostButton extends StatelessWidget {
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: AppColors.crimson.withValues(alpha: 0.10),
+          color: AppColors.brand.withValues(alpha: 0.10),
           borderRadius: borderRadius,
           border: Border.all(
-            color: AppColors.crimson.withValues(alpha: 0.20),
+            color: AppColors.brand.withValues(alpha: 0.20),
           ),
         ),
         child: Material(
@@ -129,13 +129,13 @@ class AppGhostButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, color: AppColors.crimson, size: 18),
+                    Icon(icon, color: AppColors.brand, size: 18),
                     const SizedBox(width: AppSpacing.sm),
                   ],
                   Text(
                     label,
                     style: AppText.label(context).copyWith(
-                      color: AppColors.crimson,
+                      color: AppColors.brand,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -71,8 +71,9 @@ class AIService {
         .where((t) => t.date.month == now.month && t.date.year == now.year)
         .toList();
 
-    if (thisMonthTxs.isEmpty)
+    if (thisMonthTxs.isEmpty) {
       return "No expenses recorded this month to calculate an average.";
+    }
 
     double total = thisMonthTxs.fold(0.0, (sum, t) => sum + t.amount);
 

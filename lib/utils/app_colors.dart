@@ -1,104 +1,102 @@
 import 'package:flutter/material.dart';
 
-/// SpendSense design tokens — premium crimson → vermilion → warm-orange.
+/// SpendSense design tokens — deep navy → rich blue → electric cyan.
 ///
-/// Light-first, with an adapted dark scheme. Legacy names (primaryPurple,
-/// primaryPink, primaryTeal, accentBlue…) are retained and re-pointed at the
-/// new ramp so existing widgets keep compiling while screens migrate.
+/// The brand ramp is deliberately cool and low-saturation at the base so the
+/// hero gradient reads as "premium finance", with cyan reserved for selective
+/// highlights. A single warm accent (amber) is kept for money/salary cues,
+/// because an all-blue palette gives the eye nothing to prioritise against.
 class AppColors {
   AppColors._();
 
   // ── Brand ramp ─────────────────────────────────────────────────────────────
-  static const Color crimsonDeep = Color(0xFF7A0F2B);
-  static const Color crimson = Color(0xFFC81E3A); // primary
-  static const Color crimsonBright = Color(0xFFE23A2E); // expense / mid stop
-  static const Color vermilion = Color(0xFFF0432B); // CTA / mid stop
-  static const Color orange = Color(0xFFFF7A1A); // gradient end / highlight
-  static const Color amber = Color(0xFFFFB020); // restrained highlight
+  static const Color navyDeep = Color(0xFF071638); // deepest navy
+  static const Color brand = Color(0xFF1B44C8); // primary
+  static const Color brandBright = Color(0xFF2F6BFF); // electric blue
+  static const Color azure = Color(0xFF4C9BFF); // CTA / mid stop
+  static const Color cyan = Color(0xFF22D3EE); // selective highlight
+  static const Color blueDeep = Color(0xFF0E2E86); // gradient end
 
-  /// Deeper burnt-orange used as the *end* of white-text gradients so small
-  /// labels keep readable contrast (white on bright #FF7A1A fails WCAG AA).
-  static const Color orangeDeep = Color(0xFFC94A12);
+  /// Warm accent for salary, wallet and budget cues. Kept intentionally outside
+  /// the cool ramp so it reads as a highlight, not a fourth brand colour.
+  static const Color amber = Color(0xFFFFB020);
 
-  // ── Legacy aliases (re-pointed to the new ramp) ─────────────────────────────
-  static const Color primaryPurple = crimson;
-  static const Color primaryPink = vermilion;
-  static const Color primaryTeal = orange;
-  static const Color accentTeal = orange;
-  static const Color accentBlue = crimson;
-  static const Color primaryGreen = incomeGreen;
-  static const Color accentOrange = orange;
-
-  // ── Semantic ────────────────────────────────────────────────────────────────
-  static const Color expenseRed = crimsonBright;
+  // ── Semantic ───────────────────────────────────────────────────────────────
+  static const Color expenseRed = Color(0xFFF0577B);
   static const Color incomeGreen = Color(0xFF12B76A);
   static const Color danger = Color(0xFFDC2626);
 
   // ── Gradients ────────────────────────────────────────────────────────────────
   /// Rich hero gradient used on balance cards, CTAs and the app logo.
   static const LinearGradient brandGradient = LinearGradient(
-    colors: [crimson, crimsonBright, orangeDeep],
+    colors: [brand, brandBright, blueDeep],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    stops: [0.0, 0.62, 1.0],
+    stops: [0.0, 0.48, 1.0],
   );
 
   /// Alias with an explicit, semantic name for the hero treatment.
   static const LinearGradient heroGradient = brandGradient;
 
-  /// Warm flame gradient for primary buttons.
-  static const LinearGradient flameGradient = LinearGradient(
-    colors: [crimsonBright, orangeDeep],
+  /// Cool electric gradient for primary buttons and the nav action.
+  static const LinearGradient electricGradient = LinearGradient(
+    colors: [brandBright, azure],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   /// Amber accent gradient for small highlights.
   static const LinearGradient amberGradient = LinearGradient(
-    colors: [Color(0xFFFF9A2B), amber],
+    colors: [Color(0xFFFFC44D), amber],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  /// Kept for compatibility — now a warm crimson→orange arc.
+  /// Positive / money-in gradient. Shared by the income hero and the "spending
+  /// went down" stat so a favourable state reads the same everywhere.
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [Color(0xFF0E8A55), Color(0xFF22C77B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Budget gauge arc.
   static const LinearGradient gaugeGradient = LinearGradient(
-    colors: [crimson, orange],
+    colors: [brand, cyan],
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
   );
 
-  /// Softer secondary gradient (amber → orange).
-  static const LinearGradient altGradient = amberGradient;
-
   /// Diagonal white sheen overlay for frosted glass highlights.
   static const LinearGradient glassSheen = LinearGradient(
-    colors: [Color(0x4DFFFFFF), Color(0x00FFFFFF)],
+    colors: [Color(0x40FFFFFF), Color(0x00FFFFFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  /// Categorical palette for charts/bubbles — warm-first with two cool
-  /// accents kept for colour-blind separability.
+  /// Categorical palette for charts and bubbles. Hues are spaced around the
+  /// wheel rather than staying in the brand ramp so adjacent slices stay
+  /// separable for colour-blind viewers.
   static const List<Color> chartPalette = [
-    crimson,
-    orange,
+    brandBright,
+    cyan,
+    Color(0xFF7C5CFF),
+    incomeGreen,
     amber,
-    crimsonBright,
-    Color(0xFFE8A0A8),
-    Color(0xFF5B6B8C), // cool accent for contrast
-    Color(0xFF12B76A),
+    expenseRed,
+    Color(0xFF5B8DEF),
   ];
 
   // ── Theme surfaces ────────────────────────────────────────────────────────────
-  static const Color background = Color(0xFFFDF7F5); // warm off-white
+  static const Color background = Color(0xFFF3F6FD); // cool off-white
   static const Color surface = Colors.white;
-  static const Color surfaceMuted = Color(0xFFF6EDEA);
-  static const Color borderLight = Color(0xFFEFE1DD);
+  static const Color surfaceMuted = Color(0xFFE9EFFB);
+  static const Color borderLight = Color(0xFFDDE6F7);
 
-  static const Color darkBackground = Color(0xFF14100F); // warm black
-  static const Color darkSurface = Color(0xFF1E1817);
-  static const Color darkSurfaceAlt = Color(0xFF271F1E);
-  static const Color borderDark = Color(0xFF3A2E2C);
+  static const Color darkBackground = Color(0xFF050D24); // deep navy
+  static const Color darkSurface = Color(0xFF0B1738);
+  static const Color darkSurfaceAlt = Color(0xFF122249);
+  static const Color borderDark = Color(0xFF22345F);
 
   // ── Context-aware helpers ─────────────────────────────────────────────────────
   static bool isDark(BuildContext context) =>
@@ -117,13 +115,13 @@ class AppColors {
       isDark(context) ? darkSurfaceAlt : surfaceMuted;
 
   static Color textPrimary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFF7F0EE) : const Color(0xFF1A1113);
+      isDark(context) ? const Color(0xFFEAF1FF) : const Color(0xFF0A1734);
 
   static Color textSecondary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFB9A8A5) : const Color(0xFF7C6B6E);
+      isDark(context) ? const Color(0xFFA9BAD8) : const Color(0xFF4A5A78);
 
   static Color textTertiary(BuildContext context) =>
-      isDark(context) ? const Color(0xFF8A7A77) : const Color(0xFFA89693);
+      isDark(context) ? const Color(0xFF74879F) : const Color(0xFF8391AC);
 
   static Color border(BuildContext context) =>
       isDark(context) ? borderDark : borderLight;
@@ -133,15 +131,15 @@ class AppColors {
       isDark ? borderDark : borderLight;
 
   static Color shadow(BuildContext context) => isDark(context)
-      ? Colors.black.withValues(alpha: 0.45)
-      : const Color(0xFF7A0F2B).withValues(alpha: 0.08);
+      ? Colors.black.withValues(alpha: 0.5)
+      : const Color(0xFF0E2E86).withValues(alpha: 0.10);
 
   // ── Glass tokens ──────────────────────────────────────────────────────────────
   static Color glassFill(BuildContext context) => isDark(context)
       ? Colors.white.withValues(alpha: 0.07)
-      : Colors.white.withValues(alpha: 0.62);
+      : Colors.white.withValues(alpha: 0.66);
 
   static Color glassBorder(BuildContext context) => isDark(context)
-      ? Colors.white.withValues(alpha: 0.12)
-      : Colors.white.withValues(alpha: 0.75);
+      ? Colors.white.withValues(alpha: 0.14)
+      : Colors.white.withValues(alpha: 0.85);
 }

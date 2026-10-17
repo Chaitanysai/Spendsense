@@ -7,18 +7,30 @@ import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/period_provider.dart';
 import '../providers/transaction_provider.dart';
-import '../widgets/summary_card.dart';
-import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import '../utils/category_style.dart';
+import '../utils/formatters.dart';
+import '../widgets/animated_amount.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/profile_avatar.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/section_header.dart';
+import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
-import '../widgets/fade_slide_in.dart';
+import '../widgets/budget_gauge.dart';
+import '../widgets/category_bubble_cluster.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/pressable.dart';
+import '../widgets/profile_avatar.dart';
+import '../widgets/section_header.dart';
 import '../widgets/sms_import_prompt.dart';
+import '../widgets/transaction_tile.dart';
+import 'activity_screen.dart';
+import 'add_transaction_screen.dart';
+
+/// Bottom gutter for the scrollable dashboard. Clears the floating navigation
+/// bar *and* the floating Add button stacked above it, so neither obscures the
+/// weekly chart or the last activity row.
+const double _scrollBottomInset = AppSpacing.fabClearance;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,207 +60,58 @@ class _HomeScreenState extends State<HomeScreen> {
     final trackedExpenses = provider.trackedExpenses.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    final now = DateTime.now();
-    final dateLabel = DateFormat('EEEE, d MMMM').format(now);
-    final logCount = trackedTransactions.length;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBody: true,
       body: AppRefreshIndicator(
         onRefresh: () => provider.syncFromSms(),
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              pinned: false,
-              floating: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              leadingWidth: 0,
-              automaticallyImplyLeading: false,
-              title: Row(
-                children: [
-                  const AppLogo(size: 30),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(dateLabel, style: AppText.title(context)),
-                        Text(
-                          '$logCount logs · pull to sync',
-                          style: AppText.overline(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Consumer<TransactionProvider>(
-                    builder: (_, txProvider, __) {
-                      return GestureDetector(
-                        onTap: () => SmsImportPrompt.show(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.crimson.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                          ),
-                          child: Row(
-                            children: [
-                              if (txProvider.isSyncing)
-                                const SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.crimson,
-                                  ),
-                                )
-                              else
-                                const Icon(Icons.sync_rounded,
-                                    size: 14, color: AppColors.crimson),
-                              const SizedBox(width: 4),
-                              Text(
-                                txProvider.lastSynced == null
-                                    ? 'Sync'
-                                    : DateFormat('hh:mm a')
-                                        .format(txProvider.lastSynced!),
-                                style: AppText.label(context).copyWith(
-                                  fontSize: 11,
-                                  color: AppColors.crimson,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  ProfileAvatar(
-                    imageBytes: auth.profileImageBytes,
-                    name: auth.name,
-                    radius: 18,
-                  ),
-                ],
+            // 1–3: compact greeting, spending period, prominent amount and the
+            // transaction-count indicator, all on the navy hero header.
+            SliverToBoxAdapter(
+              child: _HeroPanel(
+                auth: auth,
+                provider: provider,
+                logCount: trackedTransactions.length,
               ),
             ),
+            // 4–7: budget card, actions, category chart, weekly chart and the
+            // recent-activity list, each in its own inset, scrollable section.
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.page,
-                4,
+                AppSpacing.lg,
                 AppSpacing.page,
-                AppSpacing.navClearance,
+                _scrollBottomInset,
               ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // ── Next salary banner (glass) ──────────────────────────
-                  Consumer<PeriodProvider>(
-                    builder: (context, periodProvider, child) {
-                      if (periodProvider.mode == PeriodMode.custom) {
-                        return const SizedBox.shrink();
-                      }
-                      final now = DateTime.now();
-                      final today = DateTime(now.year, now.month, now.day);
-                      final nextSalaryDate =
-                          PeriodProvider.nextSalaryDate(now: today);
-                      final daysLeft = nextSalaryDate.difference(today).inDays;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: GlassCard(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.md),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.amber.withValues(alpha: 0.18),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.account_balance_wallet_rounded,
-                                  color: Color(0xFFB87A00),
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Text('Next salary drops',
-                                    style: AppText.title(context)
-                                        .copyWith(fontSize: 14)),
-                              ),
-                              Text(
-                                daysLeft <= 0
-                                    ? 'Today'
-                                    : daysLeft == 1
-                                        ? 'Tomorrow'
-                                        : 'in $daysLeft days',
-                                style: AppText.amount(context,
-                                    size: 14, color: AppColors.crimson),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // ── Hero summary ────────────────────────────────────────
-                  Consumer<PeriodProvider>(
-                    builder: (context, periodProvider, child) {
-                      final cycleExpenses = provider
-                          .expensesInPeriod(periodProvider.currentPeriod)
-                          .toList();
-                      final total = cycleExpenses.fold<double>(
-                        0,
-                        (sum, transaction) => sum + transaction.amount,
-                      );
-                      final categories = <String, double>{};
-                      for (final transaction in cycleExpenses) {
-                        categories[transaction.category] =
-                            (categories[transaction.category] ?? 0) +
-                                transaction.amount;
-                      }
-                      final topCategory = categories.isEmpty
-                          ? 'None'
-                          : categories.entries
-                              .reduce((a, b) => a.value > b.value ? a : b)
-                              .key;
-                      return FadeSlideIn(
-                        child: SummaryCard(
-                          total: total,
-                          count: cycleExpenses.length,
-                          topCat: topCategory,
-                          budget: provider.monthlyBudget,
-                        ),
-                      );
-                    },
-                  ),
-
+                  // 4: monthly budget card, clearly separated from the hero.
+                  const _BudgetCard(),
                   const SizedBox(height: AppSpacing.xxl),
 
-                  // ── Category breakdown ──────────────────────────────────
+                  // 5: Add Expense / Add Income, fully below the hero region.
+                  const _QuickActions(),
+                  const SizedBox(height: AppSpacing.xxxl),
+
+                  // 6: spending by category.
                   const SectionHeader(title: 'Spending by category'),
-                  _CategoryBreakdownCard(expenses: trackedExpenses),
+                  _CategoryCard(expenses: trackedExpenses),
+                  const SizedBox(height: AppSpacing.xxxl),
 
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // ── Daily spend ────────────────────────────────────────
+                  // 7: last seven days.
                   const SectionHeader(title: 'Last 7 days'),
                   _DailySpendCard(expenses: trackedExpenses),
+                  const SizedBox(height: AppSpacing.xxxl),
 
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // ── Recent activity ────────────────────────────────────
                   SectionHeader(
                     title: 'Recent activity',
-                    actionLabel: '${trackedTransactions.length} total',
+                    actionLabel: 'View all',
+                    actionIcon: Icons.chevron_right_rounded,
+                    onAction: () => Navigator.of(context).push(
+                      AppPageRoute(builder: (_) => const ActivityScreen()),
+                    ),
                   ),
                   if (trackedTransactions.isEmpty && provider.isSyncing)
                     const SkeletonList(count: 4)
@@ -278,8 +141,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Padding(
                       padding: EdgeInsets.only(top: AppSpacing.sm),
                       child: Center(
-                        child:
-                            CircularProgressIndicator(color: AppColors.crimson),
+                        child: CircularProgressIndicator(
+                            color: AppColors.brandBright),
                       ),
                     ),
                 ]),
@@ -292,12 +155,478 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── Category Breakdown card ──────────────────────────────────────────────────
+// ── Hero panel ───────────────────────────────────────────────────────────────
 
-class _CategoryBreakdownCard extends StatelessWidget {
+/// The reference's navy header: a compact identity row, then a centred headline
+/// figure with the period label and a transaction-count / trend indicator.
+/// The budget card now lives *outside* this header so the two never compete.
+class _HeroPanel extends StatelessWidget {
+  final AuthProvider auth;
+  final TransactionProvider provider;
+  final int logCount;
+
+  const _HeroPanel({
+    required this.auth,
+    required this.provider,
+    required this.logCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.heroGradient,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(AppRadius.xl),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navyDeep.withValues(alpha: 0.28),
+            blurRadius: 26,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(AppRadius.xl),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -80,
+              right: -60,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.cyan.withValues(alpha: 0.30),
+                      AppColors.cyan.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.sm,
+                  AppSpacing.page,
+                  AppSpacing.xxl,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _identityRow(context),
+                    const SizedBox(height: AppSpacing.lg),
+                    _headline(context),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _identityRow(BuildContext context) {
+    final name = auth.greetingName;
+    final greeting = Formatters.greeting(DateTime.now());
+    final greetingLine = name.isEmpty ? greeting : '$greeting, $name';
+
+    return Row(
+      children: [
+        const AppLogo(size: 30),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                greetingLine,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.onGradient(size: 15, weight: FontWeight.w700),
+              ),
+              Text(
+                '$logCount logs · pull to sync',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.onGradient(
+                  size: 11,
+                  weight: FontWeight.w500,
+                  opacity: 0.72,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const _SyncPill(),
+        const SizedBox(width: AppSpacing.sm),
+        ProfileAvatar(
+          imageBytes: auth.profileImageBytes,
+          name: auth.name,
+          radius: 18,
+        ),
+      ],
+    );
+  }
+
+  Widget _headline(BuildContext context) {
+    return Consumer<PeriodProvider>(
+      builder: (context, period, _) {
+        final cycleExpenses =
+            provider.expensesInPeriod(period.currentPeriod).toList();
+        final total = cycleExpenses.fold<double>(0, (sum, t) => sum + t.amount);
+        final count = cycleExpenses.length;
+
+        final previous = period.previousPeriod;
+        final previousTotal = previous == null
+            ? null
+            : provider
+                .expensesInPeriod(previous)
+                .fold<double>(0, (sum, t) => sum + t.amount);
+
+        return Column(
+          children: [
+            Text(
+              'SPENT · ${period.periodLabel.toUpperCase()}',
+              textAlign: TextAlign.center,
+              style: AppText.onGradient(
+                size: 10.5,
+                weight: FontWeight.w700,
+                opacity: 0.7,
+                letterSpacing: 1.6,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: AnimatedAmount(
+                value: total,
+                format: (v) => Formatters.currency.format(v),
+                style: AppText.hero(context).copyWith(
+                  color: Colors.white,
+                  fontSize: 44,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  _HeroPill(
+                    icon: Icons.receipt_long_rounded,
+                    label: count == 1 ? '1 transaction' : '$count transactions',
+                  ),
+                  if (previousTotal != null && previousTotal > 0)
+                    _trendPill(total, previousTotal),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Cycle-over-cycle change. Only shown when a comparable previous window
+  /// exists, rather than inventing a percentage.
+  Widget _trendPill(double current, double previous) {
+    final delta = (current - previous) / previous * 100;
+    final rising = delta > 0.05;
+    final falling = delta < -0.05;
+
+    return _HeroPill(
+      icon: rising
+          ? Icons.trending_up_rounded
+          : falling
+              ? Icons.trending_down_rounded
+              : Icons.swap_horiz_rounded,
+      iconColor: rising
+          ? AppColors.amber
+          : falling
+              ? AppColors.cyan
+              : Colors.white,
+      label: '${delta.abs() < 0.05 ? '0' : delta.abs().toStringAsFixed(1)}%'
+          ' vs last cycle',
+    );
+  }
+}
+
+/// Pill used for the hero's status / count indicators.
+class _HeroPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+
+  const _HeroPill({
+    required this.icon,
+    required this.label,
+    this.iconColor = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppText.onGradient(size: 11.5, weight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The SMS-sync affordance, restyled for the navy hero: shows when the last
+/// sync completed and spins while one is running.
+class _SyncPill extends StatelessWidget {
+  const _SyncPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () => SmsImportPrompt.show(context),
+      child: Consumer<TransactionProvider>(
+        builder: (context, provider, _) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (provider.isSyncing)
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              else
+                const Icon(Icons.sync_rounded, size: 14, color: Colors.white),
+              const SizedBox(width: 5),
+              Text(
+                provider.lastSynced == null
+                    ? 'Sync'
+                    : DateFormat('hh:mm a').format(provider.lastSynced!),
+                style: AppText.onGradient(size: 11, weight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Budget card ──────────────────────────────────────────────────────────────
+
+/// Monthly budget as its own glass card: the gauge and the remaining figure,
+/// with no dependency on the hero's height or position.
+class _BudgetCard extends StatelessWidget {
+  const _BudgetCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Consumer2<TransactionProvider, PeriodProvider>(
+        builder: (context, txProvider, period, _) {
+          final spent = txProvider
+              .expensesInPeriod(period.currentPeriod)
+              .fold<double>(0, (sum, t) => sum + t.amount);
+          final budget = txProvider.monthlyBudget;
+          final remaining = budget - spent;
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              BudgetGauge(spent: spent, budget: budget, size: 118),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MONTHLY BUDGET',
+                      style: AppText.overline(context)
+                          .copyWith(letterSpacing: 1.3),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        Formatters.currency.format(budget),
+                        style: AppText.amount(context, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Spent ${Formatters.currency.format(spent)}',
+                      style: AppText.label(context).copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      budget <= 0
+                          ? 'Set a budget in Settings'
+                          : remaining >= 0
+                              ? '${Formatters.currency.format(remaining)} left'
+                              : '${Formatters.currency.format(-remaining)} over',
+                      style: AppText.title(context).copyWith(
+                        fontSize: 13,
+                        color: budget <= 0
+                            ? AppColors.textTertiary(context)
+                            : remaining >= 0
+                                ? AppColors.incomeGreen
+                                : AppColors.expenseRed,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Quick actions ────────────────────────────────────────────────────────────
+
+/// The reference's Deposit / Withdraw pair, mapped to what SpendSense actually
+/// supports: logging money in, and logging money out. Laid out in normal flow
+/// below the hero so the pills are never covered by the header.
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionPill(
+            label: 'Add expense',
+            icon: Icons.trending_down_rounded,
+            tint: AppColors.expenseRed,
+            onTap: () => _open(context, TransactionType.expense),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _ActionPill(
+            label: 'Add income',
+            icon: Icons.trending_up_rounded,
+            tint: AppColors.incomeGreen,
+            onTap: () => _open(context, TransactionType.income),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _open(BuildContext context, TransactionType type) {
+    Navigator.of(context).push(
+      AppPageRoute(
+        builder: (_) => AddTransactionScreen(initialType: type),
+      ),
+    );
+  }
+}
+
+class _ActionPill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color tint;
+  final VoidCallback onTap;
+
+  const _ActionPill({
+    required this.label,
+    required this.icon,
+    required this.tint,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceColor(context),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border(context)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow(context),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: tint.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 15, color: tint),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.title(context).copyWith(fontSize: 13.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Category card ────────────────────────────────────────────────────────────
+
+class _CategoryCard extends StatelessWidget {
   final List<TransactionModel> expenses;
 
-  const _CategoryBreakdownCard({required this.expenses});
+  const _CategoryCard({required this.expenses});
 
   @override
   Widget build(BuildContext context) {
@@ -305,149 +634,71 @@ class _CategoryBreakdownCard extends StatelessWidget {
     for (final t in expenses) {
       totals[t.category] = (totals[t.category] ?? 0) + t.amount;
     }
-    final grandTotal = totals.values.fold<double>(0, (s, v) => s + v);
-    final entries = totals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final top = entries.take(4).toList();
-
-    final sections = entries.isEmpty
-        ? [
-            PieChartSectionData(
-              color: AppColors.surfaceAlt(context),
-              value: 100,
-              radius: 16,
-              showTitle: false,
-            )
-          ]
-        : entries.asMap().entries.map((e) {
-            return PieChartSectionData(
-              color:
-                  AppColors.chartPalette[e.key % AppColors.chartPalette.length],
-              value: grandTotal > 0 ? e.value.value / grandTotal * 100 : 0,
-              radius: 16,
-              showTitle: false,
-            );
-          }).toList();
 
     return GlassCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 116,
-                height: 116,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: AppMotion.respect(context, AppMotion.chart),
-                      curve: AppMotion.emphasized,
-                      builder: (context, t, _) {
-                        final animated = sections
-                            .map((s) => PieChartSectionData(
-                                  color: s.color,
-                                  value: s.value * t,
-                                  radius: s.radius,
-                                  showTitle: s.showTitle,
-                                ))
-                            .toList();
-                        return PieChart(
-                          PieChartData(
-                            sectionsSpace: 3,
-                            centerSpaceRadius: 40,
-                            startDegreeOffset: -90,
-                            sections: animated,
-                          ),
-                        );
-                      },
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _compact(grandTotal),
-                          style: AppText.amount(context, size: 16),
-                        ),
-                        Text('total',
-                            style:
-                                AppText.label(context).copyWith(fontSize: 10)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: top.isEmpty
-                    ? Text('No spending data yet', style: AppText.body(context))
-                    : Column(
-                        children: top.map((e) {
-                          final pct = grandTotal > 0
-                              ? (e.value / grandTotal * 100)
-                              : 0.0;
-                          final color = AppColors.chartPalette[
-                              entries.indexOf(e) %
-                                  AppColors.chartPalette.length];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    e.key,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.label(context)
-                                        .copyWith(fontSize: 12),
-                                  ),
-                                ),
-                                Text(
-                                  '₹${_compact(e.value)}',
-                                  style: AppText.amount(context, size: 12),
-                                ),
-                                const SizedBox(width: 6),
-                                SizedBox(
-                                  width: 34,
-                                  child: Text(
-                                    '${pct.toStringAsFixed(0)}%',
-                                    textAlign: TextAlign.right,
-                                    style: AppText.label(context)
-                                        .copyWith(fontSize: 11),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-              ),
-            ],
-          ),
+          CategoryBubbleCluster(totals: totals),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.md),
+          _TopCategories(totals: totals),
         ],
       ),
     );
   }
+}
 
-  static String _compact(double v) {
-    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
-    return v.toStringAsFixed(0);
+/// Exact rupee figures for the leading categories — the bubbles convey share,
+/// but a bubble alone cannot be read for an amount.
+class _TopCategories extends StatelessWidget {
+  final Map<String, double> totals;
+
+  const _TopCategories({required this.totals});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = totals.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    if (entries.isEmpty) {
+      return Text('No spending recorded yet.', style: AppText.body(context));
+    }
+
+    return Column(
+      children: entries
+          .take(3)
+          .map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(CategoryStyle.icon(e.key),
+                      size: 15, color: CategoryStyle.color(e.key)),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      e.key,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.label(context).copyWith(fontSize: 12.5),
+                    ),
+                  ),
+                  Text(
+                    Formatters.currency.format(e.value),
+                    style: AppText.amount(context, size: 13),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
   }
 }
 
-// ── Daily Spend bar card ─────────────────────────────────────────────────────
+// ── Daily spend ──────────────────────────────────────────────────────────────
 
 class _DailySpendCard extends StatelessWidget {
   final List<TransactionModel> expenses;
@@ -457,7 +708,7 @@ class _DailySpendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final dailyTotals = List.generate(7, (i) {
+    final days = List.generate(7, (i) {
       final day = DateTime(now.year, now.month, now.day)
           .subtract(Duration(days: 6 - i));
       final total = expenses
@@ -469,11 +720,10 @@ class _DailySpendCard extends StatelessWidget {
       return _DayBar(day: day, amount: total);
     });
 
-    final todayTotal = dailyTotals.last.amount;
-    final max = dailyTotals
-        .map((d) => d.amount)
-        .fold<double>(0, (m, v) => v > m ? v : m);
-    final barMax = max <= 0 ? 100.0 : max * 1.25;
+    final todayTotal = days.last.amount;
+    final maxAmount =
+        days.fold<double>(0, (m, d) => d.amount > m ? d.amount : m);
+    final barMax = maxAmount <= 0 ? 100.0 : maxAmount * 1.25;
 
     return GlassCard(
       child: Column(
@@ -481,84 +731,99 @@ class _DailySpendCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Today',
-                  style: AppText.label(context).copyWith(fontSize: 12)),
+              Text('Today', style: AppText.label(context)),
               const Spacer(),
               Text(
-                '₹${todayTotal.toStringAsFixed(0)}',
-                style:
-                    AppText.amount(context, size: 18, color: AppColors.crimson),
+                Formatters.currency.format(todayTotal),
+                style: AppText.amount(context, size: 18),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
-            height: 92,
+            height: 104,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: 1),
               duration: AppMotion.respect(context, AppMotion.chart),
               curve: AppMotion.emphasized,
-              builder: (context, t, _) {
-                return BarChart(
-                  BarChartData(
-                    maxY: barMax,
-                    alignment: BarChartAlignment.spaceAround,
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 22,
-                          getTitlesWidget: (value, meta) {
-                            final i = value.toInt();
-                            if (i < 0 || i >= dailyTotals.length) {
-                              return const SizedBox.shrink();
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                DateFormat('E')
-                                    .format(dailyTotals[i].day)
-                                    .substring(0, 1),
-                                style: AppText.label(context)
-                                    .copyWith(fontSize: 10),
+              builder: (context, t, _) => BarChart(
+                BarChartData(
+                  maxY: barMax,
+                  alignment: BarChartAlignment.spaceAround,
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        getTitlesWidget: (value, meta) {
+                          final i = value.toInt();
+                          if (i < 0 || i >= days.length) {
+                            return const SizedBox.shrink();
+                          }
+                          final isToday = i == days.length - 1;
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              DateFormat('EEEEE')
+                                  .format(days[i].day)
+                                  .substring(0, 1),
+                              style: AppText.label(context).copyWith(
+                                fontSize: 10,
+                                color: isToday
+                                    ? AppColors.brandBright
+                                    : AppColors.textTertiary(context),
+                                fontWeight:
+                                    isToday ? FontWeight.w800 : FontWeight.w600,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
                     ),
-                    barGroups: dailyTotals.asMap().entries.map((e) {
-                      final isToday = e.key == 6;
-                      return BarChartGroupData(
-                        x: e.key,
-                        barRods: [
-                          BarChartRodData(
-                            toY: e.value.amount * t,
-                            width: 14,
-                            borderRadius: BorderRadius.circular(6),
-                            gradient: isToday
-                                ? AppColors.flameGradient
-                                : LinearGradient(
-                                    colors: [
-                                      AppColors.orange.withValues(alpha: 0.35),
-                                      AppColors.orange.withValues(alpha: 0.18),
-                                    ],
-                                  ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
                   ),
-                );
-              },
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipBgColor: AppColors.navyDeep,
+                      getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
+                        '${DateFormat('d MMM').format(days[group.x].day)}\n'
+                        '${Formatters.currency.format(rod.toY)}',
+                        AppText.onGradient(size: 11, weight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  barGroups: days.asMap().entries.map((e) {
+                    final isToday = e.key == days.length - 1;
+                    return BarChartGroupData(
+                      x: e.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: e.value.amount * t,
+                          width: 15,
+                          borderRadius: BorderRadius.circular(7),
+                          gradient: isToday
+                              ? AppColors.electricGradient
+                              : LinearGradient(
+                                  colors: [
+                                    AppColors.azure.withValues(alpha: 0.38),
+                                    AppColors.azure.withValues(alpha: 0.16),
+                                  ],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ),
         ],

@@ -116,11 +116,11 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.crimson.withValues(alpha: 0.12),
+                          color: AppColors.brand.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(Icons.calendar_month_rounded,
-                            color: AppColors.crimson),
+                            color: AppColors.brand),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(

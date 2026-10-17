@@ -38,12 +38,12 @@ class AppEmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.crimson.withValues(alpha: 0.18),
-                    AppColors.orange.withValues(alpha: 0.10),
+                    AppColors.brand.withValues(alpha: 0.18),
+                    AppColors.cyan.withValues(alpha: 0.10),
                   ],
                 ),
               ),
-              child: Icon(icon, size: 38, color: AppColors.crimson),
+              child: Icon(icon, size: 38, color: AppColors.brand),
             ),
             const SizedBox(height: AppSpacing.xl),
             Text(
@@ -226,7 +226,7 @@ class AppRefreshIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: AppColors.crimson,
+      color: AppColors.brand,
       backgroundColor: AppColors.surfaceColor(context),
       onRefresh: onRefresh,
       child: child,

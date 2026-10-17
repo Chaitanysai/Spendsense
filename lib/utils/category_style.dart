@@ -24,20 +24,22 @@ class CategoryStyle {
     'Income': Icons.savings_rounded,
   };
 
+  /// Cool-dominant so categories sit inside the navy identity, with a few warm
+  /// hues kept separable for the colour-blind (amber vs. rose vs. green).
   static const Map<String, Color> _colors = {
-    'Food': Color(0xFFFF7A1A),
-    'Shopping': Color(0xFFC81E3A),
-    'Fuel': Color(0xFFE23A2E),
-    'Travel': Color(0xFF5B6B8C),
-    'Bills': Color(0xFFF0432B),
+    'Food': Color(0xFFFFB020),
+    'Shopping': Color(0xFF7C5CFF),
+    'Fuel': Color(0xFF22D3EE),
+    'Travel': Color(0xFF5B8DEF),
+    'Bills': Color(0xFF2F6BFF),
     'Transfer': Color(0xFF12B76A),
     'Cash': Color(0xFF12B76A),
-    'Entertainment': Color(0xFFFFB020),
-    'Health': Color(0xFFE8A0A8),
-    'Investment': Color(0xFFB3123A),
-    'UPI': Color(0xFFC81E3A),
-    'Other': Color(0xFF8A7A77),
-    'Others': Color(0xFF8A7A77),
+    'Entertainment': Color(0xFFF0577B),
+    'Health': Color(0xFFFF8FA3),
+    'Investment': Color(0xFF00C48C),
+    'UPI': Color(0xFF4C9BFF),
+    'Other': Color(0xFF8FA3C4),
+    'Others': Color(0xFF8FA3C4),
     'Income': Color(0xFF12B76A),
   };
 
@@ -45,7 +47,7 @@ class CategoryStyle {
       _icons[category] ?? Icons.account_balance_wallet_rounded;
 
   static Color color(String category) =>
-      _colors[category] ?? const Color(0xFFC81E3A);
+      _colors[category] ?? const Color(0xFF4C9BFF);
 
   /// The user-visible category list for pickers (kept in sync with the model).
   static const List<String> pickerCategories = [
