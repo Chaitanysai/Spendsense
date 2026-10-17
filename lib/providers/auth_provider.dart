@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider with ChangeNotifier {
-  bool _isLoggedIn = true; // Default to logged in for SpendSense 2.0 offline-first
+  bool _isLoggedIn =
+      true; // Default to logged in for SpendSense 2.0 offline-first
   String _name = "SpendSense User";
   String _email = "user@spendsense.local";
   String? _profileImageBase64;

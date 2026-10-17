@@ -38,7 +38,8 @@ class SmsService {
     try {
       final messages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
-        count: 800, // Process larger chunk so we don't miss past sms due to inbox limit
+        count:
+            800, // Process larger chunk so we don't miss past sms due to inbox limit
       );
 
       final normalizedFromDate = fromDate == null

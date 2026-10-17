@@ -13,7 +13,7 @@ class TransactionModel {
   final String time;
   final String originalSms;
   final bool isExcluded;
-  
+
   // ── SpendSense 2.0 New Fields ──────────────────────────────────────────────
   final String? bank;
   final String? account;
@@ -72,8 +72,8 @@ class TransactionModel {
       merchant: json['merchant'] as String? ?? 'Unknown',
       category: json['category'] as String? ?? 'Other',
       paymentMethod: json['paymentMethod'] as String? ?? 'SMS',
-      date: json['date'] != null 
-          ? DateTime.tryParse(json['date'] as String) ?? DateTime.now() 
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'] as String) ?? DateTime.now()
           : DateTime.now(),
       time: json['time'] as String? ?? '00:00',
       originalSms: json['originalSms'] as String? ?? '',

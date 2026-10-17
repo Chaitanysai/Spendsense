@@ -32,10 +32,12 @@ class TransactionCacheService {
       _rejectedIds.addAll(list);
     }
     _initialised = true;
-    debugPrint('📦 Local DB init — ${_cachedIds.length} txs, ${_rejectedIds.length} rejected');
+    debugPrint(
+        '📦 Local DB init — ${_cachedIds.length} txs, ${_rejectedIds.length} rejected');
   }
 
-  bool contains(String smsId) => _cachedIds.contains(smsId) || _rejectedIds.contains(smsId);
+  bool contains(String smsId) =>
+      _cachedIds.contains(smsId) || _rejectedIds.contains(smsId);
 
   Set<String> get cachedIds => Set.unmodifiable(_cachedIds);
 
@@ -96,7 +98,8 @@ class TransactionCacheService {
         _rejectedIds.clear();
         _rejectedIds.addAll(list.skip(1000));
       }
-      await _prefs.setString(_rejectedIdsKey, jsonEncode(_rejectedIds.toList()));
+      await _prefs.setString(
+          _rejectedIdsKey, jsonEncode(_rejectedIds.toList()));
     }
   }
 
@@ -147,7 +150,8 @@ class TransactionCacheService {
   }
 
   /// Imports transactions from a JSON backup string, merging or replacing.
-  Future<int> importFromJsonString(String jsonString, {bool replace = false}) async {
+  Future<int> importFromJsonString(String jsonString,
+      {bool replace = false}) async {
     _assertInit();
     try {
       final decoded = jsonDecode(jsonString);
