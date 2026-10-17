@@ -64,6 +64,15 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Prepare Android SDK components
+        # Deterministic provisioning: Gradle otherwise auto-invokes sdkmanager
+        # mid-build, swallowing errors (intermittent exit 1). Accept licenses
+        # and install the exact components required (compileSdk 36) up front.
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
       - name: Get Flutter dependencies
         run: flutter pub get
 
