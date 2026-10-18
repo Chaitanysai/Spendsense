@@ -166,8 +166,16 @@ jobs:
           "$AAPT" dump badging "$ARTIFACT_PATH" | grep -E "^package:|^application-label:|^launchable-activity:"
 
           echo "── APK signature ──"
-          "$APKSIGNER" verify "$ARTIFACT_PATH" || { echo "::error::APK signature verification failed"; exit 1; }
-          "$APKSIGNER" verify --print-certs "$ARTIFACT_PATH" | grep -E "Signer #1 (certificate DN|SHA-256 digest)"
+          if ! "$APKSIGNER" verify --verbose "$ARTIFACT_PATH"; then
+            echo "::error::APK signature verification failed"
+            exit 1
+          fi
+          # Capture to a file and echo it: apksigner's output stream differs
+          # across host/JDK combinations, so never grep a pipe blindly here.
+          "$APKSIGNER" verify --print-certs "$ARTIFACT_PATH" > apk-certs.txt 2>&1
+          cat apk-certs.txt
+          grep -q "certificate DN" apk-certs.txt || { echo "::error::APK signing certificate DN missing"; exit 1; }
+          grep -q "SHA-256 digest" apk-certs.txt || { echo "::error::APK signing certificate SHA-256 digest missing"; exit 1; }
 
           echo "Signing status recorded by the build: $SIGNING_STATUS"
 
