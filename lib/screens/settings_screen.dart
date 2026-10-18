@@ -11,8 +11,15 @@ import '../providers/theme_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../widgets/sms_import_prompt.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
 import '../widgets/profile_avatar.dart';
+import '../widgets/app_page_route.dart';
+import '../widgets/gradient_hero_card.dart';
+import '../utils/formatters.dart';
 import 'ai_settings_screen.dart';
+import 'appearance_screen.dart';
+import 'recurring_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -69,207 +76,350 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : DateFormat('dd MMM yyyy').format(scanStart);
 
     return Scaffold(
-      backgroundColor: AppColors.scaffold(context),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            backgroundColor: AppColors.primaryPurple,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: _ProfileHeader(auth: auth),
-            ),
-            title: const Text(
-              'Settings',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.md,
+            AppSpacing.page,
+            AppSpacing.fabClearance,
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Settings', style: AppText.h1(context)),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Profile hero ───────────────────────────────────────────────
+            GradientHeroCard(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Row(
                 children: [
-                  _sectionLabel('Preferences'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SettingsTile(
-                        icon: Icons.photo_camera_back_rounded,
-                        iconColor: const Color(0xFF0F766E),
-                        title: 'Profile Photo',
-                        subtitle: auth.hasProfileImage
-                            ? 'Change your profile image'
-                            : 'Add your profile image',
-                        onTap: () => _pickProfilePhoto(context),
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6), width: 2),
+                    ),
+                    child: ClipOval(
+                      child: ProfileAvatar(
+                        imageBytes: auth.profileImageBytes,
+                        name: auth.name,
+                        radius: 31,
                       ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.sms_rounded,
-                        iconColor: const Color(0xFFC2185B),
-                        title: 'SMS Start Date',
-                        subtitle: 'Currently checking messages from $scanLabel',
-                        onTap: () => SmsImportPrompt.show(context),
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.palette_outlined,
-                        iconColor: const Color(0xFF7C3AED),
-                        title: 'Theme',
-                        subtitle: theme.isDarkMode ? 'Dark' : 'Light',
-                        onTap: theme.toggle,
-                        trailing: Switch.adaptive(
-                          value: theme.isDarkMode,
-                          onChanged: theme.setDarkMode,
-                          activeThumbColor: AppColors.primaryPurple,
-                        ),
-                        showArrow: false,
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.key_rounded,
-                        iconColor: const Color(0xFFEA580C),
-                        title: 'AI Provider Settings',
-                        subtitle: 'Configure API keys for AI parsing',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const AISettingsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  _sectionLabel('Network'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SettingsTile(
-                        icon: _isConnected ? Icons.wifi : Icons.wifi_off,
-                        iconColor: _isConnected
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFDC2626),
-                        title: 'Internet Connection',
-                        subtitle: _isConnected
-                            ? 'Connected via $_connectionType'
-                            : 'No internet connection',
-                        onTap: _checkConnectivity,
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.cloud_outlined,
-                        iconColor: const Color(0xFF6366F1),
-                        title: 'AI Services',
-                        subtitle: 'Groq & Gemini Fallback API configured',
-                        onTap: null,
-                      ),
-                    ],
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(auth.name,
+                            style: AppText.onGradient(
+                                size: 18, weight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text(auth.email,
+                            style: AppText.onGradient(size: 12, opacity: 0.88)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  _sectionLabel('Data & Backup'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SettingsTile(
-                        icon: Icons.upload_file_rounded,
-                        iconColor: const Color(0xFF2563EB),
-                        title: 'Export JSON Backup',
-                        subtitle: 'Save all transactions to backup JSON',
-                        onTap: () => _exportBackup(context, transactions),
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.download_rounded,
-                        iconColor: const Color(0xFF059669),
-                        title: 'Import JSON Backup',
-                        subtitle: 'Restore transactions from backup JSON',
-                        onTap: () => _importBackup(context, transactions),
-                      ),
-                      _divider(),
-                      _SettingsTile(
-                        icon: Icons.delete_sweep_outlined,
-                        iconColor: const Color(0xFFDC2626),
-                        title: 'Clear Transaction Database',
-                        subtitle: 'Remove locally stored transaction data',
-                        onTap: () => _showClearCacheDialog(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _sectionLabel('About'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: const [
-                      _SettingsTile(
-                        icon: Icons.info_outline_rounded,
-                        iconColor: Color(0xFF6B7280),
-                        title: 'App Version',
-                        subtitle: '2.0.0 (Local-First)',
-                        onTap: null,
-                        showArrow: false,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('Personalisation'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: AppColors.brand,
+                  title: 'Your name',
+                  subtitle: auth.greetingName.isEmpty
+                      ? 'Not set — used in your Home greeting'
+                      : 'Greeting you as ${auth.name}',
+                  onTap: () => _editName(context, auth),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('Preferences'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: Icons.photo_camera_back_rounded,
+                  iconColor: AppColors.brand,
+                  title: 'Profile photo',
+                  subtitle: auth.hasProfileImage
+                      ? 'Change your profile image'
+                      : 'Add your profile image',
+                  onTap: () => _pickProfilePhoto(context),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.sms_rounded,
+                  iconColor: AppColors.cyan,
+                  title: 'SMS start date',
+                  subtitle: 'Checking messages from $scanLabel',
+                  onTap: () => SmsImportPrompt.show(context),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.palette_outlined,
+                  iconColor: AppColors.azure,
+                  title: 'Appearance',
+                  subtitle:
+                      '${theme.palette.label} · ${AppearanceScreen.modeLabel(theme.themeMode)}',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const AppearanceScreen()),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.key_rounded,
+                  iconColor: AppColors.amber,
+                  title: 'AI provider settings',
+                  subtitle: 'Configure API keys for AI parsing',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const AISettingsScreen()),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.savings_rounded,
+                  iconColor: AppColors.incomeGreen,
+                  title: 'Monthly budget',
+                  subtitle: transactions.monthlyBudget > 0
+                      ? '${Formatters.currency.format(transactions.monthlyBudget)} per cycle'
+                      : 'Not set — the dashboard gauge needs one',
+                  onTap: () => _editBudget(context, transactions),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.repeat_rounded,
+                  iconColor: AppColors.brandBright,
+                  title: 'Recurring expenses',
+                  subtitle: 'Review repeat payments detected from your SMS',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const RecurringScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('Network'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: _isConnected ? Icons.wifi : Icons.wifi_off,
+                  iconColor:
+                      _isConnected ? AppColors.incomeGreen : AppColors.danger,
+                  title: 'Internet connection',
+                  subtitle: _isConnected
+                      ? 'Connected via $_connectionType'
+                      : 'No internet connection',
+                  onTap: _checkConnectivity,
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.cloud_outlined,
+                  iconColor: AppColors.brand,
+                  title: 'AI services',
+                  subtitle: 'Groq & Gemini fallback configured',
+                  onTap: null,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('Data & backup'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: Icons.upload_file_rounded,
+                  iconColor: AppColors.brand,
+                  title: 'Export JSON backup',
+                  subtitle: 'Save all transactions to backup JSON',
+                  onTap: () => _exportBackup(context, transactions),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.download_rounded,
+                  iconColor: AppColors.incomeGreen,
+                  title: 'Import JSON backup',
+                  subtitle: 'Restore transactions from backup JSON',
+                  onTap: () => _importBackup(context, transactions),
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.delete_sweep_outlined,
+                  iconColor: AppColors.danger,
+                  title: 'Clear transaction database',
+                  subtitle: 'Remove locally stored transaction data',
+                  onTap: () => _showClearCacheDialog(context),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _sectionLabel('About'),
+            const SizedBox(height: AppSpacing.sm),
+            _SettingsCard(
+              children: const [
+                _SettingsTile(
+                  icon: Icons.info_outline_rounded,
+                  iconColor: Color(0xFF8FA3C4),
+                  title: 'App version',
+                  subtitle: '2.0.0 (Local-First)',
+                  onTap: null,
+                  showArrow: false,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String label) => Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Text(label.toUpperCase(), style: AppText.overline(context)),
+      );
+
+  Widget _divider(BuildContext context) => Divider(
+        height: 1,
+        indent: 60,
+        color: AppColors.border(context),
+      );
+
+  Future<void> _editName(BuildContext context, AuthProvider auth) async {
+    final controller = TextEditingController(text: auth.greetingName);
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Your name', style: AppText.title(context)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Chaitanya',
+            helperText:
+                'Shown in your Home greeting. Leave blank to remove it.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
+    controller.dispose();
+
+    if (saved == null || !context.mounted) return;
+    await auth.updateName(saved);
   }
 
-  Widget _sectionLabel(String label) {
-    return Text(
-      label.toUpperCase(),
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary(context),
-        letterSpacing: 1.2,
+  Future<void> _editBudget(
+      BuildContext context, TransactionProvider provider) async {
+    final controller = TextEditingController(
+      text: provider.monthlyBudget > 0
+          ? provider.monthlyBudget.toStringAsFixed(0)
+          : '',
+    );
+    final saved = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Monthly budget', style: AppText.title(context)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          ],
+          decoration: const InputDecoration(
+            hintText: 'e.g. 25000',
+            helperText: 'Used for the dashboard budget gauge.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, int.tryParse(controller.text.trim())),
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
+    controller.dispose();
+
+    if (saved == null || !context.mounted) return;
+    if (saved <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a budget greater than zero')),
+      );
+      return;
+    }
+    await provider.setMonthlyBudget(saved.toDouble());
   }
 
-  Widget _divider() => Divider(
-        height: 1,
-        indent: 56,
-        color: AppColors.border(context),
-      );
-
-  Future<void> _exportBackup(BuildContext context, TransactionProvider provider) async {
+  Future<void> _exportBackup(
+      BuildContext context, TransactionProvider provider) async {
     final jsonStr = await provider.exportToJson();
     if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Export JSON Backup'),
+        title: Text('Export JSON backup', style: AppText.title(ctx)),
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Copy your backup JSON data below:'),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surfaceAlt(ctx),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: SingleChildScrollView(
                     child: SelectableText(
                       jsonStr,
-                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                      style: const TextStyle(
+                          fontSize: 11, fontFamily: 'monospace'),
                     ),
                   ),
                 ),
@@ -290,7 +440,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SnackBar(content: Text('Backup copied to clipboard!')),
               );
             },
-            child: const Text('Copy to Clipboard'),
+            child: const Text('Copy'),
           ),
         ],
       ),
@@ -302,21 +452,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Import JSON Backup'),
+        title: Text('Import JSON backup', style: AppText.title(ctx)),
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Paste your backup JSON data below:'),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller,
                 maxLines: 6,
                 decoration: const InputDecoration(
                   hintText: '{"version": 2, "transactions": [...]}',
-                  border: OutlineInputBorder(),
                 ),
               ),
             ],
@@ -332,11 +480,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final text = controller.text.trim();
               Navigator.pop(ctx);
               if (text.isEmpty) return;
-              final count = await provider.importFromJson(text);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Successfully imported $count transactions!')),
-              );
+              try {
+                final count = await provider.importFromJson(text);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('Successfully imported $count transactions!')),
+                );
+              } catch (_) {
+                // A malformed backup must fail loudly instead of throwing an
+                // uncaught error and leaving the user with no feedback.
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Import failed — the backup JSON could not be read.'),
+                  ),
+                );
+              }
             },
             child: const Text('Restore'),
           ),
@@ -349,8 +511,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Clear Database?'),
+        title: Text('Clear database?', style: AppText.title(ctx)),
         content: const Text(
           'This will remove all locally stored transactions. Your SMS inbox is unaffected.',
         ),
@@ -360,10 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              shape: const StadiumBorder(),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () async {
               Navigator.pop(ctx);
               await context.read<TransactionProvider>().clearAll();
@@ -393,72 +551,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  final AuthProvider auth;
-
-  const _ProfileHeader({required this.auth});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primaryPurple, AppColors.primaryPink],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-          child: Row(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white54, width: 2),
-                ),
-                child: ClipOval(
-                  child: ProfileAvatar(
-                    imageBytes: auth.profileImageBytes,
-                    name: auth.name,
-                    radius: 31,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      auth.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      auth.email,
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SettingsCard extends StatelessWidget {
   final List<Widget> children;
 
@@ -467,14 +559,16 @@ class _SettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadow(context),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -490,7 +584,6 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final bool showArrow;
-  final Widget? trailing;
 
   const _SettingsTile({
     required this.icon,
@@ -499,54 +592,45 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.showArrow = true,
-    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: AppSpacing.md),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(icon, size: 18, color: iconColor),
+              child: Icon(icon, size: 19, color: iconColor),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
+                  Text(title,
+                      style: AppText.title(context).copyWith(fontSize: 14)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: TextStyle(
-                        color: AppColors.textSecondary(context),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(subtitle!,
+                        style: AppText.body(context).copyWith(fontSize: 12)),
                   ],
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
             if (showArrow && onTap != null)
               Icon(Icons.chevron_right_rounded,
-                  color: Colors.grey[400], size: 20),
+                  color: AppColors.textTertiary(context), size: 20),
           ],
         ),
       ),

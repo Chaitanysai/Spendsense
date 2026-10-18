@@ -9,11 +9,13 @@ void main() {
     test('Calculates average correctly', () async {
       final ai = AIService();
       final now = DateTime.now();
-      
+
       final txs = [
         TransactionModel(
           id: '1',
-          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
+          originalSms: 'food',
+          paymentMethod: 'UPI',
+          time: '12:00 PM',
           merchant: 'KFC',
           amount: 500,
           date: DateTime(now.year, now.month, now.day - 1),
@@ -23,7 +25,9 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          originalSms: 'travel', paymentMethod: 'UPI', time: '12:00 PM',
+          originalSms: 'travel',
+          paymentMethod: 'UPI',
+          time: '12:00 PM',
           merchant: 'Uber',
           amount: 250,
           date: DateTime(now.year, now.month, now.day),
@@ -33,9 +37,11 @@ void main() {
         ),
       ];
 
-      final history = [AIChatMessage(role: 'user', content: 'What is my average per day?')];
+      final history = [
+        AIChatMessage(role: 'user', content: 'What is my average per day?')
+      ];
       final res = await ai.askAI(history, txs);
-      
+
       expect(res.contains('per calendar day'), isTrue);
       expect(res.contains('per active spending day'), isTrue);
     });
@@ -43,11 +49,13 @@ void main() {
     test('Identifies top merchant and category', () async {
       final ai = AIService();
       final now = DateTime.now();
-      
+
       final txs = [
         TransactionModel(
           id: '1',
-          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
+          originalSms: 'food',
+          paymentMethod: 'UPI',
+          time: '12:00 PM',
           merchant: 'KFC',
           amount: 100,
           date: now,
@@ -57,7 +65,9 @@ void main() {
         ),
         TransactionModel(
           id: '2',
-          originalSms: 'food', paymentMethod: 'UPI', time: '12:00 PM',
+          originalSms: 'food',
+          paymentMethod: 'UPI',
+          time: '12:00 PM',
           merchant: 'KFC',
           amount: 200,
           date: now,
@@ -67,7 +77,9 @@ void main() {
         ),
         TransactionModel(
           id: '3',
-          originalSms: 'clothes', paymentMethod: 'UPI', time: '12:00 PM',
+          originalSms: 'clothes',
+          paymentMethod: 'UPI',
+          time: '12:00 PM',
           merchant: 'Zara',
           amount: 150,
           date: now,
@@ -91,10 +103,10 @@ void main() {
     test('Calculates last day of month correctly', () {
       // Create a mock DateTime overrides or just test generic output
       final range = PeriodProvider.salaryAlignedPeriod();
-      
+
       final start = range.start;
       final end = range.end;
-      
+
       // Since it's dynamic based on DateTime.now(), we just verify start and end logic.
       // End date must end at 23:59:59. Start date must end at 00:00:00 (since it uses DateTime(...) normally it is midnight)
       expect(start.hour, 0);

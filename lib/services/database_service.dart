@@ -48,7 +48,8 @@ class DatabaseService {
     // Load existing IDs into memory set for O(1) duplicate checks
     await _loadIds();
     _initialized = true;
-    debugPrint('📦 Database initialized. Cached IDs count: ${_cachedIds.length}');
+    debugPrint(
+        '📦 Database initialized. Cached IDs count: ${_cachedIds.length}');
   }
 
   Future<void> _loadIds() async {

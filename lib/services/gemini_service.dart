@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/transaction_model.dart';
+import '../utils/bank_recognizer.dart';
 import 'smart_parser.dart';
 
 class _ParseProvider {
@@ -250,7 +251,9 @@ SMS: $sms
     if (!validCategories.contains(category)) category = 'Other';
 
     String paymentMethod = (json['payment_method'] as String?)?.trim() ?? 'SMS';
-    String? bank = json['bank'] as String?;
+    // Normalize through the shared recognizer so an AI answer cannot introduce
+    // a rail/wallet/payment-app name as a bank (e.g. "UPI", "PhonePe").
+    String? bank = BankRecognizer.normalize(json['bank'] as String?);
     String? account = json['account'] as String?;
     String? reference = json['reference'] as String?;
 

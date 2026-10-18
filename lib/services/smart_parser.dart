@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/transaction_model.dart';
+import '../utils/bank_recognizer.dart';
 import 'package:intl/intl.dart';
 
 /// SpendSense 2.0 Enhanced SmartParser
@@ -248,28 +249,11 @@ class SmartParser {
 
   // ─── BANK DETECTION ────────────────────────────────────────────────────────
 
-  String? _detectBank(String sms) {
-    final upper = sms.toUpperCase();
-    if (upper.contains('HDFC')) return 'HDFC Bank';
-    if (upper.contains('SBI') || upper.contains('STATE BANK')) return 'SBI';
-    if (upper.contains('ICICI')) return 'ICICI Bank';
-    if (upper.contains('AXIS')) return 'Axis Bank';
-    if (upper.contains('FEDERAL BANK')) return 'Federal Bank';
-    if (upper.contains('AIRTEL PAYMENTS BANK')) return 'Airtel Payments Bank';
-    if (upper.contains('KOTAK')) return 'Kotak Mahindra Bank';
-    if (upper.contains('PAYTM') || upper.contains('PPBL')) {
-      return 'Paytm Payments Bank';
-    }
-    if (upper.contains('PHONEPE')) return 'PhonePe';
-    if (upper.contains('GPAY') || upper.contains('GOOGLE PAY')) {
-      return 'Google Pay';
-    }
-    if (upper.contains('BOB') || upper.contains('BANK OF BARODA')) {
-      return 'Bank of Baroda';
-    }
-    if (upper.contains('PNB')) return 'Punjab National Bank';
-    return null;
-  }
+  /// Delegates to [BankRecognizer] so the deterministic parser and the AI path
+  /// share one alias table and one "is this really a bank" rule. Returns null
+  /// when no bank is explicitly named, or when the only token present is a
+  /// rail, wallet or payment-app name.
+  String? _detectBank(String sms) => BankRecognizer.detectFromSms(sms);
 
   // ─── ACCOUNT EXTRACTION ────────────────────────────────────────────────────
 

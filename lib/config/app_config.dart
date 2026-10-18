@@ -1,12 +1,16 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/secure_storage_service.dart';
 
 /// Central API-key accessor for SpendSense.
-/// Priority: Secure Storage > .env > --dart-define
+/// Priority: Secure Storage > --dart-define
+///
+/// API keys are never read from files bundled with the app: no secret material
+/// ships inside the APK. Keys enter the app exclusively through --dart-define
+/// at build/run time or through the in-app AI settings (secure storage).
 abstract final class AppConfig {
   static final _secureStorage = SecureStorageService();
 
-  // Legacy sync accessors (for backward compatibility, loads from .env/dart-define only)
+  // Legacy sync accessors (dart-define only; secure storage is async and cannot
+  // be read from a sync getter)
   static String get groqKey => _readOptional('GROQ_API_KEY');
   static String get geminiKey => _readOptional('GEMINI_API_KEY');
   static String get openRouterKey => _readOptional('OPENROUTER_API_KEY');
@@ -20,7 +24,7 @@ abstract final class AppConfig {
   static String get geminiKeyOrEmpty => _readOptional('GEMINI_API_KEY');
   static String get openRouterKeyOrEmpty => _readOptional('OPENROUTER_API_KEY');
 
-  // New async accessors (checks secure storage first, then falls back to .env/dart-define)
+  // Async accessors: secure storage first, then --dart-define
   static Future<String> getGroqKey() async =>
       await _resolveAsync('GROQ_API_KEY');
   static Future<String> getCerebrasKey() async =>
@@ -35,22 +39,14 @@ abstract final class AppConfig {
     final fromSecure = await _secureStorage.getApiKey(key);
     if (fromSecure != null && fromSecure.isNotEmpty) return fromSecure;
 
-    // 2. Fallback to .env/dart-define
+    // 2. Fallback to --dart-define
     final value = _readOptional(key);
     if (value.isNotEmpty) return value;
 
     return '';
   }
 
-  static String _readOptional(String key) {
-    final compiletime = _dartDefine(key);
-    if (compiletime.isNotEmpty) return compiletime;
-    try {
-      return dotenv.maybeGet(key) ?? '';
-    } catch (_) {
-      return '';
-    }
-  }
+  static String _readOptional(String key) => _dartDefine(key);
 
   static String _dartDefine(String key) {
     switch (key) {

@@ -1,19 +1,33 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.spendsense">
 
-    <!-- 🔥 REQUIRED PERMISSIONS -->
+    <!-- Permissions, each with the code that justifies it:
+
+         INTERNET   - lib/services/gemini_service.dart, ai_query_service.dart
+         READ_SMS   - lib/services/sms_service.dart:22 (Permission.sms.request
+                      + flutter_sms_inbox); the app only READS the inbox.
+         POST_NOTIFICATIONS
+                    - lib/services/budget_monitor_service.dart:94, immediate
+                      budget threshold alerts (no scheduled/alarm delivery).
+
+         RECEIVE_SMS, SCHEDULE_EXACT_ALARM and USE_EXACT_ALARM were previously
+         declared but have no reference anywhere in lib/: there is no SMS
+         broadcast receiver, and no zonedSchedule/schedule/exact-alarm call.
+         Reading a bank SMS is not a reason to intercept incoming messages, and
+         exact-alarm access is Play-policy restricted to alarm/calendar apps, so
+         all three were removed rather than left as unjustified declarations.
+    -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_SMS"/>
-    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
-    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
+    <!-- Financial data must not leak through device/cloud backups. -->
     <application
         android:label="SpendSense"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
 
         <activity
             android:name=".MainActivity"

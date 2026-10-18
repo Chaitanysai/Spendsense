@@ -1,90 +1,176 @@
 import 'package:flutter/material.dart';
 
-/// SpendSense – redesigned colour palette inspired by the "After" UI.
-/// Teal/green gauge aesthetic, clean whites, soft card surfaces.
+import 'app_palette.dart';
+
+/// SpendSense design tokens — deep navy → rich blue → electric cyan by default,
+/// and user-selectable beyond that.
+///
+/// This class is the single read point for every colour in the app. The values
+/// below mirror the **active** [AppPalette] into mutable statics, which keeps
+/// every existing call site (`AppColors.brand`, `AppColors.heroGradient`, …)
+/// working unchanged while still allowing the palette to be swapped at runtime:
+/// [applyPalette] rewrites these fields and the widget tree then rebuilds.
+///
+/// The brand ramp is deliberately cool and low-saturation at the base so the
+/// hero gradient reads as "premium finance", with the accent reserved for
+/// selective highlights. A single warm accent is kept for money/salary cues,
+/// because an all-blue palette gives the eye nothing to prioritise against.
 class AppColors {
   AppColors._();
 
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const Color primaryTeal   = Color(0xFF0ABFBC); // gauge teal
-  static const Color primaryGreen  = Color(0xFF06D6A0); // income / positive
-  static const Color accentOrange  = Color(0xFFFF6B35); // warning / over-budget
-  static const Color accentBlue    = Color(0xFF4361EE); // secondary accent
+  // ── Active palette ───────────────────────────────────────────────────────────
+  static AppPalette _palette = AppPalette.oceanBlue;
 
-  // Legacy aliases kept so existing widgets compile without changes
-  static const Color primaryPurple = Color(0xFF4361EE); // maps to accentBlue
-  static const Color primaryPink   = Color(0xFFFF6B35); // maps to accentOrange
-  static const Color accentTeal    = primaryTeal;
+  static AppPalette get palette => _palette;
 
-  // ── Gauge gradient (teal → green, used on the big arc) ────────────────────
-  static const LinearGradient gaugeGradient = LinearGradient(
-    colors: [Color(0xFF0ABFBC), Color(0xFF06D6A0)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
+  /// Mirrors [palette] into the fields below. Call before rebuilding the tree
+  /// that reads them (see `ThemeProvider.setPalette`).
+  static void applyPalette(AppPalette next) {
+    _palette = next;
 
-  // ── Brand gradient (used on cards & buttons) ──────────────────────────────
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [Color(0xFF4361EE), Color(0xFF0ABFBC)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+    navyDeep = next.deep;
+    brand = next.brand;
+    brandBright = next.bright;
+    azure = next.mid;
+    cyan = next.accent;
+    amber = next.warm;
 
-  // ── Alt gradient (teal → green, softer) ───────────────────────────────────
-  static const LinearGradient altGradient = LinearGradient(
-    colors: [Color(0xFF06D6A0), Color(0xFF0ABFBC)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+    background = next.background;
+    surface = next.surface;
+    surfaceMuted = next.surfaceMuted;
+    borderLight = next.borderLight;
 
-  // ── Expense / Income pill colours ─────────────────────────────────────────
-  static const Color expenseRed   = Color(0xFFEF4444);
-  static const Color incomeGreen  = Color(0xFF06D6A0);
+    darkBackground = next.darkBackground;
+    darkSurface = next.darkSurface;
+    darkSurfaceAlt = next.darkSurfaceAlt;
+    borderDark = next.borderDark;
 
-  // ── Theme palette ─────────────────────────────────────────────────────────
-  static const Color background = Color(0xFFF5F7FA);
-  static const Color darkBackground = Color(0xFF0F1117);
-  static const Color darkSurface = Color(0xFF1A1D26);
-  static const Color darkSurfaceAlt = Color(0xFF23273A);
+    brandGradient = next.brandGradient;
+    heroGradient = next.heroGradient;
+    electricGradient = next.electricGradient;
+    amberGradient = next.amberGradient;
+    gaugeGradient = next.gaugeGradient;
+    chartPalette = next.chartPalette;
+  }
+
+  // ── Brand ramp ─────────────────────────────────────────────────────────────
+  static Color navyDeep = AppPalette.oceanBlue.deep; // deepest navy
+  static Color brand = AppPalette.oceanBlue.brand; // primary
+  static Color brandBright = AppPalette.oceanBlue.bright; // electric blue
+  static Color azure = AppPalette.oceanBlue.mid; // CTA / mid stop
+  static Color cyan = AppPalette.oceanBlue.accent; // selective highlight
+  static Color blueDeep = AppPalette.oceanBlue.deep; // gradient end
+
+  /// Warm accent for salary, wallet and budget cues. Kept intentionally outside
+  /// the cool ramp so it reads as a highlight, not a fourth brand colour.
+  static Color amber = AppPalette.oceanBlue.warm;
 
   // ── Semantic ───────────────────────────────────────────────────────────────
+  // Fixed across every palette: red must always mean money out.
+  static const Color expenseRed = AppPalette.expenseRed;
+  static const Color incomeGreen = AppPalette.incomeGreen;
+  static const Color danger = AppPalette.danger;
+
+  // ── Gradients ────────────────────────────────────────────────────────────────
+  /// Rich hero gradient used on balance cards, CTAs and the app logo.
+  static LinearGradient brandGradient = AppPalette.oceanBlue.brandGradient;
+
+  /// Alias with an explicit, semantic name for the hero treatment.
+  static LinearGradient heroGradient = AppPalette.oceanBlue.heroGradient;
+
+  /// Cool electric gradient for primary buttons and the nav action.
+  static LinearGradient electricGradient =
+      AppPalette.oceanBlue.electricGradient;
+
+  /// Amber accent gradient for small highlights.
+  static LinearGradient amberGradient = AppPalette.oceanBlue.amberGradient;
+
+  /// Positive / money-in gradient. Shared by the income hero and the "spending
+  /// went down" stat so a favourable state reads the same everywhere.
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [Color(0xFF0E8A55), Color(0xFF22C77B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Budget gauge arc.
+  static LinearGradient gaugeGradient = AppPalette.oceanBlue.gaugeGradient;
+
+  /// Diagonal white sheen overlay for frosted glass highlights.
+  static const LinearGradient glassSheen = LinearGradient(
+    colors: [Color(0x40FFFFFF), Color(0x00FFFFFF)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Categorical palette for charts and bubbles. Hues are spaced around the
+  /// wheel rather than staying in the brand ramp so adjacent slices stay
+  /// separable for colour-blind viewers.
+  static List<Color> chartPalette = AppPalette.oceanBlue.chartPalette;
+
+  // ── Theme surfaces ────────────────────────────────────────────────────────────
+  static Color background = AppPalette.oceanBlue.background; // cool off-white
+  static Color surface = AppPalette.oceanBlue.surface;
+  static Color surfaceMuted = AppPalette.oceanBlue.surfaceMuted;
+  static Color borderLight = AppPalette.oceanBlue.borderLight;
+
+  static Color darkBackground =
+      AppPalette.oceanBlue.darkBackground; // deep navy
+  static Color darkSurface = AppPalette.oceanBlue.darkSurface;
+  static Color darkSurfaceAlt = AppPalette.oceanBlue.darkSurfaceAlt;
+  static Color borderDark = AppPalette.oceanBlue.borderDark;
+
+  // ── Context-aware helpers ─────────────────────────────────────────────────────
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
   static Color scaffold(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? darkBackground
-          : background;
+      isDark(context) ? darkBackground : background;
 
   static Color surfaceColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? darkSurface
-          : Colors.white;
+      isDark(context) ? darkSurface : surface;
 
   static Color surfaceAlt(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? darkSurfaceAlt
-          : const Color(0xFFF0F4F8);
+      isDark(context) ? darkSurfaceAlt : surfaceMuted;
 
   static Color panel(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF1E2130)
-          : const Color(0xFFF0F4F8);
+      isDark(context) ? darkSurfaceAlt : surfaceMuted;
 
   static Color textPrimary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFFF1F5F9)
-          : const Color(0xFF0F172A);
+      isDark(context) ? const Color(0xFFEAF1FF) : const Color(0xFF0A1734);
 
   static Color textSecondary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF94A3B8)
-          : const Color(0xFF64748B);
+      isDark(context) ? const Color(0xFFA9BAD8) : const Color(0xFF4A5A78);
+
+  static Color textTertiary(BuildContext context) =>
+      isDark(context) ? const Color(0xFF74879F) : const Color(0xFF8391AC);
 
   static Color border(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF2E3347)
-          : const Color(0xFFE2E8F0);
+      isDark(context) ? borderDark : borderLight;
 
-  static Color shadow(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.black.withValues(alpha: 0.35)
-          : const Color(0xFF0F172A).withValues(alpha: 0.06);
+  /// Border colour from a plain brightness flag (for ThemeData construction).
+  static Color borderDarkOrLight(bool isDark) =>
+      isDark ? borderDark : borderLight;
+
+  static Color shadow(BuildContext context) => isDark(context)
+      ? Colors.black.withValues(alpha: 0.5)
+      : const Color(0xFF0E2E86).withValues(alpha: 0.10);
+
+  /// Foreground for the selected navigation item.
+  ///
+  /// `brand` on the near-white light-mode glass bar measures ~7.2:1 and clears
+  /// AA comfortably. The same `brand` on the dark bar falls to ~2.5:1, which is
+  /// below the 4.5:1 needed for the 9px label, so dark mode steps up to
+  /// `azure` (~6.8:1) while staying in the same blue family.
+  static Color navSelected(BuildContext context) =>
+      isDark(context) ? azure : brand;
+
+  // ── Glass tokens ──────────────────────────────────────────────────────────────
+  static Color glassFill(BuildContext context) => isDark(context)
+      ? Colors.white.withValues(alpha: 0.07)
+      : Colors.white.withValues(alpha: 0.66);
+
+  static Color glassBorder(BuildContext context) => isDark(context)
+      ? Colors.white.withValues(alpha: 0.14)
+      : Colors.white.withValues(alpha: 0.85);
 }

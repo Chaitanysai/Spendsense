@@ -26,17 +26,16 @@ dependencies:
   connectivity_plus: ^5.0.2
   flutter_local_notifications: ^18.0.0
   image_picker: ^1.1.2
+  reactive_forms: ^17.0.0
 
   # 🔑 API key management
-  flutter_dotenv: ^5.1.0
   flutter_secure_storage: ^9.0.0
 
 flutter:
   uses-material-design: true
 
   assets:
-    - shorebird.yaml
-    - .env          # loaded at runtime for dev; excluded from release via .gitignore
+    - shorebird.yaml    # Shorebird code-push config; contains no secrets.
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
@@ -49,4 +48,9 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icons/app_icon.png
+  # Adaptive (API 26+) icon: gradient background drawable + glyph-only
+  # foreground kept inside the 66% safe zone so any launcher mask is safe.
+  adaptive_icon_background: "@drawable/ic_launcher_background"
+  adaptive_icon_foreground: assets/icons/app_icon_foreground.png
   min_sdk_android: 21
+  remove_alpha_ios: true

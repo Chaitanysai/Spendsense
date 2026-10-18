@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SpendSense data extraction rules (Android 12+).
+
+  An empty <cloud-backup /> disables Google cloud backup, and an empty
+  <device-transfer /> disables device-to-device migration. SpendSense stores
+  financial SMS content in its local database and preferences, and backup is
+  NOT an intended feature, so neither path may copy that data off the device.
+  Legacy (pre-Android 12) behavior is separately disabled through
+  android:allowBackup="false" and android:fullBackupContent="false" in the
+  merged manifest.
+-->
+<data-extraction-rules>
+    <cloud-backup />
+    <device-transfer />
+</data-extraction-rules>

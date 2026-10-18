@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import 'app_button.dart';
 
 class SmsImportPrompt {
   static Future<void> show(BuildContext context) {
@@ -43,18 +46,20 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadow(context),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
           ),
         ],
       ),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page, AppSpacing.md, AppSpacing.page, AppSpacing.xxl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,39 +69,46 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: AppColors.border(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Check SMS from when?',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary(context),
-                ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.brandGradient,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(Icons.sms_rounded,
+                        color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text('Check SMS from when?',
+                        style: AppText.h2(context)),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 'SpendSense will scan bank and UPI SMS from the date you choose and build your transactions from there.',
-                style: TextStyle(
-                  color: AppColors.textSecondary(context),
-                  height: 1.5,
-                  fontSize: 14,
-                ),
+                style: AppText.body(context).copyWith(height: 1.5),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               InkWell(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
                 onTap: _saving ? null : _pickDate,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt(context),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: AppColors.border(context)),
                   ),
                   child: Row(
@@ -104,35 +116,23 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryTeal.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.brand.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(Icons.calendar_month_rounded,
-                            color: AppColors.primaryTeal),
+                            color: AppColors.brand),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'START DATE',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textSecondary(context),
-                                letterSpacing: 0.8,
-                              ),
-                            ),
+                            Text('START DATE',
+                                style: AppText.overline(context)),
                             const SizedBox(height: 2),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                color: AppColors.textPrimary(context),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                            ),
+                            Text(label,
+                                style: AppText.title(context)
+                                    .copyWith(fontSize: 15)),
                           ],
                         ),
                       ),
@@ -142,50 +142,12 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppColors.brandGradient,
-                    borderRadius: BorderRadius.circular(26),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryTeal.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                    ),
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Start syncing SMS',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
+              const SizedBox(height: AppSpacing.xxl),
+              AppPrimaryButton(
+                label: 'Start syncing SMS',
+                icon: Icons.sync_rounded,
+                loading: _saving,
+                onPressed: _saving ? null : _save,
               ),
             ],
           ),

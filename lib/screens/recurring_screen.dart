@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
 import '../providers/transaction_provider.dart';
 import '../services/recurring_detector_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import '../widgets/app_states.dart';
+import '../widgets/category_bubble.dart';
+import '../widgets/gradient_hero_card.dart';
 
 class RecurringScreen extends StatelessWidget {
   const RecurringScreen({super.key});
@@ -15,167 +21,102 @@ class RecurringScreen extends StatelessWidget {
     final recurring = detector.detectRecurring(provider.transactions);
     final subscriptions = detector.findSubscriptions(recurring);
     final monthlyCost = detector.getEstimatedMonthlyCost(subscriptions);
+    final others = recurring.where((r) => !subscriptions.contains(r)).toList();
 
     return Scaffold(
+      // Opaque themed background: this screen is pushed as an opaque route, so a
+      // transparent scaffold would expose an unpainted/blank surface behind it.
       backgroundColor: AppColors.scaffold(context),
-      appBar: AppBar(
-        title: Text(
-          'Recurring Transactions',
-          style: TextStyle(
-            color: AppColors.textPrimary(context),
-            fontWeight: FontWeight.bold,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.md,
+            AppSpacing.page,
+            // Pushed route: the shell's nav bar and Add button are not on screen
+            // here, so this matches the other pushed routes instead of reserving
+            // a phantom 108px nav gap.
+            AppSpacing.xxl,
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Summary Card
-            _buildSummaryCard(subscriptions.length, monthlyCost),
-
-            SizedBox(height: 24),
-
-            // Subscriptions Section
-            if (subscriptions.isNotEmpty) ...[
-              Text(
-                'Your Subscriptions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 12),
-              ...subscriptions.map((sub) => _SubscriptionCard(sub: sub)),
-              SizedBox(height: 24),
-            ],
-
-            // Other Recurring Transactions
-            if (recurring.isNotEmpty) ...[
-              Text(
-                'Other Recurring Payments',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 12),
-              ...recurring
-                  .where((r) => !subscriptions.contains(r))
-                  .map((r) => _RecurringCard(recurring: r)),
-            ],
-
-            // Empty State
-            if (recurring.isEmpty)
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Column(
+            Text('Recurring', style: AppText.h1(context)),
+            const SizedBox(height: 4),
+            Text('Subscriptions and repeating payments',
+                style: AppText.body(context)),
+            const SizedBox(height: AppSpacing.xl),
+            GradientHeroCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(
-                        Icons.repeat_rounded,
-                        size: 64,
-                        color: Colors.grey[300],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No recurring transactions detected',
-                        style: TextStyle(
-                          color: AppColors.textSecondary(context),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      Icon(Icons.subscriptions_rounded,
+                          color: Colors.white.withValues(alpha: 0.85),
+                          size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text('Subscription overview',
+                          style: AppText.onGradient(
+                              size: 13, weight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Monthly cost',
+                                style: AppText.onGradient(
+                                    size: 12, opacity: 0.85)),
+                            const SizedBox(height: 4),
+                            Text('₹${monthlyCost.toStringAsFixed(0)}',
+                                style: AppText.onGradient(
+                                    size: 28, weight: FontWeight.w800)),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Make at least 2 transactions to the same merchant\nto start detecting recurring payments',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textSecondary(context),
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('Active subs',
+                              style:
+                                  AppText.onGradient(size: 12, opacity: 0.85)),
+                          const SizedBox(height: 4),
+                          Text('${subscriptions.length}',
+                              style: AppText.onGradient(
+                                  size: 28, weight: FontWeight.w800)),
+                        ],
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
+            ),
+            if (subscriptions.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              Text('Your subscriptions', style: AppText.h2(context)),
+              const SizedBox(height: AppSpacing.md),
+              ...subscriptions.map((sub) => _SubscriptionCard(sub: sub)),
+            ],
+            if (others.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              Text('Other recurring payments', style: AppText.h2(context)),
+              const SizedBox(height: AppSpacing.md),
+              ...others.map((r) => _RecurringCard(recurring: r)),
+            ],
+            if (recurring.isEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              const AppEmptyState(
+                icon: Icons.repeat_rounded,
+                title: 'No recurring payments yet',
+                message:
+                    'Make at least two transactions to the same merchant and SpendSense will detect the pattern automatically.',
+              ),
+            ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(int count, double monthlyCost) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primaryPurple, AppColors.primaryPink],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.subscriptions, color: Colors.white70, size: 24),
-              SizedBox(width: 12),
-              Text(
-                'Subscription Overview',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Monthly Cost',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '₹${monthlyCost.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Active Subs',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -189,16 +130,17 @@ class _SubscriptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadow(context),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -207,39 +149,18 @@ class _SubscriptionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Color(0xFFFFE0F0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    _getEmoji(sub.category),
-                    style: TextStyle(fontSize: 24),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
+              CategoryBubble(category: sub.category, size: 48),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      sub.merchant,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 2),
+                    Text(sub.merchant,
+                        style: AppText.title(context).copyWith(fontSize: 15)),
+                    const SizedBox(height: 2),
                     Text(
                       '${sub.frequencyLabel} • ₹${sub.averageAmount.toStringAsFixed(0)} avg',
-                      style: TextStyle(
-                        color: AppColors.textSecondary(context),
-                        fontSize: 12,
-                      ),
+                      style: AppText.body(context).copyWith(fontSize: 12),
                     ),
                   ],
                 ),
@@ -247,64 +168,31 @@ class _SubscriptionCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '₹${sub.averageAmount.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryPink,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    '${sub.occurrenceCount} payments',
-                    style: TextStyle(
-                      color: AppColors.textSecondary(context),
-                      fontSize: 11,
-                    ),
-                  ),
+                  Text('₹${sub.averageAmount.toStringAsFixed(0)}',
+                      style: AppText.amount(context,
+                          size: 18, color: AppColors.brand)),
+                  const SizedBox(height: 2),
+                  Text('${sub.occurrenceCount} payments',
+                      style: AppText.body(context).copyWith(fontSize: 11)),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 12),
-          Divider(height: 1),
-          SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: AppColors.border(context)),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'First: ${DateFormat('dd MMM').format(sub.firstOccurrence)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary(context),
-                ),
-              ),
-              Text(
-                'Last: ${DateFormat('dd MMM').format(sub.lastOccurrence)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary(context),
-                ),
-              ),
+              Text('First: ${DateFormat('dd MMM').format(sub.firstOccurrence)}',
+                  style: AppText.body(context).copyWith(fontSize: 11)),
+              Text('Last: ${DateFormat('dd MMM').format(sub.lastOccurrence)}',
+                  style: AppText.body(context).copyWith(fontSize: 11)),
             ],
           ),
         ],
       ),
     );
-  }
-
-  String _getEmoji(String category) {
-    const emojis = {
-      'Food': '🍔',
-      'Shopping': '🛍',
-      'Entertainment': '🎬',
-      'Bills': '💡',
-      'Health': '🏥',
-      'Travel': '🚗',
-      'Fuel': '⛽',
-    };
-    return emojis[category] ?? '📦';
   }
 }
 
@@ -316,68 +204,35 @@ class _RecurringCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Color(0xFFE8ECEF),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                _getEmoji(recurring.category),
-                style: TextStyle(fontSize: 20),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
+          CategoryBubble(category: recurring.category, size: 44),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  recurring.merchant,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 2),
+                Text(recurring.merchant,
+                    style: AppText.title(context).copyWith(fontSize: 14)),
+                const SizedBox(height: 2),
                 Text(
                   '${recurring.frequencyLabel} • ₹${recurring.averageAmount.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: AppColors.textSecondary(context),
-                    fontSize: 11,
-                  ),
+                  style: AppText.body(context).copyWith(fontSize: 11),
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.grey[400]),
+          Icon(Icons.chevron_right_rounded,
+              color: AppColors.textTertiary(context)),
         ],
       ),
     );
-  }
-
-  String _getEmoji(String category) {
-    const emojis = {
-      'Food': '🍔',
-      'Shopping': '🛍',
-      'Entertainment': '🎬',
-      'Bills': '💡',
-      'Health': '🏥',
-      'Travel': '🚗',
-      'Fuel': '⛽',
-    };
-    return emojis[category] ?? '💳';
   }
 }

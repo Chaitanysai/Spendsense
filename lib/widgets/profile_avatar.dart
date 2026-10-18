@@ -21,14 +21,14 @@ class ProfileAvatar extends StatelessWidget {
     final hasImage = imageBytes != null && imageBytes!.isNotEmpty;
     return CircleAvatar(
       radius: radius,
-      backgroundColor: AppColors.primaryPurple.withValues(alpha: 0.14),
+      backgroundColor: AppColors.brand,
       backgroundImage: hasImage ? MemoryImage(imageBytes!) : null,
       child: hasImage
           ? null
           : Text(
               _initials(name),
               style: TextStyle(
-                color: AppColors.primaryPurple,
+                color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: radius * 0.8,
               ),

@@ -1,23 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "omniroute/kiro/claude-sonnet-4.5",
-  "provider": {
-    "omniroute": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "OmniRoute",
-      "options": {
-        "baseURL": "http://localhost:20128/v1",
-        "apiKey": "{env:OMNIROUTE_API_KEY}"
-      },
-      "models": {
-        "kiro/claude-sonnet-4.5": {
-          "name": "Kiro Claude Sonnet 4.5",
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          }
-        }
-      }
-    }
-  }
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git#7f043e5eaf3522dc19178c673b76328de9b0c355"]
 }

@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 enum TransactionType { expense, income }
 
 class TransactionModel {
+  /// Display fallback used whenever the bank could not be identified.
+  static const String unknownBankLabel = 'Others';
+
   final String id;
   final int amount;
   final TransactionType type;
@@ -13,7 +16,7 @@ class TransactionModel {
   final String time;
   final String originalSms;
   final bool isExcluded;
-  
+
   // ── SpendSense 2.0 New Fields ──────────────────────────────────────────────
   final String? bank;
   final String? account;
@@ -40,6 +43,21 @@ class TransactionModel {
     this.confidence = 1.0,
     this.needsReview = false,
   });
+
+  /// Bank name for display. Falls back to [unknownBankLabel] when no bank was
+  /// identified, so every caller renders the same value for the same state.
+  ///
+  /// [bank] stays the stored, nullable field; this getter never mutates it and
+  /// keeps 'Others' out of the persisted data.
+  String get bankName {
+    final value = bank?.trim();
+    if (value == null ||
+        value.isEmpty ||
+        value.toLowerCase() == unknownBankLabel.toLowerCase()) {
+      return unknownBankLabel;
+    }
+    return value;
+  }
 
   // ─── SERIALISATION ─────────────────────────────────────────────────────────
 
@@ -72,8 +90,8 @@ class TransactionModel {
       merchant: json['merchant'] as String? ?? 'Unknown',
       category: json['category'] as String? ?? 'Other',
       paymentMethod: json['paymentMethod'] as String? ?? 'SMS',
-      date: json['date'] != null 
-          ? DateTime.tryParse(json['date'] as String) ?? DateTime.now() 
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'] as String) ?? DateTime.now()
           : DateTime.now(),
       time: json['time'] as String? ?? '00:00',
       originalSms: json['originalSms'] as String? ?? '',

@@ -5,7 +5,13 @@ import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
 import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import '../utils/category_style.dart';
 import '../utils/formatters.dart';
+import '../widgets/app_states.dart';
+import '../widgets/pressable.dart';
+import '../widgets/sms_import_prompt.dart';
 
 // ─── Date filter presets ───────────────────────────────────────────────────
 enum _DatePreset { today, thisWeek, thisMonth, last3Months, custom }
@@ -26,8 +32,6 @@ extension _DatePresetLabel on _DatePreset {
     }
   }
 
-  /// Returns the DateTimeRange for a given preset.
-  /// Returns null for [_DatePreset.custom] — caller must provide a range.
   DateTimeRange? resolve() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -47,12 +51,10 @@ extension _DatePresetLabel on _DatePreset {
           end: now,
         );
       case _DatePreset.custom:
-        return null; // caller opens date picker
+        return null;
     }
   }
 }
-
-// ─── Screen ────────────────────────────────────────────────────────────────
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -63,18 +65,17 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _sortMode = 'Date'; // Date | Amount
+  String _sortMode = 'Date';
   bool _sortDescending = true;
   String? _selectedCategory;
   TransactionType? _selectedType;
   DateTimeRange? _selectedDateRange;
-  _DatePreset? _activePreset; // tracks which preset chip is active
+  _DatePreset? _activePreset;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    // FIX: guard with mounted before using context across the async microtask gap
     Future.microtask(() {
       if (!mounted) return;
       Provider.of<TransactionProvider>(context, listen: false).syncFromSms();
@@ -87,206 +88,242 @@ class _ActivityScreenState extends State<ActivityScreen> {
     super.dispose();
   }
 
-  // ─── BUILD ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<TransactionProvider>(context);
     final displayList = _getProcessedList(provider.transactions);
+    final hasFilters = _selectedCategory != null ||
+        _selectedType != null ||
+        _selectedDateRange != null ||
+        _activePreset != null;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffold(context),
-      appBar: AppBar(
-        title: Text(
-          'SpendSense',
-          style: TextStyle(
-            color: AppColors.textPrimary(context),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          if (_selectedCategory != null ||
-              _selectedType != null ||
-              _selectedDateRange != null ||
-              _activePreset != null)
-            TextButton(
-              onPressed: _clearFilters,
-              child: Text(
-                'Clear filters',
-                style: TextStyle(color: AppColors.primaryPurple, fontSize: 12),
-              ),
-            ),
-          IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.blueGrey),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Your Activity',
-                    style:
-                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                Text('Track every penny across your accounts',
-                    style: TextStyle(color: AppColors.textSecondary(context))),
-                SizedBox(height: 20),
-
-                // ── SEARCH ────────────────────────────────────────────────
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt(context),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: InputDecoration(
-                      icon: Icon(Icons.search, color: Colors.grey),
-                      hintText: 'Search transactions...',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16),
-
-                // ── SORT CHIPS ────────────────────────────────────────────
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      _sortChip(
-                        icon: Icons.calendar_today_rounded,
-                        label: 'Date',
-                        isSelected: _sortMode == 'Date',
-                        onTap: () => setState(() => _sortMode = 'Date'),
-                      ),
-                      SizedBox(width: 10),
-                      _sortChip(
-                        icon: Icons.payments_rounded,
-                        label: 'Amount',
-                        isSelected: _sortMode == 'Amount',
-                        onTap: () => setState(() => _sortMode = 'Amount'),
-                      ),
-                      SizedBox(width: 10),
-                      _typeFilterChip(),
-                      SizedBox(width: 10),
-                      _sortDirectionChip(),
-                      SizedBox(width: 10),
-                      _categoryFilterChip(provider),
-                      SizedBox(width: 10),
-                      // ── DATE RANGE CHIP ──────────────────────────────────
-                      // FIX: was a single static chip — now opens a rich
-                      // bottom-sheet with presets + custom date picker
-                      _dateRangeChip(),
+                      Text('Activity', style: AppText.h1(context)),
+                      const Spacer(),
+                      if (hasFilters)
+                        Pressable(
+                          onTap: _clearFilters,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.pill),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: AppColors.brand.withValues(alpha: 0.12),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                            ),
+                            child: Text('Clear',
+                                style: AppText.label(context).copyWith(
+                                    color: AppColors.brand,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text('Track every penny across your accounts',
+                      style: AppText.body(context)),
+                  const SizedBox(height: AppSpacing.lg),
 
-                // ── ACTIVE FILTER BADGES ──────────────────────────────────
-                if (_selectedCategory != null ||
-                    _selectedType != null ||
-                    _selectedDateRange != null ||
-                    _activePreset != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Wrap(
-                      spacing: 8,
+                  // Search
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceColor(context),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.border(context)),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                      decoration: InputDecoration(
+                        icon: Icon(Icons.search_rounded,
+                            color: AppColors.textTertiary(context)),
+                        hintText: 'Search merchant, category, amount…',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                      ),
+                      style: AppText.body(context).copyWith(
+                          color: AppColors.textPrimary(context), fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Sort / filter chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
-                        if (_selectedCategory != null)
-                          _activeBadge(
-                            '📂 $_selectedCategory',
-                            () => setState(() => _selectedCategory = null),
-                          ),
-                        if (_selectedType != null)
-                          _activeBadge(
-                            '💳 ${_selectedType == TransactionType.expense ? 'Expense' : 'Income'}',
-                            () => setState(() => _selectedType = null),
-                          ),
-                        if (_activePreset != null || _selectedDateRange != null)
-                          _activeBadge(
-                            '📅 ${_activeDateLabel()}',
-                            () => setState(() {
-                              _activePreset = null;
-                              _selectedDateRange = null;
-                            }),
-                          ),
+                        _chip(
+                          icon: Icons.calendar_today_rounded,
+                          label: 'Date',
+                          active: _sortMode == 'Date',
+                          onTap: () => setState(() => _sortMode = 'Date'),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        _chip(
+                          icon: Icons.payments_rounded,
+                          label: 'Amount',
+                          active: _sortMode == 'Amount',
+                          onTap: () => setState(() => _sortMode = 'Amount'),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        _typeFilterChip(),
+                        const SizedBox(width: AppSpacing.sm),
+                        _sortDirectionChip(),
+                        const SizedBox(width: AppSpacing.sm),
+                        _categoryFilterChip(provider),
+                        const SizedBox(width: AppSpacing.sm),
+                        _dateRangeChip(),
                       ],
                     ),
                   ),
 
-                SizedBox(height: 12),
-              ],
-            ),
-          ),
+                  if (hasFilters)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.md),
+                      child: Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          if (_selectedCategory != null)
+                            _activeBadge(
+                              Icons.category_rounded,
+                              _selectedCategory!,
+                              () => setState(() => _selectedCategory = null),
+                            ),
+                          if (_selectedType != null)
+                            _activeBadge(
+                              Icons.swap_horiz_rounded,
+                              _selectedType == TransactionType.expense
+                                  ? 'Expense'
+                                  : 'Income',
+                              () => setState(() => _selectedType = null),
+                            ),
+                          if (_activePreset != null ||
+                              _selectedDateRange != null)
+                            _activeBadge(
+                              Icons.date_range_rounded,
+                              _activeDateLabel(),
+                              () => setState(() {
+                                _activePreset = null;
+                                _selectedDateRange = null;
+                              }),
+                            ),
+                        ],
+                      ),
+                    ),
 
-          // ── RESULTS COUNT ────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
-              style: TextStyle(
-                color: AppColors.textSecondary(context),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
+                    style: AppText.overline(context),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
               ),
             ),
-          ),
-          SizedBox(height: 8),
+            Expanded(
+              child: displayList.isEmpty && provider.isSyncing
+                  ? const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: AppSpacing.page),
+                      child: SkeletonList(count: 5),
+                    )
+                  : displayList.isEmpty
+                      ? (hasFilters
+                          ? AppEmptyState(
+                              icon: Icons.search_off_rounded,
+                              title: 'No transactions found',
+                              message: 'Try adjusting your search or filters.',
+                              actionLabel: 'Clear all filters',
+                              onAction: _clearFilters,
+                            )
+                          : provider.hasSmsScanStartDate
+                              ? const AppEmptyState(
+                                  icon: Icons.receipt_long_rounded,
+                                  title: 'Nothing here yet',
+                                  message:
+                                      'No transactions were found after your selected SMS start date.',
+                                )
+                              : AppEmptyState(
+                                  icon: Icons.sms_rounded,
+                                  title: 'No transactions yet',
+                                  message:
+                                      'Pick an SMS start date and SpendSense will build your transactions automatically.',
+                                  actionLabel: 'Choose start date',
+                                  onAction: () => SmsImportPrompt.show(context),
+                                ))
+                      : AppRefreshIndicator(
+                          onRefresh: () => Provider.of<TransactionProvider>(
+                                  context,
+                                  listen: false)
+                              .syncFromSms(),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.page,
+                              0,
+                              AppSpacing.page,
+                              AppSpacing.fabClearance,
+                            ),
+                            itemCount: displayList.length,
+                            itemBuilder: (context, index) {
+                              final tx = displayList[index];
 
-          // ── TRANSACTION LIST ─────────────────────────────────────────────
-          Expanded(
-            child: displayList.isEmpty && provider.isSyncing
-                ? Center(child: CircularProgressIndicator())
-                : displayList.isEmpty
-                    ? _emptyState()
-                    : RefreshIndicator(
-                        onRefresh: () => Provider.of<TransactionProvider>(
-                                context,
-                                listen: false)
-                            .syncFromSms(),
-                        child: ListView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: displayList.length,
-                          itemBuilder: (context, index) {
-                            final tx = displayList[index];
-
-                            bool showHeader = false;
-                            if (_sortMode == 'Date') {
-                              if (index == 0) {
-                                showHeader = true;
-                              } else {
-                                final prev = displayList[index - 1];
-                                showHeader = Formatters.date(prev.date) !=
-                                    Formatters.date(tx.date);
+                              bool showHeader = false;
+                              if (_sortMode == 'Date') {
+                                if (index == 0) {
+                                  showHeader = true;
+                                } else {
+                                  final prev = displayList[index - 1];
+                                  showHeader = Formatters.date(prev.date) !=
+                                      Formatters.date(tx.date);
+                                }
                               }
-                            }
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (showHeader)
-                                  _sectionHeader(
-                                      Formatters.date(tx.date).toUpperCase()),
-                                TransactionTile(transaction: tx),
-                              ],
-                            );
-                          },
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (showHeader)
+                                    _sectionHeader(DateFormat('EEE, d MMM')
+                                        .format(tx.date)),
+                                  TransactionTile(
+                                    transaction: tx,
+                                    showDate: false,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ),
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ─── FILTER / SORT LOGIC ──────────────────────────────────────────────────
+  // ─── FILTER / SORT LOGIC (unchanged behaviour) ─────────────────────────────
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
     List<TransactionModel> list = all.where((t) {
@@ -295,15 +332,13 @@ class _ActivityScreenState extends State<ActivityScreen> {
           t.merchant.toLowerCase().contains(query) ||
           t.category.toLowerCase().contains(query) ||
           t.paymentMethod.toLowerCase().contains(query) ||
+          t.bankName.toLowerCase().contains(query) ||
           t.amount.toString().contains(query);
 
       final matchesCategory =
           _selectedCategory == null || t.category == _selectedCategory;
       final matchesType = _selectedType == null || t.type == _selectedType;
 
-      // FIX: compare only date components (ignore time) to avoid off-by-one
-      // on the end-date boundary. Previously "end + 1 day" was a workaround
-      // that could accidentally include transactions from the next day.
       final matchesDate = _selectedDateRange == null ||
           _isWithinRange(t.date, _selectedDateRange!);
 
@@ -323,7 +358,6 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return list;
   }
 
-  /// Inclusive start, exclusive end boundary date check.
   bool _isWithinRange(DateTime date, DateTimeRange range) {
     final s = DateTime(range.start.year, range.start.month, range.start.day);
     final e = DateTime(range.end.year, range.end.month, range.end.day)
@@ -351,112 +385,148 @@ class _ActivityScreenState extends State<ActivityScreen> {
         (_selectedDateRange != null ? _formatRange(_selectedDateRange!) : '');
   }
 
-  // ─── DATE RANGE CHIP & SHEET ──────────────────────────────────────────────
+  // ─── CHIPS ─────────────────────────────────────────────────────────────────
 
-  Widget _dateRangeChip() {
-    final isActive = _activePreset != null || _selectedDateRange != null;
-
-    return GestureDetector(
-      onTap:
-          _showDateFilterSheet, // FIX: was calling showDateRangePicker directly
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+  Widget _chip({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    IconData? trailing,
+  }) {
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: AnimatedContainer(
+        duration: AppMotion.respect(context, AppMotion.fast),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Color(0xFFE8F5E9) : AppColors.surfaceAlt(context),
-          borderRadius: BorderRadius.circular(20),
-          border: isActive ? Border.all(color: Colors.green, width: 1.5) : null,
+          color: active
+              ? AppColors.brand.withValues(alpha: 0.14)
+              : AppColors.surfaceColor(context),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+            color: active
+                ? AppColors.brand.withValues(alpha: 0.4)
+                : AppColors.border(context),
+          ),
         ),
         child: Row(
           children: [
-            Icon(Icons.date_range_rounded,
-                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
-            SizedBox(width: 6),
+            Icon(icon,
+                size: 15,
+                color: active
+                    ? AppColors.brand
+                    : AppColors.textSecondary(context)),
+            const SizedBox(width: 6),
             Text(
-              isActive ? _activeDateLabel() : 'Date Range',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isActive ? Colors.green[700] : Colors.black54,
+              label,
+              style: AppText.label(context).copyWith(
+                fontSize: 12,
+                color:
+                    active ? AppColors.brand : AppColors.textSecondary(context),
+                fontWeight: FontWeight.w700,
               ),
             ),
-            SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down,
-                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
+            if (trailing != null) ...[
+              const SizedBox(width: 4),
+              Icon(trailing,
+                  size: 15,
+                  color: active
+                      ? AppColors.brand
+                      : AppColors.textSecondary(context)),
+            ],
           ],
         ),
       ),
     );
   }
 
-  /// Bottom sheet with preset periods + a "Custom Range" tile that opens
-  /// Flutter's date range picker.
-  ///
-  /// ROOT CAUSE OF BUG #2:
-  /// The original _pickDateRange() called showDateRangePicker() directly,
-  /// which on some devices/Flutter versions renders without the "Custom"
-  /// entry-point because the Material date picker needs an initialEntryMode
-  /// override. More critically, there was no way to pick named periods like
-  /// "This Month". This sheet solves both issues.
+  Widget _typeFilterChip() {
+    final label = switch (_selectedType) {
+      TransactionType.expense => 'Expense',
+      TransactionType.income => 'Income',
+      null => 'Type',
+    };
+    return _chip(
+      icon: Icons.swap_horiz_rounded,
+      label: label,
+      active: _selectedType != null,
+      onTap: _showTypeSheet,
+      trailing: Icons.arrow_drop_down,
+    );
+  }
+
+  Widget _sortDirectionChip() {
+    final isDateSort = _sortMode == 'Date';
+    final label = _sortDescending
+        ? (isDateSort ? 'Newest' : 'Highest')
+        : (isDateSort ? 'Oldest' : 'Lowest');
+    return _chip(
+      icon: _sortDescending
+          ? Icons.arrow_downward_rounded
+          : Icons.arrow_upward_rounded,
+      label: label,
+      active: false,
+      onTap: () => setState(() => _sortDescending = !_sortDescending),
+    );
+  }
+
+  Widget _categoryFilterChip(TransactionProvider provider) {
+    return _chip(
+      icon: Icons.category_rounded,
+      label: _selectedCategory ?? 'Category',
+      active: _selectedCategory != null,
+      onTap: () => _showCategorySheet(provider),
+      trailing: Icons.arrow_drop_down,
+    );
+  }
+
+  Widget _dateRangeChip() {
+    final active = _activePreset != null || _selectedDateRange != null;
+    return _chip(
+      icon: Icons.date_range_rounded,
+      label: active ? _activeDateLabel() : 'Date Range',
+      active: active,
+      onTap: _showDateFilterSheet,
+      trailing: Icons.arrow_drop_down,
+    );
+  }
+
+  // ─── SHEETS ────────────────────────────────────────────────────────────────
+
   void _showDateFilterSheet() {
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: AppColors.surfaceColor(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, 32),
+        // Scrollable so every preset stays reachable even when the clear
+        // action is appended and the sheet is height-capped.
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text('Filter by Date',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              SizedBox(height: 16),
-
-              // Preset options
-              // FIX: removed .toList() — spread operator doesn't need it
+              const _SheetHandle(),
+              Text('Filter by date', style: AppText.h2(context)),
+              const SizedBox(height: AppSpacing.lg),
               ..._DatePreset.values.map((preset) {
                 final isSelected = _activePreset == preset;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        isSelected ? AppColors.primaryPurple : Colors.grey[100],
-                    child: Icon(
-                      _presetIcon(preset),
-                      size: 18,
-                      color: isSelected ? Colors.white : Colors.grey[600],
-                    ),
-                  ),
-                  title: Text(preset.label,
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                return _sheetTile(
+                  icon: _presetIcon(preset),
+                  title: preset.label,
                   subtitle: preset != _DatePreset.custom
-                      ? Text(
-                          _rangeSubtitle(preset),
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        )
-                      : Text(
-                          _selectedDateRange != null &&
-                                  _activePreset == _DatePreset.custom
-                              ? _formatRange(_selectedDateRange!)
-                              : 'Pick start & end dates',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                  trailing: isSelected
-                      ? Icon(Icons.check_circle, color: AppColors.primaryPurple)
-                      : null,
+                      ? _rangeSubtitle(preset)
+                      : (_selectedDateRange != null &&
+                              _activePreset == _DatePreset.custom
+                          ? _formatRange(_selectedDateRange!)
+                          : 'Pick start & end dates'),
+                  selected: isSelected,
                   onTap: () async {
                     Navigator.pop(ctx);
                     if (preset == _DatePreset.custom) {
@@ -469,19 +539,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     }
                   },
                 );
-              }), // FIX: removed unnecessary .toList() in spread
-
-              // Clear option if something is active
+              }),
               if (_activePreset != null || _selectedDateRange != null) ...[
-                Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.red[50],
-                    child: Icon(Icons.clear, size: 18, color: Colors.red),
-                  ),
-                  title: Text('Clear date filter',
-                      style: TextStyle(color: Colors.red)),
+                const Divider(),
+                _sheetTile(
+                  icon: Icons.clear_rounded,
+                  title: 'Clear date filter',
+                  selected: false,
+                  danger: true,
                   onTap: () {
                     Navigator.pop(ctx);
                     setState(() {
@@ -498,28 +563,21 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
-  /// Opens Flutter's date range picker with initialEntryMode forced to
-  /// [DatePickerEntryMode.input] so the custom date fields are always visible.
   Future<void> _pickCustomRange() async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(now.year - 2),
       lastDate: now,
-      // FIX: force input mode so the text fields are always shown —
-      // calendar-only mode hides them on some screen sizes/locales.
       initialEntryMode: DatePickerEntryMode.input,
       initialDateRange: _selectedDateRange ??
-          DateTimeRange(
-            start: DateTime(now.year, now.month, 1),
-            end: now,
-          ),
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
       helpText: 'SELECT DATE RANGE',
       saveText: 'APPLY',
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: ColorScheme.light(
-            primary: AppColors.primaryPurple,
+            primary: AppColors.brand,
             onPrimary: Colors.white,
             surface: Colors.white,
           ),
@@ -536,6 +594,134 @@ class _ActivityScreenState extends State<ActivityScreen> {
     }
   }
 
+  void _showCategorySheet(TransactionProvider provider) {
+    final categories = provider.availableCategories;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceColor(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SheetHandle(),
+            Text('Filter by category', style: AppText.h2(context)),
+            const SizedBox(height: AppSpacing.md),
+            _sheetTile(
+              icon: Icons.select_all_rounded,
+              title: 'All categories',
+              selected: _selectedCategory == null,
+              onTap: () {
+                setState(() => _selectedCategory = null);
+                Navigator.pop(ctx);
+              },
+            ),
+            ...categories.map((cat) => _sheetTile(
+                  icon: CategoryStyle.icon(cat),
+                  iconColor: CategoryStyle.color(cat),
+                  title: cat,
+                  selected: _selectedCategory == cat,
+                  onTap: () {
+                    setState(() => _selectedCategory = cat);
+                    Navigator.pop(ctx);
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTypeSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceColor(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SheetHandle(),
+            Text('Filter by type', style: AppText.h2(context)),
+            const SizedBox(height: AppSpacing.md),
+            _sheetTile(
+              icon: Icons.select_all_rounded,
+              title: 'All transactions',
+              selected: _selectedType == null,
+              onTap: () {
+                setState(() => _selectedType = null);
+                Navigator.pop(ctx);
+              },
+            ),
+            _sheetTile(
+              icon: Icons.arrow_upward_rounded,
+              iconColor: AppColors.expenseRed,
+              title: 'Expense',
+              selected: _selectedType == TransactionType.expense,
+              onTap: () {
+                setState(() => _selectedType = TransactionType.expense);
+                Navigator.pop(ctx);
+              },
+            ),
+            _sheetTile(
+              icon: Icons.arrow_downward_rounded,
+              iconColor: AppColors.incomeGreen,
+              title: 'Income',
+              selected: _selectedType == TransactionType.income,
+              onTap: () {
+                setState(() => _selectedType = TransactionType.income);
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required bool selected,
+    required VoidCallback onTap,
+    Color? iconColor,
+    bool danger = false,
+  }) {
+    final color = danger ? AppColors.danger : (iconColor ?? AppColors.brand);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Icon(icon, size: 20, color: color),
+      ),
+      title: Text(title,
+          style: AppText.title(context)
+              .copyWith(fontSize: 14, color: danger ? AppColors.danger : null)),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: AppText.body(context).copyWith(fontSize: 11))
+          : null,
+      trailing:
+          selected ? Icon(Icons.check_circle_rounded, color: color) : null,
+      onTap: onTap,
+    );
+  }
+
   String _rangeSubtitle(_DatePreset preset) {
     final range = preset.resolve();
     if (range == null) return '';
@@ -546,7 +732,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   IconData _presetIcon(_DatePreset preset) {
     switch (preset) {
       case _DatePreset.today:
-        return Icons.today;
+        return Icons.today_rounded;
       case _DatePreset.thisWeek:
         return Icons.view_week_rounded;
       case _DatePreset.thisMonth:
@@ -563,373 +749,76 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return '${f.format(range.start)} – ${f.format(range.end)}';
   }
 
-  // ─── WIDGETS ──────────────────────────────────────────────────────────────
+  // ─── SMALL WIDGETS ───────────────────────────────────────────────────────
 
-  Widget _sortChip({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Color(0xFFE0E0FF) : AppColors.surfaceAlt(context),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 16,
-                color: isSelected ? AppColors.primaryPurple : Colors.black54),
-            SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: isSelected ? AppColors.primaryPurple : Colors.black54,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _typeFilterChip() {
-    final isActive = _selectedType != null;
-    final label = switch (_selectedType) {
-      TransactionType.expense => 'Expense',
-      TransactionType.income => 'Income',
-      null => 'Type',
-    };
-
-    return GestureDetector(
-      onTap: _showTypeSheet,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? Color(0xFFE8F5E9) : AppColors.surfaceAlt(context),
-          borderRadius: BorderRadius.circular(20),
-          border: isActive ? Border.all(color: Colors.green, width: 1.5) : null,
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.swap_horiz_rounded,
-                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
-            SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isActive ? Colors.green[700] : Colors.black54,
-              ),
-            ),
-            SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down,
-                size: 16, color: isActive ? Colors.green[700] : Colors.black54),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sortDirectionChip() {
-    final isDateSort = _sortMode == 'Date';
-    final label = _sortDescending
-        ? (isDateSort ? 'Newest First' : 'Highest First')
-        : (isDateSort ? 'Oldest First' : 'Lowest First');
-
-    return GestureDetector(
-      onTap: () => setState(() => _sortDescending = !_sortDescending),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt(context),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _sortDescending
-                  ? Icons.arrow_downward_rounded
-                  : Icons.arrow_upward_rounded,
-              size: 16,
-              color: Colors.black54,
-            ),
-            SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: Colors.black54,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _categoryFilterChip(TransactionProvider provider) {
-    final isActive = _selectedCategory != null;
-    return GestureDetector(
-      onTap: () => _showCategorySheet(provider),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? Color(0xFFFFE0F0) : AppColors.surfaceAlt(context),
-          borderRadius: BorderRadius.circular(20),
-          border: isActive
-              ? Border.all(color: AppColors.primaryPink, width: 1.5)
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.category_rounded,
-                size: 16,
-                color: isActive ? AppColors.primaryPink : Colors.black54),
-            SizedBox(width: 6),
-            Text(
-              isActive ? _selectedCategory! : 'Category',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isActive ? AppColors.primaryPink : Colors.black54,
-              ),
-            ),
-            SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down,
-                size: 16,
-                color: isActive ? AppColors.primaryPink : Colors.black54),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCategorySheet(TransactionProvider provider) {
-    final categories = provider.availableCategories;
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Filter by Category',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 16),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: _selectedCategory == null
-                    ? AppColors.primaryPurple
-                    : Colors.grey[200],
-                child: Icon(Icons.select_all,
-                    color:
-                        _selectedCategory == null ? Colors.white : Colors.grey,
-                    size: 18),
-              ),
-              title: Text('All Categories',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                setState(() => _selectedCategory = null);
-                Navigator.pop(ctx);
-              },
-            ),
-            ...categories.map((cat) {
-              final isSelected = _selectedCategory == cat;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor:
-                      isSelected ? AppColors.primaryPink : Color(0xFFE8ECEF),
-                  child:
-                      Text(_categoryEmoji(cat), style: TextStyle(fontSize: 16)),
-                ),
-                title: Text(cat, style: TextStyle(fontWeight: FontWeight.w500)),
-                trailing: isSelected
-                    ? Icon(Icons.check_circle, color: AppColors.primaryPink)
-                    : null,
-                onTap: () {
-                  setState(() => _selectedCategory = cat);
-                  Navigator.pop(ctx);
-                },
-              );
-            }), // FIX: removed unnecessary .toList() in spread
-            SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTypeSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Filter by Transaction Type',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 16),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: _selectedType == null
-                    ? AppColors.primaryPurple
-                    : Colors.grey[200],
-                child: Icon(Icons.select_all,
-                    color: _selectedType == null ? Colors.white : Colors.grey,
-                    size: 18),
-              ),
-              title: Text('All Transactions',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                setState(() => _selectedType = null);
-                Navigator.pop(ctx);
-              },
-            ),
-            _typeOptionTile(
-              ctx: ctx,
-              type: TransactionType.expense,
-              label: 'Expense',
-              icon: Icons.arrow_upward_rounded,
-              color: AppColors.primaryPink,
-            ),
-            _typeOptionTile(
-              ctx: ctx,
-              type: TransactionType.income,
-              label: 'Income',
-              icon: Icons.arrow_downward_rounded,
-              color: Colors.green,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _typeOptionTile({
-    required BuildContext ctx,
-    required TransactionType type,
-    required String label,
-    required IconData icon,
-    required Color color,
-  }) {
-    final isSelected = _selectedType == type;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: isSelected ? color : color.withValues(alpha: 0.12),
-        child: Icon(icon, color: isSelected ? Colors.white : color, size: 18),
-      ),
-      title: Text(label, style: TextStyle(fontWeight: FontWeight.w500)),
-      trailing: isSelected ? Icon(Icons.check_circle, color: color) : null,
-      onTap: () {
-        setState(() => _selectedType = type);
-        Navigator.pop(ctx);
-      },
-    );
-  }
-
-  Widget _activeBadge(String label, VoidCallback onRemove) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: TextStyle(fontSize: 12)),
-          SizedBox(width: 4),
-          GestureDetector(
-            onTap: onRemove,
-            child: Icon(Icons.close, size: 14, color: Colors.grey),
+  Widget _activeBadge(IconData icon, String label, VoidCallback onRemove) {
+    // The whole chip removes the filter: the close icon alone was a ~23px
+    // target, far under the 48dp guideline, and it carried no semantics.
+    return Pressable(
+      onTap: onRemove,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Semantics(
+        button: true,
+        label: 'Remove $label filter',
+        excludeSemantics: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceColor(context),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: AppColors.border(context)),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: AppColors.brand),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: AppText.label(context).copyWith(
+                      fontSize: 12, color: AppColors.textPrimary(context))),
+              const SizedBox(width: 6),
+              Icon(Icons.close_rounded,
+                  size: 15, color: AppColors.textTertiary(context)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _sectionHeader(String label) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.sm),
       child: Row(
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
-          SizedBox(width: 10),
-          Expanded(child: Divider(color: Colors.grey[300])),
+          Text(label.toUpperCase(), style: AppText.overline(context)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Divider(
+                color: AppColors.border(context).withValues(alpha: 0.8)),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _emptyState() {
+/// Small drag handle used by the filter bottom sheets.
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 48, color: Colors.grey[300]),
-            SizedBox(height: 12),
-            Text('No transactions found',
-                style: TextStyle(
-                  color: AppColors.textSecondary(context),
-                  fontWeight: FontWeight.bold,
-                )),
-            SizedBox(height: 4),
-            Text('Try adjusting your filters',
-                style: TextStyle(
-                  color: AppColors.textSecondary(context),
-                  fontSize: 12,
-                )),
-            if (_selectedCategory != null ||
-                _selectedType != null ||
-                _selectedDateRange != null ||
-                _activePreset != null) ...[
-              SizedBox(height: 16),
-              TextButton(
-                onPressed: _clearFilters,
-                child: Text('Clear all filters'),
-              ),
-            ],
-          ],
+      child: Container(
+        width: 40,
+        height: 4,
+        margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.border(context),
+          borderRadius: BorderRadius.circular(2),
         ),
       ),
     );
-  }
-
-  String _categoryEmoji(String cat) {
-    const map = {
-      'Food': '🍔',
-      'Shopping': '🛍',
-      'Fuel': '⛽',
-      'Travel': '🚗',
-      'Bills': '💡',
-      'Transfer': '💸',
-      'Cash': '💵',
-      'Entertainment': '🎬',
-      'Health': '🏥',
-      'Other': '📦',
-      'Others': '📦',
-    };
-    return map[cat] ?? '📦';
   }
 }

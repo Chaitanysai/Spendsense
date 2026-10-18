@@ -1,13 +1,31 @@
 import 'package:flutter/material.dart';
+
 import '../models/transaction_model.dart';
+import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
+import '../utils/app_text_styles.dart';
+import '../utils/category_style.dart';
 import '../utils/formatters.dart';
 import '../screens/transaction_details_screen.dart';
-import '../utils/app_colors.dart';
+import 'app_page_route.dart';
+import 'pressable.dart';
 
+/// Rounded white transaction panel with a circular category bubble, merchant
+/// hierarchy and amount. Matches the reference's "rounded white panels".
 class TransactionTile extends StatelessWidget {
   final TransactionModel transaction;
+  final bool dense;
 
-  const TransactionTile({super.key, required this.transaction});
+  /// Activity groups rows under date headers, so it hides the per-row date and
+  /// uses the space for the bank. Home has no headers and keeps the date.
+  final bool showDate;
+
+  const TransactionTile({
+    super.key,
+    required this.transaction,
+    this.dense = false,
+    this.showDate = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,144 +33,188 @@ class TransactionTile extends StatelessWidget {
     final amountColor =
         isExpense ? AppColors.expenseRed : AppColors.incomeGreen;
     final amountPrefix = isExpense ? '−' : '+';
+    final catColor = CategoryStyle.color(transaction.category);
+    final radius = BorderRadius.circular(AppRadius.md);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  TransactionDetailsScreen(transaction: transaction),
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Pressable(
+        borderRadius: radius,
+        onTap: () => Navigator.of(context).push(
+          AppPageRoute(
+            builder: (_) => TransactionDetailsScreen(transaction: transaction),
           ),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceColor(context),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: AppColors.border(context).withValues(alpha: 0.6),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadow(context),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+        ),
+        child: Container(
+          padding: EdgeInsets.all(dense ? AppSpacing.md : AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceColor(context),
+            borderRadius: radius,
+            border: Border.all(
+              color: AppColors.border(context).withValues(alpha: 0.7),
             ),
-            child: Row(
-              children: [
-                // ── Category icon container with soft gradient ─────────────
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _iconBg(transaction.category),
-                        _iconBg(transaction.category).withValues(alpha: 0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _iconBg(transaction.category).withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadow(context),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Circular category bubble
+              Container(
+                width: dense ? 42 : 48,
+                height: dense ? 42 : 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      catColor.withValues(alpha: 0.22),
+                      catColor.withValues(alpha: 0.10),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Center(
-                    child: Text(
-                      _emoji(transaction.category),
-                      style: const TextStyle(fontSize: 22),
-                    ),
-                  ),
+                  border: Border.all(color: catColor.withValues(alpha: 0.30)),
                 ),
+                child: Icon(
+                  CategoryStyle.icon(transaction.category),
+                  color: catColor,
+                  size: dense ? 20 : 22,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
 
-                const SizedBox(width: 16),
-
-                // ── Merchant + date / category hierarchy ─────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        transaction.merchant,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppColors.textPrimary(context),
-                          letterSpacing: -0.2,
+              // Merchant + meta
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            transaction.merchant,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                AppText.title(context).copyWith(fontSize: 15),
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
+                        if (transaction.needsReview) ...[
+                          const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.amber.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'REVIEW',
+                              style: AppText.label(context).copyWith(
+                                fontSize: 9,
+                                color: const Color(0xFFB87A00),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceAlt(context),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               transaction.category,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  AppText.label(context).copyWith(fontSize: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Bank stays a separate, compact label from category and
+                        // payment method, falling back to 'Others' when unknown.
+                        Flexible(
+                          child: Text(
+                            '· ${transaction.bankName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(context).copyWith(
+                              fontSize: 10.5,
+                              color: AppColors.textSecondary(context),
+                            ),
+                          ),
+                        ),
+                        if (showDate) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              Formatters.date(transaction.date),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(context).copyWith(
+                                fontSize: 12,
+                                color: AppColors.textTertiary(context),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '•  ${Formatters.date(transaction.date)}',
-                            style: TextStyle(
-                              color: AppColors.textSecondary(context),
-                              fontSize: 12,
-                            ),
-                          ),
                         ],
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
 
-                const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
 
-                // ── Amount & payment method ──────────────────────────────
-                Column(
+              // Amount + payment pill
+              Flexible(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
-                      style: TextStyle(
-                        color: amountColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        letterSpacing: -0.3,
+                    // Scale down rather than ellipsize: a long merchant must
+                    // never truncate the amount itself.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppText.amount(
+                          context,
+                          size: 16,
+                          color: amountColor,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: amountColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         transaction.paymentMethod,
-                        style: TextStyle(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(context).copyWith(
                           fontSize: 10,
                           color: amountColor,
                           fontWeight: FontWeight.w700,
@@ -161,47 +223,11 @@ class TransactionTile extends StatelessWidget {
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  String _emoji(String category) {
-    const map = {
-      'Food': '🍔',
-      'Shopping': '🛍️',
-      'Fuel': '⛽',
-      'Travel': '🚗',
-      'Bills': '💡',
-      'Transfer': '💸',
-      'Cash': '💵',
-      'Entertainment': '🎬',
-      'Health': '🏥',
-      'Investment': '📈',
-      'Other': '📦',
-      'Others': '📦',
-    };
-    return map[category] ?? '💳';
-  }
-
-  Color _iconBg(String category) {
-    const map = {
-      'Food': Color(0xFFFF9F43),
-      'Shopping': Color(0xFF9b59b6),
-      'Fuel': Color(0xFF1abc9c),
-      'Travel': Color(0xFF3498db),
-      'Bills': Color(0xFFe74c3c),
-      'Transfer': Color(0xFF2ecc71),
-      'Cash': Color(0xFF27ae60),
-      'Entertainment': Color(0xFFe84393),
-      'Health': Color(0xFF00b894),
-      'Investment': Color(0xFF0984e3),
-      'Other': Color(0xFF636e72),
-      'Others': Color(0xFF636e72),
-    };
-    return map[category] ?? AppColors.primaryTeal;
   }
 }
