@@ -50,6 +50,9 @@ class SpendSenseApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, theme, _) {
+        // MaterialApp reads AppColors at build time, so consuming
+        // ThemeProvider here is what re-resolves every token after a palette
+        // or appearance change.
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'SpendSense',
@@ -136,7 +139,7 @@ class SpendSenseApp extends StatelessWidget {
         border: fieldBorder,
         enabledBorder: fieldBorder,
         focusedBorder: fieldBorder.copyWith(
-          borderSide: const BorderSide(color: AppColors.brand, width: 1.6),
+          borderSide: BorderSide(color: AppColors.brand, width: 1.6),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -239,6 +242,12 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Subscribe to appearance changes. The FAB below reads its gradient
+    // straight from the AppColors tokens rather than from Theme.of, so without
+    // this dependency the shell would not rebuild when a stored palette is
+    // restored on startup and would keep the default ramp it painted first.
+    context.watch<ThemeProvider>();
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,

@@ -1,46 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:gravity="center"
-        android:width="84dp"
-        android:height="84dp">
-        <shape android:shape="rectangle">
-            <corners android:radius="24dp" />
-            <solid android:color="#00000000" />
-        </shape>
-    </item>
+<!-- Adaptive launcher foreground. Content is kept inside the central 66% of
+     the 108dp canvas (the guaranteed-visible safe zone), so every launcher
+     mask — circle, squircle, rounded square — crops safely.
+     Mirrors the SpendSense in-app mark: glass accents + trending line. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
 
-    <item
-        android:left="28dp"
-        android:top="30dp"
-        android:width="26dp"
-        android:height="26dp">
-        <shape android:shape="oval">
-            <solid android:color="#F8FAFC" />
-        </shape>
-    </item>
+    <!-- glass accent, upper-left -->
+    <path
+        android:fillAlpha="0.38"
+        android:fillColor="#FFFFFF"
+        android:pathData="M31.2,31.2 h20 a20,20 0 0 1 0,40 h-20 a20,20 0 0 1 0,-40 z" />
 
-    <item
-        android:left="62dp"
-        android:top="66dp"
-        android:width="34dp"
-        android:height="34dp">
-        <shape android:shape="rectangle">
-            <corners android:radius="10dp" />
-            <solid android:color="#F8FAFC" />
-        </shape>
-    </item>
+    <!-- glass accent, lower-right -->
+    <path
+        android:fillAlpha="0.34"
+        android:fillColor="#FFFFFF"
+        android:pathData="M62.6,54.0 h8.6 a8.6,8.6 0 0 1 0,17.2 h-8.6 a8.6,8.6 0 0 1 0,-17.2 z" />
 
-    <item
-        android:left="42dp"
-        android:top="42dp"
-        android:width="24dp"
-        android:height="48dp">
-        <rotate android:fromDegrees="-36">
-            <shape android:shape="rectangle">
-                <corners android:radius="8dp" />
-                <solid android:color="#F8FAFC" />
-            </shape>
-        </rotate>
-    </item>
-</layer-list>
+    <!-- trending line (Icons.auto_graph_rounded equivalent) -->
+    <path
+        android:pathData="M39.7,62.6 L49.0,53.2 L57.6,59.6 L69.7,45.4"
+        android:strokeAlpha="1.0"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4.4" />
+</vector>

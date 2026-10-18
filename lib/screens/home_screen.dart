@@ -138,8 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         .take(20)
                         .map((tx) => TransactionTile(transaction: tx)),
                   if (trackedTransactions.isNotEmpty && provider.isSyncing)
-                    const Padding(
-                      padding: EdgeInsets.only(top: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
                       child: Center(
                         child: CircularProgressIndicator(
                             color: AppColors.brandBright),

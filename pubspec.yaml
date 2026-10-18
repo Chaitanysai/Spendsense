@@ -48,4 +48,9 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icons/app_icon.png
+  # Adaptive (API 26+) icon: gradient background drawable + glyph-only
+  # foreground kept inside the 66% safe zone so any launcher mask is safe.
+  adaptive_icon_background: "@drawable/ic_launcher_background"
+  adaptive_icon_foreground: assets/icons/app_icon_foreground.png
   min_sdk_android: 21
+  remove_alpha_ios: true

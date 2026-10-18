@@ -18,6 +18,7 @@ import '../widgets/app_page_route.dart';
 import '../widgets/gradient_hero_card.dart';
 import '../utils/formatters.dart';
 import 'ai_settings_screen.dart';
+import 'appearance_screen.dart';
 import 'recurring_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -171,15 +172,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsTile(
                   icon: Icons.palette_outlined,
                   iconColor: AppColors.azure,
-                  title: 'Dark mode',
-                  subtitle: theme.isDarkMode ? 'On' : 'Off',
-                  onTap: theme.toggle,
-                  trailing: Switch.adaptive(
-                    value: theme.isDarkMode,
-                    onChanged: theme.setDarkMode,
-                    activeThumbColor: AppColors.brand,
-                  ),
-                  showArrow: false,
+                  title: 'Appearance',
+                  subtitle:
+                      '${theme.palette.label} · ${AppearanceScreen.modeLabel(theme.themeMode)}',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const AppearanceScreen()),
+                    );
+                  },
                 ),
                 _divider(context),
                 _SettingsTile(
@@ -322,7 +323,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
             hintText: 'e.g. Chaitanya',
-            helperText: 'Shown in your Home greeting. Leave blank to remove it.',
+            helperText:
+                'Shown in your Home greeting. Leave blank to remove it.',
           ),
         ),
         actions: [
@@ -582,7 +584,6 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final bool showArrow;
-  final Widget? trailing;
 
   const _SettingsTile({
     required this.icon,
@@ -591,7 +592,6 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.showArrow = true,
-    this.trailing,
   });
 
   @override
@@ -628,7 +628,6 @@ class _SettingsTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
             if (showArrow && onTap != null)
               Icon(Icons.chevron_right_rounded,
                   color: AppColors.textTertiary(context), size: 20),

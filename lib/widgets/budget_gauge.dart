@@ -41,10 +41,10 @@ class BudgetGauge extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.20)
         : AppColors.brand.withValues(alpha: 0.14);
     final fillColors = _isOver
-        ? const [AppColors.amber, AppColors.expenseRed]
+        ? [AppColors.amber, AppColors.expenseRed]
         : dark
-            ? const [AppColors.cyan, Colors.white]
-            : const [AppColors.brand, AppColors.cyan];
+            ? [AppColors.cyan, Colors.white]
+            : [AppColors.brand, AppColors.cyan];
     final figureColor = _isOver
         ? AppColors.expenseRed
         : dark

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
 
-/// Screen background: the scaffold colour plus two soft ambient radial glows
-/// (crimson top-left, orange bottom-right). Static and cheap — no blur, so it
-/// does not tax scroll performance.
+/// Screen background: the scaffold colour plus three soft ambient radial glows
+/// (brand top-left, cyan upper-right, amber lower-left). Static and cheap — no
+/// blur, so it does not tax scroll performance.
 class AppBackground extends StatelessWidget {
   final Widget child;
   final bool showGlow;

@@ -4,6 +4,13 @@ Date: 2026-10-16
 Author: implementation session (design-intelligence substitute for REA)
 Status: approved by human partner, implementation in progress
 
+> **Superseded in part (2026-10-18).** The crimson → vermilion → warm-orange ramp
+> specified below was replaced by the navy → electric-blue → cyan ramp now in
+> `lib/utils/app_colors.dart` (`navyDeep` / `brand` / `brandBright` / `azure` /
+> `cyan`, with `amber` retained as the warm accent). Navy is the current design
+> baseline; the colour values in this document are kept as the historical record
+> of the 2026-10-16 decision and no longer describe the shipped palette.
+
 ## 0. Provenance & honesty statement
 
 The intended `REA` (reverse-engineering-analysis) skill is **not installed** on this

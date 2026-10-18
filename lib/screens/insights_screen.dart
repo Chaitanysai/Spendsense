@@ -103,7 +103,7 @@ class InsightsScreen extends StatelessWidget {
                         title: 'Top category',
                         value: metrics.topCategory,
                         subtitle: 'Highest spend this month',
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                           colors: [AppColors.navyDeep, AppColors.brand],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,

@@ -73,7 +73,8 @@ class FloatingNavBar extends StatelessWidget {
 
   Widget _navSlot(BuildContext context, int index, NavItem item) {
     final selected = index == currentIndex;
-    final color = selected ? AppColors.brand : AppColors.textSecondary(context);
+    final selectedColor = AppColors.navSelected(context);
+    final color = selected ? selectedColor : AppColors.textSecondary(context);
     final duration = AppMotion.respect(context, AppMotion.base);
 
     return Semantics(
@@ -94,10 +95,11 @@ class FloatingNavBar extends StatelessWidget {
               AnimatedContainer(
                 duration: duration,
                 curve: AppMotion.easeOut,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppColors.brand.withValues(alpha: 0.12)
+                      ? selectedColor.withValues(alpha: 0.12)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),

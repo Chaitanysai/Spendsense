@@ -47,6 +47,12 @@ class GradientHeroCard extends StatelessWidget {
             : null,
       ),
       child: Stack(
+        // Clip.none is required, not cosmetic: the highlight below deliberately
+        // hangs outside this Stack (negative offsets) and Stack's default
+        // Clip.hardEdge would truncate it into a hard-edged pale rectangle
+        // pinned to the card's content box. The outer ClipRRect below already
+        // clips everything to the card's rounded rect, so nothing escapes.
+        clipBehavior: Clip.none,
         children: [
           // Soft top-left highlight, as described in the brief.
           Positioned(
