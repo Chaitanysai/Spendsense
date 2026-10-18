@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import 'glossy_pill.dart';
+import 'pressable.dart';
 
 class NavItem {
   final IconData icon;
@@ -82,9 +84,8 @@ class FloatingNavBar extends StatelessWidget {
       selected: selected,
       label: item.label,
       excludeSemantics: true,
-      child: GestureDetector(
+      child: Pressable(
         onTap: () => onTap(index),
-        behavior: HitTestBehavior.opaque,
         child: ConstrainedBox(
           // Keeps the effective tap target at/above the 48dp minimum even at
           // small system font scales.
@@ -92,18 +93,24 @@ class FloatingNavBar extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedContainer(
-                duration: duration,
-                curve: AppMotion.easeOut,
+              // One widget for both states: the shared glossy pill. Rebuilding
+              // the badge as a different widget when a tab is selected would
+              // replace the element and pop; keeping the same pill lets the
+              // gradient, glow and curved highlight animate in. Bare while
+              // unselected, so the inactive slots stay understated.
+              GlossyPill(
+                selected: selected,
+                bareWhenUnselected: true,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? selectedColor.withValues(alpha: 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Icon(
+                  item.icon,
+                  size: 22,
+                  // The selected icon sits on the gradient, so it takes the
+                  // on-gradient white. The label below stays on the translucent
+                  // bar and keeps the contrast-calibrated nav colour.
+                  color: selected ? Colors.white : color,
                 ),
-                child: Icon(item.icon, size: 22, color: color),
               ),
               const SizedBox(height: 2),
               // Animated + fade rather than clip: long labels ("ACTIVITY",

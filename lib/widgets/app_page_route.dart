@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+// Cupertino, not Material: this is where CupertinoPageTransitionsBuilder lives.
+import 'package:flutter/cupertino.dart';
 
 import '../utils/app_spacing.dart';
 
@@ -15,9 +16,7 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
           pageBuilder: (context, animation, secondaryAnimation) =>
               builder(context),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final reduced =
-                MediaQuery.maybeDisableAnimationsOf(context) == true;
-            if (reduced) return child;
+            if (AppMotion.reduced(context)) return child;
 
             final curved = CurvedAnimation(
               parent: animation,
@@ -36,7 +35,35 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
             );
           },
         );
+}
 
-  static Route<T> push<T>(WidgetBuilder builder) =>
-      AppPageRoute<T>(builder: builder);
+/// The theme-level fallback for routes the app does not push through
+/// [AppPageRoute] — dialogs, bottom sheets, and anything a plugin navigates to.
+/// Delegates to the platform's Cupertino slide, but returns the page already in
+/// place when reduced motion is on, since [CupertinoPageTransitionsBuilder]
+/// ignores that setting.
+class AppPageTransitions extends PageTransitionsBuilder {
+  const AppPageTransitions();
+
+  static final _cupertino = CupertinoPageTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => _cupertino.transitionDuration;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      _cupertino.delegatedTransition;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (AppMotion.reduced(context)) return child;
+    return _cupertino.buildTransitions<T>(
+        route, context, animation, secondaryAnimation, child);
+  }
 }

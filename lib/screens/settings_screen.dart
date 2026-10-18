@@ -7,19 +7,25 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/sound_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../widgets/sms_import_prompt.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/app_page_route.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/pressable.dart';
+import '../widgets/sound_scope.dart';
 import '../utils/formatters.dart';
 import 'ai_settings_screen.dart';
 import 'appearance_screen.dart';
 import 'recurring_screen.dart';
+import 'sound_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -70,6 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final auth = context.watch<AuthProvider>();
     final theme = context.watch<ThemeProvider>();
     final transactions = context.watch<TransactionProvider>();
+    final sound = SoundScope.watch(context);
     final scanStart = transactions.smsScanStartDate;
     final scanLabel = scanStart == null
         ? 'Not set'
@@ -179,6 +186,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Navigator.push(
                       context,
                       AppPageRoute(builder: (_) => const AppearanceScreen()),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.graphic_eq_rounded,
+                  iconColor: AppColors.cyan,
+                  title: 'Sound effects',
+                  subtitle: _soundSummary(sound),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const SoundSettingsScreen()),
                     );
                   },
                 ),
@@ -305,6 +325,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Text(label.toUpperCase(), style: AppText.overline(context)),
       );
 
+  /// One-line state for the Settings tile, so the current sound mode is legible
+  /// without opening the sub-screen.
+  String _soundSummary(SoundProvider? sound) {
+    if (sound == null || !sound.masterEnabled) return 'Muted';
+    final parts = <String>[
+      if (sound.uiEnabled) 'taps',
+      if (sound.transactionsEnabled) 'transactions',
+    ];
+    if (parts.isEmpty) return 'Muted';
+    return 'On · ${parts.join(' & ')}';
+  }
+
   Widget _divider(BuildContext context) => Divider(
         height: 1,
         indent: 60,
@@ -385,12 +417,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (saved == null || !context.mounted) return;
     if (saved <= 0) {
+      SoundScope.play(context, SoundEventType.actionFailed);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a budget greater than zero')),
       );
       return;
     }
     await provider.setMonthlyBudget(saved.toDouble());
+    if (!context.mounted) return;
+    SoundScope.play(context, SoundEventType.actionSucceeded);
   }
 
   Future<void> _exportBackup(
@@ -436,6 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: jsonStr));
               Navigator.pop(ctx);
+              SoundScope.play(context, SoundEventType.actionSucceeded);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Backup copied to clipboard!')),
               );
@@ -483,6 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               try {
                 final count = await provider.importFromJson(text);
                 if (!context.mounted) return;
+                SoundScope.play(context, SoundEventType.actionSucceeded);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content:
@@ -492,6 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // A malformed backup must fail loudly instead of throwing an
                 // uncaught error and leaving the user with no feedback.
                 if (!context.mounted) return;
+                SoundScope.play(context, SoundEventType.actionFailed);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
@@ -526,6 +564,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(ctx);
               await context.read<TransactionProvider>().clearAll();
               if (!context.mounted) return;
+              SoundScope.play(context, SoundEventType.actionSucceeded);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Database cleared')),
               );
@@ -558,20 +597,11 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    // The shared frosted surface every other screen uses, so Settings no
+    // longer reads as the one screen built from flat slabs. Zero padding keeps
+    // each tile's own inset; the blur lives on the card, never the screen.
+    return GlassCard(
+      padding: EdgeInsets.zero,
       child: Column(children: children),
     );
   }
@@ -596,43 +626,60 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(icon, size: 19, color: iconColor),
+    final handleTap = onTap == null
+        ? null
+        : () {
+            SoundScope.play(context, SoundEventType.buttonTap);
+            onTap!();
+          };
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: AppText.title(context).copyWith(fontSize: 14)),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle!,
-                        style: AppText.body(context).copyWith(fontSize: 12)),
-                  ],
+            child: Icon(icon, size: 19, color: iconColor),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: AppText.title(context).copyWith(fontSize: 14)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle!,
+                      style: AppText.body(context).copyWith(fontSize: 12)),
                 ],
-              ),
+              ],
             ),
-            if (showArrow && onTap != null)
-              Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textTertiary(context), size: 20),
-          ],
-        ),
+          ),
+          if (showArrow && onTap != null)
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.textTertiary(context), size: 20),
+        ],
+      ),
+    );
+
+    // The app's standard press feedback: the old InkWell splashed onto the
+    // Scaffold's Material *behind* the opaque card, so the dip never showed.
+    if (handleTap == null) return content;
+
+    return Semantics(
+      button: true,
+      child: Pressable(
+        onTap: handleTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        // handleTap owns the cue; Pressable's is suppressed to avoid doubling.
+        sound: null,
+        child: content,
       ),
     );
   }

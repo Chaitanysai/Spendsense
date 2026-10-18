@@ -11,6 +11,10 @@ import '../services/budget_monitor_service.dart';
 class TransactionProvider with ChangeNotifier {
   static const _smsScanStartKey = 'sms_scan_start_date';
 
+  /// How many parsed messages may accumulate before the UI is told about them.
+  /// Keeps a long sync responsive without rebuilding every screen per message.
+  static const _syncNotifyBatch = 8;
+
   List<TransactionModel> _transactions = [];
   bool _isSyncing = false;
   bool _isLoadingCache = true;
@@ -252,18 +256,27 @@ class TransactionProvider with ChangeNotifier {
         }
 
         if (finalResult != null) {
-          newTxs.add(finalResult);
-          final newIds = {finalResult.id};
-          _transactions.removeWhere((t) => newIds.contains(t.id));
-          _transactions.add(finalResult);
-          _transactions.sort((a, b) => b.date.compareTo(a.date));
+          final fresh = finalResult;
+          newTxs.add(fresh);
+          _transactions.removeWhere((t) => t.id == fresh.id);
+          _transactions.add(fresh);
           _newThisSync++;
-          await _cache.put(finalResult);
-          notifyListeners(); // Yield to UI
+          await _cache.put(fresh);
+          // The await above already hands the frame back to the UI, so this
+          // loop never blocks it. Notifying per message rebuilds every listening
+          // screen, so progress is published every _syncNotifyBatch messages and
+          // the finally clause sends the last one. test/rebuild_scope_test.dart
+          // guards the batching and the rebuild fan-out.
+          if (newTxs.length % _syncNotifyBatch == 0) notifyListeners();
         } else {
           // Both local and AI rejected this valid-looking debit
           await _cache.markRejected(msg.id);
         }
+      }
+
+      if (newTxs.isNotEmpty) {
+        // Sorted once after the loop instead of after every insert.
+        _transactions.sort((a, b) => b.date.compareTo(a.date));
       }
 
       await Future.wait([

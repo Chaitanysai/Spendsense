@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/formatters.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
@@ -11,11 +12,22 @@ import '../utils/app_text_styles.dart';
 import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/sound_scope.dart';
 
 class TransactionDetailsScreen extends StatefulWidget {
   final TransactionModel transaction;
 
-  const TransactionDetailsScreen({super.key, required this.transaction});
+  /// Tag of the [Hero] this page was opened from, so the amount figure flies
+  /// between the row and the header instead of just appearing. Null when the
+  /// page is opened from somewhere with no matching row (tests, deep links),
+  /// which would otherwise leave a tag nobody can pair with.
+  final String? amountHeroTag;
+
+  const TransactionDetailsScreen({
+    super.key,
+    required this.transaction,
+    this.amountHeroTag,
+  });
 
   @override
   State<TransactionDetailsScreen> createState() =>
@@ -30,6 +42,11 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   late TransactionType _type;
   late bool _isExcluded;
   bool _saving = false;
+
+  /// The header card mirrors the merchant and amount fields live; everything
+  /// else on this page ignores them. Listening through this merged listenable
+  /// keeps a keystroke to the header instead of rebuilding the whole form.
+  late final Listenable _headerListenable;
 
   static const _categories = [
     'Shopping',
@@ -57,8 +74,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     _category = _normalizedCategory(widget.transaction.category);
     _type = widget.transaction.type;
     _isExcluded = widget.transaction.isExcluded;
-    _amountController.addListener(() => setState(() {}));
-    _merchantController.addListener(() => setState(() {}));
+    _headerListenable =
+        Listenable.merge([_amountController, _merchantController]);
   }
 
   @override
@@ -93,7 +110,10 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _headerCard(context),
+                      ListenableBuilder(
+                        listenable: _headerListenable,
+                        builder: (context, _) => _headerCard(context),
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                       TextField(
                         controller: _merchantController,
@@ -134,7 +154,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           ),
                         ],
                         onChanged: (value) {
-                          if (value != null) {
+                          if (value != null && value != _type) {
+                            SoundScope.play(
+                                context, SoundEventType.selectionChanged);
                             setState(() => _type = value);
                           }
                         },
@@ -151,7 +173,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                                 value: item, child: Text(item)))
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) {
+                          if (value != null && value != _category) {
+                            SoundScope.play(
+                                context, SoundEventType.selectionChanged);
                             setState(() => _category = value);
                           }
                         },
@@ -202,18 +226,26 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           borderRadius: BorderRadius.circular(AppRadius.md),
                           border: Border.all(color: AppColors.border(context)),
                         ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md),
-                          title: Text('Exclude from Insights',
-                              style: AppText.title(context)
-                                  .copyWith(fontSize: 14)),
-                          subtitle: Text("Don't count this in totals",
-                              style:
-                                  AppText.body(context).copyWith(fontSize: 12)),
-                          value: _isExcluded,
-                          onChanged: (value) =>
-                              setState(() => _isExcluded = value),
+                        // Transparency Material so the tile's ink lands *above*
+                        // this card's own background instead of under it.
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: SwitchListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md),
+                            title: Text('Exclude from Insights',
+                                style: AppText.title(context)
+                                    .copyWith(fontSize: 14)),
+                            subtitle: Text("Don't count this in totals",
+                                style: AppText.body(context)
+                                    .copyWith(fontSize: 12)),
+                            value: _isExcluded,
+                            onChanged: (value) {
+                              SoundScope.play(
+                                  context, SoundEventType.selectionChanged);
+                              setState(() => _isExcluded = value);
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
@@ -248,6 +280,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   label: 'Save changes',
                   icon: Icons.save_rounded,
                   loading: _saving,
+                  // The saved cue is this button's feedback.
+                  sound: null,
                   onPressed: _saving ? null : _save,
                 ),
               ),
@@ -299,12 +333,14 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
-              style: AppText.onGradient(size: 38, weight: FontWeight.w800),
+          _heroOrPlain(
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
+                style: AppText.onGradient(size: 38, weight: FontWeight.w800),
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -319,6 +355,20 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     );
   }
 
+  /// Wraps [child] in the shared-element [Hero] only when the row that opened
+  /// this page supplied a tag. Without a tag there is nothing to pair with, and
+  /// an unpaired Hero is a no-op at best.
+  Widget _heroOrPlain(Widget child) {
+    final tag = widget.amountHeroTag;
+    if (tag == null) return child;
+    return Hero(
+      tag: tag,
+      // The row is right-aligned and small, the header left-aligned and large;
+      // the default rectangular flight reads as the figure growing in place.
+      child: child,
+    );
+  }
+
   String _normalizedCategory(String category) {
     if (_categories.contains(category)) return category;
     if (category == 'Others') return 'Other';
@@ -330,6 +380,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     final merchant = _merchantController.text.trim();
 
     if (amount == null || amount <= 0 || merchant.isEmpty) {
+      // Validation failed: the user is told, and the matching cue confirms the
+      // negative outcome. No success cue is reachable from here.
+      SoundScope.play(context, SoundEventType.actionFailed);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid merchant and amount')),
       );
@@ -337,16 +390,37 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     }
 
     setState(() => _saving = true);
-    await context.read<TransactionProvider>().updateTransaction(
-          widget.transaction.id,
-          amount: amount,
-          merchant: merchant,
-          category: _category,
-          type: _type,
-          isExcluded: _isExcluded,
-          // Empty string clears the bank; the model then renders 'Others'.
-          bank: _bankController.text.trim(),
-        );
+    final sound = SoundScope.maybeOf(context);
+    final transactions = context.read<TransactionProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await transactions.updateTransaction(
+        widget.transaction.id,
+        amount: amount,
+        merchant: merchant,
+        category: _category,
+        type: _type,
+        isExcluded: _isExcluded,
+        // Empty string clears the bank; the model then renders 'Others'.
+        bank: _bankController.text.trim(),
+      );
+    } catch (error) {
+      // The edit was not persisted, so nothing may be announced. Tell the user
+      // and keep the screen open with the edits intact.
+      debugPrint('TransactionDetailsScreen: could not save — $error');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not save. Please try again.')),
+      );
+      return;
+    } finally {
+      // Always hand the button back, so a failed save can be retried.
+      if (mounted) setState(() => _saving = false);
+    }
+
+    // Fired only once the edit is persisted and the route is still here.
+    SoundScope.playOn(sound, SoundEventType.transactionSaved);
     if (!mounted) return;
     Navigator.of(context).pop();
   }

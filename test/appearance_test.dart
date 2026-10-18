@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/screens/appearance_screen.dart';
 import 'package:spendsense/utils/app_colors.dart';
 import 'package:spendsense/utils/app_palette.dart';
+import 'package:spendsense/widgets/glossy_pill.dart';
 
 /// Appearance is backed by mutable global tokens in [AppColors], so every test
 /// restores the default palette to stay order-independent.
@@ -184,6 +186,61 @@ void main() {
       expect(AppearanceScreen.modeLabel(ThemeMode.system), 'System');
       expect(AppearanceScreen.modeLabel(ThemeMode.light), 'Light');
       expect(AppearanceScreen.modeLabel(ThemeMode.dark), 'Dark');
+    });
+  });
+
+  group('AppearanceScreen mode selector', () {
+    Future<ThemeProvider> pumpScreen(WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = ThemeProvider();
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ThemeProvider>.value(
+          value: provider,
+          child: const MaterialApp(home: AppearanceScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return provider;
+    }
+
+    testWidgets('exactly the chosen mode is a glossy segment', (tester) async {
+      await pumpScreen(tester);
+
+      final pills = tester.widgetList<GlossyPill>(find.byType(GlossyPill));
+      expect(pills, hasLength(ThemeMode.values.length));
+      // Light is the default, so a single segment carries the gloss.
+      expect(pills.where((p) => p.selected), hasLength(1));
+      expect(pills.every((p) => p.bareWhenUnselected), isTrue,
+          reason: 'inactive segments must stay understated inside the track');
+
+      // Segments follow ThemeMode.values order, so index the active one rather
+      // than assuming Light is first.
+      final active =
+          find.byType(GlossyPill).at(ThemeMode.values.indexOf(ThemeMode.light));
+      final activeIcon = tester.widget<Icon>(find.descendant(
+        of: active,
+        matching: find.byType(Icon),
+      ));
+      expect(activeIcon.color, Colors.white,
+          reason: 'the chosen segment sits on the gradient, so its icon is '
+              'the on-gradient white');
+    });
+
+    testWidgets('picking a mode moves the selection and persists it',
+        (tester) async {
+      final provider = await pumpScreen(tester);
+
+      await tester.tap(find.text('Dark'));
+      await tester.pumpAndSettle();
+
+      expect(provider.themeMode, ThemeMode.dark);
+      expect(
+        tester
+            .widgetList<GlossyPill>(find.byType(GlossyPill))
+            .where((p) => p.selected),
+        hasLength(1),
+        reason: 'the glossy segment follows the resolved theme mode',
+      );
     });
   });
 }

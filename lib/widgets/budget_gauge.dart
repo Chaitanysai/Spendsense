@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
@@ -162,6 +163,8 @@ class _GaugePainter extends CustomPainter {
   bool shouldRepaint(_GaugePainter old) =>
       old.value != value ||
       old.trackColor != trackColor ||
-      old.fillColors != fillColors ||
-      old.hasBudget != hasBudget;
+      // fillColors is a fresh list on every build, so comparing it by identity
+      // would repaint the arc each time; compare its contents instead.
+      old.hasBudget != hasBudget ||
+      !listEquals(old.fillColors, fillColors);
 }

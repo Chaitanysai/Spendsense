@@ -13,6 +13,7 @@ import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/profile_avatar.dart';
+import '../widgets/pressable.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -113,21 +114,26 @@ class _LoginScreenState extends State<LoginScreen> {
                             Positioned(
                               right: 0,
                               bottom: 0,
-                              child: GestureDetector(
-                                onTap: _pickProfileImage,
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    gradient: AppColors.brandGradient,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 2),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_a_photo_rounded,
-                                    color: Colors.white,
-                                    size: 15,
+                              child: Semantics(
+                                button: true,
+                                label: 'Add a profile photo',
+                                excludeSemantics: true,
+                                child: Pressable(
+                                  onTap: _pickProfileImage,
+                                  child: Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.brandGradient,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 2),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add_a_photo_rounded,
+                                      color: Colors.white,
+                                      size: 15,
+                                    ),
                                   ),
                                 ),
                               ),

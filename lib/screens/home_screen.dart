@@ -7,6 +7,7 @@ import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/period_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -19,6 +20,7 @@ import '../widgets/app_states.dart';
 import '../widgets/budget_gauge.dart';
 import '../widgets/category_bubble_cluster.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/gradient_hero_card.dart';
 import '../widgets/pressable.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/section_header.dart';
@@ -179,13 +181,18 @@ class _HeroPanel extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(AppRadius.xl),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navyDeep.withValues(alpha: 0.28),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        // The navy drop-shadow suits the dark theme, but over the pale light
+        // background it read as an unintended dark band under the header, so it
+        // is applied only in dark mode.
+        boxShadow: AppColors.isDark(context)
+            ? [
+                BoxShadow(
+                  color: AppColors.navyDeep.withValues(alpha: 0.28),
+                  blurRadius: 26,
+                  offset: const Offset(0, 14),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(
@@ -408,6 +415,7 @@ class _SyncPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: () => SmsImportPrompt.show(context),
+      sound: SoundEventType.buttonTap,
       child: Consumer<TransactionProvider>(
         builder: (context, provider, _) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -579,6 +587,7 @@ class _ActionPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
+      sound: SoundEventType.buttonTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
         decoration: BoxDecoration(
@@ -623,6 +632,9 @@ class _ActionPill extends StatelessWidget {
 
 // ── Category card ────────────────────────────────────────────────────────────
 
+/// Spending by category, presented on the same brand-gradient card as the rest
+/// of the dashboard's prominent surfaces so it reads as one family rather than a
+/// pale outlier. Falls back to a described empty state instead of a bare line.
 class _CategoryCard extends StatelessWidget {
   final List<TransactionModel> expenses;
 
@@ -634,18 +646,99 @@ class _CategoryCard extends StatelessWidget {
     for (final t in expenses) {
       totals[t.category] = (totals[t.category] ?? 0) + t.amount;
     }
+    final hasSpending = totals.values.any((v) => v > 0);
 
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          CategoryBubbleCluster(totals: totals),
-          const SizedBox(height: AppSpacing.lg),
-          const Divider(height: 1),
-          const SizedBox(height: AppSpacing.md),
-          _TopCategories(totals: totals),
-        ],
-      ),
+    return GradientHeroCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: hasSpending
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CategoryBubbleCluster(totals: totals, onGradient: true),
+                const SizedBox(height: AppSpacing.lg),
+                Divider(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.16),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _TopCategories(totals: totals),
+              ],
+            )
+          : const _CategoryEmptyState(),
+    );
+  }
+}
+
+/// Empty state for the category breakdown: says what will appear and offers the
+/// one action that produces it.
+class _CategoryEmptyState extends StatelessWidget {
+  const _CategoryEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 66,
+          height: 66,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+          ),
+          child: const Icon(
+            Icons.donut_large_rounded,
+            color: Colors.white,
+            size: 30,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'No spending to break down yet',
+          textAlign: TextAlign.center,
+          style: AppText.onGradient(size: 16, weight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Log an expense — or set an SMS start date — and SpendSense will sort '
+          'it into categories automatically.',
+          textAlign: TextAlign.center,
+          style: AppText.onGradient(size: 12.5, opacity: 0.85, height: 1.4),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Pressable(
+          onTap: () => Navigator.of(context).push(
+            AppPageRoute(
+              builder: (_) => const AddTransactionScreen(
+                  initialType: TransactionType.expense),
+            ),
+          ),
+          sound: SoundEventType.buttonTap,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_rounded, size: 18, color: AppColors.brand),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Add expense',
+                  style: AppText.title(context)
+                      .copyWith(fontSize: 13.5, color: AppColors.brand),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -661,10 +754,6 @@ class _TopCategories extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = totals.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
-    if (entries.isEmpty) {
-      return Text('No spending recorded yet.', style: AppText.body(context));
-    }
 
     return Column(
       children: entries
@@ -682,12 +771,14 @@ class _TopCategories extends StatelessWidget {
                       e.key,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.label(context).copyWith(fontSize: 12.5),
+                      style: AppText.onGradient(
+                          size: 12.5, weight: FontWeight.w600),
                     ),
                   ),
                   Text(
                     Formatters.currency.format(e.value),
-                    style: AppText.amount(context, size: 13),
+                    style:
+                        AppText.onGradient(size: 13, weight: FontWeight.w800),
                   ),
                 ],
               ),
@@ -733,8 +824,11 @@ class _DailySpendCard extends StatelessWidget {
             children: [
               Text('Today', style: AppText.label(context)),
               const Spacer(),
-              Text(
-                Formatters.currency.format(todayTotal),
+              // Counts with the bars below it, so the figure and the chart reach
+              // the same value together instead of the number snapping ahead.
+              AnimatedAmount(
+                value: todayTotal,
+                format: (v) => Formatters.currency.format(v),
                 style: AppText.amount(context, size: 18),
               ),
             ],

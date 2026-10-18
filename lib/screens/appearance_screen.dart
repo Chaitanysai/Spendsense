@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/theme_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_palette.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/app_background.dart';
+import '../widgets/app_states.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/glossy_pill.dart';
+import '../widgets/pressable.dart';
 import '../widgets/section_header.dart';
+import '../widgets/sound_scope.dart';
 
 /// Settings → Appearance: theme colours, light/dark/system, and reset.
 ///
@@ -46,8 +51,16 @@ class AppearanceScreen extends StatelessWidget {
                 title: 'Appearance · ${modeLabel(theme.themeMode)}',
               ),
               const SizedBox(height: AppSpacing.md),
-              GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.sm),
+              // Segmented track, styled like the expense/income selector in
+              // Add Transaction, so every select-one control in the app reads
+              // the same: a recessed track under one glossy selected segment.
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt(context),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: AppColors.border(context)),
+                ),
                 child: Row(
                   children: [
                     for (final mode in ThemeMode.values) ...[
@@ -55,11 +68,17 @@ class AppearanceScreen extends StatelessWidget {
                         child: _ModeChoice(
                           mode: mode,
                           selected: theme.themeMode == mode,
-                          onTap: () => theme.setThemeMode(mode),
+                          onTap: () {
+                            if (theme.themeMode != mode) {
+                              SoundScope.play(
+                                  context, SoundEventType.selectionChanged);
+                            }
+                            theme.setThemeMode(mode);
+                          },
                         ),
                       ),
                       if (mode != ThemeMode.values.last)
-                        const SizedBox(width: AppSpacing.sm),
+                        const SizedBox(width: AppSpacing.xs),
                     ],
                   ],
                 ),
@@ -78,7 +97,13 @@ class AppearanceScreen extends StatelessWidget {
                       _PaletteRow(
                         palette: AppPalette.all[i],
                         selected: theme.palette.id == AppPalette.all[i].id,
-                        onTap: () => theme.setPalette(AppPalette.all[i]),
+                        onTap: () {
+                          if (theme.palette.id != AppPalette.all[i].id) {
+                            SoundScope.play(
+                                context, SoundEventType.selectionChanged);
+                          }
+                          theme.setPalette(AppPalette.all[i]);
+                        },
                       ),
                       if (i != AppPalette.all.length - 1)
                         const SizedBox(height: AppSpacing.sm),
@@ -159,6 +184,18 @@ class _ModeChoice extends StatelessWidget {
     ThemeMode.system: Icons.brightness_auto_rounded,
   };
 
+  /// Navy → brand gloss for the chosen mode.
+  ///
+  /// Deliberately darker than the electric gradient the nav badge and buttons
+  /// ride: this segment carries a 12px label, and white on the lighter electric
+  /// stops falls under the 4.5:1 AA floor. On this ramp the white label clears
+  /// it at every stop, in both themes.
+  LinearGradient get _selectedGradient => LinearGradient(
+        colors: [AppColors.brand, AppColors.navyDeep],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -166,45 +203,41 @@ class _ModeChoice extends StatelessWidget {
       selected: selected,
       label: AppearanceScreen.modeLabel(mode),
       excludeSemantics: true,
-      child: InkWell(
+      child: GlossyPill(
+        selected: selected,
+        // Bare while unselected so only the chosen mode carries the gloss, and
+        // the same pill renders both states so the treatment animates in.
+        bareWhenUnselected: true,
+        // The track is a Row of Expanded segments, so the pill has to claim the
+        // full width; otherwise its highlight Stack shrink-wraps the label and
+        // the fill stops short of the segment edge.
+        width: double.infinity,
+        selectedGradient: _selectedGradient,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+        // The screen fires selectionChanged only when the mode actually
+        // changes, so a cue here would double it on the active segment.
+        sound: null,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.brand.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: selected ? AppColors.brand : AppColors.border(context),
-              width: selected ? 1.5 : 1,
+        child: Column(
+          children: [
+            Icon(
+              _icons[mode],
+              size: 20,
+              color: selected ? Colors.white : AppColors.textSecondary(context),
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                _icons[mode],
-                size: 20,
-                color: selected
-                    ? AppColors.navSelected(context)
-                    : AppColors.textSecondary(context),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              AppearanceScreen.modeLabel(mode),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(context).copyWith(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color:
+                    selected ? Colors.white : AppColors.textSecondary(context),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                AppearanceScreen.modeLabel(mode),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.body(context).copyWith(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? AppColors.navSelected(context)
-                      : AppColors.textSecondary(context),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -224,18 +257,37 @@ class _PaletteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppColors.isDark(context);
     return Semantics(
       button: true,
       selected: selected,
       label: palette.label,
       excludeSemantics: true,
-      child: InkWell(
+      child: Pressable(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
+        // The screen fires selectionChanged only when the palette actually
+        // changes, so the press cue lives there rather than here.
+        sound: null,
+        child: AnimatedContainer(
+          duration: AppMotion.respect(context, AppMotion.fast),
+          curve: AppMotion.easeOut,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
             vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            // A restrained brand wash on the chosen palette, so the active
+            // theme is legible at a glance and not only from the tick.
+            color: selected
+                ? AppColors.brand.withValues(alpha: dark ? 0.16 : 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: selected
+                  ? AppColors.brand.withValues(alpha: dark ? 0.45 : 0.28)
+                  : Colors.transparent,
+            ),
           ),
           child: Row(
             children: [
@@ -259,12 +311,18 @@ class _PaletteRow extends StatelessWidget {
                   style: AppText.title(context),
                 ),
               ),
-              if (selected)
-                Icon(Icons.check_circle_rounded,
-                    size: 22, color: AppColors.navSelected(context))
-              else
-                Icon(Icons.circle_outlined,
-                    size: 22, color: AppColors.textTertiary(context)),
+              // Cross-faded rather than swapped: picking a palette is a state
+              // change, and an instant icon flip read as a glitch.
+              AppStateSwap(
+                state: selected ? 'on' : 'off',
+                child: Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  size: 22,
+                  color: selected
+                      ? AppColors.navSelected(context)
+                      : AppColors.textTertiary(context),
+                ),
+              ),
             ],
           ),
         ),

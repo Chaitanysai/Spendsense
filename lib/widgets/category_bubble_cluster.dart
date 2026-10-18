@@ -13,14 +13,21 @@ import '../utils/category_style.dart';
 ///
 /// Sized by value rather than laid out in a fixed grid so the dominant category
 /// reads first — the point of the reference's treatment.
+///
+/// [onGradient] says which backdrop the cluster sits on. On a brand hero card
+/// (its intended home) the neutral ring/track and the leading bubble are white,
+/// so they read against the navy. On a plain surface they resolve through the
+/// theme tokens instead, because white-on-white is invisible.
 class CategoryBubbleCluster extends StatelessWidget {
   final Map<String, double> totals;
   final int maxBubbles;
+  final bool onGradient;
 
   const CategoryBubbleCluster({
     super.key,
     required this.totals,
     this.maxBubbles = 6,
+    this.onGradient = false,
   });
 
   @override
@@ -29,13 +36,19 @@ class CategoryBubbleCluster extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     if (entries.isEmpty) {
-      return const _EmptyCluster(text: 'No spending to chart yet');
+      return _EmptyCluster(
+        text: 'No spending to chart yet',
+        onGradient: onGradient,
+      );
     }
 
     final shown = entries.take(maxBubbles).toList();
     final grandTotal = shown.fold<double>(0, (s, e) => s + e.value);
     if (grandTotal <= 0) {
-      return const _EmptyCluster(text: 'No spending to chart yet');
+      return _EmptyCluster(
+        text: 'No spending to chart yet',
+        onGradient: onGradient,
+      );
     }
 
     final topShare = shown.first.value / grandTotal;
@@ -59,6 +72,7 @@ class CategoryBubbleCluster extends StatelessWidget {
             share: shown[i].value / grandTotal,
             diameter: diameters[i],
             isLargest: i == 0,
+            onGradient: onGradient,
           ),
       ],
     );
@@ -67,8 +81,9 @@ class CategoryBubbleCluster extends StatelessWidget {
 
 class _EmptyCluster extends StatelessWidget {
   final String text;
+  final bool onGradient;
 
-  const _EmptyCluster({required this.text});
+  const _EmptyCluster({required this.text, required this.onGradient});
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +92,13 @@ class _EmptyCluster extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.pie_chart_outline_rounded,
-              size: 18, color: AppColors.textTertiary(context)),
+          Icon(
+            Icons.pie_chart_outline_rounded,
+            size: 18,
+            color: onGradient
+                ? Colors.white.withValues(alpha: 0.8)
+                : AppColors.textTertiary(context),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Flexible(
             child: Text(
@@ -86,7 +106,9 @@ class _EmptyCluster extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: AppText.body(context),
+              style: onGradient
+                  ? AppText.onGradient(size: 12.5, opacity: 0.85)
+                  : AppText.body(context),
             ),
           ),
         ],
@@ -100,18 +122,32 @@ class _Bubble extends StatelessWidget {
   final double share;
   final double diameter;
   final bool isLargest;
+  final bool onGradient;
 
   const _Bubble({
     required this.category,
     required this.share,
     required this.diameter,
     required this.isLargest,
+    required this.onGradient,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = CategoryStyle.color(category);
     final labelWidth = (diameter + 26).clamp(72.0, 116.0);
+
+    // The leading bubble inverts to white only where the backdrop is a brand
+    // gradient; on a plain surface it keeps its category colour so it still
+    // contrasts with the card behind it.
+    final emphasiseText = isLargest && onGradient;
+    final arcColor = onGradient ? Colors.white : color;
+    final outlineColor = onGradient
+        ? Colors.white.withValues(alpha: 0.20)
+        : AppColors.border(context).withValues(alpha: 0.9);
+    final trackColor = onGradient
+        ? Colors.white.withValues(alpha: 0.14)
+        : color.withValues(alpha: 0.16);
 
     return SizedBox(
       width: labelWidth,
@@ -134,6 +170,9 @@ class _Bubble extends StatelessWidget {
                       share: animatedShare,
                       color: color,
                       prominent: isLargest,
+                      arcColor: arcColor,
+                      outlineColor: outlineColor,
+                      trackColor: trackColor,
                     ),
                   ),
                   child!,
@@ -146,7 +185,7 @@ class _Bubble extends StatelessWidget {
                 Icon(
                   CategoryStyle.icon(category),
                   size: diameter * 0.26,
-                  color: isLargest ? Colors.white : color,
+                  color: emphasiseText ? Colors.white : color,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -154,7 +193,7 @@ class _Bubble extends StatelessWidget {
                   style: AppText.amount(
                     context,
                     size: diameter * 0.15,
-                    color: isLargest ? Colors.white : color,
+                    color: emphasiseText ? Colors.white : color,
                   ),
                 ),
               ],
@@ -166,8 +205,10 @@ class _Bubble extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style:
-                AppText.label(context).copyWith(fontSize: 10.5, height: 1.15),
+            style: onGradient
+                ? AppText.onGradient(
+                    size: 10.5, weight: FontWeight.w600, height: 1.15)
+                : AppText.label(context).copyWith(fontSize: 10.5, height: 1.15),
           ),
         ],
       ),
@@ -179,11 +220,17 @@ class _RingPainter extends CustomPainter {
   final double share;
   final Color color;
   final bool prominent;
+  final Color arcColor;
+  final Color outlineColor;
+  final Color trackColor;
 
   _RingPainter({
     required this.share,
     required this.color,
     required this.prominent,
+    required this.arcColor,
+    required this.outlineColor,
+    required this.trackColor,
   });
 
   @override
@@ -194,7 +241,7 @@ class _RingPainter extends CustomPainter {
         Offset(inset, inset) & Size(size.width - stroke, size.height - stroke);
     if (rect.shortestSide <= 0) return;
 
-    // Bubble body: translucent fill so the navy background reads through it.
+    // Bubble body: translucent category fill so the surface behind reads through.
     canvas.drawCircle(
       size.center(Offset.zero),
       rect.shortestSide / 2 - inset,
@@ -214,7 +261,7 @@ class _RingPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = Colors.white.withValues(alpha: 0.18),
+        ..color = outlineColor,
     );
 
     // Progress ring, starting at 12 o'clock.
@@ -227,7 +274,7 @@ class _RingPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..color = Colors.white.withValues(alpha: 0.12),
+        ..color = trackColor,
     );
 
     if (share > 0) {
@@ -240,12 +287,17 @@ class _RingPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke
           ..strokeCap = StrokeCap.round
-          ..color = prominent ? Colors.white : color,
+          ..color = arcColor,
       );
     }
   }
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      old.share != share || old.color != color || old.prominent != prominent;
+      old.share != share ||
+      old.color != color ||
+      old.prominent != prominent ||
+      old.arcColor != arcColor ||
+      old.outlineColor != outlineColor ||
+      old.trackColor != trackColor;
 }

@@ -4,6 +4,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/app_background.dart';
+import '../widgets/app_states.dart';
 
 /// AI Provider Settings screen for runtime API key configuration.
 /// Keys are stored in platform-specific encrypted storage.
@@ -152,124 +153,131 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       ),
       extendBodyBehindAppBar: false,
       body: AppBackground(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.page,
-                  AppSpacing.sm,
-                  AppSpacing.page,
-                  AppSpacing.xxl,
-                ),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                          color: AppColors.brand.withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.shield_outlined,
-                            color: AppColors.brand, size: 20),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Text(
-                            'Configure API keys for AI-powered transaction parsing. '
-                            'Keys are stored securely on your device and never leave your control.',
-                            style: AppText.body(context).copyWith(height: 1.5),
+        // The configured-key list is unknown until storage has been read, so the
+        // spinner and the form fade into each other instead of snapping.
+        child: AppStateSwap(
+          state: _loading ? 'loading' : 'ready',
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.sm,
+                    AppSpacing.page,
+                    AppSpacing.xxl,
+                  ),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                            color: AppColors.brand.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.shield_outlined,
+                              color: AppColors.brand, size: 20),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Text(
+                              'Configure API keys for AI-powered transaction parsing. '
+                              'Keys are stored securely on your device and never leave your control.',
+                              style:
+                                  AppText.body(context).copyWith(height: 1.5),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    'Provider Chain Order: Groq → Cerebras → Gemini → OpenRouter',
-                    style: AppText.label(context).copyWith(
-                      color: AppColors.brand,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      'Provider Chain Order: Groq → Cerebras → Gemini → OpenRouter',
+                      style: AppText.label(context).copyWith(
+                        color: AppColors.brand,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  _buildProviderSection(
-                    context,
-                    providerName: 'Groq',
-                    description: 'Fast inference with llama-3.3-70b-versatile',
-                    controller: _groqController,
-                    isConfigured: _groqConfigured,
-                    onSave: () => _saveKey('Groq', _groqController,
-                        _storage.setGroqKey, (v) => _groqConfigured = v),
-                    onClear: () => _clearKey(
-                        'Groq',
-                        SecureStorageService.groqKeyName,
-                        (v) => _groqConfigured = v),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildProviderSection(
-                    context,
-                    providerName: 'Cerebras',
-                    description: 'Cost-effective with llama3.1-8b',
-                    controller: _cerebrasController,
-                    isConfigured: _cerebrasConfigured,
-                    onSave: () => _saveKey(
-                        'Cerebras',
-                        _cerebrasController,
-                        _storage.setCerebrasKey,
-                        (v) => _cerebrasConfigured = v),
-                    onClear: () => _clearKey(
-                        'Cerebras',
-                        SecureStorageService.cerebrasKeyName,
-                        (v) => _cerebrasConfigured = v),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildProviderSection(
-                    context,
-                    providerName: 'Gemini',
-                    description: 'High quality with gemini-2.5-flash',
-                    controller: _geminiController,
-                    isConfigured: _geminiConfigured,
-                    onSave: () => _saveKey('Gemini', _geminiController,
-                        _storage.setGeminiKey, (v) => _geminiConfigured = v),
-                    onClear: () => _clearKey(
-                        'Gemini',
-                        SecureStorageService.geminiKeyName,
-                        (v) => _geminiConfigured = v),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildProviderSection(
-                    context,
-                    providerName: 'OpenRouter',
-                    description: 'Fallback with llama-3.3-70b-instruct:free',
-                    controller: _openRouterController,
-                    isConfigured: _openRouterConfigured,
-                    onSave: () => _saveKey(
-                        'OpenRouter',
-                        _openRouterController,
-                        _storage.setOpenRouterKey,
-                        (v) => _openRouterConfigured = v),
-                    onClear: () => _clearKey(
-                        'OpenRouter',
-                        SecureStorageService.openRouterKeyName,
-                        (v) => _openRouterConfigured = v),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-                  OutlinedButton.icon(
-                    onPressed: _clearAllKeys,
-                    icon: const Icon(Icons.delete_sweep),
-                    label: const Text('Clear All Keys'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: BorderSide(
-                          color: AppColors.danger.withValues(alpha: 0.4)),
-                      minimumSize: const Size.fromHeight(50),
+                    const SizedBox(height: AppSpacing.xl),
+                    _buildProviderSection(
+                      context,
+                      providerName: 'Groq',
+                      description:
+                          'Fast inference with llama-3.3-70b-versatile',
+                      controller: _groqController,
+                      isConfigured: _groqConfigured,
+                      onSave: () => _saveKey('Groq', _groqController,
+                          _storage.setGroqKey, (v) => _groqConfigured = v),
+                      onClear: () => _clearKey(
+                          'Groq',
+                          SecureStorageService.groqKeyName,
+                          (v) => _groqConfigured = v),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildProviderSection(
+                      context,
+                      providerName: 'Cerebras',
+                      description: 'Cost-effective with llama3.1-8b',
+                      controller: _cerebrasController,
+                      isConfigured: _cerebrasConfigured,
+                      onSave: () => _saveKey(
+                          'Cerebras',
+                          _cerebrasController,
+                          _storage.setCerebrasKey,
+                          (v) => _cerebrasConfigured = v),
+                      onClear: () => _clearKey(
+                          'Cerebras',
+                          SecureStorageService.cerebrasKeyName,
+                          (v) => _cerebrasConfigured = v),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildProviderSection(
+                      context,
+                      providerName: 'Gemini',
+                      description: 'High quality with gemini-2.5-flash',
+                      controller: _geminiController,
+                      isConfigured: _geminiConfigured,
+                      onSave: () => _saveKey('Gemini', _geminiController,
+                          _storage.setGeminiKey, (v) => _geminiConfigured = v),
+                      onClear: () => _clearKey(
+                          'Gemini',
+                          SecureStorageService.geminiKeyName,
+                          (v) => _geminiConfigured = v),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildProviderSection(
+                      context,
+                      providerName: 'OpenRouter',
+                      description: 'Fallback with llama-3.3-70b-instruct:free',
+                      controller: _openRouterController,
+                      isConfigured: _openRouterConfigured,
+                      onSave: () => _saveKey(
+                          'OpenRouter',
+                          _openRouterController,
+                          _storage.setOpenRouterKey,
+                          (v) => _openRouterConfigured = v),
+                      onClear: () => _clearKey(
+                          'OpenRouter',
+                          SecureStorageService.openRouterKeyName,
+                          (v) => _openRouterConfigured = v),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    OutlinedButton.icon(
+                      onPressed: _clearAllKeys,
+                      icon: const Icon(Icons.delete_sweep),
+                      label: const Text('Clear All Keys'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        side: BorderSide(
+                            color: AppColors.danger.withValues(alpha: 0.4)),
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }

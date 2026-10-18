@@ -5,6 +5,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'pressable.dart';
 
 /// Shows a bottom sheet asking the user which day of the month their salary
 /// arrives. Call once on first launch (when PeriodProvider.isSetupDone == false).
@@ -98,28 +99,35 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
               itemBuilder: (context, index) {
                 final day = index + 1;
                 final isSelected = day == _selected;
-                return GestureDetector(
-                  onTap: () => setState(() => _selected = day),
-                  child: AnimatedContainer(
-                    duration: AppMotion.respect(context, AppMotion.fast),
-                    decoration: BoxDecoration(
-                      gradient: isSelected ? AppColors.brandGradient : null,
-                      color: isSelected ? null : AppColors.surfaceAlt(context),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.transparent
-                            : AppColors.border(context),
+                return Semantics(
+                  button: true,
+                  selected: isSelected,
+                  label: 'Day $day',
+                  excludeSemantics: true,
+                  child: Pressable(
+                    onTap: () => setState(() => _selected = day),
+                    child: AnimatedContainer(
+                      duration: AppMotion.respect(context, AppMotion.fast),
+                      decoration: BoxDecoration(
+                        gradient: isSelected ? AppColors.brandGradient : null,
+                        color:
+                            isSelected ? null : AppColors.surfaceAlt(context),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.transparent
+                              : AppColors.border(context),
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$day',
-                      style: AppText.label(context).copyWith(
-                        fontSize: 13,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.textPrimary(context),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$day',
+                        style: AppText.label(context).copyWith(
+                          fontSize: 13,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textPrimary(context),
+                        ),
                       ),
                     ),
                   ),

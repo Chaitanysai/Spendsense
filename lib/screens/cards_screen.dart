@@ -7,6 +7,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/formatters.dart';
+import '../widgets/animated_amount.dart';
 import '../widgets/app_states.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
@@ -103,7 +104,8 @@ class CardsScreen extends StatelessWidget {
                 _InstrumentCard(stats: byBank, kind: _InstrumentKind.bank),
                 const SizedBox(height: AppSpacing.xxl),
                 const SectionHeader(title: 'By account'),
-                _InstrumentCard(stats: byAccount, kind: _InstrumentKind.account),
+                _InstrumentCard(
+                    stats: byAccount, kind: _InstrumentKind.account),
                 const SizedBox(height: AppSpacing.xxl),
                 const _SourceNote(),
               ]),
@@ -147,8 +149,9 @@ class _HeroSummary extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              Formatters.currency.format(totalSpent),
+            child: AnimatedAmount(
+              value: totalSpent,
+              format: (v) => Formatters.currency.format(v),
               style: AppText.onGradient(size: 34, weight: FontWeight.w800),
             ),
           ),

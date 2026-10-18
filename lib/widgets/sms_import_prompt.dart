@@ -3,10 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'sound_scope.dart';
 
 class SmsImportPrompt {
   static Future<void> show(BuildContext context) {
@@ -100,45 +102,51 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                 style: AppText.body(context).copyWith(height: 1.5),
               ),
               const SizedBox(height: AppSpacing.xl),
-              InkWell(
+              // The panel colour sits on the Material, not inside the tappable
+              // child: an InkWell paints its splash onto the nearest enclosing
+              // Material, so an opaque fill below it hides the ripple.
+              Material(
+                color: AppColors.surfaceAlt(context),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                onTap: _saving ? null : _pickDate,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt(context),
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: AppColors.border(context)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.brand.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  onTap: _saving ? null : _pickDate,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: AppColors.border(context)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: Icon(Icons.calendar_month_rounded,
+                              color: AppColors.brand),
                         ),
-                        child: Icon(Icons.calendar_month_rounded,
-                            color: AppColors.brand),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('START DATE',
-                                style: AppText.overline(context)),
-                            const SizedBox(height: 2),
-                            Text(label,
-                                style: AppText.title(context)
-                                    .copyWith(fontSize: 15)),
-                          ],
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('START DATE',
+                                  style: AppText.overline(context)),
+                              const SizedBox(height: 2),
+                              Text(label,
+                                  style: AppText.title(context)
+                                      .copyWith(fontSize: 15)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(Icons.edit_rounded,
-                          size: 20, color: AppColors.textSecondary(context)),
-                    ],
+                        Icon(Icons.edit_rounded,
+                            size: 20, color: AppColors.textSecondary(context)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -147,6 +155,8 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                 label: 'Start syncing SMS',
                 icon: Icons.sync_rounded,
                 loading: _saving,
+                // The completion cue below is this action's feedback.
+                sound: null,
                 onPressed: _saving ? null : _save,
               ),
             ],
@@ -165,15 +175,20 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
       initialDate: _selectedDate,
     );
     if (picked != null) {
+      if (!mounted) return;
+      SoundScope.play(context, SoundEventType.selectionChanged);
       setState(() => _selectedDate = picked);
     }
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    final sound = SoundScope.maybeOf(context);
     await context
         .read<TransactionProvider>()
         .setSmsScanStartDate(_selectedDate);
+    // The scan date is persisted at this point, so the success cue is honest.
+    SoundScope.playOn(sound, SoundEventType.actionSucceeded);
     if (!mounted) return;
     Navigator.of(context).pop();
   }

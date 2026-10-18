@@ -41,8 +41,9 @@ class AppRadius {
   static const BorderRadius xlAll = BorderRadius.all(Radius.circular(xl));
 }
 
-/// Motion tokens. Durations collapse to zero when the OS requests reduced
-/// motion (checked at the widget via [AppMotion.of]).
+/// Motion tokens. Every duration and curve used by the app's animation comes
+/// from here so the whole UI moves on one clock. [AppMotion.respect] collapses
+/// them to zero when the platform requests reduced motion.
 class AppMotion {
   AppMotion._();
 
@@ -52,12 +53,19 @@ class AppMotion {
   static const Duration counter = Duration(milliseconds: 650);
   static const Duration chart = Duration(milliseconds: 600);
 
+  /// Tab-to-tab cross-fade in the shell's [FadeIndexedStack]. Slightly longer
+  /// than [base] because the incoming page carries the whole dashboard.
+  static const Duration tab = Duration(milliseconds: 260);
+
   static const Curve easeOut = Curves.easeOutCubic;
   static const Curve emphasized = Cubic(0.16, 1.0, 0.3, 1.0);
 
+  /// True when the platform asks for reduced motion. Reads `disableAnimations`
+  /// from MediaQuery, which Flutter keeps in sync with the OS setting.
+  static bool reduced(BuildContext context) =>
+      MediaQuery.maybeDisableAnimationsOf(context) == true;
+
   /// Returns [duration] unless the platform disables animations.
   static Duration respect(BuildContext context, Duration duration) =>
-      MediaQuery.maybeDisableAnimationsOf(context) == true
-          ? Duration.zero
-          : duration;
+      reduced(context) ? Duration.zero : duration;
 }

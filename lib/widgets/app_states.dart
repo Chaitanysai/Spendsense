@@ -140,7 +140,21 @@ class _SkeletonBoxState extends State<SkeletonBox>
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
+    value: 0.5,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The shimmer is decoration, not information, so under reduced motion the
+    // block stays at its mid tone instead of pulsing forever. This also lets a
+    // reduced-motion test settle, which an always-repeating ticker prevents.
+    if (AppMotion.reduced(context)) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {
@@ -208,6 +222,33 @@ class SkeletonList extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+/// Cross-fades between the mutually exclusive states a screen can be in
+/// (loading, empty, error, content) instead of swapping them hard.
+///
+/// [state] is the switch key: it must change when — and only when — the visible
+/// state changes, otherwise the fade fires on ordinary data updates. Under
+/// reduced motion the swap is instant.
+class AppStateSwap extends StatelessWidget {
+  final Object state;
+  final Widget child;
+
+  const AppStateSwap({
+    super.key,
+    required this.state,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: AppMotion.respect(context, AppMotion.base),
+      switchInCurve: AppMotion.easeOut,
+      switchOutCurve: AppMotion.easeOut.flipped,
+      child: KeyedSubtree(key: ValueKey(state), child: child),
     );
   }
 }

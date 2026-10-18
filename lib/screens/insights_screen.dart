@@ -247,8 +247,19 @@ class InsightsScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (metrics.categories.isEmpty)
-            Text('No spending data yet this month.',
-                style: AppText.body(context))
+            Row(
+              children: [
+                Icon(Icons.pie_chart_outline_rounded,
+                    size: 18, color: AppColors.textTertiary(context)),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'No spending recorded this month yet.',
+                    style: AppText.body(context),
+                  ),
+                ),
+              ],
+            )
           else
             SizedBox(
               height: 96,
@@ -674,9 +685,15 @@ class _AssistantChatScreenState extends State<_AssistantChatScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent + 120;
+      if (AppMotion.reduced(context)) {
+        // A zero-duration animateTo is not allowed; reduced motion jumps.
+        _scrollController.jumpTo(target);
+        return;
+      }
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 120,
-        duration: const Duration(milliseconds: 250),
+        target,
+        duration: AppMotion.base,
         curve: AppMotion.easeOut,
       );
     });

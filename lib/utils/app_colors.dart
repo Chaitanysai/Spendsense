@@ -166,11 +166,33 @@ class AppColors {
       isDark(context) ? azure : brand;
 
   // ── Glass tokens ──────────────────────────────────────────────────────────────
+
+  /// Fill for frosted content cards.
+  ///
+  /// A neutral white wash over the near-black dark scaffold reads as a flat grey
+  /// slab, disconnected from the navy identity, so the dark fill is tinted toward
+  /// the palette's own navy surface. Light keeps the cool white frost.
   static Color glassFill(BuildContext context) => isDark(context)
-      ? Colors.white.withValues(alpha: 0.07)
+      ? Color.alphaBlend(
+          Colors.white.withValues(alpha: 0.06),
+          darkSurfaceAlt,
+        ).withValues(alpha: 0.72)
       : Colors.white.withValues(alpha: 0.66);
 
   static Color glassBorder(BuildContext context) => isDark(context)
       ? Colors.white.withValues(alpha: 0.14)
       : Colors.white.withValues(alpha: 0.85);
+
+  /// Diagonal sheen overlay for glass surfaces.
+  ///
+  /// Kept deliberately faint in dark mode: the light-mode sheen is what washed
+  /// dark cards toward grey. [glassSheen] remains the light-mode value.
+  static LinearGradient glassSheenFor(BuildContext context) =>
+      isDark(context) ? darkGlassSheen : glassSheen;
+
+  static const LinearGradient darkGlassSheen = LinearGradient(
+    colors: [Color(0x12FFFFFF), Color(0x00FFFFFF)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }

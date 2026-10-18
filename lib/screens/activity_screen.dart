@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../services/sound_service.dart';
 import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
@@ -10,8 +11,10 @@ import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_states.dart';
+import '../widgets/glossy_pill.dart';
 import '../widgets/pressable.dart';
 import '../widgets/sms_import_prompt.dart';
+import '../widgets/sound_scope.dart';
 
 // ─── Date filter presets ───────────────────────────────────────────────────
 enum _DatePreset { today, thisWeek, thisMonth, last3Months, custom }
@@ -117,8 +120,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       if (hasFilters)
                         Pressable(
                           onTap: _clearFilters,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.pill),
+                          sound: SoundEventType.buttonTap,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 9),
@@ -244,78 +247,87 @@ class _ActivityScreenState extends State<ActivityScreen> {
               ),
             ),
             Expanded(
-              child: displayList.isEmpty && provider.isSyncing
-                  ? const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: AppSpacing.page),
-                      child: SkeletonList(count: 5),
-                    )
-                  : displayList.isEmpty
-                      ? (hasFilters
-                          ? AppEmptyState(
-                              icon: Icons.search_off_rounded,
-                              title: 'No transactions found',
-                              message: 'Try adjusting your search or filters.',
-                              actionLabel: 'Clear all filters',
-                              onAction: _clearFilters,
-                            )
-                          : provider.hasSmsScanStartDate
-                              ? const AppEmptyState(
-                                  icon: Icons.receipt_long_rounded,
-                                  title: 'Nothing here yet',
-                                  message:
-                                      'No transactions were found after your selected SMS start date.',
-                                )
-                              : AppEmptyState(
-                                  icon: Icons.sms_rounded,
-                                  title: 'No transactions yet',
-                                  message:
-                                      'Pick an SMS start date and SpendSense will build your transactions automatically.',
-                                  actionLabel: 'Choose start date',
-                                  onAction: () => SmsImportPrompt.show(context),
-                                ))
-                      : AppRefreshIndicator(
-                          onRefresh: () => Provider.of<TransactionProvider>(
-                                  context,
-                                  listen: false)
-                              .syncFromSms(),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.page,
-                              0,
-                              AppSpacing.page,
-                              AppSpacing.fabClearance,
-                            ),
-                            itemCount: displayList.length,
-                            itemBuilder: (context, index) {
-                              final tx = displayList[index];
+              // Syncing, the empty variants and the populated list cross-fade
+              // into each other instead of popping. The key is the state itself,
+              // so editing a filter inside one state does not restart the fade.
+              child: AppStateSwap(
+                state: _bodyKey(displayList, hasFilters, provider),
+                child: displayList.isEmpty && provider.isSyncing
+                    ? const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: AppSpacing.page),
+                        child: SkeletonList(count: 5),
+                      )
+                    : displayList.isEmpty
+                        ? (hasFilters
+                            ? AppEmptyState(
+                                icon: Icons.search_off_rounded,
+                                title: 'No transactions found',
+                                message:
+                                    'Try adjusting your search or filters.',
+                                actionLabel: 'Clear all filters',
+                                onAction: _clearFilters,
+                              )
+                            : provider.hasSmsScanStartDate
+                                ? const AppEmptyState(
+                                    icon: Icons.receipt_long_rounded,
+                                    title: 'Nothing here yet',
+                                    message:
+                                        'No transactions were found after your selected SMS start date.',
+                                  )
+                                : AppEmptyState(
+                                    icon: Icons.sms_rounded,
+                                    title: 'No transactions yet',
+                                    message:
+                                        'Pick an SMS start date and SpendSense will build your transactions automatically.',
+                                    actionLabel: 'Choose start date',
+                                    onAction: () =>
+                                        SmsImportPrompt.show(context),
+                                  ))
+                        : AppRefreshIndicator(
+                            onRefresh: () => Provider.of<TransactionProvider>(
+                                    context,
+                                    listen: false)
+                                .syncFromSms(),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.page,
+                                0,
+                                AppSpacing.page,
+                                AppSpacing.fabClearance,
+                              ),
+                              itemCount: displayList.length,
+                              itemBuilder: (context, index) {
+                                final tx = displayList[index];
 
-                              bool showHeader = false;
-                              if (_sortMode == 'Date') {
-                                if (index == 0) {
-                                  showHeader = true;
-                                } else {
-                                  final prev = displayList[index - 1];
-                                  showHeader = Formatters.date(prev.date) !=
-                                      Formatters.date(tx.date);
+                                bool showHeader = false;
+                                if (_sortMode == 'Date') {
+                                  if (index == 0) {
+                                    showHeader = true;
+                                  } else {
+                                    final prev = displayList[index - 1];
+                                    showHeader = Formatters.date(prev.date) !=
+                                        Formatters.date(tx.date);
+                                  }
                                 }
-                              }
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (showHeader)
-                                    _sectionHeader(DateFormat('EEE, d MMM')
-                                        .format(tx.date)),
-                                  TransactionTile(
-                                    transaction: tx,
-                                    showDate: false,
-                                  ),
-                                ],
-                              );
-                            },
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (showHeader)
+                                      _sectionHeader(DateFormat('EEE, d MMM')
+                                          .format(tx.date)),
+                                    TransactionTile(
+                                      transaction: tx,
+                                      showDate: false,
+                                      heroScope: 'activity',
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
-                        ),
+              ),
             ),
           ],
         ),
@@ -324,6 +336,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // ─── FILTER / SORT LOGIC (unchanged behaviour) ─────────────────────────────
+
+  /// Which body state the list area is in, used as the [AppStateSwap] key. Each
+  /// empty variant gets its own value so switching between them still fades.
+  String _bodyKey(List<TransactionModel> displayList, bool hasFilters,
+      TransactionProvider provider) {
+    if (displayList.isNotEmpty) return 'list';
+    if (provider.isSyncing) return 'syncing';
+    if (hasFilters) return 'empty-filtered';
+    return provider.hasSmsScanStartDate ? 'empty-none' : 'empty-no-start-date';
+  }
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
     List<TransactionModel> list = all.where((t) {
@@ -394,49 +416,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
     required VoidCallback onTap,
     IconData? trailing,
   }) {
-    return Pressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      child: AnimatedContainer(
-        duration: AppMotion.respect(context, AppMotion.fast),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: active
-              ? AppColors.brand.withValues(alpha: 0.14)
-              : AppColors.surfaceColor(context),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(
-            color: active
-                ? AppColors.brand.withValues(alpha: 0.4)
-                : AppColors.border(context),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 15,
-                color: active
-                    ? AppColors.brand
-                    : AppColors.textSecondary(context)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: AppText.label(context).copyWith(
-                fontSize: 12,
-                color:
-                    active ? AppColors.brand : AppColors.textSecondary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: 4),
-              Icon(trailing,
-                  size: 15,
-                  color: active
-                      ? AppColors.brand
-                      : AppColors.textSecondary(context)),
-            ],
-          ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: label,
+        excludeSemantics: true,
+        child: GlossyPill.chip(
+          label: label,
+          icon: icon,
+          trailing: trailing,
+          selected: active,
+          onTap: onTap,
+          sound: SoundEventType.selectionChanged,
         ),
       ),
     );
@@ -718,7 +711,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
           : null,
       trailing:
           selected ? Icon(Icons.check_circle_rounded, color: color) : null,
-      onTap: onTap,
+      onTap: () {
+        SoundScope.play(context, SoundEventType.selectionChanged);
+        onTap();
+      },
     );
   }
 
@@ -754,33 +750,28 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget _activeBadge(IconData icon, String label, VoidCallback onRemove) {
     // The whole chip removes the filter: the close icon alone was a ~23px
     // target, far under the 48dp guideline, and it carried no semantics.
-    return Pressable(
-      onTap: onRemove,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      child: Semantics(
-        button: true,
-        label: 'Remove $label filter',
-        excludeSemantics: true,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor(context),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(color: AppColors.border(context)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 13, color: AppColors.brand),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: AppText.label(context).copyWith(
-                      fontSize: 12, color: AppColors.textPrimary(context))),
-              const SizedBox(width: 6),
-              Icon(Icons.close_rounded,
-                  size: 15, color: AppColors.textTertiary(context)),
-            ],
-          ),
+    // Rendered as the same frosted pill the filter chips use, so the applied
+    // filters and the controls that set them read as one family.
+    return Semantics(
+      button: true,
+      label: 'Remove $label filter',
+      excludeSemantics: true,
+      child: GlossyPill(
+        onTap: onRemove,
+        sound: SoundEventType.buttonTap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: AppColors.brand),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppText.label(context).copyWith(
+                    fontSize: 12, color: AppColors.textPrimary(context))),
+            const SizedBox(width: 6),
+            Icon(Icons.close_rounded,
+                size: 15, color: AppColors.textTertiary(context)),
+          ],
         ),
       ),
     );

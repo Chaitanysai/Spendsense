@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -11,7 +12,9 @@ import '../utils/category_style.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
+import '../widgets/glossy_pill.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/sound_scope.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({
@@ -27,6 +30,9 @@ class AddTransactionScreen extends StatefulWidget {
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
+  // No setState listeners on either controller: the places that read the amount
+  // live in ListenableBuilder scopes below, so a keystroke rebuilds those
+  // instead of the whole screen.
   final _amountController = TextEditingController();
   final _merchantController = TextEditingController();
 
@@ -38,19 +44,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   void _setType(TransactionType next) {
     if (_type == next) return;
+    // A real mode change is a selection change; re-tapping the active segment
+    // stays silent.
+    SoundScope.play(context, SoundEventType.selectionChanged);
     setState(() {
       _type = next;
       // Income has no merchant taxonomy in this app; the parser labels it
       // 'Income', so keep manual entries consistent with that.
       _category = next == TransactionType.income ? 'Income' : 'Food';
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.addListener(() => setState(() {}));
-    _merchantController.addListener(() => setState(() {}));
   }
 
   @override
@@ -94,8 +96,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
                       // Live amount hero
                       GradientHeroCard(
-                        gradient:
-                            _isIncome ? AppColors.successGradient : null,
+                        gradient: _isIncome ? AppColors.successGradient : null,
                         glowColor: _isIncome ? AppColors.incomeGreen : null,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,13 +108,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     opacity: 0.85,
                                     letterSpacing: 1.4)),
                             const SizedBox(height: AppSpacing.sm),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                Formatters.currency.format(_amount),
-                                style: AppText.onGradient(
-                                    size: 40, weight: FontWeight.w800),
+                            ListenableBuilder(
+                              listenable: _amountController,
+                              builder: (context, _) => FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  Formatters.currency.format(_amount),
+                                  style: AppText.onGradient(
+                                      size: 40, weight: FontWeight.w800),
+                                ),
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
@@ -189,33 +193,51 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           children: CategoryStyle.pickerCategories.map((c) {
                             final selected = _category == c;
                             final color = CategoryStyle.color(c);
-                            return GestureDetector(
-                              onTap: () => setState(() => _category = c),
-                              child: AnimatedContainer(
-                                duration:
-                                    AppMotion.respect(context, AppMotion.fast),
+                            final dark = AppColors.isDark(context);
+                            // Selected: glossy gradient derived from category color so it stays tappable/legible.
+                            final Gradient catGrad = dark
+                                ? LinearGradient(
+                                    colors: [
+                                      color,
+                                      Color.lerp(color, const Color(0xFF3B1D6E),
+                                              0.28) ??
+                                          color,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      Color.lerp(color, Colors.white, 0.18) ??
+                                          color,
+                                      color,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  );
+                            return Semantics(
+                              button: true,
+                              selected: selected,
+                              label: c,
+                              excludeSemantics: true,
+                              child: GlossyPill(
+                                selected: selected,
+                                selectedGradient: catGrad,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.md,
-                                    vertical: AppSpacing.sm),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? color.withValues(alpha: 0.16)
-                                      : AppColors.surfaceColor(context),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.pill),
-                                  border: Border.all(
-                                    color: selected
-                                        ? color.withValues(alpha: 0.5)
-                                        : AppColors.border(context),
-                                  ),
-                                ),
+                                    horizontal: 13, vertical: 9),
+                                onTap: () {
+                                  if (_category == c) return;
+                                  SoundScope.play(
+                                      context, SoundEventType.selectionChanged);
+                                  setState(() => _category = c);
+                                },
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(CategoryStyle.icon(c),
                                         size: 16,
                                         color: selected
-                                            ? color
+                                            ? Colors.white
                                             : AppColors.textSecondary(context)),
                                     const SizedBox(width: 6),
                                     Text(
@@ -223,7 +245,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                       style: AppText.label(context).copyWith(
                                         fontSize: 12,
                                         color: selected
-                                            ? color
+                                            ? Colors.white
                                             : AppColors.textSecondary(context),
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -245,11 +267,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   AppSpacing.page,
                   AppSpacing.lg,
                 ),
-                child: AppPrimaryButton(
-                  label: _isIncome ? 'Add income' : 'Add expense',
-                  icon: Icons.check_rounded,
-                  loading: _saving,
-                  onPressed: _amount > 0 ? _save : null,
+                child: ListenableBuilder(
+                  listenable: _amountController,
+                  builder: (context, _) => AppPrimaryButton(
+                    label: _isIncome ? 'Add income' : 'Add expense',
+                    icon: Icons.check_rounded,
+                    loading: _saving,
+                    // The saved cue is the button's feedback, so suppress the
+                    // generic tap tick rather than stacking two sounds.
+                    sound: null,
+                    onPressed: _amount > 0 ? _save : null,
+                  ),
                 ),
               ),
             ],
@@ -267,6 +295,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final provider = context.read<TransactionProvider>();
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    // Resolved before the await: this route pops itself once the write lands,
+    // so the context is no longer usable for the cue.
+    final sound = SoundScope.maybeOf(context);
 
     final tx = TransactionModel(
       id: DateTime.now().toString(),
@@ -284,7 +315,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       source: 'Manual',
     );
 
-    await provider.addTransaction(tx);
+    try {
+      await provider.addTransaction(tx);
+    } catch (error) {
+      // Nothing was persisted, so nothing may be announced. Tell the user and
+      // leave the form open so the entry can be retried.
+      debugPrint('AddTransactionScreen: could not save — $error');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not save. Please try again.')),
+      );
+      return;
+    } finally {
+      // Always hand the button back, so a failed save can be retried.
+      if (mounted) setState(() => _saving = false);
+    }
+
+    // Only now, after the write completed and the route is still here: a
+    // rejected write returns above, so "saved" is never a lie.
+    SoundScope.playOn(sound, SoundEventType.transactionSaved);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(content: Text(_isIncome ? 'Income added' : 'Expense added')),
@@ -345,17 +394,35 @@ class _TypeToggle extends StatelessWidget {
     required Color tint,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: AppMotion.respect(context, AppMotion.fast),
-        curve: AppMotion.easeOut,
+    // The same glossy pill the nav badges and chips use, tinted with the
+    // segment's semantic colour so money-out and money-in keep reading
+    // red/green rather than the brand ramp. Unselected it stays bare.
+    final Gradient selectedGradient = LinearGradient(
+      colors: [
+        tint.withValues(alpha: 0.16),
+        Color.lerp(tint, AppColors.azure, 0.18)!.withValues(alpha: 0.24),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: GlossyPill(
+        selected: selected,
+        bareWhenUnselected: true,
+        // The track is a Row of Expanded segments, so the pill has to claim the
+        // full width. Without this the pill's Stack shrink-wraps the label and
+        // the selected fill would stop short of the segment's edge.
+        width: double.infinity,
+        selectedGradient: selectedGradient,
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        decoration: BoxDecoration(
-          color: selected ? tint.withValues(alpha: 0.16) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-        ),
+        // _setType owns the cue and knows whether the type actually changed, so
+        // a cue here would double it on every tap of an already-active segment.
+        sound: null,
+        onTap: onTap,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

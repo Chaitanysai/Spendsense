@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/transaction_model.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -20,12 +21,23 @@ class TransactionTile extends StatelessWidget {
   /// uses the space for the bank. Home has no headers and keeps the date.
   final bool showDate;
 
+  /// Which list this row belongs to. The Hero tag is derived from it because
+  /// Home and Activity both stay in the tree (the shell keeps tabs alive, and a
+  /// pushed Activity route leaves Home underneath): two live Heroes with the
+  /// same tag make Flutter throw mid-flight. Scoping the tag keeps the pair
+  /// unique to the route the details page was opened from.
+  final String heroScope;
+
   const TransactionTile({
     super.key,
     required this.transaction,
     this.dense = false,
     this.showDate = true,
+    this.heroScope = 'home',
   });
+
+  /// Stable, shared by the row and the details page it opens.
+  String get _amountHeroTag => 'tx-amount-$heroScope-${transaction.id}';
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +52,13 @@ class TransactionTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Pressable(
         borderRadius: radius,
+        sound: SoundEventType.buttonTap,
         onTap: () => Navigator.of(context).push(
           AppPageRoute(
-            builder: (_) => TransactionDetailsScreen(transaction: transaction),
+            builder: (_) => TransactionDetailsScreen(
+              transaction: transaction,
+              amountHeroTag: _amountHeroTag,
+            ),
           ),
         ),
         child: Container(
@@ -188,17 +204,20 @@ class TransactionTile extends StatelessWidget {
                   children: [
                     // Scale down rather than ellipsize: a long merchant must
                     // never truncate the amount itself.
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
-                        maxLines: 1,
-                        softWrap: false,
-                        style: AppText.amount(
-                          context,
-                          size: 16,
-                          color: amountColor,
+                    Hero(
+                      tag: _amountHeroTag,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '$amountPrefix ${Formatters.currency.format(transaction.amount)}',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: AppText.amount(
+                            context,
+                            size: 16,
+                            color: amountColor,
+                          ),
                         ),
                       ),
                     ),

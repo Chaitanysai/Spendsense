@@ -54,7 +54,7 @@ class GlassCard extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: borderRadius,
-                  gradient: AppColors.glassSheen,
+                  gradient: AppColors.glassSheenFor(context),
                 ),
               ),
             ),

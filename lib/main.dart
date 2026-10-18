@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/period_provider.dart';
+import 'providers/sound_provider.dart';
 import 'providers/theme_provider.dart';
+
+import 'services/sound_service.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/activity_screen.dart';
@@ -21,6 +23,7 @@ import 'widgets/app_background.dart';
 import 'widgets/app_page_route.dart';
 import 'widgets/fade_indexed_stack.dart';
 import 'widgets/floating_nav_bar.dart';
+import 'widgets/sound_scope.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
 ///
@@ -31,14 +34,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ],
-      child: const SpendSenseApp(),
+    // Sound is a garnish that any screen may emit, so it is published above the
+    // whole app. `SoundScope` is intentionally outside `MultiProvider`: widgets
+    // resolve it without subscribing, and its absence is a valid, silent state
+    // (which is what keeps widget tests free of audio hardware).
+    SoundScope(
+      provider: SoundProvider(),
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => TransactionProvider()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
+        child: const SpendSenseApp(),
+      ),
     ),
   );
 }
@@ -104,12 +114,14 @@ class SpendSenseApp extends StatelessWidget {
       splashColor: AppColors.brand.withValues(alpha: 0.08),
       highlightColor: AppColors.brand.withValues(alpha: 0.04),
       pageTransitionsTheme: const PageTransitionsTheme(
+        // Same slide for every platform, but through AppPageTransitions so the
+        // fallback honours reduced motion the way AppPageRoute already does.
         builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: AppPageTransitions(),
+          TargetPlatform.iOS: AppPageTransitions(),
+          TargetPlatform.linux: AppPageTransitions(),
+          TargetPlatform.macOS: AppPageTransitions(),
+          TargetPlatform.windows: AppPageTransitions(),
         },
       ),
       appBarTheme: AppBarTheme(
@@ -230,11 +242,14 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   void _onTap(int index) {
     if (index != _currentIndex) {
+      // Only a real tab change gets a cue; re-tapping the active tab is silent.
+      SoundScope.play(context, SoundEventType.selectionChanged);
       setState(() => _currentIndex = index);
     }
   }
 
   void _openAddTransaction() {
+    SoundScope.play(context, SoundEventType.buttonTap);
     Navigator.of(context).push(
       AppPageRoute(builder: (_) => const AddTransactionScreen()),
     );
