@@ -19,7 +19,9 @@ concurrency:
 jobs:
   security:
     name: Semgrep Security Scan
-    runs-on: ubuntu-latest
+    # Pinned to 24.04: ubuntu-latest migrated to Ubuntu 26 (Oct 2026) and
+    # semgrep-core segfaults there on this rule set.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -50,7 +52,9 @@ jobs:
 
   build:
     name: Build Android APK
-    runs-on: ubuntu-latest
+    # Pinned to 24.04 to match the security job and avoid the Ubuntu 26
+    # runner-image migration until all tooling is verified there.
+    runs-on: ubuntu-24.04
     needs: security
     permissions:
       contents: read
