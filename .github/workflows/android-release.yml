@@ -100,31 +100,48 @@ jobs:
       - name: Run unit tests
         run: flutter test
 
-      - name: Prepare keystore for release signing
+      - name: Verify required signing secrets
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          missing=0
+          for var in SIGNING_KEY KEY_ALIAS KEY_PASSWORD STORE_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Required signing secret ${var} is missing or empty."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::All four signing secrets (SIGNING_KEY, KEY_ALIAS, KEY_PASSWORD, STORE_PASSWORD) must be configured before running this workflow."
+            exit 1
+          fi
+          echo "All required signing secrets are present."
+
+      - name: Prepare release keystore
         id: prepare_keystore
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
-          if [ -n "$SIGNING_KEY" ]; then
-            echo "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
-            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
-          else
-            echo "Skipping keystore creation as SIGNING_KEY secret is not found."
-            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
+          set -euo pipefail
+          set +x
+          printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
+          chmod 600 android/app/upload-keystore.jks
+          if [ ! -s android/app/upload-keystore.jks ]; then
+            echo "::error::Decoded release keystore is empty or invalid."
+            exit 1
           fi
+          echo "Release keystore prepared."
 
-      - name: Build release APK (Secured)
-        if: env.HAS_KEYSTORE == 'true'
+      - name: Build release APK
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: flutter build apk --release
-
-      - name: Build debug-signed sideload APK (Fallback)
-        if: env.HAS_KEYSTORE == 'false'
-        run: flutter build apk --release # Falls back to the debug signing config when no keystore is present
 
       - name: Verify and Re-label APK
         id: verify_apk
@@ -141,18 +158,10 @@ jobs:
           fi
           echo "APK generated successfully. Size: $SIZE bytes."
 
-          if [ "$HAS_KEYSTORE" = "true" ]; then
-            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-release.apk"
-            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-release.apk" >> $GITHUB_ENV
-            echo "ARTIFACT_NAME=spendsense-release.apk" >> $GITHUB_ENV
-            echo "SIGNING_STATUS=release-key" >> $GITHUB_ENV
-          else
-            echo "::warning::Private signing key not provided. APK is signed with the debug key and should only be used for testing/sideloading."
-            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk"
-            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
-            echo "ARTIFACT_NAME=spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
-            echo "SIGNING_STATUS=debug-key" >> $GITHUB_ENV
-          fi
+          mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-release.apk"
+          echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-release.apk" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=spendsense-release.apk" >> $GITHUB_ENV
+          echo "SIGNING_STATUS=release-key" >> $GITHUB_ENV
 
       - name: Verify APK metadata and signing certificate
         env:
@@ -175,7 +184,12 @@ jobs:
           "$APKSIGNER" verify --print-certs "$ARTIFACT_PATH" > apk-certs.txt 2>&1
           cat apk-certs.txt
           grep -q "certificate DN" apk-certs.txt || { echo "::error::APK signing certificate DN missing"; exit 1; }
-          grep -q "SHA-256 digest" apk-certs.txt || { echo "::error::APK signing certificate SHA-256 digest missing"; exit 1; }
+          CERT_SHA256=$(grep -i "SHA-256 digest" apk-certs.txt | head -n 1)
+          if [ -z "$CERT_SHA256" ]; then
+            echo "::error::APK signing certificate SHA-256 digest missing"
+            exit 1
+          fi
+          echo "Signing certificate SHA-256: $CERT_SHA256"
 
           echo "Signing status recorded by the build: $SIGNING_STATUS"
 
