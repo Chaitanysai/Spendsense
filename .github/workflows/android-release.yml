@@ -35,12 +35,17 @@ jobs:
         run: python -m pip install --upgrade semgrep
 
       - name: Run Semgrep (secrets + security audit)
+        # CI runners can OOM-kill semgrep-core (exit -11) on this repo's rule
+        # set; cap memory (~70% of a 5 GB runner) and parallelism per the
+        # Semgrep CI guidance rather than disabling the scan.
         run: |
           semgrep \
             --config p/secrets \
             --config p/security-audit \
             --metrics=off \
             --error \
+            --max-memory 3500 \
+            --jobs 2 \
             lib android .github
 
   build:
