@@ -25,6 +25,10 @@ class _FadeSlideInState extends State<FadeSlideIn>
     vsync: this,
     duration: AppMotion.slow,
   );
+  // Built once: a rebuild of the parent must not allocate a new curve (and its
+  // listener bookkeeping) for every entrance wrapper on screen.
+  late final Animation<double> _curved =
+      CurvedAnimation(parent: _c, curve: AppMotion.emphasized);
   bool _started = false;
 
   @override
@@ -47,14 +51,13 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   Widget build(BuildContext context) {
-    final curved = CurvedAnimation(parent: _c, curve: AppMotion.emphasized);
     return FadeTransition(
-      opacity: curved,
+      opacity: _curved,
       child: SlideTransition(
         position: Tween<Offset>(
           begin: Offset(0, widget.offset),
           end: Offset.zero,
-        ).animate(curved),
+        ).animate(_curved),
         child: widget.child,
       ),
     );

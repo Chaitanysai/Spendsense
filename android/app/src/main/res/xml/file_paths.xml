@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only files the OTA updater wrote under cache/updates are shareable with the
+  system package installer. Transaction data and the database live elsewhere
+  and are never exposed through this provider.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="update_apks" path="updates/" />
+</paths>

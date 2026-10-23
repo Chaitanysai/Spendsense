@@ -102,6 +102,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Column(
                       children: [
+                        const AppLogo(size: 60),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          "SpendSense",
+                          style: AppText.h1(context).copyWith(fontSize: 30),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          "Track SMS expenses, ask the AI bot, and stay ahead of your budget.",
+                          textAlign: TextAlign.center,
+                          style: AppText.body(context).copyWith(height: 1.5),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
                         Stack(
                           alignment: Alignment.bottomRight,
                           children: [
@@ -113,39 +126,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             Positioned(
                               right: 0,
                               bottom: 0,
-                              child: GestureDetector(
-                                onTap: _pickProfileImage,
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    gradient: AppColors.brandGradient,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 2),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_a_photo_rounded,
-                                    color: Colors.white,
-                                    size: 15,
+                              child: Semantics(
+                                button: true,
+                                label: 'Choose a profile photo',
+                                excludeSemantics: true,
+                                child: GestureDetector(
+                                  onTap: _pickProfileImage,
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.actionGradient,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 2),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add_a_photo_rounded,
+                                      color: Colors.white,
+                                      size: 15,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        const AppLogo(size: 56),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          "SpendSense",
-                          style: AppText.h1(context).copyWith(fontSize: 30),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          "Track SMS expenses, ask the AI bot, and stay ahead of your budget.",
-                          textAlign: TextAlign.center,
-                          style: AppText.body(context).copyWith(height: 1.5),
                         ),
                         const SizedBox(height: AppSpacing.xxl),
                         TextField(

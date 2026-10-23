@@ -3,12 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../services/sound_service.dart';
 import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
 import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
+import '../utils/transaction_filter.dart';
+import '../utils/period_math.dart';
 import '../widgets/app_states.dart';
 import '../widgets/pressable.dart';
 import '../widgets/sms_import_prompt.dart';
@@ -40,7 +44,7 @@ extension _DatePresetLabel on _DatePreset {
         return DateTimeRange(start: today, end: now);
       case _DatePreset.thisWeek:
         return DateTimeRange(
-          start: today.subtract(Duration(days: today.weekday - 1)),
+          start: PeriodMath.addDays(today, -(today.weekday - 1)),
           end: now,
         );
       case _DatePreset.thisMonth:
@@ -73,6 +77,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
   _DatePreset? _activePreset;
   String _searchQuery = '';
 
+  /// Inclusive amount bounds, integer paise (null = unbounded).
+  int? _minAmountMinor;
+  int? _maxAmountMinor;
+
+  /// Whether the tab was visible at the last dependency change. The shell keeps
+  /// this screen alive across tab switches, so initState no longer runs on every
+  /// visit; the SMS sync that used to happen then is re-triggered here instead.
+  bool _tabActive = true;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +93,23 @@ class _ActivityScreenState extends State<ActivityScreen> {
       if (!mounted) return;
       Provider.of<TransactionProvider>(context, listen: false).syncFromSms();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.valuesOf(context).enabled;
+    if (active && !_tabActive) {
+      // Deferred like the initState call: sync may notify listeners, which is
+      // not allowed while the framework is still building.
+      final provider = Provider.of<TransactionProvider>(context, listen: false);
+      Future.microtask(() {
+        // A sync already in flight is not started a second time, so rapid tab
+        // switching cannot stack up overlapping SMS scans.
+        if (mounted && !provider.isSyncing) provider.syncFromSms();
+      });
+    }
+    _tabActive = active;
   }
 
   @override
@@ -95,7 +125,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
     final hasFilters = _selectedCategory != null ||
         _selectedType != null ||
         _selectedDateRange != null ||
-        _activePreset != null;
+        _activePreset != null ||
+        _minAmountMinor != null ||
+        _maxAmountMinor != null ||
+        _searchQuery.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -117,8 +150,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       if (hasFilters)
                         Pressable(
                           onTap: _clearFilters,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.pill),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          sound: SoundEventType.selectionChanged,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 9),
@@ -129,7 +162,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                             ),
                             child: Text('Clear',
                                 style: AppText.label(context).copyWith(
-                                    color: AppColors.brand,
+                                    color: AppColors.brandInk(context),
                                     fontWeight: FontWeight.w700)),
                           ),
                         ),
@@ -195,6 +228,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         _categoryFilterChip(provider),
                         const SizedBox(width: AppSpacing.sm),
                         _dateRangeChip(),
+                        const SizedBox(width: AppSpacing.sm),
+                        _amountChip(),
                       ],
                     ),
                   ),
@@ -219,6 +254,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                   ? 'Expense'
                                   : 'Income',
                               () => setState(() => _selectedType = null),
+                            ),
+                          if (_minAmountMinor != null ||
+                              _maxAmountMinor != null)
+                            _activeBadge(
+                              Icons.payments_rounded,
+                              _amountLabel(),
+                              () => setState(() {
+                                _minAmountMinor = null;
+                                _maxAmountMinor = null;
+                              }),
                             ),
                           if (_activePreset != null ||
                               _selectedDateRange != null)
@@ -280,11 +325,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                   listen: false)
                               .syncFromSms(),
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(
+                            padding: EdgeInsets.fromLTRB(
                               AppSpacing.page,
                               0,
                               AppSpacing.page,
-                              AppSpacing.fabClearance,
+                              AppSpacing.tabBottomInset(context),
                             ),
                             itemCount: displayList.length,
                             itemBuilder: (context, index) {
@@ -326,29 +371,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
   // ─── FILTER / SORT LOGIC (unchanged behaviour) ─────────────────────────────
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
-    List<TransactionModel> list = all.where((t) {
-      final query = _searchQuery.trim().toLowerCase();
-      final matchesSearch = query.isEmpty ||
-          t.merchant.toLowerCase().contains(query) ||
-          t.category.toLowerCase().contains(query) ||
-          t.paymentMethod.toLowerCase().contains(query) ||
-          t.bankName.toLowerCase().contains(query) ||
-          t.amount.toString().contains(query);
-
-      final matchesCategory =
-          _selectedCategory == null || t.category == _selectedCategory;
-      final matchesType = _selectedType == null || t.type == _selectedType;
-
-      final matchesDate = _selectedDateRange == null ||
-          _isWithinRange(t.date, _selectedDateRange!);
-
-      return matchesSearch && matchesCategory && matchesType && matchesDate;
-    }).toList();
-
+    final list = TransactionFilter(
+      query: _searchQuery,
+      category: _selectedCategory,
+      type: _selectedType,
+      dateRange: _selectedDateRange,
+      minAmountMinor: _minAmountMinor,
+      maxAmountMinor: _maxAmountMinor,
+    ).apply(all);
     if (_sortMode == 'Amount') {
       list.sort((a, b) => _sortDescending
-          ? b.amount.compareTo(a.amount)
-          : a.amount.compareTo(b.amount));
+          ? b.amountMinor.compareTo(a.amountMinor)
+          : a.amountMinor.compareTo(b.amountMinor));
     } else {
       list.sort((a, b) => _sortDescending
           ? b.date.compareTo(a.date)
@@ -358,20 +392,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return list;
   }
 
-  bool _isWithinRange(DateTime date, DateTimeRange range) {
-    final s = DateTime(range.start.year, range.start.month, range.start.day);
-    final e = DateTime(range.end.year, range.end.month, range.end.day)
-        .add(const Duration(days: 1));
-    final local = date.toLocal();
-    return !local.isBefore(s) && local.isBefore(e);
-  }
-
   void _clearFilters() {
     setState(() {
       _selectedCategory = null;
       _selectedType = null;
       _selectedDateRange = null;
       _activePreset = null;
+      _minAmountMinor = null;
+      _maxAmountMinor = null;
       _searchQuery = '';
       _searchController.clear();
     });
@@ -397,6 +425,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Pressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.pill),
+      // Chips change a filter, so they report a selection rather than a tap.
+      sound: SoundEventType.selectionChanged,
       child: AnimatedContainer(
         duration: AppMotion.respect(context, AppMotion.fast),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -416,15 +446,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Icon(icon,
                 size: 15,
                 color: active
-                    ? AppColors.brand
+                    ? AppColors.brandInk(context)
                     : AppColors.textSecondary(context)),
             const SizedBox(width: 6),
             Text(
               label,
               style: AppText.label(context).copyWith(
                 fontSize: 12,
-                color:
-                    active ? AppColors.brand : AppColors.textSecondary(context),
+                color: active
+                    ? AppColors.brandInk(context)
+                    : AppColors.textSecondary(context),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -433,7 +464,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               Icon(trailing,
                   size: 15,
                   color: active
-                      ? AppColors.brand
+                      ? AppColors.brandInk(context)
                       : AppColors.textSecondary(context)),
             ],
           ],
@@ -493,6 +524,132 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
+  Widget _amountChip() {
+    final active = _minAmountMinor != null || _maxAmountMinor != null;
+    return _chip(
+      icon: Icons.payments_outlined,
+      label: active ? _amountLabel() : 'Amount range',
+      active: active,
+      onTap: _showAmountSheet,
+      trailing: Icons.arrow_drop_down,
+    );
+  }
+
+  String _amountLabel() {
+    final lo = _minAmountMinor;
+    final hi = _maxAmountMinor;
+    if (lo != null && hi != null) {
+      return '${Formatters.currency.format(lo)} – ${Formatters.currency.format(hi)}';
+    }
+    if (lo != null) return '≥ ${Formatters.currency.format(lo)}';
+    return '≤ ${Formatters.currency.format(hi ?? 0)}';
+  }
+
+  /// Amount bounds are typed in rupees and stored as exact integer paise.
+  Future<void> _showAmountSheet() async {
+    final minCtrl = TextEditingController(
+        text: _minAmountMinor == null
+            ? ''
+            : formatPaise(_minAmountMinor!, trimZeroPaise: true));
+    final maxCtrl = TextEditingController(
+        text: _maxAmountMinor == null
+            ? ''
+            : formatPaise(_maxAmountMinor!, trimZeroPaise: true));
+    final result = await showModalBottomSheet<({int? lo, int? hi})>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceColor(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.lg,
+              AppSpacing.xl,
+              MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.xxl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SheetHandle(),
+                Text('Filter by amount', style: AppText.h2(ctx)),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    for (final entry in [
+                      ('Min ₹', minCtrl),
+                      ('Max ₹', maxCtrl)
+                    ])
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: TextField(
+                            controller: entry.$2,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: InputDecoration(labelText: entry.$1),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Text(error!,
+                        style: AppText.label(ctx)
+                            .copyWith(color: AppColors.expenseRed)),
+                  ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, (lo: null, hi: null)),
+                      child: const Text('Clear'),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () {
+                        int? parse(String s) {
+                          final t = s.trim();
+                          return t.isEmpty ? null : parseRupeesToPaise(t);
+                        }
+
+                        try {
+                          final lo = parse(minCtrl.text);
+                          final hi = parse(maxCtrl.text);
+                          if (lo != null && hi != null && lo > hi) {
+                            setSheet(() => error = 'Min must not exceed max.');
+                            return;
+                          }
+                          Navigator.pop(ctx, (lo: lo, hi: hi));
+                        } on MoneyParseException {
+                          setSheet(() => error = 'Enter valid amounts.');
+                        }
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    minCtrl.dispose();
+    maxCtrl.dispose();
+    if (result == null || !mounted) return;
+    setState(() {
+      _minAmountMinor = result.lo;
+      _maxAmountMinor = result.hi;
+    });
+  }
   // ─── SHEETS ────────────────────────────────────────────────────────────────
 
   void _showDateFilterSheet() {
@@ -574,16 +731,23 @@ class _ActivityScreenState extends State<ActivityScreen> {
           DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
       helpText: 'SELECT DATE RANGE',
       saveText: 'APPLY',
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppColors.brand,
-            onPrimary: Colors.white,
-            surface: Colors.white,
+      // Follow the app's own brightness: the previous hard-coded light scheme
+      // produced a white picker on top of the dark AMOLED canvas.
+      builder: (context, child) {
+        final dark = AppColors.isDark(context);
+        final base = dark ? ColorScheme.dark() : ColorScheme.light();
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: base.copyWith(
+              primary: AppColors.brand,
+              onPrimary: Colors.white,
+              surface: AppColors.surfaceColor(context),
+              onSurface: AppColors.textPrimary(context),
+            ),
           ),
-        ),
-        child: child!,
-      ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -698,27 +862,39 @@ class _ActivityScreenState extends State<ActivityScreen> {
     Color? iconColor,
     bool danger = false,
   }) {
-    final color = danger ? AppColors.danger : (iconColor ?? AppColors.brand);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+    final color =
+        danger ? AppColors.danger : (iconColor ?? AppColors.brandInk(context));
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: title,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        sound: SoundEventType.selectionChanged,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          title: Text(title,
+              style: AppText.title(context).copyWith(
+                  fontSize: 14, color: danger ? AppColors.danger : null)),
+          subtitle: subtitle != null
+              ? Text(subtitle,
+                  style: AppText.body(context).copyWith(fontSize: 11))
+              : null,
+          trailing:
+              selected ? Icon(Icons.check_circle_rounded, color: color) : null,
+          onTap: null,
         ),
-        child: Icon(icon, size: 20, color: color),
       ),
-      title: Text(title,
-          style: AppText.title(context)
-              .copyWith(fontSize: 14, color: danger ? AppColors.danger : null)),
-      subtitle: subtitle != null
-          ? Text(subtitle, style: AppText.body(context).copyWith(fontSize: 11))
-          : null,
-      trailing:
-          selected ? Icon(Icons.check_circle_rounded, color: color) : null,
-      onTap: onTap,
     );
   }
 
@@ -771,7 +947,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 13, color: AppColors.brand),
+              Icon(icon, size: 13, color: AppColors.brandInk(context)),
               const SizedBox(width: 6),
               Text(label,
                   style: AppText.label(context).copyWith(

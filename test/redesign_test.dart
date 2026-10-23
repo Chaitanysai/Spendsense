@@ -16,9 +16,21 @@ import 'package:spendsense/screens/cards_screen.dart';
 import 'package:spendsense/screens/home_screen.dart';
 import 'package:spendsense/screens/insights_screen.dart';
 import 'package:spendsense/screens/settings_screen.dart';
+import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/widgets/app_button.dart';
 import 'package:spendsense/widgets/budget_gauge.dart';
+import 'package:spendsense/widgets/app_page_route.dart';
 import 'package:spendsense/widgets/floating_nav_bar.dart';
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  Route<dynamic>? pushed;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed = route;
+    super.didPush(route, previousRoute);
+  }
+}
 
 TransactionModel _tx({
   required double amount,
@@ -158,6 +170,35 @@ void main() {
     });
   });
 
+  group('secondary route transitions', () {
+    testWidgets('AppPageRoute uses a shorter reverse transition',
+        (tester) async {
+      final observer = _RecordingNavigatorObserver();
+      await tester.pumpWidget(MaterialApp(
+        navigatorObservers: [observer],
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => Navigator.of(context).push(
+              AppPageRoute(builder: (_) => const Text('DETAILS')),
+            ),
+            child: const Text('OPEN'),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('OPEN'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final route = observer.pushed! as PageRoute<dynamic>;
+      expect(route, isA<AppPageRoute<dynamic>>());
+      expect(route.transitionDuration, AppMotion.base);
+      expect(route.reverseTransitionDuration, AppMotion.fast);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(milliseconds: 160));
+    });
+  });
+
   group('add transaction', () {
     testWidgets('floating action opens the real creation workflow',
         (tester) async {
@@ -234,7 +275,7 @@ void main() {
 
   group('budget gauge', () {
     Future<void> pumpGauge(WidgetTester tester,
-        {required double spent, required double budget}) async {
+        {required int spent, required int budget}) async {
       await tester.pumpWidget(
         MaterialApp(
             home: Scaffold(body: BudgetGauge(spent: spent, budget: budget))),
@@ -256,10 +297,10 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('overspend clamps the arc rather than overflowing it',
+    testWidgets('overspend shows the real percentage without overflowing',
         (tester) async {
       await pumpGauge(tester, spent: 30000, budget: 10000);
-      expect(find.text('100%'), findsOneWidget);
+      expect(find.text('300%'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -276,10 +317,10 @@ void main() {
       ]);
 
       final byMethod = provider.statsBy((t) => t.paymentMethod);
-      expect(byMethod['UPI']!.spent, 150);
-      expect(byMethod['UPI']!.received, 200);
+      expect(byMethod['UPI']!.spent, 15000);
+      expect(byMethod['UPI']!.received, 20000);
       expect(byMethod['UPI']!.count, 3);
-      expect(byMethod['Card']!.spent, 700);
+      expect(byMethod['Card']!.spent, 70000);
     });
 
     test('a blank attribute falls back to Other rather than vanishing', () {
@@ -292,7 +333,7 @@ void main() {
 
       final byBank = provider.statsBy((t) => t.bank);
       expect(byBank['Other']!.count, 2);
-      expect(byBank['Axis Bank']!.spent, 30,
+      expect(byBank['Axis Bank']!.spent, 3000,
           reason: 'surrounding whitespace must not split one bank in two');
     });
   });

@@ -5,15 +5,21 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import '../utils/budget_math.dart';
+import '../utils/formatters.dart';
 
-/// Semicircular budget gauge.
+/// Circular budget gauge.
 ///
-/// [fraction] is clamped here rather than at the call sites: a zero or negative
-/// budget is a real state (the user can clear the budget field), and dividing by
-/// it must never leak NaN into the arc or the label.
+/// [spent] and [budget] are integer paise; all percentages come from
+/// [BudgetProgress], so no floating-point money comparison happens here.
+///
+/// The ring fills to 100% when the budget is reached or exceeded, while the
+/// centre figure always reports the *real* percentage used (e.g. 150%) so an
+/// overspend is never disguised. A zero budget is a real state (the user can
+/// clear the field) and renders a "no budget" prompt instead of dividing.
 class BudgetGauge extends StatelessWidget {
-  final double spent;
-  final double budget;
+  final int spent;
+  final int budget;
   final double size;
 
   const BudgetGauge({
@@ -23,80 +29,98 @@ class BudgetGauge extends StatelessWidget {
     this.size = 132,
   });
 
-  /// Null when no budget is set, so callers can render a "set a budget" state
-  /// instead of a misleading 0%.
-  double? get _fraction =>
-      budget <= 0 ? null : (spent / budget).clamp(0.0, 1.0);
-
-  bool get _isOver => budget > 0 && spent > budget;
+  BudgetProgress get _progress =>
+      BudgetProgress(spentMinor: spent, budgetMinor: budget);
 
   @override
   Widget build(BuildContext context) {
-    final fraction = _fraction;
+    final progress = _progress;
+    final hasBudget = progress.hasBudget;
+    final isOver = progress.isOver;
     final dark = AppColors.isDark(context);
 
-    // The gauge now sits on a theme-aware glass card rather than only on the
-    // navy hero, so the track and figure have to follow the surface brightness.
+    // The gauge sits on the theme-aware card surface rather than the balance
+    // card, so the track and figure follow the surface brightness.
     final trackColor = dark
-        ? Colors.white.withValues(alpha: 0.20)
-        : AppColors.brand.withValues(alpha: 0.14);
-    final fillColors = _isOver
+        ? Colors.white.withValues(alpha: 0.10)
+        : AppColors.brand.withValues(alpha: 0.13);
+    final fillColors = isOver
         ? [AppColors.amber, AppColors.expenseRed]
         : dark
-            ? [AppColors.cyan, Colors.white]
-            : [AppColors.brand, AppColors.cyan];
-    final figureColor = _isOver
-        ? AppColors.expenseRed
-        : dark
-            ? Colors.white
-            : AppColors.brand;
+            ? [AppColors.brandBright, AppColors.lime]
+            : [AppColors.brand, AppColors.brandBright];
+    final figureColor =
+        isOver ? AppColors.expenseRed : AppColors.brandInk(context);
 
-    return SizedBox(
-      width: size,
-      height: size * 0.66,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: fraction ?? 0),
-            duration: AppMotion.respect(context, AppMotion.chart),
-            curve: AppMotion.emphasized,
-            builder: (context, value, _) => CustomPaint(
-              size: Size.infinite,
-              painter: _GaugePainter(
-                value: value,
-                trackColor: trackColor,
-                fillColors: fillColors,
-                hasBudget: fraction != null,
+    return Semantics(
+      label: !hasBudget
+          ? 'No budget set'
+          : isOver
+              ? '${progress.percentUsed} percent of budget used, '
+                  '${Formatters.currency.format(progress.overMinor)} over'
+              : '${progress.percentUsed} percent of budget used',
+      excludeSemantics: true,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress.ringFraction),
+              duration: AppMotion.respect(context, AppMotion.chart),
+              curve: AppMotion.emphasized,
+              builder: (context, value, _) => CustomPaint(
+                size: Size.square(size),
+                painter: _GaugePainter(
+                  value: value,
+                  trackColor: trackColor,
+                  fillColors: fillColors,
+                  hasBudget: hasBudget,
+                ),
               ),
             ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  fraction == null ? '—' : '${(fraction * 100).round()}%',
-                  style: AppText.amount(
-                    context,
-                    size: 24,
-                    color: figureColor,
-                  ),
+            // Inset by the stroke + a gap so the figure never collides with the
+            // arc, at any size.
+            Padding(
+              padding: EdgeInsets.all(size * 0.19),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      !hasBudget ? '—' : '${progress.percentUsed}%',
+                      maxLines: 1,
+                      style: AppText.amount(
+                        context,
+                        size: size * 0.24,
+                        color: figureColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      !hasBudget
+                          ? 'no budget'
+                          : isOver
+                              ? 'over budget'
+                              : 'of budget',
+                      maxLines: 1,
+                      style: AppText.label(context).copyWith(
+                        fontSize: math.max(9, size * 0.085),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
+                        color: isOver
+                            ? AppColors.expenseRed
+                            : AppColors.textSecondary(context),
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  fraction == null ? 'no budget' : 'of budget',
-                  style: AppText.label(context).copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                    color: AppColors.textSecondary(context),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -115,27 +139,24 @@ class _GaugePainter extends CustomPainter {
     required this.hasBudget,
   });
 
-  static const double _startAngle = math.pi; // 180deg, left
-  static const double _sweepRange = math.pi; // through the top, to the right
+  static const double _startAngle = -math.pi / 2; // 12 o'clock
+  static const double _sweepRange = math.pi * 2;
 
   @override
   void paint(Canvas canvas, Size size) {
     final stroke = size.width * 0.085;
-    final center = Offset(size.width / 2, size.height);
+    final center = size.center(Offset.zero);
     final radius = (size.width / 2) - stroke;
     if (radius <= 0) return;
 
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    canvas.drawArc(
-      rect,
-      _startAngle,
-      _sweepRange,
-      false,
+    canvas.drawCircle(
+      center,
+      radius,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
         ..color = trackColor,
     );
 
@@ -152,8 +173,8 @@ class _GaugePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..shader = LinearGradient(
           colors: fillColors,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ).createShader(rect),
     );
   }

@@ -11,7 +11,7 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
   AppPageRoute({required this.builder, this.duration = AppMotion.base})
       : super(
           transitionDuration: duration,
-          reverseTransitionDuration: duration,
+          reverseTransitionDuration: AppMotion.fast,
           pageBuilder: (context, animation, secondaryAnimation) =>
               builder(context),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

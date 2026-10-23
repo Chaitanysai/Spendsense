@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 
 /// Screen background: the scaffold colour plus three soft ambient radial glows
-/// (brand top-left, cyan upper-right, amber lower-left). Static and cheap — no
+/// (brand top-left, accent upper-right, warm lower-left). Static and cheap — no
 /// blur, so it does not tax scroll performance.
+///
+/// On an AMOLED palette the dark canvas is pure black by design, so the glows
+/// are dialled right back: broad colour washes would light up the panel and
+/// defeat the point of black. Light mode keeps the airy tinted wash.
 class AppBackground extends StatelessWidget {
   final Widget child;
   final bool showGlow;
@@ -15,12 +19,15 @@ class AppBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
     final glow = dark ? 0.10 : 0.16;
+    // Pure-black canvas: no accent wash at all, so the palette never tints the
+    // background. Light mode keeps its airy glow.
+    final paintGlow = showGlow && !(dark && AppColors.isAmoledCanvas);
 
     return DecoratedBox(
       decoration: BoxDecoration(color: AppColors.scaffold(context)),
       child: Stack(
         children: [
-          if (showGlow) ...[
+          if (paintGlow) ...[
             Positioned(
               top: -120,
               left: -90,

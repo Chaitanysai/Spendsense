@@ -1,6 +1,8 @@
 import '../models/ai_chat_message.dart';
 import '../models/transaction_model.dart';
 import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
+import '../utils/period_math.dart';
 
 class AIService {
   Future<String> askAI(
@@ -31,8 +33,8 @@ class AIService {
     }
 
     if (lastMessage.contains('yesterday')) {
-      return _handleSpecificDate(expenses,
-          DateTime.now().subtract(const Duration(days: 1)), "yesterday");
+      return _handleSpecificDate(
+          expenses, PeriodMath.addDays(DateTime.now(), -1), "yesterday");
     }
 
     if (lastMessage.contains('today')) {
@@ -75,7 +77,7 @@ class AIService {
       return "No expenses recorded this month to calculate an average.";
     }
 
-    double total = thisMonthTxs.fold(0.0, (sum, t) => sum + t.amount);
+    final total = thisMonthTxs.fold<int>(0, (sum, t) => sum + t.amountMinor);
 
     // Days with transactions
     final activeDays = thisMonthTxs
@@ -84,7 +86,10 @@ class AIService {
         .length;
     final calendarDays = now.day;
 
-    return "This month, you spent an average of ${Formatters.currency.format(total / calendarDays)} per calendar day (${Formatters.currency.format(total / (activeDays > 0 ? activeDays : 1))} per active spending day).";
+    final calendarAverage = roundPaiseDivision(total, calendarDays);
+    final activeAverage =
+        roundPaiseDivision(total, activeDays > 0 ? activeDays : 1);
+    return "This month, you spent an average of ${Formatters.currency.format(calendarAverage)} per calendar day (${Formatters.currency.format(activeAverage)} per active spending day).";
   }
 
   String _handleTotal(List<TransactionModel> txs) {
@@ -92,15 +97,15 @@ class AIService {
     final thisMonthTxs = txs
         .where((t) => t.date.month == now.month && t.date.year == now.year)
         .toList();
-    double total = thisMonthTxs.fold(0.0, (sum, t) => sum + t.amount);
+    final total = thisMonthTxs.fold<int>(0, (sum, t) => sum + t.amountMinor);
     return "You have spent a total of ${Formatters.currency.format(total)} this month.";
   }
 
   String _handleTopCategory(List<TransactionModel> txs) {
     if (txs.isEmpty) return "No transactions found.";
-    final map = <String, double>{};
+    final map = <String, int>{};
     for (var t in txs) {
-      map[t.category] = (map[t.category] ?? 0) + t.amount;
+      map[t.category] = (map[t.category] ?? 0) + t.amountMinor;
     }
     if (map.isEmpty) return "No categories found.";
 
@@ -111,9 +116,9 @@ class AIService {
 
   String _handleTopMerchant(List<TransactionModel> txs) {
     if (txs.isEmpty) return "No transactions found.";
-    final map = <String, double>{};
+    final map = <String, int>{};
     for (var t in txs) {
-      map[t.merchant] = (map[t.merchant] ?? 0) + t.amount;
+      map[t.merchant] = (map[t.merchant] ?? 0) + t.amountMinor;
     }
     if (map.isEmpty) return "No merchants found.";
 
@@ -132,7 +137,7 @@ class AIService {
         .toList();
     if (dayTxs.isEmpty) return "You didn't spend anything $alias.";
 
-    double total = dayTxs.fold(0.0, (sum, t) => sum + t.amount);
+    final total = dayTxs.fold<int>(0, (sum, t) => sum + t.amountMinor);
     return "You spent ${Formatters.currency.format(total)} $alias across ${dayTxs.length} transactions.";
   }
 
@@ -142,7 +147,7 @@ class AIService {
         .toList();
     if (catTxs.isEmpty) return "You haven't spent anything on $category.";
 
-    double total = catTxs.fold(0.0, (sum, t) => sum + t.amount);
+    final total = catTxs.fold<int>(0, (sum, t) => sum + t.amountMinor);
     return "You've spent a total of ${Formatters.currency.format(total)} on $category.";
   }
 }

@@ -4,9 +4,14 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import 'pressable.dart';
 
-/// Rich gradient card (the reference's navy-to-electric-blue hero surface):
-/// layered gradient, diagonal sheen, soft coloured glow shadow, and optional
-/// press feedback. Text inside should use [AppText.onGradient].
+/// Rich gradient card: layered gradient, diagonal sheen, soft coloured glow
+/// shadow, and optional press feedback. Text inside should use
+/// [AppText.onGradient].
+///
+/// When no gradient is supplied the card uses [AppColors.heroSurfaceGradient],
+/// which keeps the full green ramp in light mode and restrains it toward the
+/// dark surface in dark mode — so an unconfigured hero never floods the black
+/// canvas with saturated green.
 class GradientHeroCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -30,16 +35,18 @@ class GradientHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
+    final dark = AppColors.isDark(context);
 
     final card = Container(
       padding: padding ?? const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
-        gradient: gradient ?? AppColors.heroGradient,
+        gradient: gradient ?? AppColors.heroSurfaceGradient(context),
         borderRadius: borderRadius,
         boxShadow: glow
             ? [
                 BoxShadow(
-                  color: (glowColor ?? AppColors.brand).withValues(alpha: 0.32),
+                  color: (glowColor ?? AppColors.brand)
+                      .withValues(alpha: dark ? 0.18 : 0.30),
                   blurRadius: 26,
                   offset: const Offset(0, 14),
                 ),
@@ -54,7 +61,6 @@ class GradientHeroCard extends StatelessWidget {
         // clips everything to the card's rounded rect, so nothing escapes.
         clipBehavior: Clip.none,
         children: [
-          // Soft top-left highlight, as described in the brief.
           Positioned(
             top: -30,
             left: -20,
@@ -65,17 +71,14 @@ class GradientHeroCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.white.withValues(alpha: 0.28),
+                    Colors.white.withValues(alpha: dark ? 0.10 : 0.22),
                     Colors.white.withValues(alpha: 0.0),
                   ],
                 ),
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.zero,
-            child: child,
-          ),
+          child,
         ],
       ),
     );

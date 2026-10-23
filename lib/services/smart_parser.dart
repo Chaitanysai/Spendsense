@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import '../models/transaction_model.dart';
+import 'sms_content_policy.dart';
 import '../utils/bank_recognizer.dart';
+import '../utils/money_parser.dart';
 import 'package:intl/intl.dart';
 
 /// SpendSense 2.0 Enhanced SmartParser
@@ -125,8 +127,8 @@ class SmartParser {
       return null;
     }
 
-    final amount = _extractAmount(smsText);
-    if (amount == null || amount <= 0) {
+    final amountMinor = _extractAmountMinor(smsText);
+    if (amountMinor == null || amountMinor <= 0) {
       debugPrint('SMS FILTER: REJECT reason=NO_CONTEXTUAL_DEBIT_AMOUNT');
       return null;
     }
@@ -150,14 +152,16 @@ class SmartParser {
 
     final result = TransactionModel(
       id: smsId,
-      amount: amount.toInt(),
+      amountMinor: amountMinor,
       type: TransactionType.expense,
       merchant: merchant,
       category: category,
       paymentMethod: paymentMethod,
       date: smsDate,
       time: DateFormat('HH:mm').format(smsDate),
-      originalSms: smsText,
+      // Reduce-only policy: a new record no longer stores the raw bank SMS.
+      // See SmsContentPolicy — the single, reversible switch.
+      originalSms: SmsContentPolicy.retainedBody(smsText) ?? '',
       isExcluded: false,
       bank: bank,
       account: account,
@@ -166,17 +170,20 @@ class SmartParser {
       confidence: confidence,
       needsReview: needsReview,
     );
+    // Acceptance is logged WITHOUT the parsed values: the amount, merchant,
+    // bank and reference are financial data and must not reach the device log
+    // (only the confidence band is safe to emit).
     debugPrint(
-        'SMS FILTER: ACCEPT reason=DEBIT amount=${amount.toStringAsFixed(2)} merchant=$merchant bank=${bank ?? "unknown"} reference=${reference ?? "none"} confidence=$confidence');
+        'SMS FILTER: ACCEPT reason=DEBIT confidence=${confidence.toStringAsFixed(2)}');
     return result;
   }
 
   /// Exposes the same contextual amount check for validating AI responses.
-  double? extractDebitAmount(String sms) => _extractAmount(sms);
+  int? extractDebitAmountMinor(String sms) => _extractAmountMinor(sms);
 
   // ─── TRANSACTION TYPE ──────────────────────────────────────────────────────
 
-  double? _extractAmount(String sms) {
+  int? _extractAmountMinor(String sms) {
     final lower = sms.toLowerCase();
     var transactionEnd = sms.length;
     for (final boundary in _boundaries) {
@@ -210,8 +217,14 @@ class SmartParser {
           RegExp(r'^\s*DR\b').hasMatch(
               sms.substring(end, (end + 45).clamp(end, transactionEnd)));
       if (!eventBefore && !eventAfter) continue;
-      final amount = double.tryParse(match.group(1)!.replaceAll(',', ''));
-      if (amount != null && amount > 0) return amount;
+      final rawAmount = match.group(1)!;
+      if (rawAmount.replaceAll(',', '').length > 12) continue;
+      try {
+        final amountMinor = parseRupeesToPaise(rawAmount);
+        if (amountMinor > 0) return amountMinor;
+      } on MoneyParseException {
+        continue;
+      }
     }
     return null;
   }

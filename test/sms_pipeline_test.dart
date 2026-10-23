@@ -135,7 +135,7 @@ void main() {
       );
       expect(tx, isNotNull);
       expect(tx!.type, TransactionType.expense);
-      expect(tx.amount, 450);
+      expect(tx.amountMinor, 45000);
       expect(tx.bank, 'HDFC Bank');
     });
 
@@ -258,10 +258,10 @@ void main() {
       expect(second.contains('sms-2'), isTrue);
       final restored = await second.loadAll();
       expect(restored.length, 2);
-      expect(restored.map((t) => t.amount).toSet(), {450, 1200});
+      expect(restored.map((t) => t.amountMinor).toSet(), {45000, 120000});
       final reread = await second.get('sms-1');
       expect(reread, isNotNull);
-      expect(reread!.amount, 450);
+      expect(reread!.amountMinor, 45000);
       expect(reread.originalSms, 'raw sms-1');
     });
 

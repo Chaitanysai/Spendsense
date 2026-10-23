@@ -1,7 +1,7 @@
 name: spendsense
 description: A smart expense tracker
 
-version: 2.0.0+20
+version: 2.0.4+25
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -31,16 +31,29 @@ dependencies:
   # 🔑 API key management
   flutter_secure_storage: ^9.0.0
 
+  # 🔉 UI sound effects.
+  # Added deliberately: Flutter has no built-in way to play a bundled asset, and
+  # the cues must be distinct and local (a system "click" cannot express a
+  # transaction-success signature). MIT-licensed, declares no Android
+  # permissions, and needs no Gradle/AGP/Kotlin changes.
+  audioplayers: ^6.8.1
+  package_info_plus: ^9.0.1
+  crypto: 3.0.7
+  cryptography: 2.7.0
+
 flutter:
   uses-material-design: true
 
   assets:
     - shorebird.yaml    # Shorebird code-push config; contains no secrets.
+    # Original, procedurally generated UI cues. Provenance: assets/sounds/CREDITS.md
+    - assets/sounds/
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.3.3
+  flutter_local_notifications_platform_interface: ^8.0.0
   flutter_test:
     sdk: flutter
 

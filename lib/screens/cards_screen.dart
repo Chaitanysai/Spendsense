@@ -50,7 +50,7 @@ class CardsScreen extends StatelessWidget {
     final byAccount = provider.statsBy((t) => t.account);
     final totalSpent = tracked
         .where((t) => t.type == TransactionType.expense)
-        .fold<double>(0, (sum, t) => sum + t.amount);
+        .fold<int>(0, (sum, t) => sum + t.amountMinor);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -88,11 +88,11 @@ class CardsScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.page,
               AppSpacing.xxl,
               AppSpacing.page,
-              AppSpacing.fabClearance,
+              AppSpacing.tabBottomInset(context),
             ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
@@ -103,7 +103,8 @@ class CardsScreen extends StatelessWidget {
                 _InstrumentCard(stats: byBank, kind: _InstrumentKind.bank),
                 const SizedBox(height: AppSpacing.xxl),
                 const SectionHeader(title: 'By account'),
-                _InstrumentCard(stats: byAccount, kind: _InstrumentKind.account),
+                _InstrumentCard(
+                    stats: byAccount, kind: _InstrumentKind.account),
                 const SizedBox(height: AppSpacing.xxl),
                 const _SourceNote(),
               ]),
@@ -118,7 +119,7 @@ class CardsScreen extends StatelessWidget {
 enum _InstrumentKind { method, bank, account }
 
 class _HeroSummary extends StatelessWidget {
-  final double totalSpent;
+  final int totalSpent;
   final int methodCount;
   final int transactionCount;
 
@@ -132,6 +133,8 @@ class _HeroSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return GradientHeroCard(
       padding: const EdgeInsets.all(AppSpacing.xxl),
+      gradient: AppColors.heroSurfaceGradient(context),
+      glow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -140,15 +143,17 @@ class _HeroSummary extends StatelessWidget {
             style: AppText.onGradient(
               size: 10,
               weight: FontWeight.w700,
-              opacity: 0.72,
+              opacity: 0.76,
               letterSpacing: 1.3,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(
               Formatters.currency.format(totalSpent),
+              maxLines: 1,
               style: AppText.onGradient(size: 34, weight: FontWeight.w800),
             ),
           ),
@@ -214,7 +219,7 @@ class _InstrumentCard extends StatelessWidget {
     final entries = stats.entries.toList()
       ..sort((a, b) => b.value.spent.compareTo(a.value.spent));
 
-    final grandTotal = entries.fold<double>(0, (s, e) => s + e.value.spent);
+    final grandTotal = entries.fold<int>(0, (s, e) => s + e.value.spent);
 
     if (entries.isEmpty) {
       return GlassCard(

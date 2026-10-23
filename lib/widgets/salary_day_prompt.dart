@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/period_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'pressable.dart';
+import 'sound_scope.dart';
 
 /// Shows a bottom sheet asking the user which day of the month their salary
 /// arrives. Call once on first launch (when PeriodProvider.isSetupDone == false).
@@ -85,11 +88,11 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
 
           // Day picker — chip grid
           SizedBox(
-            height: 180,
+            height: 400,
             child: GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
+                crossAxisCount: 5,
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
                 childAspectRatio: 1,
@@ -98,28 +101,40 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
               itemBuilder: (context, index) {
                 final day = index + 1;
                 final isSelected = day == _selected;
-                return GestureDetector(
-                  onTap: () => setState(() => _selected = day),
-                  child: AnimatedContainer(
-                    duration: AppMotion.respect(context, AppMotion.fast),
-                    decoration: BoxDecoration(
-                      gradient: isSelected ? AppColors.brandGradient : null,
-                      color: isSelected ? null : AppColors.surfaceAlt(context),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.transparent
-                            : AppColors.border(context),
+                return Semantics(
+                  button: true,
+                  selected: isSelected,
+                  label: '$day',
+                  excludeSemantics: true,
+                  child: Pressable(
+                    onTap: () {
+                      if (isSelected) return;
+                      SoundScope.play(context, SoundEventType.selectionChanged);
+                      setState(() => _selected = day);
+                    },
+                    sound: null,
+                    child: AnimatedContainer(
+                      duration: AppMotion.respect(context, AppMotion.fast),
+                      decoration: BoxDecoration(
+                        gradient: isSelected ? AppColors.brandGradient : null,
+                        color:
+                            isSelected ? null : AppColors.surfaceAlt(context),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.transparent
+                              : AppColors.border(context),
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$day',
-                      style: AppText.label(context).copyWith(
-                        fontSize: 13,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.textPrimary(context),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$day',
+                        style: AppText.label(context).copyWith(
+                          fontSize: 13,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textPrimary(context),
+                        ),
                       ),
                     ),
                   ),
@@ -151,9 +166,10 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
     );
   }
 
-  /// Shows e.g. "Your period: 25 Mar – 24 Apr" based on today
+  /// Shows e.g. "Current period: 25 Sep – 24 Oct" for the salary day the user
+  /// has selected, so the preview matches the cycle they will actually get.
   String _periodPreview(int day) {
-    final range = PeriodProvider.salaryAlignedPeriod();
+    final range = PeriodProvider.salaryAlignedPeriod(salaryDay: day);
     final s = range.start;
     final e = range.end;
     const months = [

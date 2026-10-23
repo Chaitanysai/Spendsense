@@ -1,10 +1,25 @@
 import 'package:intl/intl.dart';
 
+class MoneyFormatter {
+  const MoneyFormatter();
+
+  String format(num amountMinor) {
+    final minor = amountMinor.round();
+    final negative = minor < 0;
+    final absolute = minor.abs();
+    final rupees = absolute ~/ 100;
+    final paise = absolute % 100;
+    final grouped = NumberFormat.decimalPattern('en_IN').format(rupees);
+    final value = paise == 0
+        ? '₹$grouped'
+        : '₹$grouped.${paise.toString().padLeft(2, '0')}';
+    return negative ? '− $value' : value;
+  }
+}
+
 class Formatters {
-  static final currency =
-      NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-  static final fullCurrency =
-      NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
+  static const currency = MoneyFormatter();
+  static const fullCurrency = MoneyFormatter();
   static String date(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
   static String time(DateTime d) => DateFormat('hh:mm a').format(d);
 

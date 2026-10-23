@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/period_math.dart';
+
 // ─── PERIOD MODE ────────────────────────────────────────────────────────────
 
 enum PeriodMode {
@@ -10,16 +12,42 @@ enum PeriodMode {
 
 // ─── PERIOD PROVIDER ────────────────────────────────────────────────────────
 
+/// Amounts are whole rupees and are not touched by any period logic.
 class PeriodProvider with ChangeNotifier {
   static const _keySalaryDay = 'salary_day'; // 1–31
   static const _keySetupDone = 'salary_day_setup'; // bool
+  static const _keyNow =
+      'period_debug_now'; // test-only override, never set in production
 
   // State
   int _salaryDay = 1;
   PeriodMode _mode = PeriodMode.oneMonth;
   DateTimeRange? _custom;
 
-  // Getters
+  /// Optional fixed "today" for tests. Null in production, where the system
+  /// clock is used. Never persisted by normal code paths.
+  DateTime? _fixedNow;
+
+  PeriodProvider();
+
+  /// A provider with a fixed clock and salary day, for deterministic tests.
+  @visibleForTesting
+  factory PeriodProvider.fixedForTest({
+    required int salaryDay,
+    required DateTime now,
+    PeriodMode mode = PeriodMode.oneMonth,
+    DateTimeRange? custom,
+  }) {
+    final p = PeriodProvider()
+      .._salaryDay = salaryDay
+      .._fixedNow = now
+      .._setupDone = true
+      .._mode = mode;
+    if (mode == PeriodMode.custom) p._custom = custom;
+    return p;
+  }
+
+  DateTime get _now => _fixedNow ?? DateTime.now();
   int get salaryDay => _salaryDay;
   PeriodMode get mode => _mode;
   DateTimeRange? get customRange => _custom;
@@ -32,6 +60,8 @@ class PeriodProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _salaryDay = prefs.getInt(_keySalaryDay) ?? 1;
     _setupDone = prefs.getBool(_keySetupDone) ?? false;
+    final debugNow = prefs.getString(_keyNow);
+    if (debugNow != null) _fixedNow = DateTime.tryParse(debugNow);
     notifyListeners();
   }
 
@@ -59,18 +89,19 @@ class PeriodProvider with ChangeNotifier {
 
   // ── Core: the active DateTimeRange ───────────────────────────────────────
   //
-  // "1 month, salary-day aligned" means:
-  //   ? Salary arrives on the last calendar day of every month.
-  //   ? If today is ON or AFTER the salary day  ' period starts this month on
-  //     salary day, ends the penultimate calendar day of next month.
-  //   ? If today is BEFORE the salary day       ' period started last month on
-  //     salary day, ends the penultimate calendar day of this month.
+  // "1 month, salary-day aligned" (approved product rule):
+  //   * Salary arrives on day N of each month; in a month with fewer than N
+  //     days it arrives on that month's last day.
+  //   * The cycle starts on that day. If today is on or after it, the cycle
+  //     started this month; otherwise it started last month.
+  //   * The cycle ends the day before the next cycle starts, so consecutive
+  //     cycles are exactly contiguous: no gaps, no overlaps.
 
   DateTimeRange get currentPeriod {
     if (_mode == PeriodMode.custom && _custom != null) {
       return _custom!;
     }
-    return salaryAlignedPeriod(months: 1);
+    return PeriodMath.salaryCycle(salaryDay: _salaryDay, now: _now);
   }
 
   /// The salary-aligned window immediately before [currentPeriod], used for the
@@ -78,12 +109,16 @@ class PeriodProvider with ChangeNotifier {
   /// arbitrary window has no well-defined predecessor.
   DateTimeRange? get previousPeriod {
     if (_mode == PeriodMode.custom) return null;
-    final current = currentPeriod;
-    return salaryAlignedPeriod(
-      months: 1,
-      now: current.start.subtract(const Duration(days: 1)),
-    );
+    return PeriodMath.previousSalaryCycle(salaryDay: _salaryDay, now: _now);
   }
+
+  /// The calendar month containing today. Reporting that is labelled
+  /// "This month" uses this — deliberately NOT the salary cycle.
+  DateTimeRange get currentCalendarMonth => PeriodMath.calendarMonth(_now);
+
+  /// The calendar month before [currentCalendarMonth] (for month-over-month).
+  DateTimeRange get previousCalendarMonth =>
+      PeriodMath.calendarMonth(DateTime(_now.year, _now.month - 1, 1));
 
   // ── Human-readable label for the chip ────────────────────────────────────
 
@@ -105,45 +140,19 @@ class PeriodProvider with ChangeNotifier {
 
   // ── Helper: build a salary-aligned range ─────────────────────────────────
 
-  static DateTimeRange salaryAlignedPeriod({int months = 1, DateTime? now}) {
-    final today = now ?? DateTime.now();
-    final currentMonthLastDay =
-        DateUtils.getDaysInMonth(today.year, today.month);
-
-    DateTime periodStart;
-    if (today.day == currentMonthLastDay) {
-      periodStart = DateTime(today.year, today.month, currentMonthLastDay);
-    } else {
-      final prevMonthDate = DateTime(today.year, today.month - 1, 1);
-      final prevMonthLastDay =
-          DateUtils.getDaysInMonth(prevMonthDate.year, prevMonthDate.month);
-      periodStart =
-          DateTime(prevMonthDate.year, prevMonthDate.month, prevMonthLastDay);
-    }
-
-    final nextSalaryMonth =
-        DateTime(periodStart.year, periodStart.month + months, 1);
-    final nextMonthLastDay =
-        DateUtils.getDaysInMonth(nextSalaryMonth.year, nextSalaryMonth.month);
-    final periodEnd = DateTime(
-        nextSalaryMonth.year, nextSalaryMonth.month, nextMonthLastDay - 1);
-
-    return DateTimeRange(
-      start: periodStart,
-      end: DateTime(periodEnd.year, periodEnd.month, periodEnd.day, 23, 59, 59),
-    );
+  /// Salary cycle for an explicit salary day. Delegates to [PeriodMath] so the
+  /// rule lives in exactly one place.
+  static DateTimeRange salaryAlignedPeriod({
+    int months = 1,
+    int salaryDay = 1,
+    DateTime? now,
+  }) {
+    assert(months == 1, 'only one-month salary cycles are supported');
+    return PeriodMath.salaryCycle(salaryDay: salaryDay, now: now);
   }
 
-  static DateTime nextSalaryDate({DateTime? now}) {
-    final current = now ?? DateTime.now();
-    final today = DateTime(current.year, current.month, current.day);
-    final lastDay = DateUtils.getDaysInMonth(today.year, today.month);
-    final thisSalary = DateTime(today.year, today.month, lastDay);
-    if (!today.isAfter(thisSalary)) return thisSalary;
-    final nextMonth = DateTime(today.year, today.month + 1, 1);
-    return DateTime(nextMonth.year, nextMonth.month,
-        DateUtils.getDaysInMonth(nextMonth.year, nextMonth.month));
-  }
+  static DateTime nextSalaryDate({int salaryDay = 1, DateTime? now}) =>
+      PeriodMath.nextSalaryDate(salaryDay, now: now);
 
   // ── Month abbreviation ────────────────────────────────────────────────────
 

@@ -29,9 +29,7 @@ class AuthProvider with ChangeNotifier {
   /// set — letting callers omit the suffix instead of printing "User".
   String get greetingName {
     final trimmed = _name.trim();
-    if (trimmed.isEmpty ||
-        trimmed == defaultName ||
-        trimmed == guestName) {
+    if (trimmed.isEmpty || trimmed == defaultName || trimmed == guestName) {
       return '';
     }
     return trimmed;

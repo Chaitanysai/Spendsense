@@ -55,3 +55,8 @@ release/*.apk
 *.jks
 *.keystore
 key.properties
+
+# OTA hosting output: generated only from a verified, signed APK
+/ota/public/manifest.json
+/ota/public/releases/*
+!/ota/public/releases/.gitkeep

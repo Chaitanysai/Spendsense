@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
+import 'pressable.dart';
 
-/// Frosted-glass surface: translucent fill + light border + controlled blur,
-/// with an optional diagonal sheen. Blur is intentionally modest (readability +
+/// The shared card surface: a subtle green-grey border, a restrained shadow and
+/// an optional diagonal sheen.
+///
+/// Light mode is a clean white card on the airy off-white canvas. Dark mode is a
+/// near-black surface so cards read as panes on the AMOLED black canvas rather
+/// than as green panels. Blur is intentionally modest (readability +
 /// performance) and is applied only to this card, never the full screen.
 class GlassCard extends StatelessWidget {
   final Widget child;
@@ -25,7 +30,7 @@ class GlassCard extends StatelessWidget {
     this.radius = AppRadius.lg,
     this.blur = 14,
     this.onTap,
-    this.sheen = true,
+    this.sheen = false,
     this.tint,
     this.gradient,
   });
@@ -33,16 +38,43 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
+    final dark = AppColors.isDark(context);
+    final resolvedPadding = padding ?? const EdgeInsets.all(AppSpacing.xl);
 
+    // The fill stays on the Container; the ink layer goes *inside* it. A Material
+    // placed outside the decoration paints its ripple underneath the fill, where
+    // the near-opaque light surface hides it completely, so nesting alone is not
+    // proof that a splash is visible. Padding moves inside the ink layer so the
+    // ripple covers the whole card.
     Widget content = Container(
-      padding: padding ?? const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         gradient: gradient,
         color: gradient == null ? (tint ?? AppColors.glassFill(context)) : null,
-        border: Border.all(color: AppColors.glassBorder(context), width: 1),
+        border: Border.all(
+          color: gradient == null
+              ? AppColors.glassBorder(context)
+              : Colors.transparent,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow(context),
+            blurRadius: dark ? 18 : 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: child,
+      child: onTap == null
+          ? Padding(padding: resolvedPadding, child: child)
+          : Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: borderRadius,
+                onTap: onTap,
+                child: Padding(padding: resolvedPadding, child: child),
+              ),
+            ),
     );
 
     if (sheen) {
@@ -63,25 +95,21 @@ class GlassCard extends StatelessWidget {
       );
     }
 
+    // Blurring an almost-opaque surface costs a saveLayer for no visual gain, so
+    // it is only applied where the fill is actually translucent.
     Widget glass = ClipRRect(
       borderRadius: borderRadius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: content,
-      ),
+      child: gradient != null || blur <= 0
+          ? content
+          : BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: content,
+            ),
     );
 
-    if (onTap != null) {
-      glass = Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: borderRadius,
-          onTap: onTap,
-          child: glass,
-        ),
-      );
-    }
-
-    return glass;
+    if (onTap == null) return glass;
+    // The InkWell owns the tap; this adds the immediate press scale on top of
+    // the ripple, without touching the card's own design.
+    return PressFeedback(child: glass);
   }
 }

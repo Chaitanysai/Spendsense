@@ -3,6 +3,15 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/transaction_model.dart';
 
+class LegacyDatabaseFormatException implements Exception {
+  final String message;
+
+  const LegacyDatabaseFormatException(this.message);
+
+  @override
+  String toString() => 'LegacyDatabaseFormatException: $message';
+}
+
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
@@ -20,12 +29,15 @@ class DatabaseService {
 
     _database = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE transactions (
             id TEXT PRIMARY KEY,
-            amount INTEGER NOT NULL,
+            amountMinor INTEGER NOT NULL,
+            schemaVersion INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            amountUnit TEXT NOT NULL,
             type TEXT NOT NULL,
             merchant TEXT NOT NULL,
             category TEXT NOT NULL,
@@ -43,9 +55,47 @@ class DatabaseService {
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion >= 2) return;
+
+        // Version 1's `amount` column was explicitly whole INR rupees.
+        // Convert it inside the database upgrade transaction only once.
+        await db.execute(
+            'ALTER TABLE transactions ADD COLUMN schemaVersion INTEGER NOT NULL DEFAULT 1');
+        await db.execute(
+            "ALTER TABLE transactions ADD COLUMN currency TEXT NOT NULL DEFAULT 'INR'");
+        await db
+            .execute('ALTER TABLE transactions ADD COLUMN amountMinor INTEGER');
+        await db.execute(
+            "ALTER TABLE transactions ADD COLUMN amountUnit TEXT NOT NULL DEFAULT 'INR_WHOLE_RUPEES_V1'");
+
+        final rows = await db.query('transactions', columns: ['id', 'amount']);
+        for (final row in rows) {
+          final id = row['id'];
+          final amount = row['amount'];
+          if (id is! String ||
+              id.isEmpty ||
+              amount is! int ||
+              amount < 0 ||
+              amount > 90000000000000) {
+            throw const LegacyDatabaseFormatException(
+                'A legacy SQLite amount is ambiguous.');
+          }
+          await db.update(
+            'transactions',
+            {
+              'amountMinor': amount * 100,
+              'schemaVersion': 2,
+              'currency': 'INR',
+              'amountUnit': 'paise',
+            },
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+        }
+      },
     );
 
-    // Load existing IDs into memory set for O(1) duplicate checks
     await _loadIds();
     _initialized = true;
     debugPrint(
@@ -84,30 +134,51 @@ class DatabaseService {
     return TransactionModel.fromJson(_rowMap(rows.first));
   }
 
+  @visibleForTesting
+  static TransactionModel decodeRowForTesting(Map<String, dynamic> row) =>
+      TransactionModel.fromJson(_canonicalRow(row));
+
+  static Map<String, dynamic> _canonicalRow(Map<String, dynamic> row) {
+    if (row['schemaVersion'] != 2 ||
+        row['currency'] != 'INR' ||
+        row['amountUnit'] != 'paise' ||
+        row['amountMinor'] is! int ||
+        (row['amountMinor'] as int) < 0) {
+      throw const LegacyDatabaseFormatException(
+          'The SQLite row has no trusted paise unit.');
+    }
+    return {
+      'schemaVersion': 2,
+      'currency': 'INR',
+      'amountMinor': row['amountMinor'],
+      'id': row['id'],
+      'type': row['type'],
+      'merchant': row['merchant'],
+      'category': row['category'],
+      'paymentMethod': row['paymentMethod'],
+      'date': row['date'],
+      'time': row['time'],
+      'originalSms': row['originalSms'],
+      'isExcluded': row['isExcluded'] == 1 || row['isExcluded'] == true,
+      'bank': row['bank'],
+      'account': row['account'],
+      'reference': row['reference'],
+      'source': row['source'] ?? 'sqlite_v2',
+      'confidence': row['confidence'] ?? 1.0,
+      'needsReview': row['isReviewed'] == 1 || row['needsReview'] == true,
+    };
+  }
+
+  Map<String, dynamic> _rowMap(Map<String, dynamic> row) => _canonicalRow(row);
+
   Future<void> put(TransactionModel tx) async {
-    if (_database == null) await init();
-    await _database!.insert(
-      'transactions',
-      _txMap(tx),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-    _cachedIds.add(tx.id);
+    throw StateError(
+        'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.');
   }
 
   Future<void> putAll(List<TransactionModel> txs) async {
-    if (_database == null) await init();
-    if (txs.isEmpty) return;
-
-    await _database!.transaction((txn) async {
-      for (final tx in txs) {
-        await txn.insert(
-          'transactions',
-          _txMap(tx),
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        _cachedIds.add(tx.id);
-      }
-    });
+    throw StateError(
+        'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.');
   }
 
   Future<void> remove(String id) async {
@@ -126,42 +197,4 @@ class DatabaseService {
     _cachedIds.clear();
     debugPrint('🗑️ Database cleared');
   }
-
-  Map<String, dynamic> _txMap(TransactionModel t) => {
-        'id': t.id,
-        'amount': t.amount,
-        'type': t.type == TransactionType.income ? 'income' : 'expense',
-        'merchant': t.merchant,
-        'category': t.category,
-        'paymentMethod': t.paymentMethod,
-        'date': t.date.toIso8601String(),
-        'time': t.time,
-        'originalSms': t.originalSms,
-        'isExcluded': t.isExcluded ? 1 : 0,
-        'bank': t.bank,
-        'account': t.account,
-        'reference': t.reference,
-        'source': t.source,
-        'confidence': t.confidence,
-        'needsReview': t.needsReview ? 1 : 0,
-      };
-
-  Map<String, dynamic> _rowMap(Map<String, dynamic> row) => {
-        'id': row['id'],
-        'amount': row['amount'],
-        'type': row['type'],
-        'merchant': row['merchant'],
-        'category': row['category'],
-        'paymentMethod': row['paymentMethod'],
-        'date': row['date'],
-        'time': row['time'],
-        'originalSms': row['originalSms'],
-        'isExcluded': row['isExcluded'] == 1,
-        'bank': row['bank'],
-        'account': row['account'],
-        'reference': row['reference'],
-        'source': row['source'] ?? 'sms_local',
-        'confidence': row['confidence'] ?? 1.0,
-        'needsReview': row['isReviewed'] == 1,
-      };
 }

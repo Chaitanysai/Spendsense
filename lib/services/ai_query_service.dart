@@ -1,3 +1,5 @@
+import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
 import '../models/transaction_model.dart';
 
 class AIQueryService {
@@ -44,24 +46,25 @@ class AIQueryService {
     if (q.contains("salary") ||
         q.contains("income") ||
         q.contains("credited")) {
-      final totalIncome = incomeTx.fold(0.0, (sum, t) => sum + t.amount);
+      final totalIncome =
+          incomeTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
       if (totalIncome == 0) {
         return "I couldn't find any income transactions this month.";
       }
-      return "Your income recorded this month is ₹${totalIncome.toStringAsFixed(0)}.";
+      return "Your income recorded this month is ${Formatters.currency.format(totalIncome)}.";
     }
 
     if (asksAveragePerDay) {
       if (expenseTx.isEmpty) {
         return "I couldn't find any spending transactions this month.";
       }
-      final total = expenseTx.fold(0.0, (sum, t) => sum + t.amount);
+      final total = expenseTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
       final uniqueDays = expenseTx
           .map((t) => DateTime(t.date.year, t.date.month, t.date.day))
           .toSet()
           .length;
-      final average = uniqueDays == 0 ? 0.0 : total / uniqueDays;
-      return "Your average spending per active day this month is ₹${average.toStringAsFixed(0)}.";
+      final average = roundPaiseDivision(total, uniqueDays);
+      return "Your average spending per active day this month is ${Formatters.currency.format(average)}.";
     }
 
     // ─── 1. HIGHEST TRANSACTION ───────────────────────────────────────────────
@@ -69,8 +72,9 @@ class AIQueryService {
         q.contains("highest") ||
         q.contains("maximum") ||
         q.contains("max")) {
-      final maxTx = list.reduce((a, b) => a.amount > b.amount ? a : b);
-      return "Your highest transaction is ₹${maxTx.amount.toStringAsFixed(0)}"
+      final maxTx =
+          list.reduce((a, b) => a.amountMinor > b.amountMinor ? a : b);
+      return "Your highest transaction is ${Formatters.currency.format(maxTx.amountMinor)}"
           " at ${maxTx.merchant}.";
     }
 
@@ -79,8 +83,9 @@ class AIQueryService {
         q.contains("smallest") ||
         q.contains("minimum") ||
         q.contains("min")) {
-      final minTx = list.reduce((a, b) => a.amount < b.amount ? a : b);
-      return "Your lowest transaction is ₹${minTx.amount.toStringAsFixed(0)}"
+      final minTx =
+          list.reduce((a, b) => a.amountMinor < b.amountMinor ? a : b);
+      return "Your lowest transaction is ${Formatters.currency.format(minTx.amountMinor)}"
           " at ${minTx.merchant}.";
     }
 
@@ -89,8 +94,8 @@ class AIQueryService {
         (q.contains("spend") || q.contains("spent") || q.contains("much"))) {
       final fuelTx =
           expenseTx.where((t) => t.category.toLowerCase() == "fuel").toList();
-      final total = fuelTx.fold(0.0, (sum, t) => sum + t.amount);
-      return "You spent ₹${total.toStringAsFixed(0)} on fuel this month.";
+      final total = fuelTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+      return "You spent ${Formatters.currency.format(total)} on fuel this month.";
     }
 
     // ─── 4. FOOD ─────────────────────────────────────────────────────────────
@@ -98,26 +103,26 @@ class AIQueryService {
         (q.contains("spend") || q.contains("spent") || q.contains("much"))) {
       final foodTx =
           expenseTx.where((t) => t.category.toLowerCase() == "food").toList();
-      final total = foodTx.fold(0.0, (sum, t) => sum + t.amount);
-      return "You spent ₹${total.toStringAsFixed(0)} on food this month.";
+      final total = foodTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+      return "You spent ${Formatters.currency.format(total)} on food this month.";
     }
 
     // ─── 5. TOTAL SPENT ──────────────────────────────────────────────────────
     if (asksTotalSpent) {
-      final total = expenseTx.fold(0.0, (sum, t) => sum + t.amount);
-      return "You spent ₹${total.toStringAsFixed(0)} this month.";
+      final total = expenseTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+      return "You spent ${Formatters.currency.format(total)} this month.";
     }
 
     // ─── 6. CATEGORY ANALYSIS ────────────────────────────────────────────────
     if (q.contains("category")) {
-      final Map<String, double> map = {};
+      final Map<String, int> map = {};
       for (var t in expenseTx) {
-        map[t.category] = (map[t.category] ?? 0) + t.amount;
+        map[t.category] = (map[t.category] ?? 0) + t.amountMinor;
       }
       if (map.isEmpty) return "No category data found.";
       final top = map.entries.reduce((a, b) => a.value > b.value ? a : b);
       return "Your top category is ${top.key}"
-          " with ₹${top.value.toStringAsFixed(0)}.";
+          " with ${Formatters.currency.format(top.value)}.";
     }
 
     // ─── 7. TRANSACTION COUNT ────────────────────────────────────────────────

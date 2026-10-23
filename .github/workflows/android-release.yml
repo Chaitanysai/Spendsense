@@ -203,6 +203,21 @@ jobs:
           fi
           echo "Signing certificate SHA-256: $CERT_SHA256"
 
+          # Fail closed: the built APK must be signed by the pinned SpendSense
+          # release certificate. This is the same fingerprint the app pins in
+          # lib/config/update_config.dart, so a CI artifact can never disagree
+          # with what the updater will accept.
+          EXPECTED_CERT_SHA256="42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367"
+          ACTUAL_CERT_SHA256=$(echo "$CERT_SHA256" | sed -E 's/.*: *//' | tr -d '[:space:]:' | tr 'A-F' 'a-f')
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK signing certificate does not match the pinned release certificate."
+            echo "Expected: $EXPECTED_CERT_SHA256"
+            echo "Actual:   $ACTUAL_CERT_SHA256"
+            exit 1
+          fi
+          echo "Pinned certificate match confirmed."
+          echo "APK_CERT_SHA256=$ACTUAL_CERT_SHA256" >> "$GITHUB_ENV"
+
           echo "Signing status recorded by the build: $SIGNING_STATUS"
 
       # Regression gate for the "no secret material in the APK" security fix:
@@ -237,6 +252,47 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.ARTIFACT_PATH }}
           if-no-files-found: error
+
+      # OTA metadata is generated from the verified build, never hand-edited.
+      # It is only produced when a channel origin is configured as the
+      # repository variable OTA_BASE_URL; this step does not deploy anything.
+      - name: Generate OTA manifest artifact
+        if: ${{ vars.OTA_BASE_URL != '' }}
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          ARTIFACT_PATH: ${{ env.ARTIFACT_PATH }}
+        run: |
+          set -euo pipefail
+          VERSION_LINE="$(grep -E '^version:' pubspec.yaml | head -n1)"
+          VERSION_NAME="$(echo "$VERSION_LINE" | sed -E 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+          BUILD_NUMBER="$(echo "$VERSION_LINE" | sed -E 's/.*\+([0-9]+).*/\1/')"
+          RELEASE_DIR="ota/public/releases"
+          mkdir -p "$RELEASE_DIR"
+          APK_TARGET="$RELEASE_DIR/spendsense-${VERSION_NAME}+${BUILD_NUMBER}.apk"
+          cp "$ARTIFACT_PATH" "$APK_TARGET"
+          APK_SHA256="$(sha256sum "$APK_TARGET" | awk '{print $1}')"
+          echo "$APK_SHA256" > "$APK_TARGET.sha256"
+          echo "APK_SHA256=$APK_SHA256" >> "$GITHUB_ENV"
+          dart run tool/generate_ota_manifest.dart \
+            --apk "$APK_TARGET" \
+            --base-url "$OTA_BASE_URL" \
+            --out ota/public/manifest.json \
+            --notes "Release ${VERSION_NAME}+${BUILD_NUMBER}"
+
+      - name: Upload OTA manifest artifact
+        if: ${{ vars.OTA_BASE_URL != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ota-manifest
+          path: |
+            ota/public/manifest.json
+            ota/public/releases/*.sha256
+          if-no-files-found: error
+
+      - name: OTA manifest not generated (channel not configured)
+        if: ${{ vars.OTA_BASE_URL == '' }}
+        run: |
+          echo "::notice::OTA_BASE_URL is not set, so no manifest was generated. Set the repository variable and see docs/OTA_UPDATES.md. The APK artifact is still complete and unpublishable by itself."
 
       - name: Upload build logs on failure
         if: failure()
