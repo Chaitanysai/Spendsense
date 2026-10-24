@@ -17,7 +17,8 @@ import 'package:spendsense/utils/app_palette.dart';
 import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/utils/formatters.dart';
 import 'package:spendsense/widgets/app_button.dart';
-import 'package:spendsense/widgets/budget_gauge.dart';
+import 'package:spendsense/widgets/budget_summary.dart';
+import 'package:spendsense/utils/budget_math.dart';
 import 'package:spendsense/widgets/fade_indexed_stack.dart';
 
 TransactionModel _tx({
@@ -169,65 +170,81 @@ void main() {
     });
   });
 
-  group('budget gauge states', () {
-    Future<void> pumpGauge(
+  group('budget summary states', () {
+    Future<void> pump(
       WidgetTester tester, {
       required int spent,
       required int budget,
+      double width = 360,
     }) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: BudgetGauge(spent: spent, budget: budget)),
-        ),
-      );
-      await tester.pump(const Duration(seconds: 1));
-    }
-
-    testWidgets('zero budget reports no fraction and no crash', (tester) async {
-      await pumpGauge(tester, spent: 0, budget: 0);
-      expect(find.text('—'), findsOneWidget);
-      expect(find.text('no budget'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('partial spend renders the rounded percentage', (tester) async {
-      await pumpGauge(tester, spent: 4250, budget: 10000);
-      expect(find.text('43%'), findsOneWidget);
-      expect(find.text('of budget'), findsOneWidget);
-    });
-
-    testWidgets('exactly full shows 100% without an over-budget warning',
-        (tester) async {
-      await pumpGauge(tester, spent: 10000, budget: 10000);
-      expect(find.text('100%'), findsOneWidget);
-      expect(find.text('of budget'), findsOneWidget);
-      expect(find.text('over budget'), findsNothing);
-    });
-
-    testWidgets('overspend fills the arc but reports the real percentage', (tester) async {
-      await pumpGauge(tester, spent: 15000, budget: 10000);
-      expect(find.text('150%'), findsOneWidget);
-      expect(find.text('over budget'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('the percentage never overlaps the arc at a tiny size',
-        (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
           home: Scaffold(
             body: Center(
-              child: BudgetGauge(spent: 50, budget: 100, size: 64),
+              child: SizedBox(
+                width: width,
+                child: BudgetSummary(
+                  progress:
+                      BudgetProgress(spentMinor: spent, budgetMinor: budget),
+                  periodLabel: '1 Oct – 31 Oct',
+                ),
+              ),
             ),
           ),
         ),
       );
       await tester.pump(const Duration(seconds: 1));
-      expect(find.text('50%'), findsOneWidget);
+    }
+
+    testWidgets('zero budget prompts instead of dividing', (tester) async {
+      await pump(tester, spent: 500, budget: 0);
+      expect(find.text('No budget set'), findsOneWidget);
+      expect(find.text('Set a budget'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('zero spending shows 0% and the full amount left',
+        (tester) async {
+      await pump(tester, spent: 0, budget: 10000);
+      expect(find.textContaining('0% used'), findsOneWidget);
+      expect(find.textContaining('left'), findsOneWidget);
+    });
+
+    testWidgets('partial spend shows the rounded percentage', (tester) async {
+      await pump(tester, spent: 4250, budget: 10000);
+      expect(find.textContaining('43% used'), findsOneWidget);
+    });
+
+    testWidgets('exactly full is fully used, not over', (tester) async {
+      await pump(tester, spent: 10000, budget: 10000);
+      expect(find.textContaining('100% used'), findsOneWidget);
+      expect(find.text('Budget fully used'), findsOneWidget);
+      expect(find.textContaining('over budget'), findsNothing);
+    });
+
+    testWidgets('overspend keeps the real percentage and no positive remainder',
+        (tester) async {
+      await pump(tester, spent: 15000, budget: 10000);
+      expect(find.textContaining('150% used'), findsOneWidget);
+      expect(find.textContaining('over budget (+50%)'), findsOneWidget);
+      expect(find.textContaining('left'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('has no circular progress and survives large text',
+        (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pump(tester, spent: 30000000000, budget: 10000, width: 220);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(
+          find.byType(CustomPaint).evaluate().where((e) =>
+              e.widget is CustomPaint &&
+              (e.widget as CustomPaint).painter != null),
+          isEmpty);
       expect(tester.takeException(), isNull);
     });
   });
-
   group('balance card', () {
     testWidgets('shows current-cycle spending as the primary figure',
         (tester) async {
@@ -277,13 +294,16 @@ void main() {
   });
 
   group('themes', () {
-    testWidgets('AMOLED dark mode resolves a dark theme on a black canvas',
+    testWidgets(
+        'AMOLED dark mode resolves a dark theme on a pitch-black canvas',
         (tester) async {
       await _pumpShell(tester, dark: true);
       await tester.pump(const Duration(milliseconds: 500));
 
       final theme = Theme.of(tester.element(find.byType(HomeScreen)));
       expect(theme.brightness, Brightness.dark);
+      // Regression: the glass pass briefly tinted this navy. The canvas is
+      // #000000; navy lives on the cards, not behind them.
       expect(AppColors.darkBackground, const Color(0xFF000000));
       expect(theme.scaffoldBackgroundColor, const Color(0xFF000000));
     });

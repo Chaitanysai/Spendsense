@@ -20,7 +20,7 @@ import '../utils/period_math.dart';
 import '../widgets/animated_amount.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
-import '../widgets/budget_gauge.dart';
+import '../widgets/budget_summary.dart';
 import '../widgets/category_bubble_cluster.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/pressable.dart';
@@ -32,7 +32,6 @@ import '../widgets/transaction_tile.dart';
 import 'activity_screen.dart';
 import 'add_transaction_screen.dart';
 import 'budgets_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -87,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
     // Section visibility is a display preference only. Absent provider (e.g.
     // an embedded preview) means "show everything".
     final prefs = context.watch<ThemeProvider?>();
-    bool show(String id) => prefs?.isSectionVisible(id) ?? true;
     // Clears the floating navigation bar *and* the Add button stacked above
     // it, using the bar's real height rather than a fixed guess.
     final scrollBottomInset = AppSpacing.tabBottomInset(context);
@@ -118,50 +116,218 @@ class _HomeScreenState extends State<HomeScreen> {
                 AppSpacing.page,
                 scrollBottomInset,
               ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const _QuickActions(),
-                  const SizedBox(height: AppSpacing.xxl),
-                  if (show(DashboardSection.budget)) ...[
-                    SectionHeader(
-                      title: 'Monthly budget',
-                      actionLabel: 'Manage',
-                      actionIcon: Icons.chevron_right_rounded,
-                      onAction: () => Navigator.of(context).push(
-                        AppPageRoute(builder: (_) => const BudgetsScreen()),
-                      ),
+              sliver: _editing
+                  ? _editSliver(context)
+                  : SliverList(
+                      delegate: SliverChildListDelegate([
+                        const _QuickActions(),
+                        if (prefs != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => _startEditing(prefs),
+                              icon: const Icon(Icons.tune_rounded, size: 18),
+                              label: const Text('Edit dashboard'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                        ] else
+                          const SizedBox(height: AppSpacing.xxl),
+                        for (final id in (prefs?.visibleSectionOrder ??
+                            DashboardSection.ids))
+                          ..._section(
+                            context,
+                            id,
+                            provider,
+                            trackedTransactions,
+                            trackedExpenses,
+                          ),
+                      ]),
                     ),
-                    const _BudgetCard(),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
-                  if (show(DashboardSection.categories)) ...[
-                    const SectionHeader(title: 'Spending by category'),
-                    _CategoryCard(expenses: trackedExpenses),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
-                  if (show(DashboardSection.weekly)) ...[
-                    const SectionHeader(title: 'Last 7 days'),
-                    _DailySpendCard(expenses: trackedExpenses),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
-                  if (show(DashboardSection.recent)) ...[
-                    SectionHeader(
-                      title: 'Recent transactions',
-                      actionLabel: 'See all',
-                      actionIcon: Icons.chevron_right_rounded,
-                      onAction: () => Navigator.of(context).push(
-                        AppPageRoute(builder: (_) => const ActivityScreen()),
-                      ),
-                    ),
-                    ..._recentSection(context, provider, trackedTransactions),
-                  ],
-                ]),
-              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // ── Dashboard editing ──────────────────────────────────────────────────────
+
+  /// Full order being edited. Held locally so Cancel can discard it; only Done
+  /// writes it to preferences.
+  List<String> _draftOrder = const [];
+  Set<String> _draftHidden = const {};
+  bool _editing = false;
+
+  void _startEditing(ThemeProvider prefs) {
+    setState(() {
+      _draftOrder = prefs.sectionOrder;
+      _draftHidden = prefs.hiddenSections;
+      _editing = true;
+    });
+  }
+
+  void _cancelEditing() => setState(() => _editing = false);
+
+  Future<void> _finishEditing() async {
+    final prefs = context.read<ThemeProvider?>();
+    final order = _draftOrder;
+    setState(() => _editing = false);
+    await prefs?.setSectionOrder(order);
+  }
+
+  Widget _editSliver(BuildContext context) {
+    final visible = DashboardSection.visibleInOrder(_draftOrder, _draftHidden);
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) == true;
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: GlassCard(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Edit dashboard', style: AppText.title(context)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Drag the handle to reorder. Hidden sections stay hidden; '
+                    'show them in Settings → Appearance.',
+                    style: AppText.body(context),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _cancelEditing,
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _finishEditing,
+                          child: const Text('Done'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SliverReorderableList(
+          itemCount: visible.length,
+          onReorderItem: (oldIndex, newIndex) => setState(() {
+            // onReorderItem already accounts for the removed item; the helper
+            // expects the pre-removal index (ReorderableList.onReorder form).
+            _draftOrder = DashboardSection.reorderVisible(
+                _draftOrder,
+                _draftHidden,
+                oldIndex,
+                newIndex > oldIndex ? newIndex + 1 : newIndex);
+          }),
+          proxyDecorator: (child, index, animation) => Material(
+            color: Colors.transparent,
+            elevation: reduce ? 0 : 6,
+            shadowColor: Colors.black54,
+            borderRadius: AppRadius.lgAll,
+            child: child,
+          ),
+          itemBuilder: (context, index) {
+            final id = visible[index];
+            return Padding(
+              key: ValueKey(id),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        DashboardSection.label(id),
+                        style: AppText.title(context),
+                      ),
+                    ),
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: Semantics(
+                        label: 'Reorder ${DashboardSection.label(id)}',
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: Icon(
+                            Icons.drag_indicator_rounded,
+                            color: AppColors.textSecondary(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// One dashboard section, keyed by its stable id.
+  List<Widget> _section(
+    BuildContext context,
+    String id,
+    TransactionProvider provider,
+    List<TransactionModel> trackedTransactions,
+    List<TransactionModel> trackedExpenses,
+  ) {
+    switch (id) {
+      case DashboardSection.budget:
+        return [
+          SectionHeader(
+            title: 'Monthly budget',
+            actionLabel: 'Manage',
+            actionIcon: Icons.chevron_right_rounded,
+            onAction: () => Navigator.of(context).push(
+              AppPageRoute(builder: (_) => const BudgetsScreen()),
+            ),
+          ),
+          const _BudgetCard(),
+          const SizedBox(height: AppSpacing.xxl),
+        ];
+      case DashboardSection.categories:
+        return [
+          const SectionHeader(title: 'Spending by category'),
+          _CategoryCard(expenses: trackedExpenses),
+          const SizedBox(height: AppSpacing.xxl),
+        ];
+      case DashboardSection.weekly:
+        return [
+          const SectionHeader(title: 'Last 7 days'),
+          _DailySpendCard(expenses: trackedExpenses),
+          const SizedBox(height: AppSpacing.xxl),
+        ];
+      case DashboardSection.recent:
+        return [
+          SectionHeader(
+            title: 'Recent transactions',
+            actionLabel: 'See all',
+            actionIcon: Icons.chevron_right_rounded,
+            onAction: () => Navigator.of(context).push(
+              AppPageRoute(builder: (_) => const ActivityScreen()),
+            ),
+          ),
+          ..._recentSection(context, provider, trackedTransactions),
+        ];
+      default:
+        return const [];
+    }
   }
 
   List<Widget> _recentSection(
@@ -419,7 +585,6 @@ class _BalanceCard extends StatelessWidget {
     required int expenses,
     required int cycleSpent,
   }) {
-    final dark = AppColors.isDark(context);
     final radius = BorderRadius.circular(AppRadius.lg);
 
     // Dark mode keeps the green as a focal accent: the gradient is pulled toward
@@ -430,11 +595,12 @@ class _BalanceCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: radius,
-        // A hairline defines the card edge against pure black.
-        border: dark ? Border.all(color: AppColors.borderDark) : null,
+        // A hairline defines the card edge (light on navy glass).
+        border: AppColors.heroBorder(context),
         boxShadow: [
           BoxShadow(
-            color: AppColors.brand.withValues(alpha: dark ? 0.12 : 0.24),
+            color: AppColors.brand
+                .withValues(alpha: AppColors.heroGlowAlpha(context) * 0.8),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -737,146 +903,22 @@ class _BudgetCard extends StatelessWidget {
     return GlassCard(
       child: Consumer2<TransactionProvider, PeriodProvider>(
         builder: (context, txProvider, period, _) {
+          final range = period.currentPeriod;
           final progress = BudgetProgress(
-            spentMinor: txProvider.totalExpensesForPeriod(period.currentPeriod),
+            spentMinor: txProvider.totalExpensesForPeriod(range),
             budgetMinor: txProvider.monthlyBudgetMinor,
           );
-          final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
-
-          // The gauge and the figures sit side by side on a normal phone, but
-          // at very narrow widths or large text sizes they stack instead of
-          // squeezing the figures to nothing.
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 260 || textScale > 1.6;
-              final gaugeSize = constraints.maxWidth < 300 ? 92.0 : 108.0;
-              final gauge = BudgetGauge(
-                spent: progress.spentMinor,
-                budget: progress.budgetMinor,
-                size: gaugeSize,
-              );
-              final figures = _BudgetFigures(progress: progress);
-
-              if (stacked) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(child: gauge),
-                    const SizedBox(height: AppSpacing.md),
-                    figures,
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  gauge,
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(child: figures),
-                ],
-              );
-            },
+          final fmt = DateFormat('d MMM');
+          return SizedBox(
+            width: double.infinity,
+            child: BudgetSummary(
+              progress: progress,
+              periodLabel:
+                  '${fmt.format(range.start)} – ${fmt.format(range.end)}',
+            ),
           );
         },
       ),
-    );
-  }
-}
-
-/// Budget amount, spent amount and a status pill. The pill is always drawn (in
-/// both themes) so the block keeps the same proportions in every state.
-class _BudgetFigures extends StatelessWidget {
-  final BudgetProgress progress;
-
-  const _BudgetFigures({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasBudget = progress.hasBudget;
-    final over = progress.isOver;
-    final nearLimit = hasBudget && !over && progress.percentUsed >= 80;
-
-    final Color tone = !hasBudget
-        ? AppColors.textTertiary(context)
-        : over
-            ? AppColors.expenseRed
-            : nearLimit
-                ? AppColors.amber
-                : AppColors.incomeGreen;
-    final IconData icon = !hasBudget
-        ? Icons.tune_rounded
-        : over
-            ? Icons.error_outline_rounded
-            : nearLimit
-                ? Icons.warning_amber_rounded
-                : Icons.check_circle_outline_rounded;
-    final String status = !hasBudget
-        ? 'Set a budget'
-        : over
-            ? '${Formatters.currency.format(progress.overMinor)} over '
-                '(+${progress.overPercent}%)'
-            : '${Formatters.currency.format(progress.remainingMinor)} left';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('BUDGET', style: AppText.overline(context)),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            hasBudget
-                ? Formatters.currency.format(progress.budgetMinor)
-                : 'No budget set',
-            maxLines: 1,
-            style: AppText.amount(context, size: 22),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          hasBudget
-              ? 'Spent ${Formatters.currency.format(progress.spentMinor)} '
-                  '· ${progress.percentUsed}% used'
-              : 'Spent ${Formatters.currency.format(progress.spentMinor)}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AppText.label(context).copyWith(fontSize: 12),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: tone.withValues(alpha: 0.13),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.xs + 2,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 15, color: tone),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    status,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.title(context).copyWith(
-                      fontSize: 12.5,
-                      color: tone,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

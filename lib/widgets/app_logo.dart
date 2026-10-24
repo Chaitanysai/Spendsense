@@ -23,56 +23,41 @@ class AppLogo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        SizedBox(
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            gradient: AppColors.brandGradient,
-            borderRadius: BorderRadius.circular(size * 0.3),
-            boxShadow: [
-              BoxShadow(
-                // FIX: replaced withOpacity() with withValues(alpha:)
-                color: AppColors.brand.withValues(alpha: 0.28),
-                blurRadius: 14,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                top: size * 0.18,
-                left: size * 0.18,
-                child: Container(
-                  width: size * 0.28,
-                  height: size * 0.28,
-                  decoration: BoxDecoration(
-                    // FIX: replaced withOpacity() with withValues(alpha:)
-                    color: Colors.white.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(size),
-                  ),
+          // The canonical logo asset, so every screen shows the same mark as
+          // the launcher icon. Decoded at display size to keep memory small.
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(size * 0.3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2F63EA).withValues(alpha: 0.28),
+                  blurRadius: 14,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Image.asset(
+              'assets/icons/app_icon.png',
+              width: size,
+              height: size,
+              cacheWidth: (size * 3).round(),
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+              errorBuilder: (_, __, ___) => DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: AppColors.brandGradient,
+                  borderRadius: BorderRadius.circular(size * 0.3),
+                ),
+                child: Icon(
+                  Icons.auto_graph_rounded,
+                  color: Colors.white,
+                  size: size * 0.46,
                 ),
               ),
-              Positioned(
-                bottom: size * 0.16,
-                right: size * 0.16,
-                child: Container(
-                  width: size * 0.34,
-                  height: size * 0.34,
-                  decoration: BoxDecoration(
-                    // FIX: replaced withOpacity() with withValues(alpha:)
-                    color: Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(size * 0.12),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.auto_graph_rounded,
-                color: Colors.white,
-                size: size * 0.46,
-              ),
-            ],
+            ),
           ),
         ),
         if (showWordmark) ...[

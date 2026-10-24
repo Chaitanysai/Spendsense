@@ -18,7 +18,8 @@ import 'package:spendsense/screens/insights_screen.dart';
 import 'package:spendsense/screens/settings_screen.dart';
 import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/widgets/app_button.dart';
-import 'package:spendsense/widgets/budget_gauge.dart';
+import 'package:spendsense/widgets/budget_summary.dart';
+import 'package:spendsense/utils/budget_math.dart';
 import 'package:spendsense/widgets/app_page_route.dart';
 import 'package:spendsense/widgets/floating_nav_bar.dart';
 
@@ -273,38 +274,18 @@ void main() {
     });
   });
 
-  group('budget gauge', () {
-    Future<void> pumpGauge(WidgetTester tester,
-        {required int spent, required int budget}) async {
-      await tester.pumpWidget(
-        MaterialApp(
-            home: Scaffold(body: BudgetGauge(spent: spent, budget: budget))),
-      );
-      await tester.pump(const Duration(seconds: 1));
-    }
-
+  group('budget summary', () {
     testWidgets('renders the used percentage', (tester) async {
-      await pumpGauge(tester, spent: 2500, budget: 10000);
-      expect(find.text('25%'), findsOneWidget);
-      expect(find.text('of budget'), findsOneWidget);
-    });
-
-    testWidgets('a zero budget shows a prompt instead of dividing by zero',
-        (tester) async {
-      await pumpGauge(tester, spent: 500, budget: 0);
-      expect(find.text('—'), findsOneWidget);
-      expect(find.text('no budget'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('overspend shows the real percentage without overflowing',
-        (tester) async {
-      await pumpGauge(tester, spent: 30000, budget: 10000);
-      expect(find.text('300%'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: BudgetSummary(
+                  progress: const BudgetProgress(
+                      spentMinor: 2500, budgetMinor: 10000),
+                  periodLabel: 'Period'))));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.textContaining('25% used'), findsOneWidget);
     });
   });
-
   group('instrument roll-ups', () {
     test('statsBy groups by payment method and separates income', () {
       final provider = TransactionProvider();
