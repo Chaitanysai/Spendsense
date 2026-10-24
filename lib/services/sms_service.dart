@@ -15,17 +15,32 @@ class SmsMessageModel {
 }
 
 class SmsService {
-  final SmsQuery _query = SmsQuery();
+  /// The permission request and the system-settings opener are injectable so
+  /// the denial flow can be tested without a device.
+  SmsService({
+    Future<PermissionStatus> Function()? requestSmsPermission,
+    Future<bool> Function()? openSettings,
+  })  : _requestSmsPermission =
+            requestSmsPermission ?? (() => Permission.sms.request()),
+        _openSettings = openSettings ?? openAppSettings;
 
-  // 🔐 Request SMS permission
-  Future<bool> requestPermissions() async {
-    final status = await Permission.sms.request();
+  final SmsQuery _query = SmsQuery();
+  final Future<PermissionStatus> Function() _requestSmsPermission;
+  final Future<bool> Function() _openSettings;
+
+  /// Requests SMS permission and reports whether it is granted.
+  ///
+  /// Android's system settings are opened for a permanently denied permission
+  /// only when [openSettingsIfBlocked] is true, i.e. the user just asked for a
+  /// sync. Background syncs (the Activity tab syncs on launch and on every
+  /// return to the tab) must never throw the user out of the app.
+  Future<bool> requestPermissions({bool openSettingsIfBlocked = false}) async {
+    final status = await _requestSmsPermission();
 
     if (status.isGranted) return true;
 
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
-      return false;
+    if (status.isPermanentlyDenied && openSettingsIfBlocked) {
+      await _openSettings();
     }
 
     return false;

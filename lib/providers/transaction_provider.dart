@@ -119,7 +119,8 @@ class TransactionProvider with ChangeNotifier {
       // not be read. Surface the failure instead of letting it masquerade as a
       // successful empty load.
       _ledgerInitError = error;
-      debugPrint('🔒 Ledger init failed (${error.runtimeType}) — data preserved');
+      debugPrint(
+          '🔒 Ledger init failed (${error.runtimeType}) — data preserved');
     }
     _isLoadingCache = false;
     _notifyIfAlive();
@@ -325,11 +326,14 @@ class TransactionProvider with ChangeNotifier {
     return stats;
   }
 
-  Future<void> syncFromSms() {
+  /// Scans SMS. [userInitiated] is true only for an explicit user action
+  /// (pull to refresh, a Sync button); it lets a permanently denied permission
+  /// open Android settings. Automatic syncs never do.
+  Future<void> syncFromSms({bool userInitiated = false}) {
     final current = _smsSyncInFlight;
     if (current != null) return current;
 
-    final operation = _syncFromSms();
+    final operation = _syncFromSms(userInitiated: userInitiated);
     _smsSyncInFlight = operation;
     operation.then<void>(
       (_) {
@@ -342,7 +346,7 @@ class TransactionProvider with ChangeNotifier {
     return operation;
   }
 
-  Future<void> _syncFromSms() async {
+  Future<void> _syncFromSms({bool userInitiated = false}) async {
     await _initialization;
     if (_ledgerInitError != null) return;
     _isSyncing = true;
@@ -354,7 +358,9 @@ class TransactionProvider with ChangeNotifier {
       final smartParser = SmartParser();
       final aiParser = GeminiService();
 
-      final hasPermission = await smsService.requestPermissions();
+      final hasPermission = await smsService.requestPermissions(
+        openSettingsIfBlocked: userInitiated,
+      );
       if (!hasPermission) {
         _isSyncing = false;
         _notifyIfAlive();

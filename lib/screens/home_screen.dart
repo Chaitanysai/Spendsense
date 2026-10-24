@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: AppRefreshIndicator(
-        onRefresh: () => provider.syncFromSms(),
+        onRefresh: () => provider.syncFromSms(userInitiated: true),
         child: CustomScrollView(
           slivers: [
             // Greeting row + balance card. The balance card is the single
@@ -202,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
           message:
               'No transactions were detected after your selected SMS start date.',
           actionLabel: 'Sync now',
-          onAction: () => provider.syncFromSms(),
+          onAction: () => provider.syncFromSms(userInitiated: true),
         )
       else
         ...trackedTransactions

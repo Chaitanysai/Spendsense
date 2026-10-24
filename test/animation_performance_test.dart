@@ -391,7 +391,7 @@ class _CountingProvider extends TransactionProvider {
   bool get isSyncing => syncing;
 
   @override
-  Future<void> syncFromSms() async {
+  Future<void> syncFromSms({bool userInitiated = false}) async {
     syncs++;
   }
 }

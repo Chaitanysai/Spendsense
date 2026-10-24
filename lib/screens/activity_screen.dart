@@ -323,7 +323,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                           onRefresh: () => Provider.of<TransactionProvider>(
                                   context,
                                   listen: false)
-                              .syncFromSms(),
+                              .syncFromSms(userInitiated: true),
                           child: ListView.builder(
                             padding: EdgeInsets.fromLTRB(
                               AppSpacing.page,
