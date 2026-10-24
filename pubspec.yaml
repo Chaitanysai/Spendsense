@@ -50,6 +50,36 @@ flutter:
     - assets/sounds/
     # Canonical app logo (same artwork as the launcher icon).
     - assets/icons/app_icon.png
+
+  # Bundled typefaces. Every file is licensed under the SIL Open Font
+  # License 1.1 (see assets/fonts/licenses/). Bundling removes the runtime
+  # network fetch that previously made fonts fall back on a cold, offline
+  # start. NDot-55/NDot-57 are proprietary Nothing Technology fonts and are
+  # deliberately NOT bundled; see docs/typography.md.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+    - family: DotGothic16
+      fonts:
+        - asset: assets/fonts/DotGothic16-Regular.ttf
+          weight: 400
+    - family: Space Grotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Variable.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-Variable.ttf
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0

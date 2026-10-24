@@ -15,6 +15,7 @@ class AppText {
   /// Oversized hero balance (e.g. the dashboard total).
   static TextStyle hero(BuildContext context) => AppTypography.resolve(
         fontSize: 40,
+        display: false,
         fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
         height: 1.05,
@@ -24,6 +25,7 @@ class AppText {
 
   static TextStyle display(BuildContext context) => AppTypography.resolve(
         fontSize: 32,
+        display: false,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.8,
         color: AppColors.textPrimary(context),
@@ -71,8 +73,9 @@ class AppText {
         color: AppColors.textTertiary(context),
       );
 
-  /// Numeric amount text with tabular figures. Large amounts take the preset's
-  /// display face; small ones stay in the body face for legibility.
+  /// Numeric amount text with tabular figures. Amounts always use the body
+  /// face, at every size, so the rupee sign and comparable digits are
+  /// guaranteed even when the display face is a decorative dot-matrix.
   static TextStyle amount(
     BuildContext context, {
     double size = 16,
@@ -86,6 +89,9 @@ class AppText {
         letterSpacing: letterSpacing,
         color: color ?? AppColors.textPrimary(context),
         fontFeatures: _tabular,
+        // Money always uses the body face: display faces often lack the
+        // rupee sign and lining figures.
+        display: false,
       );
 
   /// Text style used on coloured (gradient) surfaces.

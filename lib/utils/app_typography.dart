@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// A selectable typography preset (Settings → Appearance → Font style).
 ///
-/// Every family below is served by the existing `google_fonts` dependency and
-/// is licensed under the SIL Open Font License 1.1 (licence text checked in the
-/// google/fonts repository: `ofl/<family>/OFL.txt`). No font file is copied
-/// from a device, and no proprietary brand font is used or imitated by name in
-/// the UI: the "inspired" presets are *approximations*, labelled as such.
+/// Every family below is **bundled in the APK** (`assets/fonts/`) and licensed
+/// under the SIL Open Font License 1.1 — the licence text for each family is
+/// checked in at `assets/fonts/licenses/`. Nothing is fetched from the network
+/// at runtime, which is what previously made the chosen face silently fall back
+/// on a cold or offline start.
+///
+/// NDot-55 and NDot-57 (Nothing Technology) are **not** bundled: they are
+/// proprietary brand typefaces with no redistribution licence for a third-party
+/// application. The dot-matrix preset therefore uses DotGothic16, an OFL face
+/// chosen for the same technical character. See `docs/typography.md`.
 ///
 /// [displayFamily] is used for large headings, hero figures and accents;
-/// [bodyFamily] for everything else, so body text always stays readable even
-/// when the display face is decorative (the dot-matrix preset).
+/// [bodyFamily] for everything else. Monetary figures always use the body face
+/// (see `AppText.amount`) because decorative display faces routinely lack the
+/// rupee sign and lining figures.
 class FontPreset {
   final String id;
   final String label;
@@ -44,26 +49,26 @@ class FontPreset {
 
   static const FontPreset dotMatrix = FontPreset(
     id: 'dot_matrix',
-    label: 'Dot-matrix (Nothing-inspired)',
+    label: 'Dot-matrix (technical)',
     description:
-        'DotGothic16 for headings and big numbers, Space Grotesk for text. '
-        'An approximation, not the Nothing brand font.',
+        'DotGothic16 for headings, Space Grotesk for text. '
+        'An OFL approximation of the Nothing dot-matrix style.',
     displayFamily: 'DotGothic16',
     bodyFamily: 'Space Grotesk',
   );
 
   static const FontPreset cleanSans = FontPreset(
     id: 'clean_sans',
-    label: 'Clean sans (Samsung-inspired)',
-    description: 'Inter — neutral and precise. Not the Samsung One font.',
+    label: 'Clean sans',
+    description: 'Inter — neutral and precise.',
     displayFamily: 'Inter',
     bodyFamily: 'Inter',
   );
 
   static const FontPreset modernSans = FontPreset(
     id: 'modern_sans',
-    label: 'Modern sans (Pixel-inspired)',
-    description: 'Outfit — geometric and friendly. Not Google Sans.',
+    label: 'Modern sans',
+    description: 'Outfit — geometric and friendly.',
     displayFamily: 'Outfit',
     bodyFamily: 'Outfit',
   );
@@ -111,8 +116,16 @@ class AppTypography {
 
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
-  /// Test seam: when true, styles carry the family NAME only and no font is
-  /// fetched, so tests are deterministic and make no network request.
+  /// Families declared with a single variable file. Their weight axis is set
+  /// explicitly so `w600` really renders semibold instead of synthesised bold.
+  static const Set<String> variableFamilies = {
+    'Space Grotesk',
+    'Inter',
+    'Outfit',
+  };
+
+  /// Retained for existing tests. Fonts are bundled now, so nothing needs to be
+  /// skipped for determinism; the flag no longer changes the result.
   @visibleForTesting
   static bool debugSkipFontLoading = false;
 
@@ -130,7 +143,7 @@ class AppTypography {
     final p = preset ?? active;
     final useDisplay =
         (display ?? fontSize >= displayMinSize) && p.hasDistinctDisplay;
-    return _safe(
+    return styleFor(
       useDisplay ? p.displayFamily : p.bodyFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
@@ -141,9 +154,9 @@ class AppTypography {
     );
   }
 
-  /// A style that never throws: an unknown family or a font-loading failure
-  /// degrades to the platform default face with identical metrics settings.
-  static TextStyle _safe(
+  /// A style for an explicit bundled family. Unknown families fall back to the
+  /// platform face rather than throwing.
+  static TextStyle styleFor(
     String family, {
     required double fontSize,
     required FontWeight fontWeight,
@@ -152,46 +165,27 @@ class AppTypography {
     Color? color,
     List<FontFeature>? fontFeatures,
   }) {
-    if (debugSkipFontLoading) {
-      return TextStyle(
-        fontFamily: family,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        height: height,
-        color: color,
-        fontFeatures: fontFeatures,
-      );
-    }
-    try {
-      return GoogleFonts.getFont(
-        family,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        height: height,
-        color: color,
-        fontFeatures: fontFeatures,
-      );
-    } catch (_) {
-      return TextStyle(
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        height: height,
-        color: color,
-        fontFeatures: fontFeatures,
-      );
-    }
+    return TextStyle(
+      fontFamily: family,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      letterSpacing: letterSpacing,
+      height: height,
+      color: color,
+      fontFeatures: fontFeatures,
+      fontVariations: variableFamilies.contains(family)
+          ? <FontVariation>[FontVariation('wght', fontWeight.value.toDouble())]
+          : null,
+    );
   }
 
   /// Material text theme for [preset]: body face everywhere, display face for
   /// the display/headline roles.
   static TextTheme textTheme(TextTheme base, {FontPreset? preset}) {
     final p = preset ?? active;
-    final body = _themeFor(p.bodyFamily, base);
+    final body = base.apply(fontFamily: p.bodyFamily);
     if (!p.hasDistinctDisplay) return body;
-    final display = _themeFor(p.displayFamily, base);
+    final display = base.apply(fontFamily: p.displayFamily);
     return body.copyWith(
       displayLarge: display.displayLarge,
       displayMedium: display.displayMedium,
@@ -199,14 +193,5 @@ class AppTypography {
       headlineLarge: display.headlineLarge,
       headlineMedium: display.headlineMedium,
     );
-  }
-
-  static TextTheme _themeFor(String family, TextTheme base) {
-    if (debugSkipFontLoading) return base.apply(fontFamily: family);
-    try {
-      return GoogleFonts.getTextTheme(family, base);
-    } catch (_) {
-      return base;
-    }
   }
 }
