@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/transaction_model.dart';
+import '../providers/period_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/formatters.dart';
+import '../widgets/animated_progress_bar.dart';
 import '../widgets/app_states.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
@@ -25,6 +27,7 @@ class CardsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TransactionProvider>();
+    final period = context.watch<PeriodProvider>().currentPeriod;
     final tracked = provider.trackedTransactions.toList();
 
     if (tracked.isEmpty) {
@@ -45,12 +48,16 @@ class CardsScreen extends StatelessWidget {
       );
     }
 
-    final byMethod = provider.statsBy((t) => t.paymentMethod);
-    final byBank = provider.statsBy((t) => t.bank);
-    final byAccount = provider.statsBy((t) => t.account);
-    final totalSpent = tracked
-        .where((t) => t.type == TransactionType.expense)
-        .fold<int>(0, (sum, t) => sum + t.amountMinor);
+    // Canonical scope: the same rows and the same filter Home's cycle card
+    // uses, so "Total spend" here reconciles with Home by construction rather
+    // than by coincidence. See [TransactionProvider.spendingStatsForPeriod].
+    final byMethod =
+        provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+    final byBank = provider.spendingStatsForPeriod(period, (t) => t.bank);
+    final byAccount = provider.spendingStatsForPeriod(period, (t) => t.account);
+    final totalSpent = provider.spendingTotalForPeriod(period);
+    final expenseCount = provider.expensesInPeriod(period).length;
+    final periodLabel = _periodLabel(period);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -80,7 +87,8 @@ class CardsScreen extends StatelessWidget {
                     _HeroSummary(
                       totalSpent: totalSpent,
                       methodCount: byMethod.length,
-                      transactionCount: tracked.length,
+                      transactionCount: expenseCount,
+                      periodLabel: periodLabel,
                     ),
                   ],
                 ),
@@ -96,15 +104,34 @@ class CardsScreen extends StatelessWidget {
             ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                const SectionHeader(title: 'By payment method'),
-                _InstrumentCard(stats: byMethod, kind: _InstrumentKind.method),
-                const SizedBox(height: AppSpacing.xxl),
-                const SectionHeader(title: 'By bank'),
-                _InstrumentCard(stats: byBank, kind: _InstrumentKind.bank),
-                const SizedBox(height: AppSpacing.xxl),
-                const SectionHeader(title: 'By account'),
-                _InstrumentCard(
-                    stats: byAccount, kind: _InstrumentKind.account),
+                if (totalSpent == 0)
+                  GlassCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('No spending in this period',
+                            style: AppText.title(context)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Transactions outside $periodLabel are not included. '
+                          'Switch the period in Settings to see another cycle.',
+                          style: AppText.body(context),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  const SectionHeader(title: 'By payment method'),
+                  _InstrumentCard(
+                      stats: byMethod, kind: _InstrumentKind.method),
+                  const SizedBox(height: AppSpacing.xxl),
+                  const SectionHeader(title: 'By bank'),
+                  _InstrumentCard(stats: byBank, kind: _InstrumentKind.bank),
+                  const SizedBox(height: AppSpacing.xxl),
+                  const SectionHeader(title: 'By account'),
+                  _InstrumentCard(
+                      stats: byAccount, kind: _InstrumentKind.account),
+                ],
                 const SizedBox(height: AppSpacing.xxl),
                 const _SourceNote(),
               ]),
@@ -114,6 +141,12 @@ class CardsScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// "1 Oct – 31 Oct" — the exact window every figure on this screen covers.
+  static String _periodLabel(DateTimeRange period) {
+    final fmt = DateFormat('d MMM');
+    return '${fmt.format(period.start)} – ${fmt.format(period.end)}';
+  }
 }
 
 enum _InstrumentKind { method, bank, account }
@@ -122,11 +155,13 @@ class _HeroSummary extends StatelessWidget {
   final int totalSpent;
   final int methodCount;
   final int transactionCount;
+  final String periodLabel;
 
   const _HeroSummary({
     required this.totalSpent,
     required this.methodCount,
     required this.transactionCount,
+    required this.periodLabel,
   });
 
   @override
@@ -139,7 +174,7 @@ class _HeroSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'TOTAL SPEND ACROSS INSTRUMENTS',
+            'TOTAL SPEND · ${periodLabel.toUpperCase()}',
             style: AppText.onGradient(
               size: 10,
               weight: FontWeight.w700,
@@ -243,6 +278,7 @@ class _InstrumentCard extends StatelessWidget {
               color: AppColors.chartPalette[i % AppColors.chartPalette.length],
               stat: entries[i].value,
               share: grandTotal > 0 ? entries[i].value.spent / grandTotal : 0,
+              index: i,
             ),
           ],
         ],
@@ -278,6 +314,7 @@ class _InstrumentRow extends StatelessWidget {
   final Color color;
   final InstrumentStat stat;
   final double share;
+  final int index;
 
   const _InstrumentRow({
     required this.name,
@@ -285,6 +322,7 @@ class _InstrumentRow extends StatelessWidget {
     required this.color,
     required this.stat,
     required this.share,
+    required this.index,
   });
 
   @override
@@ -321,14 +359,13 @@ class _InstrumentRow extends StatelessWidget {
                 style: AppText.label(context).copyWith(fontSize: 11),
               ),
               const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: LinearProgressIndicator(
-                  value: share.clamp(0.0, 1.0),
-                  minHeight: 4,
-                  backgroundColor: AppColors.surfaceAlt(context),
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
+              AnimatedProgressBar(
+                fraction: share,
+                height: 4,
+                color: color,
+                trackColor: AppColors.surfaceAlt(context),
+                delay: Duration(milliseconds: 30 * (index.clamp(0, 8))),
+                semanticLabel: '$name share of spending',
               ),
             ],
           ),

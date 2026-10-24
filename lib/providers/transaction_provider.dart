@@ -302,19 +302,15 @@ class TransactionProvider with ChangeNotifier {
   /// Roll-up of tracked transactions by a payment attribute — method, bank or
   /// account. Kept here so the grouping rule (excluded transactions never
   /// count, a blank attribute means "Other") has a single owner.
+  ///
+  /// This is the *all-time, income-inclusive* roll-up. Screens that label an
+  /// amount as spending for a period must use [spendingStatsForPeriod] so the
+  /// figure reconciles with [spendingTotalForPeriod].
   Map<String, InstrumentStat> statsBy(
       String? Function(TransactionModel transaction) keyOf) {
     final stats = <String, InstrumentStat>{};
     for (final t in trackedTransactions) {
-      final raw = keyOf(t)?.trim();
-      // Null, blank and the literal unknown label (case-insensitive) all share
-      // the existing 'Other' bucket, so a stored "Others" never splits off.
-      final key = (raw == null ||
-              raw.isEmpty ||
-              raw.toLowerCase() ==
-                  TransactionModel.unknownBankLabel.toLowerCase())
-          ? 'Other'
-          : raw;
+      final key = _instrumentKey(keyOf(t));
       final stat = stats.putIfAbsent(key, InstrumentStat.new);
       stat.count++;
       if (t.type == TransactionType.income) {
@@ -324,6 +320,48 @@ class TransactionProvider with ChangeNotifier {
       }
     }
     return stats;
+  }
+
+  /// Canonical spending total for [period]: non-excluded expense magnitudes
+  /// only. Income, excluded rows and rows outside the window never count.
+  ///
+  /// Every "spent" figure that claims to describe [period] must come from this
+  /// method (Home's cycle card, Payment Instruments, category bars) so the
+  /// numbers reconcile by construction instead of by coincidence.
+  int spendingTotalForPeriod(DateTimeRange? period) =>
+      totalExpensesForPeriod(period);
+
+  /// Spending grouped by instrument inside [period], using the *same* rows and
+  /// the *same* filter as [spendingTotalForPeriod]. Summing every `spent` in
+  /// the returned map therefore equals that total exactly.
+  ///
+  /// Income rows are ignored entirely: a refund credited to a card is not
+  /// spending, and counting it would break the reconciliation invariant.
+  Map<String, InstrumentStat> spendingStatsForPeriod(
+    DateTimeRange? period,
+    String? Function(TransactionModel transaction) keyOf,
+  ) {
+    final stats = <String, InstrumentStat>{};
+    for (final t in expensesInPeriod(period)) {
+      final key = _instrumentKey(keyOf(t));
+      final stat = stats.putIfAbsent(key, InstrumentStat.new);
+      stat.count++;
+      stat.spent += t.amountMinor;
+    }
+    return stats;
+  }
+
+  /// One place decides how an instrument key is normalised: null, blank and
+  /// the stored unknown label all collapse into "Other".
+  String _instrumentKey(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null ||
+        trimmed.isEmpty ||
+        trimmed.toLowerCase() ==
+            TransactionModel.unknownBankLabel.toLowerCase()) {
+      return 'Other';
+    }
+    return trimmed;
   }
 
   /// Scans SMS. [userInitiated] is true only for an explicit user action
