@@ -100,6 +100,11 @@ class AppPalette {
   final Color darkSurfaceAlt;
   final Color borderDark;
 
+  /// Dark-mode cards are translucent navy glass with blue-lit hero cards. The
+  /// canvas behind them is still [darkBackground], which must stay pure black;
+  /// this flag changes only how cards, heroes, borders and overlays look.
+  final bool glass;
+
   const AppPalette({
     required this.id,
     required this.label,
@@ -118,6 +123,7 @@ class AppPalette {
     required this.darkSurface,
     required this.darkSurfaceAlt,
     required this.borderDark,
+    this.glass = false,
   });
 
   // ── Gradients derived from the ramp ─────────────────────────────────────────
@@ -136,7 +142,7 @@ class AppPalette {
   /// Fill for primary actions. Runs from the palette's mid stop into the deep
   /// stop so a white label keeps a comfortable contrast on every palette.
   LinearGradient get actionGradient => LinearGradient(
-        colors: [mid, deep],
+        colors: [actionTop, deep],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
@@ -147,6 +153,31 @@ class AppPalette {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
+
+  /// White text on a solid brand fill must clear 4.5:1. Most palettes
+  /// already do; for the two shapes whose [brand] was under the bar this
+  /// darkens toward [deep] just enough to pass while keeping hue. Palettes
+  /// that already clear stay unchanged.
+  Color get filledBrand {
+    if (_contrastWithWhite(brand) >= 4.5) return brand;
+    for (var t = 0.05; t <= 1.0; t += 0.05) {
+      final candidate = Color.lerp(brand, deep, t) ?? brand;
+      if (_contrastWithWhite(candidate) >= 4.5) return candidate;
+    }
+    return deep;
+  }
+
+  /// Lightest stop of [actionGradient] — [mid] darkened toward [deep] until
+  /// white text on it reaches 4.5:1. Palettes whose mid already clears (e.g.
+  /// Emerald, Midnight) keep mid unchanged.
+  Color get actionTop {
+    if (_contrastWithWhite(mid) >= 4.5) return mid;
+    for (var t = 0.1; t <= 1.0; t += 0.1) {
+      final candidate = Color.lerp(mid, deep, t) ?? mid;
+      if (_contrastWithWhite(candidate) >= 4.5) return candidate;
+    }
+    return deep;
+  }
 
   /// Warm accent gradient for small highlights.
   LinearGradient get amberGradient => LinearGradient(
@@ -325,9 +356,38 @@ class AppPalette {
     borderDark: amoledBorder,
   );
 
-  /// Shown in Settings → Appearance, in this order. Emerald is first and is the
-  /// default / reset target; it carries the green fintech identity.
+  /// Deep-navy glass identity: navy hero gradients, translucent navy glass
+  /// cards over a pure-black AMOLED canvas, and a restrained electric-blue
+  /// accent. Money semantics stay unchanged.
+  static const midnight = AppPalette(
+    id: 'midnight',
+    label: 'Midnight',
+    deep: Color(0xFF081A4A),
+    brand: Color(0xFF2A5BE0),
+    bright: Color(0xFF6C97FF),
+    mid: Color(0xFF2F63EA),
+    accent: Color(0xFF38BDF8),
+    lime: Color(0xFF7CC4FF),
+    warm: Color(0xFFFFB020),
+    background: Color(0xFFF3F6FD),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE9EFFB),
+    borderLight: Color(0xFFDDE6F7),
+    // Pitch-black canvas (AMOLED); only the card surfaces carry navy.
+    darkBackground: amoledBackground,
+    darkSurface: Color(0xFF0B1430),
+    darkSurfaceAlt: Color(0xFF111C3D),
+    borderDark: Color(0xFF22305A),
+    glass: true,
+  );
+
+  /// Palette used when nothing valid is stored (new installs, reset).
+  static const AppPalette defaultPalette = midnight;
+
+  /// Shown in Settings → Appearance, in this order. Midnight is first and is
+  /// the default / reset target.
   static const List<AppPalette> all = [
+    midnight,
     emerald,
     oceanBlue,
     warmAmber,
@@ -339,6 +399,6 @@ class AppPalette {
 
   static AppPalette byId(String? id) => all.firstWhere(
         (p) => p.id == id,
-        orElse: () => emerald,
+        orElse: () => defaultPalette,
       );
 }

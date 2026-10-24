@@ -52,6 +52,7 @@ class AppColors {
     heroGradient = next.heroGradient;
     balanceGradient = next.balanceGradient;
     actionGradient = next.actionGradient;
+    filledBrand = next.filledBrand;
     electricGradient = next.electricGradient;
     amberGradient = next.amberGradient;
     gaugeGradient = next.gaugeGradient;
@@ -64,6 +65,11 @@ class AppColors {
   /// True when the active palette paints a genuine black dark-mode canvas.
   /// Broad ambient washes are suppressed in that case so the canvas stays black.
   static bool get isAmoledCanvas => _palette.isAmoled;
+
+  /// True when the active palette draws translucent navy glass cards over the
+  /// pure-black canvas (Midnight). The canvas itself is still #000000; this
+  /// flag only selects the card, hero, border and overlay treatment.
+  static bool get isGlassPalette => _palette.glass;
 
   // ── Brand ramp ─────────────────────────────────────────────────────────────
   static Color navyDeep = AppPalette.emerald.deep; // deepest stop
@@ -104,6 +110,8 @@ class AppColors {
 
   /// Amber accent gradient for small highlights.
   static LinearGradient amberGradient = AppPalette.emerald.amberGradient;
+
+  static Color filledBrand = AppPalette.emerald.filledBrand;
 
   /// Positive / money-in gradient. Uses the palette's measured income ramp
   /// rather than a bright mint, so a white label keeps its contrast.
@@ -183,7 +191,28 @@ class AppColors {
   /// Context-free form of [brandInk], for building [ThemeData] where no
   /// [BuildContext] exists yet.
   static Color brandInkFor(bool isDark) =>
-      isDark ? brandBright : Color.lerp(brand, navyDeep, 0.45) ?? brand;
+      isDark ? _darkBrandInk() : Color.lerp(brand, navyDeep, 0.45) ?? brand;
+
+  /// [brandBright], lightened toward white only when it falls under 4.5:1 on
+  /// the raised dark surface that dialogs and sheets use. Palettes whose bright
+  /// stop already clears the bar (most of them) are returned unchanged.
+  static Color _darkBrandInk() {
+    final surface = darkSurfaceAlt;
+    if (_contrast(brandBright, surface) >= 4.5) return brandBright;
+    for (var t = 0.05; t < 1.0; t += 0.05) {
+      final candidate = Color.lerp(brandBright, Colors.white, t) ?? brandBright;
+      if (_contrast(candidate, surface) >= 4.5) return candidate;
+    }
+    return Colors.white;
+  }
+
+  static double _contrast(Color a, Color b) {
+    final l1 = a.computeLuminance();
+    final l2 = b.computeLuminance();
+    final hi = l1 > l2 ? l1 : l2;
+    final lo = l1 > l2 ? l2 : l1;
+    return (hi + 0.05) / (lo + 0.05);
+  }
 
   /// Foreground for the selected navigation item. Same contrast rule as
   /// [brandInk]: the small 9px label needs the deeper green in light mode.
@@ -206,6 +235,20 @@ class AppColors {
   /// of a saturated block sitting on the black canvas.
   static LinearGradient heroSurfaceGradient(BuildContext context) {
     if (!isDark(context)) return balanceGradient;
+    if (isGlassPalette) {
+      // Navy glass hero: a lit electric-blue corner falling into deep navy.
+      // Every stop stays dark enough for white figures (>= 9:1).
+      return LinearGradient(
+        colors: [
+          Color.lerp(darkSurfaceAlt, brand, 0.42)!,
+          Color.lerp(darkSurface, navyDeep, 0.5)!,
+          darkSurface,
+        ],
+        stops: const [0.0, 0.6, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    }
     // Neutral near-black base with only a measured accent wash: the lit corner
     // carries the palette, the far corner falls away to the surface so a deep
     // palette (Rose, Purple) never reads as a large coloured block on black.
@@ -223,14 +266,40 @@ class AppColors {
   }
 
   // ── Glass tokens ──────────────────────────────────────────────────────────────
+  /// True on a navy (non-AMOLED) dark canvas, where cards are real glass.
+  static bool isGlassCanvas(BuildContext context) =>
+      isDark(context) && isGlassPalette;
+
+  /// Edge of a hero card: a light hairline on navy glass, the neutral border on
+  /// AMOLED, none in light mode.
+  static Border? heroBorder(BuildContext context) {
+    if (!isDark(context)) return null;
+    return Border.all(
+      color: isGlassPalette ? Colors.white.withValues(alpha: 0.14) : borderDark,
+    );
+  }
+
+  /// Opacity of the soft blue light under hero cards.
+  static double heroGlowAlpha(BuildContext context) {
+    if (!isDark(context)) return 0.30;
+    return isGlassPalette ? 0.32 : 0.18;
+  }
+
   /// Card fill. Light mode is deliberately near-opaque white: on the airy
   /// off-white canvas a translucent card made the thin green-grey border the
   /// only thing separating card from page. Dark mode stays a restrained
   /// near-black wash so cards read as surfaces, never as green panels.
-  static Color glassFill(BuildContext context) => isDark(context)
-      ? darkSurface.withValues(alpha: 0.94)
-      : Colors.white.withValues(alpha: 0.90);
+  static Color glassFill(BuildContext context) {
+    if (!isDark(context)) return Colors.white.withValues(alpha: 0.90);
+    // The canvas is pure black for every palette. Glass palettes (Midnight)
+    // keep translucent navy cards on it; the others keep their opaque ones.
+    return isGlassPalette
+        ? darkSurfaceAlt.withValues(alpha: 0.62)
+        : darkSurface.withValues(alpha: 0.94);
+  }
 
-  static Color glassBorder(BuildContext context) =>
-      isDark(context) ? borderDark : borderLight;
+  static Color glassBorder(BuildContext context) {
+    if (!isDark(context)) return borderLight;
+    return isGlassPalette ? Colors.white.withValues(alpha: 0.10) : borderDark;
+  }
 }
