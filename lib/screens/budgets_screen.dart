@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/period_provider.dart';
@@ -109,8 +111,7 @@ class BudgetsScreen extends StatelessWidget {
                               current: s.progress.budgetMinor),
                       onDelete: planner.hasLoadError
                           ? null
-                          : () => _guard(context,
-                              () => planner.removeCategoryBudget(s.category)),
+                          : () => _confirmDeleteCategory(context, planner, s.category),
                     ),
                   ),
             ],
@@ -118,6 +119,38 @@ class BudgetsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static Future<bool?> _confirmDeleteCategory(
+    BuildContext context,
+    PlannerProvider planner,
+    String category,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove $category budget?',
+            style: AppText.title(ctx)),
+        content: Text(
+          'The $category budget will be removed. Your transactions stay unchanged.',
+          style: AppText.body(ctx),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return null;
+    await _guard(context, () => planner.removeCategoryBudget(category));
+    return true;
   }
 
   static Future<void> _guard(
@@ -157,9 +190,8 @@ class BudgetsScreen extends StatelessWidget {
         ...tx.availableCategories,
       }.where((c) => !planner.categoryBudgets.containsKey(c)).toList()
         ..sort();
-      chosen = await showModalBottomSheet<String>(
+      chosen = await showAppSheet<String>(
         context: context,
-        isScrollControlled: true,
         builder: (ctx) => SafeArea(
           child: ListView(
             shrinkWrap: true,
