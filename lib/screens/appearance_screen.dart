@@ -134,8 +134,8 @@ class AppearanceScreen extends StatelessWidget {
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.lg),
                         title: Text(DashboardSection.label(id),
-                            style: AppText.title(context)
-                                .copyWith(fontSize: 14)),
+                            style:
+                                AppText.title(context).copyWith(fontSize: 14)),
                         value: theme.isSectionVisible(id),
                         onChanged: (on) => theme.setSectionVisible(id, on),
                       ),
@@ -153,7 +153,8 @@ class AppearanceScreen extends StatelessWidget {
                           Text('Reset to default',
                               style: AppText.title(context)),
                           const SizedBox(height: 2),
-                          Text('Emerald · Light', style: AppText.body(context)),
+                          Text('Midnight · Light',
+                              style: AppText.body(context)),
                         ],
                       ),
                     ),
@@ -177,7 +178,7 @@ class AppearanceScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Reset appearance?'),
         content: const Text(
-          'Theme colours return to Emerald and appearance returns to Light.',
+          'Theme colours return to Midnight and appearance returns to Light.',
         ),
         actions: [
           TextButton(
@@ -329,7 +330,7 @@ class _PaletteRow extends StatelessWidget {
                           style: AppText.title(context),
                         ),
                       ),
-                      if (palette.id == 'emerald') ...[
+                      if (palette.id == AppPalette.defaultPalette.id) ...[
                         const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
