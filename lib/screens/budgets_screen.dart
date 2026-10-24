@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widgets/animated_progress_bar.dart';
 import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -95,10 +96,11 @@ class BudgetsScreen extends StatelessWidget {
                   ),
                 )
               else
-                for (final s in statuses)
+                for (final (i, s) in statuses.indexed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _BudgetRow(
+                      delay: Duration(milliseconds: 40 * i),
                       icon: CategoryStyle.icon(s.category),
                       color: CategoryStyle.color(s.category),
                       name: s.category,
@@ -346,6 +348,9 @@ class _BudgetRow extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
+  /// Start delay for the bar, so a list of rows does not animate in lockstep.
+  final Duration delay;
+
   const _BudgetRow({
     required this.icon,
     required this.color,
@@ -354,6 +359,7 @@ class _BudgetRow extends StatelessWidget {
     this.thresholds = kDefaultBudgetThresholds,
     this.onEdit,
     this.onDelete,
+    this.delay = Duration.zero,
   });
 
   @override
@@ -411,14 +417,13 @@ class _BudgetRow extends StatelessWidget {
             style: AppText.amount(context, size: 15),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: progress.ringFraction,
-              minHeight: 8,
-              color: tone,
-              backgroundColor: tone.withValues(alpha: 0.15),
-            ),
+          AnimatedProgressBar(
+            fraction: progress.ringFraction,
+            height: 8,
+            color: tone,
+            trackColor: tone.withValues(alpha: 0.15),
+            delay: delay,
+            semanticLabel: '$name budget used',
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(status,

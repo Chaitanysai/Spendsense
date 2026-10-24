@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../services/spending_insights.dart';
 import '../utils/app_colors.dart';
+import 'animated_progress_bar.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
@@ -251,7 +252,7 @@ class _TrendCard extends StatelessWidget {
             Text('No spending recorded in the last six months.',
                 style: AppText.body(context))
           else
-            for (final m in months)
+            for (final (i, m) in months.indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Row(
@@ -262,18 +263,20 @@ class _TrendCard extends StatelessWidget {
                           style: AppText.label(context)),
                     ),
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                        child: LinearProgressIndicator(
-                          // Presentation only: a bar length, not a money value.
-                          value: m.amountMinor / maxMinor,
-                          minHeight: 10,
-                          color: m.isPartial
-                              ? AppColors.brandBright
-                              : AppColors.brand,
-                          backgroundColor:
-                              AppColors.brand.withValues(alpha: 0.10),
-                        ),
+                      child: AnimatedProgressBar(
+                        // Presentation only: a bar length, not a money value.
+                        fraction: maxMinor > 0
+                            ? m.amountMinor / maxMinor
+                            : 0,
+                        height: 10,
+                        color: m.isPartial
+                            ? AppColors.brandBright
+                            : AppColors.brand,
+                        trackColor:
+                            AppColors.brand.withValues(alpha: 0.10),
+                        delay: Duration(milliseconds: 30 * i),
+                        semanticLabel:
+                            '${DateFormat('MMM').format(m.month)} spending',
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),

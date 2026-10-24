@@ -5,6 +5,7 @@ import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/budget_math.dart';
 import '../utils/formatters.dart';
+import 'animated_progress_bar.dart';
 
 /// Ring-free monthly budget summary: period, limit, spent, a horizontal usage
 /// bar and one status line.
@@ -152,38 +153,17 @@ class _UsageBar extends StatelessWidget {
     final track = dark
         ? Colors.white.withValues(alpha: 0.10)
         : AppColors.brand.withValues(alpha: 0.12);
-    final clamped = fraction.isNaN ? 0.0 : fraction.clamp(0.0, 1.0);
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: clamped),
-      duration: AppMotion.respect(context, AppMotion.chart),
-      curve: AppMotion.emphasized,
-      builder: (context, value, _) => ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: SizedBox(
-          height: 10,
-          child: Stack(
-            children: [
-              Positioned.fill(child: ColoredBox(color: track)),
-              Positioned.fill(
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: value,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color.lerp(tone, Colors.black, 0.25)!,
-                          tone,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return AnimatedProgressBar(
+      fraction: fraction.isNaN ? 0 : fraction,
+      height: 10,
+      trackColor: track,
+      semanticLabel: 'Budget used',
+      gradient: LinearGradient(
+        colors: [
+          Color.lerp(tone, Colors.black, 0.25)!,
+          tone,
+        ],
       ),
     );
   }
