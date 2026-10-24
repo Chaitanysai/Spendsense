@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
@@ -555,9 +556,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
         text: _maxAmountMinor == null
             ? ''
             : formatPaise(_maxAmountMinor!, trimZeroPaise: true));
-    final result = await showModalBottomSheet<({int? lo, int? hi})>(
+    final result = await showAppSheet<({int? lo, int? hi})>(
       context: context,
-      isScrollControlled: true,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
           borderRadius:
@@ -653,7 +653,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   // ─── SHEETS ────────────────────────────────────────────────────────────────
 
   void _showDateFilterSheet() {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
@@ -760,7 +760,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   void _showCategorySheet(TransactionProvider provider) {
     final categories = provider.availableCategories;
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
@@ -802,7 +802,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   void _showTypeSheet() {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(

@@ -39,7 +39,23 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
     final dark = AppColors.isDark(context);
+    final glassCanvas = AppColors.isGlassCanvas(context);
     final resolvedPadding = padding ?? const EdgeInsets.all(AppSpacing.xl);
+    final fill = tint ?? AppColors.glassFill(context);
+
+    // On navy glass the card gets a faint lit top-left edge instead of a flat
+    // fill, which is what reads as "glass" in the reference, at no blur cost.
+    final Gradient? surfaceGradient = gradient ??
+        (glassCanvas && tint == null
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.alphaBlend(Colors.white.withValues(alpha: 0.05), fill),
+                  fill,
+                ],
+              )
+            : null);
 
     // The fill stays on the Container; the ink layer goes *inside* it. A Material
     // placed outside the decoration paints its ripple underneath the fill, where
@@ -49,8 +65,8 @@ class GlassCard extends StatelessWidget {
     Widget content = Container(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        gradient: gradient,
-        color: gradient == null ? (tint ?? AppColors.glassFill(context)) : null,
+        gradient: surfaceGradient,
+        color: surfaceGradient == null ? fill : null,
         border: Border.all(
           color: gradient == null
               ? AppColors.glassBorder(context)
@@ -59,7 +75,9 @@ class GlassCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow(context),
+            color: glassCanvas
+                ? Colors.black.withValues(alpha: 0.35)
+                : AppColors.shadow(context),
             blurRadius: dark ? 18 : 16,
             offset: const Offset(0, 6),
           ),
@@ -96,10 +114,13 @@ class GlassCard extends StatelessWidget {
     }
 
     // Blurring an almost-opaque surface costs a saveLayer for no visual gain, so
-    // it is only applied where the fill is actually translucent.
+    // it is only applied where the fill is actually translucent. Previously the
+    // blur ran on every card, including the 90-94% opaque light and AMOLED
+    // fills, so each card on a scrolling screen paid for an invisible effect.
+    final translucent = gradient == null && fill.a < 0.9;
     Widget glass = ClipRRect(
       borderRadius: borderRadius,
-      child: gradient != null || blur <= 0
+      child: !translucent || blur <= 0
           ? content
           : BackdropFilter(
               filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),

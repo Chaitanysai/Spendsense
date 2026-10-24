@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 import 'package:provider/provider.dart';
 import '../providers/period_provider.dart';
 import '../services/sound_service.dart';
@@ -16,9 +17,8 @@ import 'sound_scope.dart';
 ///   SalaryDayPrompt.show(context);
 class SalaryDayPrompt {
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
+    return showAppSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SalaryDaySheet(),
     );

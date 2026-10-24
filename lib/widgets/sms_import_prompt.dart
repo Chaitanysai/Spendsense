@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -13,13 +14,12 @@ import 'sound_scope.dart';
 
 class SmsImportPrompt {
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
+    return showAppSheet(
       context: context,
       // The prompt is a helpful first-run setup, not a navigation lock. Users
       // must still be able to reach Activity and configure the date later.
       isDismissible: true,
       enableDrag: true,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SmsImportPromptSheet(),
     );

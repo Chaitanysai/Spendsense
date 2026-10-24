@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -22,10 +23,8 @@ Future<void> showPlanEditor(
   RecurringPlan? plan,
   TransactionModel? from,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
     builder: (_) => _PlanEditor(plan: plan, from: from),
   );
 }
@@ -188,6 +187,8 @@ class _PlanEditorState extends State<_PlanEditor> {
             DropdownButtonFormField<String>(
               initialValue: _category,
               isExpanded: true,
+              borderRadius: AppRadius.mdAll,
+              dropdownColor: AppColors.surfaceColor(context),
               decoration: const InputDecoration(labelText: 'Category'),
               items: [
                 for (final c in categories)
@@ -199,6 +200,8 @@ class _PlanEditorState extends State<_PlanEditor> {
             DropdownButtonFormField<PlanFrequency>(
               initialValue: _frequency,
               isExpanded: true,
+              borderRadius: AppRadius.mdAll,
+              dropdownColor: AppColors.surfaceColor(context),
               decoration: const InputDecoration(labelText: 'Repeats'),
               items: [
                 for (final f in PlanFrequency.values)

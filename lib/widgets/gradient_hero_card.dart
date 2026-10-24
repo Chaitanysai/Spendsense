@@ -42,11 +42,12 @@ class GradientHeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: gradient ?? AppColors.heroSurfaceGradient(context),
         borderRadius: borderRadius,
+        border: AppColors.heroBorder(context),
         boxShadow: glow
             ? [
                 BoxShadow(
                   color: (glowColor ?? AppColors.brand)
-                      .withValues(alpha: dark ? 0.18 : 0.30),
+                      .withValues(alpha: AppColors.heroGlowAlpha(context)),
                   blurRadius: 26,
                   offset: const Offset(0, 14),
                 ),

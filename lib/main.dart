@@ -78,8 +78,14 @@ class SpendSenseApp extends StatelessWidget {
           themeMode: theme.themeMode,
           theme: _buildTheme(Brightness.light, theme.fontPreset),
           darkTheme: _buildTheme(Brightness.dark, theme.fontPreset),
-          builder: (context, child) =>
-              _withUserTextScale(context, child, theme.fontScale),
+          // Pushed routes use a transparent Scaffold over an AppBackground in
+          // their body, so the app bar strip had nothing behind it and showed
+          // the window's black (invisible title in light mode). One canvas
+          // under the whole navigator fixes every screen.
+          builder: (context, child) => ColoredBox(
+            color: AppColors.scaffold(context),
+            child: _withUserTextScale(context, child, theme.fontScale),
+          ),
           home: const MainNavigationShell(),
         );
       },
@@ -107,6 +113,12 @@ class SpendSenseApp extends StatelessWidget {
       child: child,
     );
   }
+
+  /// The app theme for [brightness], exposed so tests can inspect the real
+  /// component themes (button ink, overlay surfaces) without booting the app.
+  @visibleForTesting
+  ThemeData themeFor(Brightness brightness, FontPreset preset) =>
+      _buildTheme(brightness, preset);
 
   ThemeData _buildTheme(Brightness brightness, FontPreset preset) {
     final isDark = brightness == Brightness.dark;
@@ -136,6 +148,18 @@ class SpendSenseApp extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.md),
       borderSide: BorderSide(color: AppColors.borderDarkOrLight(isDark)),
     );
+
+    // Navy palettes lift overlays one step above the canvas; AMOLED and light
+    // keep their existing surfaces.
+    final glassCanvas = isDark && AppColors.isGlassPalette;
+    final overlaySurface = !isDark
+        ? Colors.white
+        : glassCanvas
+            ? AppColors.darkSurfaceAlt
+            : AppColors.darkSurface;
+    final overlayEdge = glassCanvas
+        ? BorderSide(color: Colors.white.withValues(alpha: 0.10))
+        : BorderSide.none;
 
     return ThemeData(
       useMaterial3: true,
@@ -194,7 +218,7 @@ class SpendSenseApp extends StatelessWidget {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.brand,
+          backgroundColor: AppColors.filledBrand,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -202,12 +226,20 @@ class SpendSenseApp extends StatelessWidget {
           ),
         ),
       ),
+      // Text and outlined buttons use the readable brand ink, not the fill
+      // colour: on a navy dialog the raw blue brand measured under 3:1.
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.brand),
+        style: TextButton.styleFrom(
+            foregroundColor: AppColors.brandInkFor(isDark)),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.brandInkFor(isDark),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.brand,
+          backgroundColor: AppColors.filledBrand,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -242,19 +274,62 @@ class SpendSenseApp extends StatelessWidget {
               : AppColors.borderDarkOrLight(isDark),
         ),
       ),
+      // Overlays share one surface, one hairline and one radius scale so a
+      // dialog, sheet, menu and picker read as the same family of glass.
       dialogTheme: DialogThemeData(
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        backgroundColor: overlaySurface,
+        surfaceTintColor: Colors.transparent,
+        barrierColor: const Color(0x6B000000),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: overlayEdge,
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        backgroundColor: overlaySurface,
+        modalBackgroundColor: overlaySurface,
         surfaceTintColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
+        dragHandleColor: AppColors.borderDarkOrLight(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.vertical(
             top: Radius.circular(AppRadius.xl),
           ),
+          side: overlayEdge,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: overlaySurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: overlayEdge,
+        ),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(overlaySurface),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: overlayEdge,
+          )),
+        ),
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: overlaySurface,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: overlaySurface,
+        headerForegroundColor: scheme.onSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: overlayEdge,
+        ),
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: overlaySurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: overlayEdge,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -396,9 +471,9 @@ class _AddFab extends StatelessWidget {
     final gradient = dark
         ? LinearGradient(
             colors: [
-              AppColors.brand,
-              Color.lerp(AppColors.brand, AppColors.navyDeep, 0.4) ??
-                  AppColors.brand,
+              AppColors.filledBrand,
+              Color.lerp(AppColors.filledBrand, AppColors.navyDeep, 0.4) ??
+                  AppColors.filledBrand,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

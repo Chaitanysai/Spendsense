@@ -76,15 +76,20 @@ class FloatingNavBar extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: dark
+                  colors: AppColors.isGlassCanvas(context)
                       ? [
-                          Colors.black.withValues(alpha: 0.62),
-                          Colors.black.withValues(alpha: 0.38),
+                          AppColors.darkSurfaceAlt.withValues(alpha: 0.78),
+                          AppColors.darkBackground.withValues(alpha: 0.62),
                         ]
-                      : [
-                          Colors.white.withValues(alpha: 0.80),
-                          Colors.white.withValues(alpha: 0.62),
-                        ],
+                      : dark
+                          ? [
+                              Colors.black.withValues(alpha: 0.62),
+                              Colors.black.withValues(alpha: 0.38),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.80),
+                              Colors.white.withValues(alpha: 0.62),
+                            ],
                 ),
                 borderRadius: borderRadius,
                 // A crisp top highlight plus a faint full outline: two low-cost
@@ -141,8 +146,8 @@ class FloatingNavBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _indicator(context, selected, item.icon, selectedColor, idleColor,
-                    duration, dark),
+                _indicator(context, selected, item.icon, selectedColor,
+                    idleColor, duration, dark),
                 const SizedBox(height: AppSpacing.xs),
                 // Animated + fade rather than clip: long labels ("ACTIVITY",
                 // "SETTINGS") must never be cut mid-glyph at large text scales.
@@ -185,6 +190,10 @@ class FloatingNavBar extends StatelessWidget {
     Duration duration,
     bool dark,
   ) {
+    // On navy glass the selected slot is a lit electric-blue chip with a white
+    // glyph, matching the primary-action gradient. Other canvases keep the
+    // tinted chip. Either way selection is also shown by weight and border.
+    final lit = selected && AppColors.isGlassCanvas(context);
     return AnimatedContainer(
       duration: duration,
       curve: AppMotion.easeOut,
@@ -193,9 +202,19 @@ class FloatingNavBar extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: selected
-            ? selectedColor.withValues(alpha: dark ? 0.18 : 0.13)
-            : Colors.transparent,
+        gradient: lit
+            ? LinearGradient(
+                // Both stops keep a white glyph above 4.5:1.
+                colors: [AppColors.azure, AppColors.brand],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: lit
+            ? null
+            : selected
+                ? selectedColor.withValues(alpha: dark ? 0.18 : 0.13)
+                : Colors.transparent,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         // A faint hairline keeps the chip legible when the blur behind it picks
         // up a bright row of content.
@@ -207,7 +226,8 @@ class FloatingNavBar extends StatelessWidget {
         boxShadow: selected
             ? [
                 BoxShadow(
-                  color: selectedColor.withValues(alpha: dark ? 0.26 : 0.16),
+                  color: (lit ? AppColors.brand : selectedColor)
+                      .withValues(alpha: lit ? 0.45 : (dark ? 0.26 : 0.16)),
                   blurRadius: 14,
                   spreadRadius: 1,
                 ),
@@ -217,7 +237,11 @@ class FloatingNavBar extends StatelessWidget {
       child: Icon(
         icon,
         size: 22,
-        color: selected ? selectedColor : idleColor,
+        color: lit
+            ? Colors.white
+            : selected
+                ? selectedColor
+                : idleColor,
       ),
     );
   }
