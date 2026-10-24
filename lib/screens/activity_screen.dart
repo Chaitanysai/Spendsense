@@ -64,6 +64,10 @@ extension _DatePresetLabel on _DatePreset {
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
 
+  /// Stable route name. Navigation uses it to dedupe rapid repeated taps so a
+  /// double tap cannot stack two Activity screens.
+  static const String routeName = '/activity';
+
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
 }
@@ -87,13 +91,50 @@ class _ActivityScreenState extends State<ActivityScreen> {
   /// visit; the SMS sync that used to happen then is re-triggered here instead.
   bool _tabActive = true;
 
+  /// Route animation the automatic sync is waiting on (null when there is
+  /// nothing to wait for).
+  Animation<double>? _routeAnimation;
+
+  /// Memoised filter+sort result. Rebuilding for an unrelated reason (theme
+  /// change, keyboard, a parent rebuild) must not re-filter and re-sort the
+  /// whole ledger.
+  List<TransactionModel>? _cachedDisplay;
+  List<TransactionModel>? _cachedSource;
+  Object? _cachedKey;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    // Defer the automatic SMS scan until the push transition has finished.
+    // Starting it in a microtask ran the platform-channel query, ledger writes
+    // and listener notifications inside the transition's first frames, which
+    // is what made Home -> Activity feel slow. This is not an artificial
+    // delay: the scan starts the moment the route's own animation completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Provider.of<TransactionProvider>(context, listen: false).syncFromSms();
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) {
+        _startAutomaticSync();
+        return;
+      }
+      _routeAnimation = animation;
+      animation.addStatusListener(_onRouteStatus);
     });
+  }
+
+  void _onRouteStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    _startAutomaticSync();
+  }
+
+  void _startAutomaticSync() {
+    if (!mounted) return;
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    // A sync already in flight is never started twice.
+    if (provider.isSyncing) return;
+    provider.syncFromSms();
   }
 
   @override
@@ -115,6 +156,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   @override
   void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
     _searchController.dispose();
     super.dispose();
   }
@@ -372,6 +414,25 @@ class _ActivityScreenState extends State<ActivityScreen> {
   // ─── FILTER / SORT LOGIC (unchanged behaviour) ─────────────────────────────
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
+    // Filter state that can change the result. `_activePreset` is derived
+    // storage for `_selectedDateRange`, so it does not need its own slot.
+    final key = (
+      _searchQuery,
+      _selectedCategory,
+      _selectedType,
+      _selectedDateRange,
+      _minAmountMinor,
+      _maxAmountMinor,
+      _sortMode,
+      _sortDescending,
+    );
+    // The provider hands out its own list instance and replaces it on change,
+    // so identity plus the filter key is a sound cache key: an unrelated
+    // rebuild (theme, keyboard, parent) reuses the previous result.
+    if (identical(all, _cachedSource) && key == _cachedKey) {
+      return _cachedDisplay!;
+    }
+
     final list = TransactionFilter(
       query: _searchQuery,
       category: _selectedCategory,
@@ -390,6 +451,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
           : a.date.compareTo(b.date));
     }
 
+    _cachedSource = all;
+    _cachedKey = key;
+    _cachedDisplay = list;
     return list;
   }
 

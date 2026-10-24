@@ -319,8 +319,10 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'Recent transactions',
             actionLabel: 'See all',
             actionIcon: Icons.chevron_right_rounded,
-            onAction: () => Navigator.of(context).push(
-              AppPageRoute(builder: (_) => const ActivityScreen()),
+            onAction: () => AppPageRoute.pushOnce(
+              context,
+              name: ActivityScreen.routeName,
+              builder: (_) => const ActivityScreen(),
             ),
           ),
           ..._recentSection(context, provider, trackedTransactions),
@@ -879,8 +881,10 @@ class _QuickActions extends StatelessWidget {
         QuickAction(
           label: 'Activity',
           icon: Icons.receipt_long_rounded,
-          onTap: () => Navigator.of(context).push(
-            AppPageRoute(builder: (_) => const ActivityScreen()),
+          onTap: () => AppPageRoute.pushOnce(
+            context,
+            name: ActivityScreen.routeName,
+            builder: (_) => const ActivityScreen(),
           ),
         ),
       ],
