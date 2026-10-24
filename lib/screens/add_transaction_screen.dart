@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
@@ -357,8 +356,8 @@ class _AmountCard extends StatelessWidget {
               autofocus: true,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              inputFormatters: const [
+                AmountInputFormatter(),
               ],
               style: AppText.onGradient(size: 16, weight: FontWeight.w600),
               cursorColor: Colors.white,

@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+
 /// Errors raised when an amount cannot be represented as INR paise.
 class MoneyParseException implements Exception {
   final String message;
@@ -42,6 +44,34 @@ String formatPaise(int amountMinor, {bool trimZeroPaise = false}) {
   final paise = amountMinor % 100;
   if (trimZeroPaise && paise == 0) return rupees.toString();
   return '$rupees.${paise.toString().padLeft(2, '0')}';
+}
+
+/// Constrains live amount editing to at most one decimal point and two
+/// fractional digits while keeping normal editing intact (deletion,
+/// insertion, paste and selection replacement all work). The formatter
+/// rejects a keystroke that would create the invalid shape rather than
+/// rewriting the field underneath the cursor.
+class AmountInputFormatter extends TextInputFormatter {
+  const AmountInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+    if (text == '.') return newValue;
+    if (!RegExp(r'^[0-9]*\.?[0-9]*$').hasMatch(text)) {
+      return oldValue;
+    }
+    final dot = text.indexOf('.');
+    if (dot != -1) {
+      if (text.indexOf('.', dot + 1) != -1) return oldValue;
+      if (text.length - dot - 1 > 2) return oldValue;
+    }
+    return newValue;
+  }
 }
 
 /// Divides non-negative paise and rounds to the nearest paise.

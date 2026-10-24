@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
@@ -114,8 +113,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        inputFormatters: const [
+                          AmountInputFormatter(),
                         ],
                         decoration: const InputDecoration(
                           labelText: 'Amount',
