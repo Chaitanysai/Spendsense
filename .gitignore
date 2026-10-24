@@ -60,3 +60,10 @@ key.properties
 /ota/public/manifest.json
 /ota/public/releases/*
 !/ota/public/releases/.gitkeep
+
+# Local agent/tooling state, caches and pre-upgrade snapshots (never publish)
+.perch/
+.kiro/
+.firebase/
+*.before-upgrade
+*.patch
