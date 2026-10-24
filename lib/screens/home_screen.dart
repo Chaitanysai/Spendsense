@@ -13,7 +13,6 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/budget_math.dart';
-import '../utils/category_style.dart';
 import '../utils/dashboard_sections.dart';
 import '../utils/formatters.dart';
 import '../utils/period_math.dart';
@@ -21,7 +20,7 @@ import '../widgets/animated_amount.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
 import '../widgets/budget_summary.dart';
-import '../widgets/category_bubble_cluster.dart';
+import '../widgets/category_spending_bars.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/pressable.dart';
 import '../widgets/profile_avatar.dart';
@@ -940,21 +939,14 @@ class _CategoryCard extends StatelessWidget {
       totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
     }
     final hasData = totals.values.any((v) => v > 0);
-    final chartTotals = <String, double>{
-      for (final entry in totals.entries) entry.key: entry.value.toDouble(),
-    };
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (hasData) ...[
-            CategoryBubbleCluster(totals: chartTotals),
-            const SizedBox(height: AppSpacing.lg),
-            Divider(height: 1, color: AppColors.border(context)),
-            const SizedBox(height: AppSpacing.md),
-            _TopCategories(totals: totals),
-          ] else
+          if (hasData)
+            CategorySpendingBars(totalsMinor: totals)
+          else
             _CategoryEmpty(),
         ],
       ),
@@ -1007,52 +999,6 @@ class _CategoryEmpty extends StatelessWidget {
 
 /// Exact figures for the leading categories — the bubbles convey share, but a
 /// bubble alone cannot be read for an amount.
-class _TopCategories extends StatelessWidget {
-  final Map<String, int> totals;
-
-  const _TopCategories({required this.totals});
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = totals.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    if (entries.isEmpty) {
-      return Text('No spending recorded yet.', style: AppText.body(context));
-    }
-
-    return Column(
-      children: entries
-          .take(3)
-          .map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                children: [
-                  Icon(CategoryStyle.icon(e.key),
-                      size: 15, color: CategoryStyle.color(e.key)),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      e.key,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.label(context).copyWith(fontSize: 12.5),
-                    ),
-                  ),
-                  Text(
-                    Formatters.currency.format(e.value),
-                    style: AppText.amount(context, size: 13),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
 // ── Daily spend ──────────────────────────────────────────────────────────────
 
 class _DailySpendCard extends StatelessWidget {
