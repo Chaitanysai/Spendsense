@@ -10,7 +10,7 @@ import 'package:spendsense/providers/auth_provider.dart';
 import 'package:spendsense/providers/period_provider.dart';
 import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
-import 'package:spendsense/screens/activity_screen.dart';
+import 'package:spendsense/screens/bills_screen.dart';
 import 'package:spendsense/screens/add_transaction_screen.dart';
 import 'package:spendsense/screens/cards_screen.dart';
 import 'package:spendsense/screens/home_screen.dart';
@@ -90,14 +90,14 @@ void main() {
   });
 
   group('five-destination navigation', () {
-    testWidgets('bar exposes exactly Home, Activity, Insights, Cards, Settings',
+    testWidgets('bar exposes exactly Home, Bills, Insights, Cards, Settings',
         (tester) async {
       await _pumpShell(tester);
 
       final bar = tester.widget<FloatingNavBar>(find.byType(FloatingNavBar));
       expect(
         bar.items.map((i) => i.label).toList(),
-        ['HOME', 'ACTIVITY', 'INSIGHTS', 'CARDS', 'SETTINGS'],
+        ['HOME', 'BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS'],
       );
       expect(bar.items, hasLength(5));
     });
@@ -106,7 +106,7 @@ void main() {
       await _pumpShell(tester);
 
       final expected = <String, Type>{
-        'ACTIVITY': ActivityScreen,
+        'BILLS': BillsScreen,
         'INSIGHTS': InsightsScreen,
         'CARDS': CardsScreen,
         'SETTINGS': SettingsScreen,
@@ -151,7 +151,7 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'layout error on the populated Home dashboard');
 
-      for (final label in ['ACTIVITY', 'INSIGHTS', 'CARDS', 'SETTINGS']) {
+      for (final label in ['BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS']) {
         await tester.tap(find.text(label));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));

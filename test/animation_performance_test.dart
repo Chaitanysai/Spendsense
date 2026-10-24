@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spendsense/screens/bills_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -222,50 +223,39 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('Activity syncs SMS at launch and again on every return',
+    testWidgets('Bills never starts an SMS scan on open or on return',
         (tester) async {
       final provider = await pumpShell(tester, withStartDate: true);
-      expect(provider.syncs, 1, reason: 'one sync at launch');
+      // Nothing in the shell auto-scans any more: Activity is no longer a tab.
+      expect(provider.syncs, 0, reason: 'no tab starts a scan');
 
-      await goTo(tester, 'ACTIVITY');
-      expect(provider.syncs, 2, reason: 'returning to Activity re-syncs');
+      await goTo(tester, 'BILLS');
+      expect(provider.syncs, 0,
+          reason: 'passive navigation must not scan SMS or ask permission');
 
       await goTo(tester, 'HOME');
-      expect(provider.syncs, 2, reason: 'leaving Activity must not sync');
-
-      await goTo(tester, 'ACTIVITY');
-      expect(provider.syncs, 3);
-
-      // Re-tapping the tab you are already on is not a return.
-      await goTo(tester, 'ACTIVITY');
-      expect(provider.syncs, 3);
+      await goTo(tester, 'BILLS');
+      expect(provider.syncs, 0);
     });
 
-    testWidgets('a return while a sync is running does not start another',
+    testWidgets('a running sync is not restarted by visiting Bills',
         (tester) async {
       final provider = await pumpShell(tester, withStartDate: true);
       provider.syncing = true;
 
       await goTo(tester, 'INSIGHTS');
-      await goTo(tester, 'ACTIVITY');
+      await goTo(tester, 'BILLS');
       await goTo(tester, 'HOME');
-      await goTo(tester, 'ACTIVITY');
+      await goTo(tester, 'BILLS');
 
-      expect(provider.syncs, 1, reason: 'only the launch sync ran');
+      expect(provider.syncs, 0, reason: 'Bills never starts or joins a scan');
     });
 
-    testWidgets('Activity keeps its search text across tab switches',
-        (tester) async {
+    testWidgets('Bills stays alive across tab switches', (tester) async {
       await pumpShell(tester, withStartDate: true);
-      await goTo(tester, 'ACTIVITY');
-
-      await tester.enterText(find.byType(TextField).first, 'swiggy');
-      await tester.pump();
-
+      await goTo(tester, 'BILLS');
       await goTo(tester, 'HOME');
-      await goTo(tester, 'ACTIVITY');
-
-      expect(find.text('swiggy'), findsOneWidget);
+      expect(find.byType(BillsScreen, skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('Settings re-checks the connection each time it is shown',

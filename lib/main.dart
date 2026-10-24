@@ -14,7 +14,7 @@ import 'providers/update_provider.dart';
 import 'services/sound_service.dart';
 
 import 'screens/home_screen.dart';
-import 'screens/activity_screen.dart';
+import 'screens/bills_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/add_transaction_screen.dart';
 import 'screens/insights_screen.dart';
@@ -372,7 +372,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   static const List<NavItem> _navItems = [
     NavItem(Icons.home_rounded, 'HOME'),
-    NavItem(Icons.receipt_long_rounded, 'ACTIVITY'),
+    NavItem(Icons.event_note_rounded, 'BILLS'),
     NavItem(Icons.insights_rounded, 'INSIGHTS'),
     NavItem(Icons.credit_card_rounded, 'CARDS'),
     NavItem(Icons.settings_rounded, 'SETTINGS'),
@@ -380,7 +380,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    ActivityScreen(),
+    BillsScreen(),
     InsightsScreen(),
     CardsScreen(),
     SettingsScreen(),
