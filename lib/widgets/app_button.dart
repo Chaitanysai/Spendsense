@@ -58,7 +58,7 @@ class AppPrimaryButton extends StatelessWidget {
             boxShadow: enabled
                 ? [
                     BoxShadow(
-                      color: AppColors.brand.withValues(alpha: 0.30),
+                      color: AppColors.filledBrand.withValues(alpha: 0.30),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),

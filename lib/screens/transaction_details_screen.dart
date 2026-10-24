@@ -15,6 +15,7 @@ import '../widgets/app_button.dart';
 import '../widgets/gradient_hero_card.dart';
 import '../widgets/plan_editor.dart';
 import '../widgets/sound_scope.dart';
+import '../widgets/transaction_type_toggle.dart';
 
 class TransactionDetailsScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -122,35 +123,20 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      DropdownButtonFormField<TransactionType>(
-                        initialValue: _type,
-                        decoration: const InputDecoration(
-                          labelText: 'Type',
-                          prefixIcon: Icon(Icons.swap_vert_rounded),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: TransactionType.expense,
-                            child: Text('Expense'),
-                          ),
-                          DropdownMenuItem(
-                            value: TransactionType.income,
-                            child: Text('Income'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null && value != _type) {
-                            // A real change is a selection change; picking the
-                            // already-selected value stays silent.
-                            SoundScope.play(
-                                context, SoundEventType.selectionChanged);
-                            setState(() => _type = value);
-                          }
+                      // Two visible segments instead of a dropdown: a binary
+                      // choice should not open a full-width overlay. The toggle
+                      // plays the selection cue itself.
+                      TransactionTypeToggle(
+                        isIncome: _type == TransactionType.income,
+                        onSelect: (value) {
+                          if (value != _type) setState(() => _type = value);
                         },
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       DropdownButtonFormField<String>(
                         initialValue: _category,
+                        borderRadius: AppRadius.mdAll,
+                        dropdownColor: AppColors.surfaceColor(context),
                         decoration: const InputDecoration(
                           labelText: 'Category',
                           prefixIcon: Icon(Icons.category_outlined),
@@ -233,7 +219,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           ),
                         ),
                       ),
-                      if (widget.transaction.type == TransactionType.expense) ...[
+                      if (widget.transaction.type ==
+                          TransactionType.expense) ...[
                         const SizedBox(height: AppSpacing.md),
                         OutlinedButton.icon(
                           onPressed: () => showPlanEditor(
@@ -343,7 +330,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
+              _safeHeaderAmount(),
               style: AppText.onGradient(size: 38, weight: FontWeight.w800),
             ),
           ),
@@ -357,6 +344,17 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
         ],
       ),
     );
+  }
+
+  String _safeHeaderAmount() {
+    final raw = _amountController.text.trim();
+    if (raw.isEmpty) return '₹ 0';
+    try {
+      final minor = parseRupeesToPaise(raw);
+      return Formatters.currency.format(minor);
+    } on MoneyParseException {
+      return '₹ 0';
+    }
   }
 
   String _normalizedCategory(String category) {

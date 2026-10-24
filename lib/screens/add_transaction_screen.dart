@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
@@ -13,6 +14,7 @@ import '../utils/formatters.dart';
 import '../widgets/app_button.dart';
 import '../widgets/pressable.dart';
 import '../widgets/sound_scope.dart';
+import '../widgets/transaction_type_toggle.dart';
 
 /// Presents the shared transaction form as a modal sheet. Every entry point —
 /// the Home floating action, the quick-action tiles, the activity screen — calls
@@ -21,19 +23,11 @@ Future<void> showAddTransactionSheet(
   BuildContext context, {
   TransactionType initialType = TransactionType.expense,
 }) {
-  // One shared entrance for every entry point. The duration collapses to zero
-  // when the platform asks for reduced motion, so the sheet simply appears.
-  final reduced = MediaQuery.maybeDisableAnimationsOf(context) == true;
-  return showModalBottomSheet<void>(
+  // One shared entrance for every entry point (see [showAppSheet]); motion
+  // collapses to zero when the platform asks for reduced motion.
+  return showAppSheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: 0.42),
-    sheetAnimationStyle: AnimationStyle(
-      duration: reduced ? Duration.zero : AppMotion.base,
-      reverseDuration: reduced ? Duration.zero : AppMotion.fast,
-    ),
     builder: (_) =>
         AddTransactionScreen(initialType: initialType, asSheet: true),
   );
@@ -126,7 +120,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-                _TypeToggle(isIncome: _isIncome, onSelect: _setType),
+                TransactionTypeToggle(isIncome: _isIncome, onSelect: _setType),
                 const SizedBox(height: AppSpacing.lg),
                 _AmountCard(
                   amountController: _amountController,
@@ -308,6 +302,19 @@ class _AmountCard extends StatelessWidget {
   final double amount;
   final bool isIncome;
 
+  static String _safePreview(double amount) {
+    final raw = amount.toString();
+    // Guard against exponential notation and NaN/Infinity from double
+    if (raw.contains('e') || raw.contains('E')) {
+      return Formatters.currency.format(0);
+    }
+    try {
+      return Formatters.currency.format(parseRupeesToPaise(raw));
+    } on MoneyParseException {
+      return Formatters.currency.format(0);
+    }
+  }
+
   const _AmountCard({
     required this.amountController,
     required this.amount,
@@ -343,9 +350,7 @@ class _AmountCard extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
-                Formatters.currency.format(
-                  parseRupeesToPaise(amount.toString()),
-                ),
+                _safePreview(amount),
                 maxLines: 1,
                 style: AppText.onGradient(size: 36, weight: FontWeight.w800),
               ),
@@ -391,100 +396,6 @@ class _AmountCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Expense/income switch. The selected side is marked by tint, icon and weight,
-/// never by colour alone.
-class _TypeToggle extends StatelessWidget {
-  final bool isIncome;
-  final ValueChanged<TransactionType> onSelect;
-
-  const _TypeToggle({required this.isIncome, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt(context),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _segment(
-              context,
-              label: 'Expense',
-              icon: Icons.south_west_rounded,
-              selected: !isIncome,
-              tint: AppColors.expenseRed,
-              onTap: () => onSelect(TransactionType.expense),
-            ),
-          ),
-          Expanded(
-            child: _segment(
-              context,
-              label: 'Income',
-              icon: Icons.north_east_rounded,
-              selected: isIncome,
-              tint: AppColors.incomeGreen,
-              onTap: () => onSelect(TransactionType.income),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _segment(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required bool selected,
-    required Color tint,
-    required VoidCallback onTap,
-  }) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      excludeSemantics: true,
-      child: Pressable(
-        onTap: onTap,
-        sound: SoundEventType.selectionChanged,
-        child: AnimatedContainer(
-          duration: AppMotion.respect(context, AppMotion.fast),
-          curve: AppMotion.easeOut,
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: selected ? tint.withValues(alpha: 0.14) : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? tint : AppColors.textTertiary(context),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppText.label(context).copyWith(
-                  fontSize: 13,
-                  color: selected ? tint : AppColors.textTertiary(context),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

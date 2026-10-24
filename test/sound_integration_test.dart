@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +14,7 @@ import 'package:spendsense/services/sound_service.dart';
 import 'package:spendsense/widgets/app_button.dart';
 import 'package:spendsense/widgets/pressable.dart';
 import 'package:spendsense/widgets/sound_scope.dart';
+import 'package:spendsense/widgets/transaction_type_toggle.dart';
 
 import 'support/sound_test_doubles.dart';
 
@@ -31,6 +32,7 @@ class FakeTransactionProvider extends TransactionProvider {
 
   final List<TransactionModel> added = <TransactionModel>[];
   final List<String> updated = <String>[];
+  final List<TransactionType> updatedTypes = <TransactionType>[];
 
   static const Duration _writeLatency = Duration(milliseconds: 10);
 
@@ -58,6 +60,7 @@ class FakeTransactionProvider extends TransactionProvider {
   }) async {
     await _commit();
     updated.add(id);
+    updatedTypes.add(type);
   }
 }
 
@@ -239,6 +242,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('details picks the type with segments, not a dropdown overlay',
+      (tester) async {
+    final provider = FakeTransactionProvider();
+    await pumpScreen(
+      tester,
+      screen: TransactionDetailsScreen(transaction: _transaction()),
+      provider: provider,
+    );
+
+    expect(find.byType(DropdownButtonFormField<TransactionType>), findsNothing);
+    expect(find.byType(TransactionTypeToggle), findsOneWidget);
+
+    await tester.tap(find.text('Income'));
+    await tester.pump();
+    expect(player.played, isNotEmpty,
+        reason: 'a real type change plays the selection cue');
+
+    await tester.tap(find.text('Save changes'));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+    expect(provider.updatedTypes, [TransactionType.income]);
+  });
   testWidgets('a rejected edit plays the failure cue, never the success cue',
       (tester) async {
     final provider = FakeTransactionProvider();
