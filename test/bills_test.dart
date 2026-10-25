@@ -168,41 +168,41 @@ void main() {
     });
   });
 
-  group('detected suggestions', () {
+  group('automatic detection', () {
     List<TransactionModel> recurring() => [
           _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 7, 5)),
           _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 8, 5)),
           _tx(id: 'r3', amountMinor: 64900, date: DateTime(2026, 9, 5)),
         ];
 
-    test('a repeated payment becomes a needs-review suggestion', () {
+    test('a repeated subscription becomes an automatic bill', () {
       final views = _detector.detect(
         plans: const [],
         transactions: recurring(),
         today: today,
       );
       expect(views, isNotEmpty);
-      expect(views.first.state, BillState.needsReview);
-      expect(views.first.isSuggestion, isTrue);
+      expect(views.first.isAutoDetected, isTrue);
+      expect(views.first.state, isNot(BillState.paid));
       expect(views.first.title, 'Netflix');
+      expect(views.first.confidence, greaterThan(0.7));
     });
 
-    test('a suggestion is never treated as paid', () {
+    test('an automatic recurring bill is never marked paid without a match',
+        () {
       final views = _detector.detect(
         plans: const [],
         transactions: recurring(),
         today: today,
       );
-      expect(
-          views.where((v) => v.state == BillState.paid), isEmpty,
-          reason: 'nothing is confirmed, so nothing can be paid');
+      expect(views.where((v) => v.state == BillState.paid), isEmpty);
     });
 
     test('detection is idempotent across repeated runs', () {
-      final first = _detector.detect(
-          plans: const [], transactions: recurring(), today: today);
-      final second = _detector.detect(
-          plans: const [], transactions: recurring(), today: today);
+      final first = _detector
+          .detect(plans: const [], transactions: recurring(), today: today);
+      final second = _detector
+          .detect(plans: const [], transactions: recurring(), today: today);
 
       expect(first.length, second.length);
       expect(
@@ -211,26 +211,42 @@ void main() {
       );
     });
 
-    test('an already-tracked pattern is not suggested again', () {
+    test('an already-tracked plan suppresses the automatic duplicate', () {
       final views = _detector.detect(
         plans: [_plan(nextDue: DateTime(2026, 11, 5))],
         transactions: recurring(),
         today: today,
       );
-      expect(views.where((v) => v.isSuggestion), isEmpty);
+      expect(views.where((v) => v.isAutoDetected), isEmpty);
+    });
+  });
+
+  group('hiding an automatic bill', () {
+    late PlannerProvider planner;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      planner = PlannerProvider();
+      await planner.ready;
     });
 
-    test('the generated plan id is stable and normalised', () {
-      final views = _detector.detect(
-        plans: const [],
-        transactions: recurring(),
-        today: today,
-      );
-      final suggestion = views.firstWhere((v) => v.isSuggestion).suggestion!;
-      final a = BillDetectionService.planIdFor(suggestion);
-      final b = BillDetectionService.planIdFor(suggestion);
-      expect(a, b);
-      expect(a, startsWith('auto:'));
+    tearDown(() => planner.dispose());
+
+    test('the preference persists and does not touch saved plans', () async {
+      final due = DateTime(2026, 11, 5);
+      await planner.addPlan(_plan(nextDue: due));
+      await planner.hideAutoBill('utility:bescom');
+
+      final reloaded = PlannerProvider();
+      await reloaded.ready;
+      addTearDown(reloaded.dispose);
+
+      expect(reloaded.hiddenBillKeys, contains('utility:bescom'));
+      expect(reloaded.plans, hasLength(1));
+      expect(reloaded.plans.single.nextDue, due);
+
+      await reloaded.unhideAutoBill('utility:bescom');
+      expect(reloaded.hiddenBillKeys, isEmpty);
     });
   });
 
@@ -273,7 +289,7 @@ void main() {
 
     testWidgets('an empty list shows the add-a-bill state', (tester) async {
       await pump(tester);
-      expect(find.text('No bills yet'), findsOneWidget);
+      expect(find.text('No bills detected yet'), findsOneWidget);
     });
 
     testWidgets('marking paid advances the plan and offers undo',
@@ -319,7 +335,7 @@ void main() {
       );
     });
 
-    testWidgets('a suggestion offers Track as bill and tracking is idempotent',
+    testWidgets('a repeated bill appears automatically with no review prompt',
         (tester) async {
       tx.debugSeed([
         _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 8, 5)),
@@ -328,16 +344,11 @@ void main() {
       ]);
       await pump(tester);
 
-      expect(find.text('Needs review'), findsWidgets);
-      await tester.tap(find.text('Track as bill'));
-      await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-
-      expect(planner.plans, hasLength(1));
-      expect(planner.plans.single.id, startsWith('auto:'));
+      expect(find.text('Netflix'), findsOneWidget);
+      expect(find.text('Track as bill'), findsNothing);
+      expect(find.text('Needs review'), findsNothing);
+      expect(planner.plans, isEmpty,
+          reason: 'automatic detection must not persist a plan by itself');
     });
-
   });
 }

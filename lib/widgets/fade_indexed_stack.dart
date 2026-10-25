@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
 /// An [IndexedStack] that keeps every child alive (so providers, scroll
 /// positions and text fields survive tab switches) while softly fading and
@@ -67,8 +68,16 @@ class _FadeIndexedStackState extends State<FadeIndexedStack>
         // With reduced motion no wrapper exists for ANY child, so the chain is
         // still identical for active and inactive tabs and nothing is rebuilt
         // on a switch.
+        // Every tab gets a page-entry host, even while off-screen. It is the
+        // retained tab's replay signal: the host sees `active` flip when the
+        // tab is selected and restarts the page's own entrance animations
+        // without remounting the tab or losing its scroll position.
+        final Widget hosted = PageEntryHost(
+          active: active,
+          child: widget.children[i],
+        );
         final Widget page = reduced
-            ? widget.children[i]
+            ? hosted
             : FadeTransition(
                 // Resting pages use the completed animation: opacity 1 paints
                 // the child directly (no layer) and the offset is zero.
@@ -77,7 +86,7 @@ class _FadeIndexedStackState extends State<FadeIndexedStack>
                   position: active
                       ? _slide
                       : const AlwaysStoppedAnimation<Offset>(Offset.zero),
-                  child: widget.children[i],
+                  child: hosted,
                 ),
               );
         return Offstage(

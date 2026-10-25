@@ -15,6 +15,7 @@ import '../utils/money_parser.dart';
 import '../utils/transaction_filter.dart';
 import '../utils/period_math.dart';
 import '../widgets/app_states.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/pressable.dart';
 import '../widgets/sms_import_prompt.dart';
 
@@ -180,155 +181,158 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Activity', style: AppText.h1(context)),
-                      const Spacer(),
-                      if (hasFilters)
-                        Pressable(
-                          onTap: _clearFilters,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          sound: SoundEventType.selectionChanged,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 9),
-                            decoration: BoxDecoration(
-                              color: AppColors.brand.withValues(alpha: 0.12),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
-                            ),
-                            child: Text('Clear',
-                                style: AppText.label(context).copyWith(
-                                    color: AppColors.brandInk(context),
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text('Track every penny across your accounts',
-                      style: AppText.body(context)),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Search
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceColor(context),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.border(context)),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.search_rounded,
-                            color: AppColors.textTertiary(context)),
-                        hintText: 'Search merchant, category, amount…',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                      ),
-                      style: AppText.body(context).copyWith(
-                          color: AppColors.textPrimary(context), fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Sort / filter chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+            PageEntrance(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        _chip(
-                          icon: Icons.calendar_today_rounded,
-                          label: 'Date',
-                          active: _sortMode == 'Date',
-                          onTap: () => setState(() => _sortMode = 'Date'),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _chip(
-                          icon: Icons.payments_rounded,
-                          label: 'Amount',
-                          active: _sortMode == 'Amount',
-                          onTap: () => setState(() => _sortMode = 'Amount'),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _typeFilterChip(),
-                        const SizedBox(width: AppSpacing.sm),
-                        _sortDirectionChip(),
-                        const SizedBox(width: AppSpacing.sm),
-                        _categoryFilterChip(provider),
-                        const SizedBox(width: AppSpacing.sm),
-                        _dateRangeChip(),
-                        const SizedBox(width: AppSpacing.sm),
-                        _amountChip(),
+                        Text('Activity', style: AppText.h1(context)),
+                        const Spacer(),
+                        if (hasFilters)
+                          Pressable(
+                            onTap: _clearFilters,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            sound: SoundEventType.selectionChanged,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: AppColors.brand.withValues(alpha: 0.12),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.pill),
+                              ),
+                              child: Text('Clear',
+                                  style: AppText.label(context).copyWith(
+                                      color: AppColors.brandInk(context),
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text('Track every penny across your accounts',
+                        style: AppText.body(context)),
+                    const SizedBox(height: AppSpacing.lg),
 
-                  if (hasFilters)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.md),
-                      child: Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
+                    // Search
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceColor(context),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.border(context)),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.search_rounded,
+                              color: AppColors.textTertiary(context)),
+                          hintText: 'Search merchant, category, amount…',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.lg),
+                        ),
+                        style: AppText.body(context).copyWith(
+                            color: AppColors.textPrimary(context),
+                            fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Sort / filter chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         children: [
-                          if (_selectedCategory != null)
-                            _activeBadge(
-                              Icons.category_rounded,
-                              _selectedCategory!,
-                              () => setState(() => _selectedCategory = null),
-                            ),
-                          if (_selectedType != null)
-                            _activeBadge(
-                              Icons.swap_horiz_rounded,
-                              _selectedType == TransactionType.expense
-                                  ? 'Expense'
-                                  : 'Income',
-                              () => setState(() => _selectedType = null),
-                            ),
-                          if (_minAmountMinor != null ||
-                              _maxAmountMinor != null)
-                            _activeBadge(
-                              Icons.payments_rounded,
-                              _amountLabel(),
-                              () => setState(() {
-                                _minAmountMinor = null;
-                                _maxAmountMinor = null;
-                              }),
-                            ),
-                          if (_activePreset != null ||
-                              _selectedDateRange != null)
-                            _activeBadge(
-                              Icons.date_range_rounded,
-                              _activeDateLabel(),
-                              () => setState(() {
-                                _activePreset = null;
-                                _selectedDateRange = null;
-                              }),
-                            ),
+                          _chip(
+                            icon: Icons.calendar_today_rounded,
+                            label: 'Date',
+                            active: _sortMode == 'Date',
+                            onTap: () => setState(() => _sortMode = 'Date'),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _chip(
+                            icon: Icons.payments_rounded,
+                            label: 'Amount',
+                            active: _sortMode == 'Amount',
+                            onTap: () => setState(() => _sortMode = 'Amount'),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _typeFilterChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _sortDirectionChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _categoryFilterChip(provider),
+                          const SizedBox(width: AppSpacing.sm),
+                          _dateRangeChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _amountChip(),
                         ],
                       ),
                     ),
 
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
-                    style: AppText.overline(context),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
+                    if (hasFilters)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.md),
+                        child: Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            if (_selectedCategory != null)
+                              _activeBadge(
+                                Icons.category_rounded,
+                                _selectedCategory!,
+                                () => setState(() => _selectedCategory = null),
+                              ),
+                            if (_selectedType != null)
+                              _activeBadge(
+                                Icons.swap_horiz_rounded,
+                                _selectedType == TransactionType.expense
+                                    ? 'Expense'
+                                    : 'Income',
+                                () => setState(() => _selectedType = null),
+                              ),
+                            if (_minAmountMinor != null ||
+                                _maxAmountMinor != null)
+                              _activeBadge(
+                                Icons.payments_rounded,
+                                _amountLabel(),
+                                () => setState(() {
+                                  _minAmountMinor = null;
+                                  _maxAmountMinor = null;
+                                }),
+                              ),
+                            if (_activePreset != null ||
+                                _selectedDateRange != null)
+                              _activeBadge(
+                                Icons.date_range_rounded,
+                                _activeDateLabel(),
+                                () => setState(() {
+                                  _activePreset = null;
+                                  _selectedDateRange = null;
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
+                      style: AppText.overline(context),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
               ),
             ),
             Expanded(
@@ -389,17 +393,21 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                 }
                               }
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (showHeader)
-                                    _sectionHeader(DateFormat('EEE, d MMM')
-                                        .format(tx.date)),
-                                  TransactionTile(
-                                    transaction: tx,
-                                    showDate: false,
-                                  ),
-                                ],
+                              return PageEntrance(
+                                index: index,
+                                offset: 0.04,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (showHeader)
+                                      _sectionHeader(DateFormat('EEE, d MMM')
+                                          .format(tx.date)),
+                                    TransactionTile(
+                                      transaction: tx,
+                                      showDate: false,
+                                    ),
+                                  ],
+                                ),
                               );
                             },
                           ),

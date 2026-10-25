@@ -17,6 +17,7 @@ import '../utils/formatters.dart';
 import '../utils/money_parser.dart';
 import '../widgets/app_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/section_header.dart';
 
 /// Overall and per-category budgets for the current salary cycle.
@@ -68,12 +69,14 @@ class BudgetsScreen extends StatelessWidget {
                   ),
                 ),
               const SectionHeader(title: 'Overall budget'),
-              _BudgetRow(
-                icon: Icons.savings_rounded,
-                color: AppColors.brand,
-                name: 'Monthly budget',
-                progress: overall,
-                onEdit: () => _editOverall(context, tx),
+              PageEntrance(
+                child: _BudgetRow(
+                  icon: Icons.savings_rounded,
+                  color: AppColors.brand,
+                  name: 'Monthly budget',
+                  progress: overall,
+                  onEdit: () => _editOverall(context, tx),
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               const SectionHeader(title: 'Warn me at'),
@@ -99,21 +102,25 @@ class BudgetsScreen extends StatelessWidget {
                 for (final (i, s) in statuses.indexed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: _BudgetRow(
-                      delay: Duration(milliseconds: 40 * i),
-                      icon: CategoryStyle.icon(s.category),
-                      color: CategoryStyle.color(s.category),
-                      name: s.category,
-                      progress: s.progress,
-                      thresholds: planner.thresholds,
-                      onEdit: planner.hasLoadError
-                          ? null
-                          : () => _editCategory(context, planner, tx,
-                              category: s.category,
-                              current: s.progress.budgetMinor),
-                      onDelete: planner.hasLoadError
-                          ? null
-                          : () => _confirmDeleteCategory(context, planner, s.category),
+                    child: PageEntrance(
+                      index: i + 1,
+                      child: _BudgetRow(
+                        delay: Duration(milliseconds: 40 * i),
+                        icon: CategoryStyle.icon(s.category),
+                        color: CategoryStyle.color(s.category),
+                        name: s.category,
+                        progress: s.progress,
+                        thresholds: planner.thresholds,
+                        onEdit: planner.hasLoadError
+                            ? null
+                            : () => _editCategory(context, planner, tx,
+                                category: s.category,
+                                current: s.progress.budgetMinor),
+                        onDelete: planner.hasLoadError
+                            ? null
+                            : () => _confirmDeleteCategory(
+                                context, planner, s.category),
+                      ),
                     ),
                   ),
             ],
@@ -131,8 +138,7 @@ class BudgetsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Remove $category budget?',
-            style: AppText.title(ctx)),
+        title: Text('Remove $category budget?', style: AppText.title(ctx)),
         content: Text(
           'The $category budget will be removed. Your transactions stay unchanged.',
           style: AppText.body(ctx),

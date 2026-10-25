@@ -1,11 +1,9 @@
 import org.gradle.api.tasks.Delete
 import org.gradle.api.file.Directory
 
-// ✅ ONLY THIS PLUGIN (DO NOT ADD android/kotlin again)
-plugins {
-    id("com.google.gms.google-services") version "4.4.1" apply false
-}
-
+// Plugin versions are declared once, in settings.gradle.kts pluginManagement.
+// Declaring google-services here as well puts two versions on the classpath and
+// fails resolution ("already on the classpath with a different version").
 allprojects {
     repositories {
         google()

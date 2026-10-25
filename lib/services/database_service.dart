@@ -166,6 +166,10 @@ class DatabaseService {
       'source': row['source'] ?? 'sqlite_v2',
       'confidence': row['confidence'] ?? 1.0,
       'needsReview': row['isReviewed'] == 1 || row['needsReview'] == true,
+      // Legacy tables have no hint columns; null remains fully supported.
+      'billKindHint': row['billKindHint'],
+      'billReminderHint':
+          row['billReminderHint'] == 1 || row['billReminderHint'] == true,
     };
   }
 

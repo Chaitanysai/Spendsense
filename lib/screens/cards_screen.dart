@@ -12,6 +12,7 @@ import '../widgets/animated_progress_bar.dart';
 import '../widgets/app_states.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/pressable.dart';
 import '../widgets/section_header.dart';
 
@@ -84,11 +85,13 @@ class CardsScreen extends StatelessWidget {
                       style: AppText.body(context),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    _HeroSummary(
-                      totalSpent: totalSpent,
-                      methodCount: byMethod.length,
-                      transactionCount: expenseCount,
-                      periodLabel: periodLabel,
+                    PageEntrance(
+                      child: _HeroSummary(
+                        totalSpent: totalSpent,
+                        methodCount: byMethod.length,
+                        transactionCount: expenseCount,
+                        periodLabel: periodLabel,
+                      ),
                     ),
                   ],
                 ),
@@ -121,16 +124,35 @@ class CardsScreen extends StatelessWidget {
                     ),
                   )
                 else ...[
-                  const SectionHeader(title: 'By payment method'),
-                  _InstrumentCard(
-                      stats: byMethod, kind: _InstrumentKind.method),
+                  const PageEntrance(
+                    index: 1,
+                    child: SectionHeader(title: 'By payment method'),
+                  ),
+                  PageEntrance(
+                    index: 1,
+                    child: _InstrumentCard(
+                        stats: byMethod, kind: _InstrumentKind.method),
+                  ),
                   const SizedBox(height: AppSpacing.xxl),
-                  const SectionHeader(title: 'By bank'),
-                  _InstrumentCard(stats: byBank, kind: _InstrumentKind.bank),
+                  const PageEntrance(
+                    index: 2,
+                    child: SectionHeader(title: 'By bank'),
+                  ),
+                  PageEntrance(
+                    index: 2,
+                    child: _InstrumentCard(
+                        stats: byBank, kind: _InstrumentKind.bank),
+                  ),
                   const SizedBox(height: AppSpacing.xxl),
-                  const SectionHeader(title: 'By account'),
-                  _InstrumentCard(
-                      stats: byAccount, kind: _InstrumentKind.account),
+                  const PageEntrance(
+                    index: 3,
+                    child: SectionHeader(title: 'By account'),
+                  ),
+                  PageEntrance(
+                    index: 3,
+                    child: _InstrumentCard(
+                        stats: byAccount, kind: _InstrumentKind.account),
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.xxl),
                 const _SourceNote(),

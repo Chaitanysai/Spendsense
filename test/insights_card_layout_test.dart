@@ -21,8 +21,8 @@ import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
 
 const _subtitle =
-    'Ask about your top categories, largest merchants, or how this month '
-    'compares — all answered on-device.';
+    'Ask about transactions, preview exclusions, or undo a change — '
+    'calculated on-device, with optional Gemini assistance.';
 
 Future<void> _pumpInsights(WidgetTester tester) async {
   // Galaxy S24 is the design target, and the device the bug was seen on is

@@ -6,8 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.android") // ✅ use this (not kotlin-android)
     id("dev.flutter.flutter-gradle-plugin")
 
-    // 🔥 Firebase plugin
-    // id("com.google.gms.google-services")
+    // Firebase plugin: reads android/app/google-services.json (gitignored) to
+    // bind this APK to the spendsense-ota-2026 project. Required by the
+    // firebase_auth and cloud_firestore plugins.
+    id("com.google.gms.google-services")
 }
 
 val keystorePropertiesFile = rootProject.file("key.properties")

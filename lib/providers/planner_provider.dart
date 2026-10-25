@@ -32,9 +32,11 @@ class CategoryBudgetStatus {
 class PlannerProvider with ChangeNotifier {
   static const _budgetsPrefsKey = 'planner_category_budgets_enc_v1';
   static const _plansPrefsKey = 'planner_recurring_plans_enc_v1';
+  static const _hiddenBillsPrefsKey = 'planner_hidden_auto_bills_enc_v1';
   static const _thresholdsPrefsKey = 'budget_alert_thresholds';
   static const budgetsRecordId = 'planner.category_budgets.v1';
   static const plansRecordId = 'planner.recurring_plans.v1';
+  static const hiddenBillsRecordId = 'planner.hidden_auto_bills.v1';
 
   /// Largest accepted budget (₹100 crore).
   static const int maxBudgetMinor = 100000000000;
@@ -43,6 +45,7 @@ class PlannerProvider with ChangeNotifier {
 
   Map<String, int> _categoryBudgets = {};
   List<RecurringPlan> _plans = [];
+  Set<String> _hiddenBillKeys = {};
   List<int> _thresholds = List.of(kDefaultBudgetThresholds);
   Object? _loadError;
   bool _isLoaded = false;
@@ -66,6 +69,10 @@ class PlannerProvider with ChangeNotifier {
 
   Map<String, int> get categoryBudgets => Map.unmodifiable(_categoryBudgets);
   List<RecurringPlan> get plans => List.unmodifiable(_plans);
+
+  /// Auto-detected bills the user explicitly dismissed. This is a display
+  /// preference only; it never hides a ledger transaction or a saved plan.
+  Set<String> get hiddenBillKeys => Set.unmodifiable(_hiddenBillKeys);
 
   /// Enabled warning thresholds (whole percentages), sorted.
   List<int> get thresholds => List.unmodifiable(_thresholds);
@@ -93,6 +100,10 @@ class PlannerProvider with ChangeNotifier {
 
       final plans = await _readRecord(prefs, _plansPrefsKey, plansRecordId);
       if (plans != null) _plans = _decodePlans(plans);
+
+      final hidden =
+          await _readRecord(prefs, _hiddenBillsPrefsKey, hiddenBillsRecordId);
+      if (hidden != null) _hiddenBillKeys = _decodeHiddenBills(hidden);
     } catch (error) {
       // Leave in-memory state empty but LOCKED: nothing on disk is touched.
       _loadError = error;
@@ -141,6 +152,20 @@ class PlannerProvider with ChangeNotifier {
       out[key] = value;
     }
     return out;
+  }
+
+  Set<String> _decodeHiddenBills(Object raw) {
+    if (raw is! Map || raw['schemaVersion'] != 1 || raw['keys'] is! List) {
+      throw const FormatException('Hidden bill record is invalid.');
+    }
+    final keys = <String>{};
+    for (final key in raw['keys'] as List) {
+      if (key is! String || key.trim().isEmpty || key.length > 200) {
+        throw const FormatException('Hidden bill key is invalid.');
+      }
+      keys.add(key);
+    }
+    return keys;
   }
 
   List<RecurringPlan> _decodePlans(Object raw) {
@@ -195,6 +220,11 @@ class PlannerProvider with ChangeNotifier {
         'schemaVersion': 1,
         'currency': 'INR',
         'plans': [for (final p in plans) p.toJson()],
+      };
+
+  Object _hiddenBillsJson(Set<String> keys) => {
+        'schemaVersion': 1,
+        'keys': keys.toList()..sort(),
       };
 
   /// Sets or replaces the budget for [category]. Persist first, then commit
@@ -270,6 +300,32 @@ class PlannerProvider with ChangeNotifier {
         final next = _plans.where((p) => p.id != id).toList();
         await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
         _plans = next;
+        _notify();
+      });
+
+  /// Hides one automatically detected bill. No transaction, plan or payment
+  /// history is modified; only the derived row is suppressed.
+  Future<void> hideAutoBill(String billerKey) => _serialized(() async {
+        await _initialization;
+        _requireWritable();
+        final key = billerKey.trim();
+        if (key.isEmpty) return;
+        final next = {..._hiddenBillKeys, key};
+        await _writeRecord(
+            _hiddenBillsPrefsKey, hiddenBillsRecordId, _hiddenBillsJson(next));
+        _hiddenBillKeys = next;
+        _notify();
+      });
+
+  /// Restores a previously hidden auto-detected bill (the undo path).
+  Future<void> unhideAutoBill(String billerKey) => _serialized(() async {
+        await _initialization;
+        _requireWritable();
+        if (!_hiddenBillKeys.contains(billerKey)) return;
+        final next = {..._hiddenBillKeys}..remove(billerKey);
+        await _writeRecord(
+            _hiddenBillsPrefsKey, hiddenBillsRecordId, _hiddenBillsJson(next));
+        _hiddenBillKeys = next;
         _notify();
       });
 

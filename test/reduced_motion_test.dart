@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:spendsense/providers/planner_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
 import 'package:spendsense/screens/insights_screen.dart';
+import 'package:spendsense/widgets/app_page_route.dart';
 import 'package:spendsense/widgets/app_states.dart';
 
 void _setReducedMotion(WidgetTester tester, {required bool enabled}) {
@@ -32,8 +34,11 @@ Future<ScrollController> _openAssistant(
   SharedPreferences.setMockInitialValues({});
 
   await tester.pumpWidget(
-    ChangeNotifierProvider(
-      create: (_) => TransactionProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => PlannerProvider()),
+      ],
       child: const MaterialApp(home: InsightsScreen()),
     ),
   );
@@ -45,7 +50,12 @@ Future<ScrollController> _openAssistant(
   await tester.pumpAndSettle();
 
   for (var i = 0; i < 5; i++) {
-    await tester.tap(find.text('Top category?'));
+    await tester.enterText(
+      find.byType(TextField),
+      'How many transactions do I have?',
+    );
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
   }
 
@@ -64,7 +74,9 @@ Future<void> _submitAssistantQuery(WidgetTester tester) async {
     find.byType(TextField),
     'How many transactions do I have?',
   );
+  await tester.pump();
   await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+  await tester.pump();
   await tester.pump();
 }
 
@@ -73,6 +85,8 @@ void main() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
+
+  setUp(AppPageRoute.debugResetInFlight);
 
   group('SkeletonBox reduced motion', () {
     testWidgets('renders a stable placeholder when animations are disabled',

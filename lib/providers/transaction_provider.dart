@@ -7,9 +7,11 @@ import '../utils/bank_recognizer.dart';
 import '../utils/period_math.dart';
 import '../utils/money_parser.dart';
 import '../services/sms_service.dart';
+import '../services/bill_classifier.dart';
 import '../services/smart_parser.dart';
 import '../services/gemini_service.dart';
 import '../services/transaction_cache_service.dart';
+import '../services/ledger_tombstone_store.dart';
 import '../services/budget_monitor_service.dart';
 
 class TransactionProvider with ChangeNotifier {
@@ -25,6 +27,7 @@ class TransactionProvider with ChangeNotifier {
   int _newThisSync = 0;
 
   final TransactionCacheService _cache = TransactionCacheService();
+  final LedgerTombstoneStore _tombstones = LedgerTombstoneStore();
   final BudgetMonitorService _budgetMonitor = BudgetMonitorService();
   late final Future<void> _initialization;
   bool _disposed = false;
@@ -107,6 +110,43 @@ class TransactionProvider with ChangeNotifier {
     final done = previous.then((_) => action());
     _dbLock = done.then((_) {}, onError: (_) {});
     return done;
+  }
+
+  /// Stamps a transaction with sync metadata: a fresh syncId when it has
+  /// none, and a modification timestamp kept strictly monotonic per record
+  /// (moved one millisecond past the previous stamp if the clock has not
+  /// advanced) so the sync layer can order every change.
+  TransactionModel _stampSyncMeta(TransactionModel tx) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final stamped = tx.copyWith(
+      updatedAtMs: now > tx.updatedAtMs ? now : tx.updatedAtMs + 1,
+    );
+    if (stamped.syncId.isNotEmpty) return stamped;
+    return stamped.copyWith(syncId: TransactionModel.newSyncId());
+  }
+
+  /// Re-reads the ledger from the cache and replaces the in-memory list, so an
+  /// external write (e.g. from the sync layer) becomes visible. Serialised
+  /// with the same write lock as every local write, so a pull can never
+  /// interleave with a local write.
+  Future<void> reloadFromStore() async {
+    await _initialization;
+    await _locked(() => _loadFromCache());
+    _notifyIfAlive();
+  }
+
+  /// Records deletion tombstones for snapshots about to be removed, so a
+  /// later pull cannot resurrect them. Fail-soft: deletion always proceeds.
+  Future<void> _recordTombstones(List<TransactionModel> removed) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _tombstones.addAll([
+      for (final tx in removed)
+        LedgerTombstone(
+          syncId: tx.syncId,
+          id: tx.id,
+          deletedAtMs: now,
+        )
+    ]);
   }
 
   Future<void> _init() async {
@@ -458,6 +498,7 @@ class TransactionProvider with ChangeNotifier {
         }
 
         if (finalResult != null) {
+          finalResult = _stampSyncMeta(_withBillHint(finalResult, msg.body));
           newTxs.add(finalResult);
           final newIds = {finalResult.id};
           _transactions.removeWhere((t) => newIds.contains(t.id));
@@ -559,16 +600,19 @@ class TransactionProvider with ChangeNotifier {
           }
         }
         if (result != null) {
+          result = _withBillHint(result, msg.body);
           // A rebuild must not discard a user's own edits to a known row.
           final existing =
               _transactions.where((t) => t.id == result!.id).firstOrNull;
           staged.add(existing == null
-              ? result
+              ? _stampSyncMeta(result)
               : result.copyWith(
                   category: existing.category,
                   isExcluded: existing.isExcluded,
                   needsReview: false,
                   bank: existing.bank,
+                  syncId: existing.syncId,
+                  updatedAtMs: existing.updatedAtMs,
                 ));
         }
       }
@@ -615,12 +659,119 @@ class TransactionProvider with ChangeNotifier {
     if (_ledgerInitError != null) return;
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) {
-      _transactions[index] = _transactions[index].copyWith(
+      final updated = _stampSyncMeta(_transactions[index].copyWith(
         isExcluded: !_transactions[index].isExcluded,
-      );
-      await _cache.put(_transactions[index]);
+      ));
+      _transactions[index] = updated;
+      await _cache.put(updated);
       _notifyIfAlive();
     }
+  }
+
+  /// Sets the exclusion flag on several records through ONE journalled write.
+  ///
+  /// Returns how many records actually changed. Memory is updated only after
+  /// the encrypted write verifies, so a failed write cannot make the dashboard
+  /// show a change that is not persisted. All dependent screens rebuild from
+  /// this provider, preserving a single source of spending truth.
+  Future<int> setExclusionForIds(
+    Set<String> ids,
+    bool isExcluded,
+  ) async {
+    await _initialization;
+    if (_ledgerInitError != null) {
+      throw StateError('The ledger is unreadable; no change was made.');
+    }
+    if (ids.isEmpty) return 0;
+    return _locked(() async {
+      final updated = <TransactionModel>[];
+      for (final tx in _transactions) {
+        if (!ids.contains(tx.id) || tx.isExcluded == isExcluded) continue;
+        updated.add(_stampSyncMeta(tx.copyWith(isExcluded: isExcluded)));
+      }
+      if (updated.isEmpty) return 0;
+      await _cache.putAll(updated);
+      final byId = {for (final tx in updated) tx.id: tx};
+      for (var i = 0; i < _transactions.length; i++) {
+        final replacement = byId[_transactions[i].id];
+        if (replacement != null) _transactions[i] = replacement;
+      }
+      _notifyIfAlive();
+      return updated.length;
+    });
+  }
+
+  /// Deletes several records through one journalled index switch. Returns the
+  /// exact snapshots that were removed (for the assistant audit/undo trail).
+  Future<List<TransactionModel>> deleteTransactionsByIds(
+    Set<String> ids,
+  ) async {
+    await _initialization;
+    if (_ledgerInitError != null) {
+      throw StateError('The ledger is unreadable; no change was made.');
+    }
+    if (ids.isEmpty) return const [];
+    return _locked(() async {
+      final removed = [
+        for (final tx in _transactions)
+          if (ids.contains(tx.id)) tx
+      ];
+      if (removed.isEmpty) return const <TransactionModel>[];
+      await _cache.removeMany(ids);
+      // Best-effort: a failed tombstone write must not prevent local deletion.
+      await _recordTombstones(removed);
+      final removedIds = {for (final tx in removed) tx.id};
+      _transactions.removeWhere((tx) => removedIds.contains(tx.id));
+      _notifyIfAlive();
+      return removed;
+    });
+  }
+
+  Future<int> restoreTransactions(List<TransactionModel> snapshots) async {
+    await _initialization;
+    if (_ledgerInitError != null) {
+      throw StateError('The ledger is unreadable; no change was made.');
+    }
+    if (snapshots.isEmpty) return 0;
+    return _locked(() async {
+      snapshots = [for (final s in snapshots) _stampSyncMeta(s)];
+      await _cache.putAll(snapshots);
+      final byId = {for (final tx in snapshots) tx.id: tx};
+      _transactions = [
+        for (final tx in _transactions)
+          if (!byId.containsKey(tx.id)) tx else byId[tx.id]!,
+        for (final tx in snapshots)
+          if (!_transactions.any((existing) => existing.id == tx.id)) tx,
+      ]..sort((a, b) => b.date.compareTo(a.date));
+      _notifyIfAlive();
+      return snapshots.length;
+    });
+  }
+
+  /// Restores the exact pre-change exclusion flags for an undo.
+  Future<int> restoreExclusionStates(Map<String, bool> previousStates) async {
+    await _initialization;
+    if (_ledgerInitError != null) {
+      throw StateError('The ledger is unreadable; no change was made.');
+    }
+    if (previousStates.isEmpty) return 0;
+    return _locked(() async {
+      final updated = <TransactionModel>[];
+      for (final tx in _transactions) {
+        final target = previousStates[tx.id];
+        if (target == null || tx.isExcluded == target) continue;
+        updated.add(_stampSyncMeta(tx.copyWith(isExcluded: target)));
+      }
+      if (updated.isEmpty) return 0;
+      await _cache.putAll(updated);
+      final byId = {for (final tx in updated) tx.id: tx};
+      for (var i = 0; i < _transactions.length; i++) {
+        final replacement = byId[_transactions[i].id];
+        if (replacement != null) _transactions[i] = replacement;
+      }
+      _notifyIfAlive();
+      return updated.length;
+    });
   }
 
   Future<void> updateCategory(String id, String newCategory) async {
@@ -628,11 +779,12 @@ class TransactionProvider with ChangeNotifier {
     if (_ledgerInitError != null) return;
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) {
-      _transactions[index] = _transactions[index].copyWith(
+      final updated = _stampSyncMeta(_transactions[index].copyWith(
         category: newCategory,
         needsReview: false,
-      );
-      await _cache.put(_transactions[index]);
+      ));
+      _transactions[index] = updated;
+      await _cache.put(updated);
       _notifyIfAlive();
     }
   }
@@ -651,7 +803,7 @@ class TransactionProvider with ChangeNotifier {
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index == -1) return;
 
-    _transactions[index] = _transactions[index].copyWith(
+    _transactions[index] = _stampSyncMeta(_transactions[index].copyWith(
       amountMinor: amount,
       merchant: merchant,
       category: category,
@@ -661,7 +813,7 @@ class TransactionProvider with ChangeNotifier {
       // A supplied value (including an empty string, which clears the bank)
       // wins; omitting it preserves whatever was already stored.
       bank: bank,
-    );
+    ));
     await _cache.put(_transactions[index]);
     _notifyIfAlive();
   }
@@ -669,9 +821,10 @@ class TransactionProvider with ChangeNotifier {
   Future<void> addTransaction(TransactionModel transaction) async {
     await _initialization;
     if (_ledgerInitError != null) return;
-    _transactions.add(transaction);
+    final stamped = _stampSyncMeta(transaction);
+    _transactions.add(stamped);
     _transactions.sort((a, b) => b.date.compareTo(a.date));
-    await _cache.put(transaction);
+    await _cache.put(stamped);
     _notifyIfAlive();
   }
 
@@ -687,6 +840,22 @@ class TransactionProvider with ChangeNotifier {
       return primary.copyWith(bank: fallback.bank);
     }
     return primary;
+  }
+
+  /// Adds the non-sensitive bill hint while the authorized SMS body is still
+  /// in scope. This keeps detection working after the raw body is discarded.
+  TransactionModel _withBillHint(TransactionModel tx, String sms) {
+    final signal = const BillClassifier().classifyText(
+      sms,
+      merchant: tx.merchant,
+      category: tx.category,
+      amountMinor: tx.amountMinor,
+      reference: tx.reference,
+    );
+    return tx.copyWith(
+      billKindHint: signal.kind.name,
+      billReminderHint: signal.reminderOnly,
+    );
   }
 
   /// The salary cycle that is "now" for everything cycle-oriented: Home's

@@ -22,6 +22,7 @@ import '../widgets/app_states.dart';
 import '../widgets/budget_summary.dart';
 import '../widgets/category_spending_bars.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/pressable.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/quick_action_tile.dart';
@@ -100,12 +101,14 @@ class _HomeScreenState extends State<HomeScreen> {
             // saturated surface on the screen; everything below it is a calm
             // white/near-black card.
             SliverToBoxAdapter(
-              child: _HeaderSection(
-                auth: auth,
-                provider: provider,
-                balanceVisible: _balanceVisible,
-                onToggleBalance: () =>
-                    setState(() => _balanceVisible = !_balanceVisible),
+              child: PageEntrance(
+                child: _HeaderSection(
+                  auth: auth,
+                  provider: provider,
+                  balanceVisible: _balanceVisible,
+                  onToggleBalance: () =>
+                      setState(() => _balanceVisible = !_balanceVisible),
+                ),
               ),
             ),
             SliverPadding(
@@ -119,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? _editSliver(context)
                   : SliverList(
                       delegate: SliverChildListDelegate([
-                        const _QuickActions(),
+                        const PageEntrance(child: _QuickActions()),
                         if (prefs != null) ...[
                           const SizedBox(height: AppSpacing.md),
                           Align(
@@ -133,14 +136,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: AppSpacing.xs),
                         ] else
                           const SizedBox(height: AppSpacing.xxl),
-                        for (final id in (prefs?.visibleSectionOrder ??
-                            DashboardSection.ids))
+                        for (final (sectionIndex, id)
+                            in (prefs?.visibleSectionOrder ??
+                                    DashboardSection.ids)
+                                .indexed)
                           ..._section(
                             context,
                             id,
                             provider,
                             trackedTransactions,
                             trackedExpenses,
+                          ).map(
+                            (widget) => PageEntrance(
+                              index: sectionIndex + 1,
+                              child: widget,
+                            ),
                           ),
                       ]),
                     ),
@@ -372,9 +382,13 @@ class _HomeScreenState extends State<HomeScreen> {
           onAction: () => provider.syncFromSms(userInitiated: true),
         )
       else
-        ...trackedTransactions
-            .take(20)
-            .map((tx) => TransactionTile(transaction: tx)),
+        ...trackedTransactions.take(20).toList().asMap().entries.map(
+              (entry) => PageEntrance(
+                index: entry.key,
+                offset: 0.04,
+                child: TransactionTile(transaction: entry.value),
+              ),
+            ),
       if (trackedTransactions.isNotEmpty && provider.isSyncing)
         Padding(
           padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -1046,6 +1060,13 @@ class _DailySpendCard extends StatelessWidget {
           SizedBox(
             height: 104,
             child: TweenAnimationBuilder<double>(
+              // Replays the seven-day bars when the dashboard is entered
+              // again; a normal rebuild keeps the same key and does not
+              // restart a finished chart.
+              key: ValueKey(
+                'daily-spend-entry-'
+                '${PageEntryScope.maybeOf(context)?.generation ?? 0}',
+              ),
               tween: Tween(begin: 0, end: 1),
               duration: AppMotion.respect(context, AppMotion.chart),
               curve: AppMotion.emphasized,

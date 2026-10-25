@@ -1,52 +1,59 @@
 {
   "hosting": {
     "public": "ota/public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {
         "source": "/manifest.json",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, max-age=0, must-revalidate"
-          }
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
         ]
       },
       {
         "source": "/releases/**",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
         ]
       },
       {
         "source": "**/*.apk",
         "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/vnd.android.package-archive"
-          }
+          { "key": "Content-Type", "value": "application/vnd.android.package-archive" }
         ]
       },
       {
         "source": "**",
         "headers": [
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          },
-          {
-            "key": "Strict-Transport-Security",
-            "value": "max-age=31536000; includeSubDomains"
-          }
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
         ]
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": {
+    "source": "backend/assistant_proxy",
+    "runtime": "nodejs22"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "spendsense-ota-2026",
+          "appId": "1:35486869641:android:62072850e90abafabc7e58",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "spendsense-ota-2026",
+          "configurations": {
+            "android": "1:35486869641:android:62072850e90abafabc7e58"
+          }
+        }
+      }
+    }
   }
 }

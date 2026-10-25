@@ -147,6 +147,16 @@ jobs:
           fi
           echo "Release keystore prepared."
 
+      - name: Verify Firebase client config
+        run: |
+          # The google-services Gradle plugin fails cryptically when this file
+          # is absent, so fail early with an actionable message instead.
+          if [ ! -s android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json is missing. It is tracked in Git; restore it before building."
+            exit 1
+          fi
+          echo "Firebase client config present."
+
       - name: Build release APK
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}

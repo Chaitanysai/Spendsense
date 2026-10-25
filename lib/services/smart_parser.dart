@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/transaction_model.dart';
+import 'bill_classifier.dart';
 import 'sms_content_policy.dart';
 import '../utils/bank_recognizer.dart';
 import '../utils/money_parser.dart';
@@ -139,6 +140,17 @@ class SmartParser {
     final bank = _detectBank(smsText);
     final account = _extractAccount(smsText);
     final reference = _extractReference(smsText);
+    // Persist only the non-sensitive classification hint before the raw body
+    // is discarded. The classifier needs the message wording to distinguish,
+    // for example, a broadband bill from a generic bank debit and a prepaid
+    // recharge from a postpaid bill.
+    final billSignal = const BillClassifier().classifyText(
+      smsText,
+      merchant: merchant,
+      category: category,
+      amountMinor: amountMinor,
+      reference: reference,
+    );
 
     // Compute confidence score (0.0 to 1.0)
     double confidence = 0.7; // explicit debit + contextual amount
@@ -169,6 +181,8 @@ class SmartParser {
       source: 'SMS-Parser',
       confidence: confidence,
       needsReview: needsReview,
+      billKindHint: billSignal.kind.name,
+      billReminderHint: billSignal.reminderOnly,
     );
     // Acceptance is logged WITHOUT the parsed values: the amount, merchant,
     // bank and reference are financial data and must not reach the device log

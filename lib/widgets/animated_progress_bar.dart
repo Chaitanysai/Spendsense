@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
 /// The one horizontal progress bar used across SpendSense.
 ///
@@ -83,6 +84,10 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   bool _started = false;
   bool _reduceMotion = false;
 
+  /// Last page-entry generation observed. A new generation replays the fill
+  /// from zero; an ordinary rebuild leaves the completed bar untouched.
+  int? _generation;
+
   double get _target {
     final value = widget.fraction;
     if (!value.isFinite) return 0;
@@ -99,14 +104,33 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // MediaQuery is only readable from here, not initState.
-    _reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) == true;
-    if (_started) {
-      // The accessibility setting changed mid-life: settle on the target.
-      if (_reduceMotion) _settle();
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) == true;
+    final generation = PageEntryScope.maybeOf(context)?.generation;
+    final wasReduced = _reduceMotion;
+    _reduceMotion = reduced;
+
+    if (!_started) {
+      _started = true;
+      _generation = generation;
+      _to = _target;
+      _beginFirstFill();
       return;
     }
-    _started = true;
-    _to = _target;
+
+    // A genuine page entry: replay from the initial visual state. The finite
+    // `_generation` comparison is what keeps unrelated parent rebuilds from
+    // restarting a finished bar.
+    if (generation != null && generation != _generation) {
+      _generation = generation;
+      _replay();
+      return;
+    }
+
+    // The accessibility setting changed mid-life: settle on the target.
+    if (reduced && !wasReduced) _settle();
+  }
+
+  void _beginFirstFill() {
     if (!widget.animate ||
         _reduceMotion ||
         _to <= 0 ||
@@ -114,6 +138,25 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
       _settle();
       return;
     }
+    _from = 0;
+    _controller.value = 0;
+    _scheduleStart(widget.delay);
+  }
+
+  void _replay() {
+    _delayTimer?.cancel();
+    _delayTimer = null;
+    _controller.stop();
+    _to = _target;
+
+    if (!widget.animate ||
+        _reduceMotion ||
+        _to <= 0 ||
+        widget.duration == Duration.zero) {
+      _settle();
+      return;
+    }
+
     _from = 0;
     _controller.value = 0;
     _scheduleStart(widget.delay);
@@ -189,15 +232,15 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
               children: [
                 ColoredBox(color: track),
                 FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: value,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: widget.gradient == null ? fill : null,
-                        gradient: widget.gradient,
-                      ),
+                  alignment: Alignment.centerLeft,
+                  widthFactor: value,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: widget.gradient == null ? fill : null,
+                      gradient: widget.gradient,
                     ),
                   ),
+                ),
               ],
             ),
           ),

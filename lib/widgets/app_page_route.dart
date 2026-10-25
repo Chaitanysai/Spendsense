@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
 /// Smooth shared page transition: subtle slide-up + fade, matching the
 /// reference's "smooth transitions" language. Reduced-motion aware.
@@ -15,8 +16,11 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
   }) : super(
           transitionDuration: duration,
           reverseTransitionDuration: AppMotion.fast,
+          // Every pushed page owns its entry lifecycle: the first build plays
+          // its content entrance, and `didPopNext` replays it when the user
+          // returns from a deeper route. The page is never remounted.
           pageBuilder: (context, animation, secondaryAnimation) =>
-              builder(context),
+              PageEntryHost(child: builder(context)),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final reduced =
                 MediaQuery.maybeDisableAnimationsOf(context) == true;

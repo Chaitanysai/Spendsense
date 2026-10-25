@@ -145,8 +145,7 @@ void main() {
     test('single-byte ciphertext flip fails authentication', () async {
       final encryption = LedgerEncryptionService();
       await encryption.createKeyIfMissing();
-      final encoded =
-          await encryption.encryptText('payload', recordId: 'r1');
+      final encoded = await encryption.encryptText('payload', recordId: 'r1');
       final envelope = jsonDecode(encoded) as Map<String, dynamic>;
       envelope['ciphertext'] = _flipFirstChar(envelope['ciphertext'] as String);
 
@@ -159,8 +158,7 @@ void main() {
     test('replaced authentication tag fails decryption', () async {
       final encryption = LedgerEncryptionService();
       await encryption.createKeyIfMissing();
-      final encoded =
-          await encryption.encryptText('payload', recordId: 'r1');
+      final encoded = await encryption.encryptText('payload', recordId: 'r1');
       final envelope = jsonDecode(encoded) as Map<String, dynamic>;
       envelope['mac'] =
           base64UrlEncode(List<int>.filled(16, 0)); // valid base64, wrong tag
@@ -174,8 +172,7 @@ void main() {
     test('tampered nonce fails decryption', () async {
       final encryption = LedgerEncryptionService();
       await encryption.createKeyIfMissing();
-      final encoded =
-          await encryption.encryptText('payload', recordId: 'r1');
+      final encoded = await encryption.encryptText('payload', recordId: 'r1');
       final envelope = jsonDecode(encoded) as Map<String, dynamic>;
       envelope['nonce'] = _flipFirstChar(envelope['nonce'] as String);
 
@@ -188,8 +185,7 @@ void main() {
     test('envelope with non-string nonce is rejected', () async {
       final encryption = LedgerEncryptionService();
       await encryption.createKeyIfMissing();
-      final encoded =
-          await encryption.encryptText('payload', recordId: 'r1');
+      final encoded = await encryption.encryptText('payload', recordId: 'r1');
       final envelope = jsonDecode(encoded) as Map<String, dynamic>;
       envelope['nonce'] = 12345;
 
@@ -233,10 +229,13 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       final cache = TransactionCacheService();
-      await cache.init(); // the index itself still authenticates
-
+      // Sync metadata migration reads payloads during init, so the tamper may
+      // surface there or on loadAll; both are fail-closed.
       await expectLater(
-        cache.loadAll(),
+        () async {
+          await cache.init();
+          await cache.loadAll();
+        },
         throwsA(isA<LedgerMigrationException>()),
       );
       expect(
@@ -404,8 +403,7 @@ void main() {
         23950,
       );
       expect(
-        (await SharedPreferences.getInstance())
-            .getString('txj_import_journal'),
+        (await SharedPreferences.getInstance()).getString('txj_import_journal'),
         isNull,
       );
     });

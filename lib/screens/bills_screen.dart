@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../models/recurring_plan.dart';
 import '../providers/planner_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../services/bill_classifier.dart';
 import '../services/bill_detection_service.dart';
-import '../services/recurring_detector_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -16,6 +16,7 @@ import '../widgets/app_sheet.dart';
 import '../widgets/app_states.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/plan_editor.dart';
 import '../widgets/pressable.dart';
 
@@ -50,9 +51,10 @@ class _BillsScreenState extends State<BillsScreen> {
     final today = DateTime.now();
 
     final all = _detector.detect(
-      plans: planner?.plans ?? const <RecurringPlan>[],
+      plans: planner?.plans ?? const [],
       transactions: tx.transactions,
       today: today,
+      hiddenBillKeys: planner?.hiddenBillKeys ?? const {},
     );
     final visible =
         _filter == null ? all : all.where((v) => v.state == _filter).toList();
@@ -63,46 +65,55 @@ class _BillsScreenState extends State<BillsScreen> {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.page,
-                  AppSpacing.lg,
-                  AppSpacing.page,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('Bills', style: AppText.h1(context)),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: (planner == null || planner.hasLoadError)
-                              ? null
-                              : () => showPlanEditor(context),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Add'),
+            child: PageEntrance(
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.lg,
+                    AppSpacing.page,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Bills', style: AppText.h1(context)),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: (planner == null || planner.hasLoadError)
+                                ? null
+                                : () => showPlanEditor(context),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Add'),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Detected bills and the commitments you planned',
+                        style: AppText.body(context),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      PageEntrance(
+                        index: 1,
+                        child: _Overview(views: all, today: today),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      PageEntrance(
+                        index: 2,
+                        child: _Filters(
+                          selected: _filter,
+                          onSelect: (s) => setState(() => _filter = s),
+                          counts: {
+                            for (final state in BillState.values)
+                              state: all.where((v) => v.state == state).length,
+                          },
                         ),
-                      ],
-                    ),
-                    Text('Upcoming payments and what already looks paid',
-                        style: AppText.body(context)),
-                    const SizedBox(height: AppSpacing.xl),
-                    _Overview(views: all, today: today),
-                    const SizedBox(height: AppSpacing.lg),
-                    _Filters(
-                      selected: _filter,
-                      onSelect: (s) => setState(() => _filter = s),
-                      counts: {
-                        for (final state in BillState.values)
-                          state:
-                              all.where((v) => v.state == state).length,
-                      },
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -128,13 +139,17 @@ class _BillsScreenState extends State<BillsScreen> {
                 child: Center(
                   child: AppEmptyState(
                     icon: Icons.event_available_rounded,
-                    title: _filter == null ? 'No bills yet' : 'Nothing here',
+                    title: _filter == null
+                        ? 'No bills detected yet'
+                        : 'Nothing here',
                     message: _filter == null
-                        ? 'Add a recurring bill, or let SpendSense suggest one '
-                            'from payments it has already seen.'
+                        ? 'SpendSense adds utility, loan, insurance, rent and '
+                            'subscription bills automatically from your '
+                            'payments. You can also add one manually.'
                         : 'No bills in this state right now.',
-                    actionLabel:
-                        _filter == null && planner != null ? 'Add a bill' : null,
+                    actionLabel: _filter == null && planner != null
+                        ? 'Add a bill'
+                        : null,
                     onAction: _filter == null && planner != null
                         ? () => showPlanEditor(context)
                         : null,
@@ -156,11 +171,14 @@ class _BillsScreenState extends State<BillsScreen> {
                   final view = visible[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: _BillRow(
-                      view: view,
-                      onTap: () => _openDetail(context, view),
-                      onMarkPaid: () => _markPaid(context, view),
-                      onTrack: () => _track(context, view),
+                    child: PageEntrance(
+                      index: index,
+                      offset: 0.04,
+                      child: _BillRow(
+                        view: view,
+                        onTap: () => _openDetail(context, view),
+                        onMarkPaid: () => _markPaid(context, view),
+                      ),
                     ),
                   );
                 },
@@ -190,61 +208,35 @@ class _BillsScreenState extends State<BillsScreen> {
     );
   }
 
-  Future<void> _track(BuildContext context, BillView view) async {
-    final suggestion = view.suggestion;
-    if (suggestion == null) return;
+  Future<void> _hideAutoBill(BuildContext sheetContext, BillView view) async {
+    final key = view.billerKey;
     final planner = context.read<PlannerProvider?>();
+    if (key == null || planner == null) return;
     final messenger = ScaffoldMessenger.of(context);
-    if (planner == null) return;
-    final due = const BillDetectionService().estimateNextDue(suggestion) ??
-        DateTime.now();
-    final plan = RecurringPlan.create(
-      id: BillDetectionService.planIdFor(suggestion),
-      title: suggestion.merchant.isEmpty
-          ? suggestion.category
-          : suggestion.merchant,
-      category: suggestion.category,
-      amountMinor: suggestion.averageAmountMinor,
-      frequency: _frequencyOf(suggestion.frequency),
-      nextDue: due,
-      sourceTransactionId: suggestion.transactions.isEmpty
-          ? null
-          : suggestion.transactions.first.id,
+    await planner.hideAutoBill(key);
+    if (!mounted || !sheetContext.mounted) return;
+    Navigator.of(sheetContext).pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${view.title} hidden from bills'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => planner.unhideAutoBill(key),
+        ),
+      ),
     );
-    try {
-      await planner.addPlan(plan);
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('${plan.title} added to bills')),
-      );
-    } on ArgumentError {
-      // Already tracked from an earlier tap: keep it idempotent.
-    } on FormatException catch (error) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
-  static PlanFrequency _frequencyOf(RecurrenceFrequency frequency) {
-    switch (frequency) {
-      case RecurrenceFrequency.daily:
-        return PlanFrequency.weekly;
-      case RecurrenceFrequency.weekly:
-        return PlanFrequency.weekly;
-      case RecurrenceFrequency.biWeekly:
-        return PlanFrequency.biWeekly;
-      case RecurrenceFrequency.monthly:
-        return PlanFrequency.monthly;
-      case RecurrenceFrequency.irregular:
-        return PlanFrequency.monthly;
-    }
   }
 
   void _openDetail(BuildContext context, BillView view) {
     showAppSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _BillDetail(view: view),
+      builder: (sheetContext) => _BillDetail(
+        view: view,
+        onHide: view.isAutoDetected
+            ? () => _hideAutoBill(sheetContext, view)
+            : null,
+      ),
     );
   }
 }
@@ -257,10 +249,9 @@ class _Overview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dueSoon = views.where((v) =>
-        v.state == BillState.overdue || v.state == BillState.dueSoon);
-    final dueTotal =
-        dueSoon.fold<int>(0, (sum, v) => sum + v.amountMinor);
+    final dueSoon = views.where(
+        (v) => v.state == BillState.overdue || v.state == BillState.dueSoon);
+    final dueTotal = dueSoon.fold<int>(0, (sum, v) => sum + v.amountMinor);
     final overdue = views.where((v) => v.state == BillState.overdue).length;
     final paid = views.where((v) => v.state == BillState.paid).length;
 
@@ -376,8 +367,7 @@ class _Filters extends StatelessWidget {
       child: Pressable(
         onTap: () => onSelect(state),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: active
                 ? AppColors.brand.withValues(alpha: 0.14)
@@ -409,13 +399,11 @@ class _BillRow extends StatelessWidget {
   final BillView view;
   final VoidCallback onTap;
   final VoidCallback onMarkPaid;
-  final VoidCallback onTrack;
 
   const _BillRow({
     required this.view,
     required this.onTap,
     required this.onMarkPaid,
-    required this.onTrack,
   });
 
   @override
@@ -480,19 +468,16 @@ class _BillRow extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              if (view.isSuggestion) ...[
-                OutlinedButton(
-                  onPressed: onTrack,
-                  child: const Text('Track as bill'),
-                ),
-              ] else if (view.state != BillState.paid) ...[
+              if (view.isConfirmed && view.state != BillState.paid) ...[
                 OutlinedButton(
                   onPressed: onMarkPaid,
                   child: const Text('Mark paid'),
                 ),
-              ] else
-                Text('Matched to a payment',
-                    style: AppText.label(context).copyWith(fontSize: 12)),
+              ] else if (view.state == BillState.paid)
+                Text(
+                  'Matched to a payment',
+                  style: AppText.label(context).copyWith(fontSize: 12),
+                ),
               const Spacer(),
               TextButton(
                 onPressed: onTap,
@@ -509,18 +494,29 @@ class _BillRow extends StatelessWidget {
         BillState.paid => AppColors.incomeGreen,
         BillState.overdue => AppColors.expenseRed,
         BillState.dueSoon => AppColors.amber,
-        BillState.needsReview => AppColors.brandInk(context),
         BillState.upcoming => AppColors.textSecondary(context),
       };
 
   static String _subtitle(BillView view) {
-    if (view.isSuggestion) {
-      final n = view.suggestion!.occurrenceCount;
-      return 'Suggested from $n payments · ${view.suggestion!.frequencyLabel}';
+    final fmt = DateFormat('d MMM');
+    if (view.isAutoDetected) {
+      final auto = view.autoBill!;
+      final confidence = '${(auto.confidence * 100).round()}% confidence';
+      if (view.state == BillState.paid) {
+        final paidOn = view.matchedPayment?.date;
+        return 'Auto-detected · paid ${fmt.format(paidOn ?? auto.dueDate)}'
+            ' · $confidence';
+      }
+      final kind = auto.kind.label;
+      final pattern =
+          auto.isRecurring ? '$kind · ${auto.occurrenceCount} payments' : kind;
+      final due = view.dueDate;
+      return due == null
+          ? '$pattern · $confidence'
+          : '$pattern · due ${fmt.format(due)} · $confidence';
     }
     final due = view.dueDate;
     if (due == null) return view.category;
-    final fmt = DateFormat('d MMM');
     switch (view.state) {
       case BillState.paid:
         final paidOn = view.matchedPayment?.date;
@@ -534,8 +530,6 @@ class _BillRow extends StatelessWidget {
       case BillState.dueSoon:
       case BillState.upcoming:
         return 'Due ${fmt.format(due)} · ${view.plan?.frequency.label ?? ''}';
-      case BillState.needsReview:
-        return view.category;
     }
   }
 }
@@ -568,8 +562,9 @@ class _StateChip extends StatelessWidget {
 
 class _BillDetail extends StatelessWidget {
   final BillView view;
+  final VoidCallback? onHide;
 
-  const _BillDetail({required this.view});
+  const _BillDetail({required this.view, this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -590,15 +585,26 @@ class _BillDetail extends StatelessWidget {
             ),
             if (view.dueDate != null) ...[
               const SizedBox(height: 2),
-              Text('Next due ${fmt.format(view.dueDate!)}',
-                  style: AppText.label(context)),
+              Text(
+                view.state == BillState.paid
+                    ? 'Paid on ${fmt.format(view.dueDate!)}'
+                    : 'Next due ${fmt.format(view.dueDate!)}',
+                style: AppText.label(context),
+              ),
+            ],
+            if (view.confidence != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Auto-detected · '
+                '${(view.confidence! * 100).round()}% confidence',
+                style: AppText.label(context).copyWith(fontSize: 11),
+              ),
             ],
             const SizedBox(height: AppSpacing.lg),
             Text('PAYMENT HISTORY', style: AppText.overline(context)),
             const SizedBox(height: AppSpacing.sm),
             if (view.history.isEmpty)
-              Text('No matching payments found.',
-                  style: AppText.body(context))
+              Text('No matching payments found.', style: AppText.body(context))
             else
               for (final t in view.history)
                 Padding(
@@ -610,7 +616,8 @@ class _BillDetail extends StatelessWidget {
                           '${fmt.format(t.date)} · ${t.merchant}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppText.label(context).copyWith(fontSize: 12.5),
+                          style:
+                              AppText.label(context).copyWith(fontSize: 12.5),
                         ),
                       ),
                       Text(Formatters.currency.format(t.amountMinor),
@@ -620,11 +627,22 @@ class _BillDetail extends StatelessWidget {
                 ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Payments are matched by category, a 2% amount tolerance and a '
-              'window around the due date. A reminder alone never marks a bill '
-              'paid.',
+              'Payments need a biller, reference or category match plus a 2% '
+              'amount tolerance inside the due window. A reminder alone never '
+              'marks a bill paid.',
               style: AppText.label(context).copyWith(fontSize: 11),
             ),
+            if (onHide != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onHide,
+                  icon: const Icon(Icons.visibility_off_outlined, size: 18),
+                  label: const Text('Not a bill'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -15,6 +15,7 @@ import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
 import 'package:spendsense/widgets/fade_indexed_stack.dart';
 import 'package:spendsense/widgets/fade_slide_in.dart';
+import 'package:spendsense/widgets/page_entry.dart';
 
 /// A tab body that counts how often its State is created, like the real tab
 /// screens (no GlobalKey, const instances held by the shell).
@@ -151,7 +152,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('an entrance animation plays once, not on every revisit',
+    testWidgets('a retained tab replays its entrance when selected again',
         (tester) async {
       final children = [
         const Text('A'),
@@ -167,8 +168,8 @@ void main() {
 
       double entranceOpacity() => tester
           .widget<FadeTransition>(find
-              .ancestor(
-                of: find.text('B-content'),
+              .descendant(
+                of: find.byType(PageEntrance),
                 matching: find.byType(FadeTransition),
               )
               .first)
@@ -179,9 +180,19 @@ void main() {
       await tester.pumpWidget(host(0));
       await tester.pumpAndSettle();
       await tester.pumpWidget(host(1));
+      await tester.pump(); // replay is scheduled for this frame
+      await tester.pump();
+      expect(entranceOpacity(), lessThan(1.0),
+          reason: 'returning to a retained tab must restart its entrance');
+
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(entranceOpacity(), 1.0);
+
+      // An unrelated rebuild must not start it again.
+      await tester.pumpWidget(host(1));
       await tester.pump();
       expect(entranceOpacity(), 1.0,
-          reason: 'the inner entrance must not restart on a revisit');
+          reason: 'only a page entry may replay a finished animation');
     });
   });
 

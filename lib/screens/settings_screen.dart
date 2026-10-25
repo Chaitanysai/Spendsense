@@ -26,12 +26,15 @@ import '../utils/app_text_styles.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/sound_scope.dart';
 import '../widgets/pressable.dart';
 import '../utils/formatters.dart';
 import '../utils/money_parser.dart';
 import 'ai_settings_screen.dart';
 import 'appearance_screen.dart';
+import 'assistant_privacy_screen.dart';
+import 'assistant_screen.dart';
 import 'budgets_screen.dart';
 import 'recurring_screen.dart';
 import 'sound_settings_screen.dart';
@@ -172,6 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _sectionLabel('Personalisation'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
+              entranceIndex: 1,
               children: [
                 _SettingsTile(
                   icon: Icons.person_outline_rounded,
@@ -185,10 +189,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
 
+            // Account identity only makes sense once Firebase auth is wired
+            // and the user is actually signed in; hiding it otherwise keeps
+            // the local-only experience unchanged.
+            if (auth.isFirebaseAvailable && auth.isSignedIn) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              _sectionLabel('Account'),
+              const SizedBox(height: AppSpacing.sm),
+              _SettingsCard(
+                entranceIndex: 2,
+                children: [
+                  // Read-only: the email is managed by Firebase, so the tile
+                  // has no onTap and no arrow.
+                  _SettingsTile(
+                    icon: Icons.mail_outline_rounded,
+                    iconColor: AppColors.azure,
+                    title: 'Signed in as',
+                    subtitle: auth.email,
+                    onTap: null,
+                    showArrow: false,
+                  ),
+                  _divider(context),
+                  // No SnackBar on success: AuthGate in main.dart swaps to
+                  // the auth screen the moment isSignedIn flips to false.
+                  _SettingsTile(
+                    icon: Icons.logout_rounded,
+                    iconColor: AppColors.danger,
+                    title: 'Sign out',
+                    subtitle: 'End this session on this device',
+                    // Disabled while a sign-in/out is already in flight so
+                    // the destructive action cannot be double-submitted.
+                    onTap: auth.isBusy
+                        ? null
+                        : () => _confirmSignOut(context),
+                  ),
+                ],
+              ),
+            ],
+
             const SizedBox(height: AppSpacing.xxl),
             _sectionLabel('Preferences'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
+              entranceIndex: 2,
               children: [
                 _SettingsTile(
                   icon: Icons.photo_camera_back_rounded,
@@ -223,10 +266,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _divider(context),
                 _SettingsTile(
+                  icon: Icons.auto_awesome_rounded,
+                  iconColor: AppColors.brand,
+                  title: 'SpendSense Assistant',
+                  subtitle:
+                      'Ask questions, preview exclusions and undo changes',
+                  onTap: () {
+                    AppPageRoute.pushOnce(
+                      context,
+                      name: AssistantScreen.routeName,
+                      builder: (_) => const AssistantScreen(),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
                   icon: Icons.key_rounded,
                   iconColor: AppColors.amber,
-                  title: 'AI provider settings',
-                  subtitle: 'Configure API keys for AI parsing',
+                  title: 'SMS parsing AI keys',
+                  subtitle: 'Optional legacy keys for SMS parsing only; the '
+                      'assistant never uses a key from this device',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -316,6 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _sectionLabel('Network'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
+              entranceIndex: 3,
               children: [
                 _SettingsTile(
                   icon: _isConnected ? Icons.wifi : Icons.wifi_off,
@@ -329,11 +389,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _divider(context),
                 _SettingsTile(
-                  icon: Icons.cloud_outlined,
-                  iconColor: AppColors.brand,
-                  title: 'AI services',
-                  subtitle: 'Groq & Gemini fallback configured',
-                  onTap: null,
+                  icon: Icons.shield_outlined,
+                  iconColor: AppColors.incomeGreen,
+                  title: 'Assistant privacy & Gemini',
+                  subtitle: 'Review exactly what cloud assistance may send',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(
+                        builder: (_) => const AssistantPrivacyScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -342,6 +409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _sectionLabel('Data & backup'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
+              entranceIndex: 4,
               children: [
                 _SettingsTile(
                   icon: Icons.upload_file_rounded,
@@ -386,6 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _sectionLabel('About'),
             const SizedBox(height: AppSpacing.sm),
             _SettingsCard(
+              entranceIndex: 5,
               children: [
                 _SettingsTile(
                   icon: Icons.system_update_alt_rounded,
@@ -495,6 +564,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (saved == null || !context.mounted) return;
     await auth.updateName(saved);
+  }
+
+  // No SnackBar on success: the app gate swaps to the auth screen by itself
+  // the moment isSignedIn flips to false.
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Sign out?', style: AppText.title(ctx)),
+        content: const Text(
+          'Sign out of SpendSense? Your local expense data stays on this '
+          'device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign out', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await auth.signOut();
   }
 
   Future<void> _editBudget(
@@ -768,26 +867,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _SettingsCard extends StatelessWidget {
   final List<Widget> children;
+  final int entranceIndex;
 
-  const _SettingsCard({required this.children});
+  const _SettingsCard({
+    required this.children,
+    this.entranceIndex = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+    return PageEntrance(
+      index: entranceIndex,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceColor(context),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.border(context)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow(context),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(children: children),
       ),
-      child: Column(children: children),
     );
   }
 }

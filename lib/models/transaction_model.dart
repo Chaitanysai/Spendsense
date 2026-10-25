@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 
 enum TransactionType { expense, income }
@@ -32,6 +34,38 @@ class TransactionModel {
   final double confidence; // 0.0 to 1.0
   final bool needsReview;
 
+  /// Non-sensitive bill metadata derived while the SMS text was available.
+  ///
+  /// The raw body is intentionally not stored for new records, so the parser
+  /// records only the classification enum name (`none`, `utility`, `mobile`,
+  /// `loan`, …) and whether the message was reminder-only. No amount, account,
+  /// reference, merchant text or message body is duplicated here.
+  final String? billKindHint;
+  final bool billReminderHint;
+
+  /// Globally unique sync identity, 32 lowercase hex chars (16 random bytes).
+  /// Assigned once at creation and never changed by edits, so the sync layer
+  /// can track a row across renames of its local `id`.
+  final String syncId;
+
+  /// Last local modification time in epoch milliseconds (client clock).
+  /// 0 means "unknown / legacy record" and is treated as the oldest possible
+  /// value by the sync layer. Always moved forward monotonically per record.
+  final int updatedAtMs;
+
+  /// 16 cryptographically random bytes as 32 lowercase hex chars.
+  static String newSyncId() {
+    final rng = Random.secure();
+    const hex = '0123456789abcdef';
+    final sb = StringBuffer();
+    for (var i = 0; i < 16; i++) {
+      final b = rng.nextInt(256);
+      sb.write(hex[b >> 4]);
+      sb.write(hex[b & 0x0f]);
+    }
+    return sb.toString();
+  }
+
   TransactionModel({
     required this.id,
     @Deprecated('Use amountMinor for new code.') int? amount,
@@ -50,8 +84,13 @@ class TransactionModel {
     this.source = 'SMS-Parser',
     this.confidence = 1.0,
     this.needsReview = false,
+    this.billKindHint,
+    this.billReminderHint = false,
+    String? syncId,
+    this.updatedAtMs = 0,
   })  : assert((amount == null) != (amountMinor == null)),
-        amountMinor = amountMinor ?? amount! * 100;
+        amountMinor = amountMinor ?? amount! * 100,
+        syncId = syncId ?? '';
 
   /// Bank name for display. Falls back to [unknownBankLabel] when no bank was
   /// identified, so every caller renders the same value for the same state.
@@ -89,6 +128,10 @@ class TransactionModel {
         'source': source,
         'confidence': confidence,
         'needsReview': needsReview,
+        if (billKindHint != null) 'billKindHint': billKindHint,
+        if (billReminderHint) 'billReminderHint': true,
+        'syncId': syncId,
+        'updatedAtMs': updatedAtMs,
       };
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -127,6 +170,16 @@ class TransactionModel {
       source: json['source'] as String? ?? 'SMS-Parser',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
       needsReview: json['needsReview'] as bool? ?? false,
+      billKindHint: json['billKindHint'] is String
+          ? json['billKindHint'] as String
+          : null,
+      billReminderHint: json['billReminderHint'] == true,
+      // A legacy record without a syncId gets a fresh one here; the cache
+      // migration then persists it so it stays stable across reads.
+      syncId: json['syncId'] is String && (json['syncId'] as String).isNotEmpty
+          ? json['syncId'] as String
+          : TransactionModel.newSyncId(),
+      updatedAtMs: json['updatedAtMs'] is int ? json['updatedAtMs'] as int : 0,
     );
   }
 
@@ -150,6 +203,10 @@ class TransactionModel {
     String? source,
     double? confidence,
     bool? needsReview,
+    String? billKindHint,
+    bool? billReminderHint,
+    String? syncId,
+    int? updatedAtMs,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -169,6 +226,10 @@ class TransactionModel {
       source: source ?? this.source,
       confidence: confidence ?? this.confidence,
       needsReview: needsReview ?? this.needsReview,
+      billKindHint: billKindHint ?? this.billKindHint,
+      billReminderHint: billReminderHint ?? this.billReminderHint,
+      syncId: syncId ?? this.syncId,
+      updatedAtMs: updatedAtMs ?? this.updatedAtMs,
     );
   }
 }

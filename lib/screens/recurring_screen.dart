@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/recurring_plan.dart';
 import '../providers/planner_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../services/bill_classifier.dart';
 import '../services/recurring_detector_service.dart';
 import '../utils/formatters.dart';
 import '../utils/app_colors.dart';
@@ -25,7 +26,12 @@ class RecurringScreen extends StatelessWidget {
     final provider = Provider.of<TransactionProvider>(context);
     final planner = context.watch<PlannerProvider>();
     final detector = RecurringDetectorService();
-    final recurring = detector.detectRecurring(provider.transactions);
+    // Only obligations belong on this screen. A repeated grocery, restaurant
+    // or fuel merchant is recurring spending, not a bill to plan.
+    final recurring = detector
+        .detectRecurring(provider.transactions)
+        .where((r) => r.transactions.any(BillClassifier.isBillLike))
+        .toList();
     final subscriptions = detector.findSubscriptions(recurring);
     final monthlyCost = detector.getEstimatedMonthlyCostMinor(subscriptions);
     final others = recurring.where((r) => !subscriptions.contains(r)).toList();
@@ -119,9 +125,11 @@ class RecurringScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxl),
               const AppEmptyState(
                 icon: Icons.repeat_rounded,
-                title: 'No recurring payments yet',
+                title: 'No recurring bills yet',
                 message:
-                    'Make at least two transactions to the same merchant and SpendSense will detect the pattern automatically.',
+                    'SpendSense looks for repeated utility, loan, insurance, '
+                    'rent and subscription payments. Groceries and one-off '
+                    'spending stay out of this list.',
               ),
             ],
           ],
@@ -249,7 +257,8 @@ class _RecurringCard extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Plan this as a bill',
-            onPressed: () => showPlanEditor(context, from: recurring.transactions.last),
+            onPressed: () =>
+                showPlanEditor(context, from: recurring.transactions.last),
             icon: Icon(Icons.event_available_rounded,
                 color: AppColors.textTertiary(context)),
           ),
@@ -396,7 +405,8 @@ class _PlanTile extends StatelessWidget {
             alignment: WrapAlignment.end,
             children: [
               TextButton(
-                onPressed: () => _run(context, () => planner.markPlanPaid(plan.id)),
+                onPressed: () =>
+                    _run(context, () => planner.markPlanPaid(plan.id)),
                 child: const Text('Mark paid'),
               ),
               TextButton(
@@ -404,7 +414,8 @@ class _PlanTile extends StatelessWidget {
                 child: const Text('Edit'),
               ),
               TextButton(
-                onPressed: () => _run(context, () => planner.removePlan(plan.id)),
+                onPressed: () =>
+                    _run(context, () => planner.removePlan(plan.id)),
                 child: const Text('Delete'),
               ),
             ],
@@ -414,7 +425,8 @@ class _PlanTile extends StatelessWidget {
     );
   }
 
-  Future<void> _run(BuildContext context, Future<void> Function() action) async {
+  Future<void> _run(
+      BuildContext context, Future<void> Function() action) async {
     try {
       await action();
     } catch (_) {

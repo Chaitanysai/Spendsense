@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ledger_encryption_service.dart';
 import '../models/transaction_model.dart';
+import 'ledger_tombstone_store.dart';
 
 /// Test seam: called immediately BEFORE every persisted mutation made by a
 /// ledger import. Throwing simulates a failed or interrupted write.
@@ -134,6 +135,7 @@ class TransactionCacheService {
   static const _idsKey = 'tx_cache_ids';
   static const _encryptedIdsKey = 'tx_cache_ids_v2';
   static const _migrationKey = 'tx_money_migration_v2';
+  static const _syncMetaMigrationKey = 'tx_sync_metadata_v1';
   static const _rejectedIdsKey = 'tx_rejected_ids';
   static const _metaKey = 'tx_cache_meta';
   static const _prefix = 'tx_';
@@ -210,6 +212,7 @@ class TransactionCacheService {
     }
     await _reconcileLegacyStore();
     await _validateIndexConsistency();
+    await _migrateSyncMetadata();
     await _pruneRejected();
     debugPrint(
         '📦 Local DB init — ${_cachedIds.length} txs, ${_rejected.length} rejected');
@@ -526,6 +529,12 @@ class TransactionCacheService {
     return TransactionModel.fromJson(normalized);
   }
 
+  /// Read-back and legacy-comparison equality. It is used both to verify what
+  /// was just written and to compare stored records with re-parsed legacy
+  /// sources, so it compares the record's identity and content. `syncId` is
+  /// excluded: legacy plaintext sources predate sync metadata and each re-parse
+  /// of them would mint a fresh id, causing spurious conflicts. `updatedAtMs`
+  /// is included — legacy sources default to 0, matching migrated records.
   bool _sameTransaction(TransactionModel a, TransactionModel b) =>
       a.id == b.id &&
       a.amountMinor == b.amountMinor &&
@@ -542,7 +551,10 @@ class TransactionCacheService {
       a.reference == b.reference &&
       a.source == b.source &&
       a.confidence == b.confidence &&
-      a.needsReview == b.needsReview;
+      a.needsReview == b.needsReview &&
+      a.billKindHint == b.billKindHint &&
+      a.billReminderHint == b.billReminderHint &&
+      a.updatedAtMs == b.updatedAtMs;
 
   bool contains(String smsId) =>
       _cachedIds.contains(smsId) || _rejected.containsKey(smsId);
@@ -559,8 +571,10 @@ class TransactionCacheService {
       if (key == _idsKey ||
           key == _encryptedIdsKey ||
           key == _migrationKey ||
+          key == _syncMetaMigrationKey ||
           key == _rejectedIdsKey ||
-          key == _metaKey) {
+          key == _metaKey ||
+          key == LedgerTombstoneStore.storeKey) {
         continue;
       }
       final id = key.substring(_prefix.length);
@@ -707,6 +721,57 @@ class TransactionCacheService {
     return results;
   }
 
+  /// Records modified after [epochMs], for the sync layer's incremental pull.
+  ///
+  /// A record whose modification time is unknown (`updatedAtMs` 0, a legacy
+  /// record) is always treated as changed: it must be uploaded at least once
+  /// so the sync learns its timestamp.
+  Future<List<TransactionModel>> loadChangedSince(int epochMs) async {
+    _assertInit();
+    final all = await loadAll();
+    return [
+      for (final tx in all)
+        if (tx.updatedAtMs == 0 || tx.updatedAtMs > epochMs) tx
+    ];
+  }
+
+  /// One-time migration giving every stored record a persistent sync identity.
+  ///
+  /// Older records were written before the sync metadata existed. Each gains a
+  /// fresh [TransactionModel.newSyncId] which is then persisted, so the id
+  /// stays stable for the sync layer. The marker key is written only after
+  /// every record is saved, and the per-record work is skipped when a record
+  /// already has a syncId, so an interrupted run simply resumes. Money fields
+  /// are carried through [copyWith] untouched, and nothing runs if the ledger
+  /// encryption key is unavailable.
+  Future<void> _migrateSyncMetadata() async {
+    if (_prefs.getString(_syncMetaMigrationKey) != null) return;
+    try {
+      await _encryption.requireExistingKey();
+    } catch (error) {
+      debugPrint(
+          '⏭️ Sync metadata migration skipped (key unavailable, ${error.runtimeType})');
+      return;
+    }
+    var migrated = 0;
+    for (final id in List.of(_cachedIds)) {
+      final tx = await _readEncrypted(id);
+      if (tx == null) {
+        throw const LedgerMigrationException('missing_encrypted_record',
+            'A ledger record is missing during sync metadata migration.');
+      }
+      if (tx.syncId.isNotEmpty) continue;
+      final stamped = tx.copyWith(syncId: TransactionModel.newSyncId());
+      await _writeEncrypted(stamped);
+      migrated++;
+    }
+    await _prefs.setString(
+      _syncMetaMigrationKey,
+      jsonEncode({'done': true, 'migrated': migrated}),
+    );
+    debugPrint('🔄 Sync metadata migration — $migrated records given a syncId');
+  }
+
   Future<void> put(TransactionModel tx) async {
     _assertInit();
     await _activationWrite([tx], replace: false);
@@ -755,6 +820,31 @@ class TransactionCacheService {
       ],
     });
     await _recoverJournal();
+  }
+
+  /// Deletes several records through ONE journalled index switch.
+  ///
+  /// The visible index changes once; a crash is completed from the encrypted
+  /// journal on the next start. Returns how many of [smsIds] existed.
+  Future<int> removeMany(Iterable<String> smsIds) async {
+    _assertInit();
+    final targets = <String>{};
+    for (final id in smsIds) {
+      if (_cachedIds.contains(id)) targets.add(id);
+    }
+    if (targets.isEmpty) return 0;
+    final targetIds = [
+      for (final id in _cachedIds)
+        if (!targets.contains(id)) id
+    ];
+    await _writeJournal({
+      'v': 2,
+      'phase': 'delete_pending',
+      'remove': targets.toList(growable: false),
+      'targetIds': targetIds,
+    });
+    await _recoverJournal();
+    return targets.length;
   }
 
   /// Records that [smsId] was skipped, with a coarse [reason] code.
@@ -890,6 +980,9 @@ class TransactionCacheService {
                   'category': tx.category,
                   'date': tx.date.toIso8601String(),
                   'isExcluded': tx.isExcluded,
+                  // Non-sensitive bill metadata: an enum name and a flag only.
+                  if (tx.billKindHint != null) 'billKindHint': tx.billKindHint,
+                  if (tx.billReminderHint) 'billReminderHint': true,
                 },
       ],
     };
@@ -1140,13 +1233,19 @@ class TransactionCacheService {
       'bank',
       'account',
       'reference',
+      'billKindHint',
+      'syncId',
     ]) {
       final v = json[key];
       if (v != null && v is! String) {
         throw bad('invalid_field', 'A record has a field of the wrong type.');
       }
     }
-    for (final key in const ['isExcluded', 'needsReview']) {
+    for (final key in const [
+      'isExcluded',
+      'needsReview',
+      'billReminderHint',
+    ]) {
       final v = json[key];
       if (v != null && v is! bool) {
         throw bad('invalid_field', 'A record has a field of the wrong type.');
@@ -1154,6 +1253,14 @@ class TransactionCacheService {
     }
     final confidence = json['confidence'];
     if (confidence != null && confidence is! num) {
+      throw bad('invalid_field', 'A record has a field of the wrong type.');
+    }
+    final syncIdValue = json['syncId'];
+    if (syncIdValue != null &&
+        (syncIdValue is! String || syncIdValue.isEmpty)) {
+      throw bad('invalid_field', 'A record has a field of the wrong type.');
+    }
+    if (json['updatedAtMs'] != null && json['updatedAtMs'] is! int) {
       throw bad('invalid_field', 'A record has a field of the wrong type.');
     }
 

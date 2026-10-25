@@ -13,7 +13,6 @@ import '../utils/app_text_styles.dart';
 import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
 import '../widgets/gradient_hero_card.dart';
-import '../widgets/plan_editor.dart';
 import '../widgets/sound_scope.dart';
 import '../widgets/transaction_type_toggle.dart';
 
@@ -219,18 +218,6 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           ),
                         ),
                       ),
-                      if (widget.transaction.type ==
-                          TransactionType.expense) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        OutlinedButton.icon(
-                          onPressed: () => showPlanEditor(
-                            context,
-                            from: widget.transaction,
-                          ),
-                          icon: const Icon(Icons.event_repeat_rounded),
-                          label: const Text('Plan as recurring bill'),
-                        ),
-                      ],
                       const SizedBox(height: AppSpacing.xl),
                       Text('Original SMS', style: AppText.title(context)),
                       const SizedBox(height: AppSpacing.md),

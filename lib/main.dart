@@ -1,8 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
+import 'firebase_options.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/period_provider.dart';
@@ -13,6 +15,7 @@ import 'providers/update_provider.dart';
 
 import 'services/sound_service.dart';
 
+import 'screens/auth/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/settings_screen.dart';
@@ -26,6 +29,7 @@ import 'utils/app_typography.dart';
 import 'widgets/app_background.dart';
 import 'widgets/fade_indexed_stack.dart';
 import 'widgets/floating_nav_bar.dart';
+import 'widgets/page_entry.dart';
 import 'widgets/sound_scope.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
@@ -35,6 +39,8 @@ import 'widgets/sound_scope.dart';
 /// platform-encrypted storage on the user's device.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await _initializeFirebase();
 
   runApp(
     // Sound is a garnish that any screen may emit, so it is published above the
@@ -62,6 +68,43 @@ void main() async {
   );
 }
 
+/// Starts Firebase for the platform from `lib/firebase_options.dart`.
+///
+/// Sign-in is the only feature that needs it, so a failure here is logged and
+/// swallowed: the app still opens, records and reports from the local ledger
+/// instead of dying on launch (for example on a platform with no Firebase app
+/// registered, or with no network on first run).
+Future<void> _initializeFirebase() async {
+  if (Firebase.apps.isNotEmpty) return;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (error) {
+    debugPrint(
+      'Firebase did not start (${error.runtimeType}); running offline-only.',
+    );
+  }
+}
+
+/// Swaps between the sign-in screen and the app depending on account state.
+///
+/// Deliberately a plain [StatelessWidget]: the transaction ledger is local, so
+/// signing out never hides or destroys financial data — it only closes the
+/// account session.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    // No Firebase in this build: the offline-first app is the whole product.
+    if (!auth.isFirebaseAvailable) return const MainNavigationShell();
+    if (!auth.isSignedIn) return const AuthScreen();
+    return const MainNavigationShell();
+  }
+}
+
 class SpendSenseApp extends StatelessWidget {
   const SpendSenseApp({super.key});
 
@@ -86,7 +129,11 @@ class SpendSenseApp extends StatelessWidget {
             color: AppColors.scaffold(context),
             child: _withUserTextScale(context, child, theme.fontScale),
           ),
-          home: const MainNavigationShell(),
+          // Lets a page replay its entrance when a route pushed above it is
+          // popped back to. Without this observer the page state survives but
+          // has no way to know it is visible again.
+          navigatorObservers: [PageEntryRouteObserver.instance],
+          home: const AuthGate(),
         );
       },
     );
