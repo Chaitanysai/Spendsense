@@ -25,6 +25,69 @@ class AppPalette {
   final Color accent; // selective highlight
   final Color warm; // warm accent for money & salary cues
 
+  /// Optional accent reserved for a single high-energy highlight (the lime in
+  /// the green identity). Falls back to [accent] so other palettes are
+  /// unaffected when the field is omitted.
+  final Color? lime;
+
+  // ── Derived tokens ────────────────────────────────────────────────────────
+
+  /// The one deliberately loud highlight in the palette. Used sparingly: the
+  /// balance pill, the selected marker and small positive cues.
+  Color get limeAccent => lime ?? accent;
+
+  /// True when the palette's dark canvas is pure black. AMOLED palettes skip
+  /// broad glows and tinted washes so the canvas stays genuinely black.
+  bool get isAmoled => darkBackground == amoledBackground;
+
+  // ── Shared neutral AMOLED foundation ──────────────────────────────────────
+  // Every palette shares one neutral black dark canvas. Palettes only supply
+  // accents; they never tint backgrounds or surfaces (the old per-palette
+  // maroon/navy/brown canvases are gone).
+  static const Color amoledBackground = Color(0xFF000000);
+  static const Color amoledSurface = Color(0xFF121212);
+  static const Color amoledSurfaceAlt = Color(0xFF1A1A1A);
+  static const Color amoledBorder = Color(0xFF2E2E2E);
+
+  /// The balance-card treatment: the primary green into the deep canopy.
+  ///
+  /// White text sits on this surface, so the lightest stop is *derived* rather
+  /// than taken raw from [mid]. Some palettes legitimately ship a bright mid
+  /// stop (Ocean Blue's is ~2.8:1 against white); darkening toward [deep] until
+  /// the stop clears 4.5:1 keeps every palette legible without changing the
+  /// brand ramp the charts and icons read.
+  LinearGradient get balanceGradient => LinearGradient(
+        colors: [balanceTop, deep],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  /// The lightest stop of [balanceGradient]: [mid] darkened toward [deep] until
+  /// white text on it reaches the 4.5:1 AA threshold.
+  Color get balanceTop {
+    if (_contrastWithWhite(mid) >= 4.5) return mid;
+    for (var t = 0.1; t <= 1.0; t += 0.1) {
+      final candidate = Color.lerp(mid, deep, t) ?? mid;
+      if (_contrastWithWhite(candidate) >= 4.5) return candidate;
+    }
+    return deep;
+  }
+
+  /// WCAG relative-luminance contrast against white. Kept private to the
+  /// palette so the derived stop can be computed where it is defined.
+  static double _contrastWithWhite(Color color) {
+    final l = color.computeLuminance();
+    return 1.05 / (l + 0.05);
+  }
+
+  /// Gradient used by the income surfaces. Both stops are deep enough that a
+  /// white label clears AA, unlike a bright mint ramp.
+  static const LinearGradient incomeGradient = LinearGradient(
+    colors: [Color(0xFF0B6B43), Color(0xFF0F7A4A)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   // Light-mode surfaces
   final Color background;
   final Color surface;
@@ -37,6 +100,11 @@ class AppPalette {
   final Color darkSurfaceAlt;
   final Color borderDark;
 
+  /// Dark-mode cards are translucent navy glass with blue-lit hero cards. The
+  /// canvas behind them is still [darkBackground], which must stay pure black;
+  /// this flag changes only how cards, heroes, borders and overlays look.
+  final bool glass;
+
   const AppPalette({
     required this.id,
     required this.label,
@@ -46,6 +114,7 @@ class AppPalette {
     required this.mid,
     required this.accent,
     required this.warm,
+    this.lime,
     required this.background,
     required this.surface,
     required this.surfaceMuted,
@@ -54,27 +123,61 @@ class AppPalette {
     required this.darkSurface,
     required this.darkSurfaceAlt,
     required this.borderDark,
+    this.glass = false,
   });
 
   // ── Gradients derived from the ramp ─────────────────────────────────────────
 
   /// Rich hero gradient used on balance cards, CTAs and the app logo.
   LinearGradient get brandGradient => LinearGradient(
-        colors: [brand, bright, deep],
+        colors: [brand, mid, deep],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        stops: const [0.0, 0.48, 1.0],
+        stops: const [0.0, 0.52, 1.0],
       );
 
   /// Alias with an explicit, semantic name for the hero treatment.
   LinearGradient get heroGradient => brandGradient;
 
-  /// Cool electric gradient for primary buttons and the nav action.
+  /// Fill for primary actions. Runs from the palette's mid stop into the deep
+  /// stop so a white label keeps a comfortable contrast on every palette.
+  LinearGradient get actionGradient => LinearGradient(
+        colors: [actionTop, deep],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  /// Cool electric gradient for secondary highlights and small chips.
   LinearGradient get electricGradient => LinearGradient(
         colors: [bright, mid],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
+
+  /// White text on a solid brand fill must clear 4.5:1. Most palettes
+  /// already do; for the two shapes whose [brand] was under the bar this
+  /// darkens toward [deep] just enough to pass while keeping hue. Palettes
+  /// that already clear stay unchanged.
+  Color get filledBrand {
+    if (_contrastWithWhite(brand) >= 4.5) return brand;
+    for (var t = 0.05; t <= 1.0; t += 0.05) {
+      final candidate = Color.lerp(brand, deep, t) ?? brand;
+      if (_contrastWithWhite(candidate) >= 4.5) return candidate;
+    }
+    return deep;
+  }
+
+  /// Lightest stop of [actionGradient] — [mid] darkened toward [deep] until
+  /// white text on it reaches 4.5:1. Palettes whose mid already clears (e.g.
+  /// Emerald, Midnight) keep mid unchanged.
+  Color get actionTop {
+    if (_contrastWithWhite(mid) >= 4.5) return mid;
+    for (var t = 0.1; t <= 1.0; t += 0.1) {
+      final candidate = Color.lerp(mid, deep, t) ?? mid;
+      if (_contrastWithWhite(candidate) >= 4.5) return candidate;
+    }
+    return deep;
+  }
 
   /// Warm accent gradient for small highlights.
   LinearGradient get amberGradient => LinearGradient(
@@ -111,9 +214,34 @@ class AppPalette {
   static const Color incomeGreen = Color(0xFF12B76A);
   static const Color danger = Color(0xFFDC2626);
 
-  // ── Curated palettes ────────────────────────────────────────────────────────
+  /// Green fintech identity: primary green, deep canopy, one lime highlight on
+  /// a true-black AMOLED dark canvas.
+  ///
+  /// `mid` sits at ~5.2:1 against white so it can back a white label as the
+  /// lightest stop of the balance gradient; `bright` is the lighter ink stop
+  /// used on dark surfaces.
+  static const emerald = AppPalette(
+    id: 'emerald',
+    label: 'Emerald',
+    deep: Color(0xFF0B3B2C),
+    brand: Color(0xFF12A150),
+    bright: Color(0xFF35C97A),
+    mid: Color(0xFF0E7A42),
+    accent: Color(0xFFC6F432),
+    lime: Color(0xFFC6F432),
+    warm: Color(0xFFF0B429),
+    background: Color(0xFFF7F9F8),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFEEF3F0),
+    borderLight: Color(0xFFE1EAE5),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
+  );
 
-  /// Default. The navy → electric-blue → cyan ramp.
+  /// The previous default: the navy → electric-blue → cyan ramp, kept as a
+  /// selectable palette so existing users can stay on it.
   static const oceanBlue = AppPalette(
     id: 'ocean_blue',
     label: 'Ocean Blue',
@@ -127,10 +255,10 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFE9EFFB),
     borderLight: Color(0xFFDDE6F7),
-    darkBackground: Color(0xFF050D24),
-    darkSurface: Color(0xFF0B1738),
-    darkSurfaceAlt: Color(0xFF122249),
-    borderDark: Color(0xFF22345F),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
   static const warmAmber = AppPalette(
@@ -146,10 +274,10 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFFDEEDC),
     borderLight: Color(0xFFF5E2C7),
-    darkBackground: Color(0xFF1F1206),
-    darkSurface: Color(0xFF33210D),
-    darkSurfaceAlt: Color(0xFF4A3216),
-    borderDark: Color(0xFF6B4A22),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
   static const forestGreen = AppPalette(
@@ -165,10 +293,10 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFE3F5E9),
     borderLight: Color(0xFFCFE9D8),
-    darkBackground: Color(0xFF04180F),
-    darkSurface: Color(0xFF0A2418),
-    darkSurfaceAlt: Color(0xFF113524),
-    borderDark: Color(0xFF1B5033),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
   static const royalPurple = AppPalette(
@@ -184,10 +312,10 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFEEE7FC),
     borderLight: Color(0xFFE0D6F8),
-    darkBackground: Color(0xFF150824),
-    darkSurface: Color(0xFF241141),
-    darkSurfaceAlt: Color(0xFF34195C),
-    borderDark: Color(0xFF4A2A80),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
   static const rose = AppPalette(
@@ -203,10 +331,10 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFFCE7EB),
     borderLight: Color(0xFFF5D2D9),
-    darkBackground: Color(0xFF260610),
-    darkSurface: Color(0xFF3D0C1B),
-    darkSurfaceAlt: Color(0xFF551327),
-    borderDark: Color(0xFF75203A),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
   static const teal = AppPalette(
@@ -222,15 +350,45 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFDFF5F2),
     borderLight: Color(0xFFCDE9E5),
-    darkBackground: Color(0xFF03191C),
-    darkSurface: Color(0xFF0A2B30),
-    darkSurfaceAlt: Color(0xFF103E45),
-    borderDark: Color(0xFF17565F),
+    darkBackground: amoledBackground,
+    darkSurface: amoledSurface,
+    darkSurfaceAlt: amoledSurfaceAlt,
+    borderDark: amoledBorder,
   );
 
-  /// Shown in Settings → Appearance, in this order. Ocean Blue is first and is
+  /// Deep-navy glass identity: navy hero gradients, translucent navy glass
+  /// cards over a pure-black AMOLED canvas, and a restrained electric-blue
+  /// accent. Money semantics stay unchanged.
+  static const midnight = AppPalette(
+    id: 'midnight',
+    label: 'Midnight',
+    deep: Color(0xFF081A4A),
+    brand: Color(0xFF2A5BE0),
+    bright: Color(0xFF6C97FF),
+    mid: Color(0xFF2F63EA),
+    accent: Color(0xFF38BDF8),
+    lime: Color(0xFF7CC4FF),
+    warm: Color(0xFFFFB020),
+    background: Color(0xFFF3F6FD),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE9EFFB),
+    borderLight: Color(0xFFDDE6F7),
+    // Pitch-black canvas (AMOLED); only the card surfaces carry navy.
+    darkBackground: amoledBackground,
+    darkSurface: Color(0xFF0B1430),
+    darkSurfaceAlt: Color(0xFF111C3D),
+    borderDark: Color(0xFF22305A),
+    glass: true,
+  );
+
+  /// Palette used when nothing valid is stored (new installs, reset).
+  static const AppPalette defaultPalette = midnight;
+
+  /// Shown in Settings → Appearance, in this order. Midnight is first and is
   /// the default / reset target.
   static const List<AppPalette> all = [
+    midnight,
+    emerald,
     oceanBlue,
     warmAmber,
     forestGreen,
@@ -241,6 +399,6 @@ class AppPalette {
 
   static AppPalette byId(String? id) => all.firstWhere(
         (p) => p.id == id,
-        orElse: () => oceanBlue,
+        orElse: () => defaultPalette,
       );
 }

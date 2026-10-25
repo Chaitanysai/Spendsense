@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
 /// Smooth shared page transition: subtle slide-up + fade, matching the
 /// reference's "smooth transitions" language. Reduced-motion aware.
@@ -8,12 +9,18 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
   final WidgetBuilder builder;
   final Duration duration;
 
-  AppPageRoute({required this.builder, this.duration = AppMotion.base})
-      : super(
+  AppPageRoute({
+    required this.builder,
+    this.duration = AppMotion.base,
+    super.settings,
+  }) : super(
           transitionDuration: duration,
-          reverseTransitionDuration: duration,
+          reverseTransitionDuration: AppMotion.fast,
+          // Every pushed page owns its entry lifecycle: the first build plays
+          // its content entrance, and `didPopNext` replays it when the user
+          // returns from a deeper route. The page is never remounted.
           pageBuilder: (context, animation, secondaryAnimation) =>
-              builder(context),
+              PageEntryHost(child: builder(context)),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final reduced =
                 MediaQuery.maybeDisableAnimationsOf(context) == true;
@@ -39,4 +46,32 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
 
   static Route<T> push<T>(WidgetBuilder builder) =>
       AppPageRoute<T>(builder: builder);
+
+  /// Route names whose push is still in flight. A second tap while the first
+  /// route is opening would otherwise stack a duplicate screen (and build its
+  /// subtree twice during the transition).
+  static final Set<String> _inFlight = <String>{};
+
+  /// Pushes at most one route named [name] at a time.
+  ///
+  /// The guard is released when the pushed route is popped, so the next tap
+  /// works normally. Returns `null` when a push was already in flight.
+  static Future<T?>? pushOnce<T>(
+    BuildContext context, {
+    required String name,
+    required WidgetBuilder builder,
+  }) {
+    if (!_inFlight.add(name)) return null;
+    return Navigator.of(context)
+        .push<T>(AppPageRoute<T>(
+          builder: builder,
+          settings: RouteSettings(name: name),
+        ))
+        .whenComplete(() => _inFlight.remove(name));
+  }
+
+  /// Test seam: forget every in-flight route (a widget test starts a fresh
+  /// navigator and must not inherit a stale guard).
+  @visibleForTesting
+  static void debugResetInFlight() => _inFlight.clear();
 }

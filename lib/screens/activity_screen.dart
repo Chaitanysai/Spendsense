@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../services/sound_service.dart';
 import '../widgets/transaction_tile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
 import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
+import '../utils/transaction_filter.dart';
+import '../utils/period_math.dart';
 import '../widgets/app_states.dart';
+import '../widgets/page_entry.dart';
 import '../widgets/pressable.dart';
 import '../widgets/sms_import_prompt.dart';
 
@@ -40,7 +46,7 @@ extension _DatePresetLabel on _DatePreset {
         return DateTimeRange(start: today, end: now);
       case _DatePreset.thisWeek:
         return DateTimeRange(
-          start: today.subtract(Duration(days: today.weekday - 1)),
+          start: PeriodMath.addDays(today, -(today.weekday - 1)),
           end: now,
         );
       case _DatePreset.thisMonth:
@@ -59,6 +65,10 @@ extension _DatePresetLabel on _DatePreset {
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
 
+  /// Stable route name. Navigation uses it to dedupe rapid repeated taps so a
+  /// double tap cannot stack two Activity screens.
+  static const String routeName = '/activity';
+
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
 }
@@ -73,17 +83,81 @@ class _ActivityScreenState extends State<ActivityScreen> {
   _DatePreset? _activePreset;
   String _searchQuery = '';
 
+  /// Inclusive amount bounds, integer paise (null = unbounded).
+  int? _minAmountMinor;
+  int? _maxAmountMinor;
+
+  /// Whether the tab was visible at the last dependency change. The shell keeps
+  /// this screen alive across tab switches, so initState no longer runs on every
+  /// visit; the SMS sync that used to happen then is re-triggered here instead.
+  bool _tabActive = true;
+
+  /// Route animation the automatic sync is waiting on (null when there is
+  /// nothing to wait for).
+  Animation<double>? _routeAnimation;
+
+  /// Memoised filter+sort result. Rebuilding for an unrelated reason (theme
+  /// change, keyboard, a parent rebuild) must not re-filter and re-sort the
+  /// whole ledger.
+  List<TransactionModel>? _cachedDisplay;
+  List<TransactionModel>? _cachedSource;
+  Object? _cachedKey;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    // Defer the automatic SMS scan until the push transition has finished.
+    // Starting it in a microtask ran the platform-channel query, ledger writes
+    // and listener notifications inside the transition's first frames, which
+    // is what made Home -> Activity feel slow. This is not an artificial
+    // delay: the scan starts the moment the route's own animation completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Provider.of<TransactionProvider>(context, listen: false).syncFromSms();
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) {
+        _startAutomaticSync();
+        return;
+      }
+      _routeAnimation = animation;
+      animation.addStatusListener(_onRouteStatus);
     });
+  }
+
+  void _onRouteStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    _startAutomaticSync();
+  }
+
+  void _startAutomaticSync() {
+    if (!mounted) return;
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    // A sync already in flight is never started twice.
+    if (provider.isSyncing) return;
+    provider.syncFromSms();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.valuesOf(context).enabled;
+    if (active && !_tabActive) {
+      // Deferred like the initState call: sync may notify listeners, which is
+      // not allowed while the framework is still building.
+      final provider = Provider.of<TransactionProvider>(context, listen: false);
+      Future.microtask(() {
+        // A sync already in flight is not started a second time, so rapid tab
+        // switching cannot stack up overlapping SMS scans.
+        if (mounted && !provider.isSyncing) provider.syncFromSms();
+      });
+    }
+    _tabActive = active;
   }
 
   @override
   void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
     _searchController.dispose();
     super.dispose();
   }
@@ -95,7 +169,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
     final hasFilters = _selectedCategory != null ||
         _selectedType != null ||
         _selectedDateRange != null ||
-        _activePreset != null;
+        _activePreset != null ||
+        _minAmountMinor != null ||
+        _maxAmountMinor != null ||
+        _searchQuery.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -104,143 +181,158 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Activity', style: AppText.h1(context)),
-                      const Spacer(),
-                      if (hasFilters)
-                        Pressable(
-                          onTap: _clearFilters,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.pill),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 9),
-                            decoration: BoxDecoration(
-                              color: AppColors.brand.withValues(alpha: 0.12),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
-                            ),
-                            child: Text('Clear',
-                                style: AppText.label(context).copyWith(
-                                    color: AppColors.brand,
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text('Track every penny across your accounts',
-                      style: AppText.body(context)),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Search
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceColor(context),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.border(context)),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.search_rounded,
-                            color: AppColors.textTertiary(context)),
-                        hintText: 'Search merchant, category, amount…',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                      ),
-                      style: AppText.body(context).copyWith(
-                          color: AppColors.textPrimary(context), fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Sort / filter chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+            PageEntrance(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        _chip(
-                          icon: Icons.calendar_today_rounded,
-                          label: 'Date',
-                          active: _sortMode == 'Date',
-                          onTap: () => setState(() => _sortMode = 'Date'),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _chip(
-                          icon: Icons.payments_rounded,
-                          label: 'Amount',
-                          active: _sortMode == 'Amount',
-                          onTap: () => setState(() => _sortMode = 'Amount'),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _typeFilterChip(),
-                        const SizedBox(width: AppSpacing.sm),
-                        _sortDirectionChip(),
-                        const SizedBox(width: AppSpacing.sm),
-                        _categoryFilterChip(provider),
-                        const SizedBox(width: AppSpacing.sm),
-                        _dateRangeChip(),
+                        Text('Activity', style: AppText.h1(context)),
+                        const Spacer(),
+                        if (hasFilters)
+                          Pressable(
+                            onTap: _clearFilters,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            sound: SoundEventType.selectionChanged,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: AppColors.brand.withValues(alpha: 0.12),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.pill),
+                              ),
+                              child: Text('Clear',
+                                  style: AppText.label(context).copyWith(
+                                      color: AppColors.brandInk(context),
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text('Track every penny across your accounts',
+                        style: AppText.body(context)),
+                    const SizedBox(height: AppSpacing.lg),
 
-                  if (hasFilters)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.md),
-                      child: Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
+                    // Search
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceColor(context),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.border(context)),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.search_rounded,
+                              color: AppColors.textTertiary(context)),
+                          hintText: 'Search merchant, category, amount…',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.lg),
+                        ),
+                        style: AppText.body(context).copyWith(
+                            color: AppColors.textPrimary(context),
+                            fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Sort / filter chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         children: [
-                          if (_selectedCategory != null)
-                            _activeBadge(
-                              Icons.category_rounded,
-                              _selectedCategory!,
-                              () => setState(() => _selectedCategory = null),
-                            ),
-                          if (_selectedType != null)
-                            _activeBadge(
-                              Icons.swap_horiz_rounded,
-                              _selectedType == TransactionType.expense
-                                  ? 'Expense'
-                                  : 'Income',
-                              () => setState(() => _selectedType = null),
-                            ),
-                          if (_activePreset != null ||
-                              _selectedDateRange != null)
-                            _activeBadge(
-                              Icons.date_range_rounded,
-                              _activeDateLabel(),
-                              () => setState(() {
-                                _activePreset = null;
-                                _selectedDateRange = null;
-                              }),
-                            ),
+                          _chip(
+                            icon: Icons.calendar_today_rounded,
+                            label: 'Date',
+                            active: _sortMode == 'Date',
+                            onTap: () => setState(() => _sortMode = 'Date'),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _chip(
+                            icon: Icons.payments_rounded,
+                            label: 'Amount',
+                            active: _sortMode == 'Amount',
+                            onTap: () => setState(() => _sortMode = 'Amount'),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _typeFilterChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _sortDirectionChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _categoryFilterChip(provider),
+                          const SizedBox(width: AppSpacing.sm),
+                          _dateRangeChip(),
+                          const SizedBox(width: AppSpacing.sm),
+                          _amountChip(),
                         ],
                       ),
                     ),
 
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
-                    style: AppText.overline(context),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
+                    if (hasFilters)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.md),
+                        child: Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            if (_selectedCategory != null)
+                              _activeBadge(
+                                Icons.category_rounded,
+                                _selectedCategory!,
+                                () => setState(() => _selectedCategory = null),
+                              ),
+                            if (_selectedType != null)
+                              _activeBadge(
+                                Icons.swap_horiz_rounded,
+                                _selectedType == TransactionType.expense
+                                    ? 'Expense'
+                                    : 'Income',
+                                () => setState(() => _selectedType = null),
+                              ),
+                            if (_minAmountMinor != null ||
+                                _maxAmountMinor != null)
+                              _activeBadge(
+                                Icons.payments_rounded,
+                                _amountLabel(),
+                                () => setState(() {
+                                  _minAmountMinor = null;
+                                  _maxAmountMinor = null;
+                                }),
+                              ),
+                            if (_activePreset != null ||
+                                _selectedDateRange != null)
+                              _activeBadge(
+                                Icons.date_range_rounded,
+                                _activeDateLabel(),
+                                () => setState(() {
+                                  _activePreset = null;
+                                  _selectedDateRange = null;
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      '${displayList.length} transaction${displayList.length == 1 ? '' : 's'}',
+                      style: AppText.overline(context),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
               ),
             ),
             Expanded(
@@ -278,13 +370,13 @@ class _ActivityScreenState extends State<ActivityScreen> {
                           onRefresh: () => Provider.of<TransactionProvider>(
                                   context,
                                   listen: false)
-                              .syncFromSms(),
+                              .syncFromSms(userInitiated: true),
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(
+                            padding: EdgeInsets.fromLTRB(
                               AppSpacing.page,
                               0,
                               AppSpacing.page,
-                              AppSpacing.fabClearance,
+                              AppSpacing.tabBottomInset(context),
                             ),
                             itemCount: displayList.length,
                             itemBuilder: (context, index) {
@@ -301,17 +393,21 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                 }
                               }
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (showHeader)
-                                    _sectionHeader(DateFormat('EEE, d MMM')
-                                        .format(tx.date)),
-                                  TransactionTile(
-                                    transaction: tx,
-                                    showDate: false,
-                                  ),
-                                ],
+                              return PageEntrance(
+                                index: index,
+                                offset: 0.04,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (showHeader)
+                                      _sectionHeader(DateFormat('EEE, d MMM')
+                                          .format(tx.date)),
+                                    TransactionTile(
+                                      transaction: tx,
+                                      showDate: false,
+                                    ),
+                                  ],
+                                ),
                               );
                             },
                           ),
@@ -326,44 +422,47 @@ class _ActivityScreenState extends State<ActivityScreen> {
   // ─── FILTER / SORT LOGIC (unchanged behaviour) ─────────────────────────────
 
   List<TransactionModel> _getProcessedList(List<TransactionModel> all) {
-    List<TransactionModel> list = all.where((t) {
-      final query = _searchQuery.trim().toLowerCase();
-      final matchesSearch = query.isEmpty ||
-          t.merchant.toLowerCase().contains(query) ||
-          t.category.toLowerCase().contains(query) ||
-          t.paymentMethod.toLowerCase().contains(query) ||
-          t.bankName.toLowerCase().contains(query) ||
-          t.amount.toString().contains(query);
+    // Filter state that can change the result. `_activePreset` is derived
+    // storage for `_selectedDateRange`, so it does not need its own slot.
+    final key = (
+      _searchQuery,
+      _selectedCategory,
+      _selectedType,
+      _selectedDateRange,
+      _minAmountMinor,
+      _maxAmountMinor,
+      _sortMode,
+      _sortDescending,
+    );
+    // The provider hands out its own list instance and replaces it on change,
+    // so identity plus the filter key is a sound cache key: an unrelated
+    // rebuild (theme, keyboard, parent) reuses the previous result.
+    if (identical(all, _cachedSource) && key == _cachedKey) {
+      return _cachedDisplay!;
+    }
 
-      final matchesCategory =
-          _selectedCategory == null || t.category == _selectedCategory;
-      final matchesType = _selectedType == null || t.type == _selectedType;
-
-      final matchesDate = _selectedDateRange == null ||
-          _isWithinRange(t.date, _selectedDateRange!);
-
-      return matchesSearch && matchesCategory && matchesType && matchesDate;
-    }).toList();
-
+    final list = TransactionFilter(
+      query: _searchQuery,
+      category: _selectedCategory,
+      type: _selectedType,
+      dateRange: _selectedDateRange,
+      minAmountMinor: _minAmountMinor,
+      maxAmountMinor: _maxAmountMinor,
+    ).apply(all);
     if (_sortMode == 'Amount') {
       list.sort((a, b) => _sortDescending
-          ? b.amount.compareTo(a.amount)
-          : a.amount.compareTo(b.amount));
+          ? b.amountMinor.compareTo(a.amountMinor)
+          : a.amountMinor.compareTo(b.amountMinor));
     } else {
       list.sort((a, b) => _sortDescending
           ? b.date.compareTo(a.date)
           : a.date.compareTo(b.date));
     }
 
+    _cachedSource = all;
+    _cachedKey = key;
+    _cachedDisplay = list;
     return list;
-  }
-
-  bool _isWithinRange(DateTime date, DateTimeRange range) {
-    final s = DateTime(range.start.year, range.start.month, range.start.day);
-    final e = DateTime(range.end.year, range.end.month, range.end.day)
-        .add(const Duration(days: 1));
-    final local = date.toLocal();
-    return !local.isBefore(s) && local.isBefore(e);
   }
 
   void _clearFilters() {
@@ -372,6 +471,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
       _selectedType = null;
       _selectedDateRange = null;
       _activePreset = null;
+      _minAmountMinor = null;
+      _maxAmountMinor = null;
       _searchQuery = '';
       _searchController.clear();
     });
@@ -397,6 +498,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Pressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.pill),
+      // Chips change a filter, so they report a selection rather than a tap.
+      sound: SoundEventType.selectionChanged,
       child: AnimatedContainer(
         duration: AppMotion.respect(context, AppMotion.fast),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -416,15 +519,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Icon(icon,
                 size: 15,
                 color: active
-                    ? AppColors.brand
+                    ? AppColors.brandInk(context)
                     : AppColors.textSecondary(context)),
             const SizedBox(width: 6),
             Text(
               label,
               style: AppText.label(context).copyWith(
                 fontSize: 12,
-                color:
-                    active ? AppColors.brand : AppColors.textSecondary(context),
+                color: active
+                    ? AppColors.brandInk(context)
+                    : AppColors.textSecondary(context),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -433,7 +537,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               Icon(trailing,
                   size: 15,
                   color: active
-                      ? AppColors.brand
+                      ? AppColors.brandInk(context)
                       : AppColors.textSecondary(context)),
             ],
           ],
@@ -493,10 +597,135 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
+  Widget _amountChip() {
+    final active = _minAmountMinor != null || _maxAmountMinor != null;
+    return _chip(
+      icon: Icons.payments_outlined,
+      label: active ? _amountLabel() : 'Amount range',
+      active: active,
+      onTap: _showAmountSheet,
+      trailing: Icons.arrow_drop_down,
+    );
+  }
+
+  String _amountLabel() {
+    final lo = _minAmountMinor;
+    final hi = _maxAmountMinor;
+    if (lo != null && hi != null) {
+      return '${Formatters.currency.format(lo)} – ${Formatters.currency.format(hi)}';
+    }
+    if (lo != null) return '≥ ${Formatters.currency.format(lo)}';
+    return '≤ ${Formatters.currency.format(hi ?? 0)}';
+  }
+
+  /// Amount bounds are typed in rupees and stored as exact integer paise.
+  Future<void> _showAmountSheet() async {
+    final minCtrl = TextEditingController(
+        text: _minAmountMinor == null
+            ? ''
+            : formatPaise(_minAmountMinor!, trimZeroPaise: true));
+    final maxCtrl = TextEditingController(
+        text: _maxAmountMinor == null
+            ? ''
+            : formatPaise(_maxAmountMinor!, trimZeroPaise: true));
+    final result = await showAppSheet<({int? lo, int? hi})>(
+      context: context,
+      backgroundColor: AppColors.surfaceColor(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.lg,
+              AppSpacing.xl,
+              MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.xxl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SheetHandle(),
+                Text('Filter by amount', style: AppText.h2(ctx)),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    for (final entry in [
+                      ('Min ₹', minCtrl),
+                      ('Max ₹', maxCtrl)
+                    ])
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: TextField(
+                            controller: entry.$2,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: InputDecoration(labelText: entry.$1),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Text(error!,
+                        style: AppText.label(ctx)
+                            .copyWith(color: AppColors.expenseRed)),
+                  ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, (lo: null, hi: null)),
+                      child: const Text('Clear'),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () {
+                        int? parse(String s) {
+                          final t = s.trim();
+                          return t.isEmpty ? null : parseRupeesToPaise(t);
+                        }
+
+                        try {
+                          final lo = parse(minCtrl.text);
+                          final hi = parse(maxCtrl.text);
+                          if (lo != null && hi != null && lo > hi) {
+                            setSheet(() => error = 'Min must not exceed max.');
+                            return;
+                          }
+                          Navigator.pop(ctx, (lo: lo, hi: hi));
+                        } on MoneyParseException {
+                          setSheet(() => error = 'Enter valid amounts.');
+                        }
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    minCtrl.dispose();
+    maxCtrl.dispose();
+    if (result == null || !mounted) return;
+    setState(() {
+      _minAmountMinor = result.lo;
+      _maxAmountMinor = result.hi;
+    });
+  }
   // ─── SHEETS ────────────────────────────────────────────────────────────────
 
   void _showDateFilterSheet() {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
@@ -574,16 +803,23 @@ class _ActivityScreenState extends State<ActivityScreen> {
           DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
       helpText: 'SELECT DATE RANGE',
       saveText: 'APPLY',
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppColors.brand,
-            onPrimary: Colors.white,
-            surface: Colors.white,
+      // Follow the app's own brightness: the previous hard-coded light scheme
+      // produced a white picker on top of the dark AMOLED canvas.
+      builder: (context, child) {
+        final dark = AppColors.isDark(context);
+        final base = dark ? ColorScheme.dark() : ColorScheme.light();
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: base.copyWith(
+              primary: AppColors.brand,
+              onPrimary: Colors.white,
+              surface: AppColors.surfaceColor(context),
+              onSurface: AppColors.textPrimary(context),
+            ),
           ),
-        ),
-        child: child!,
-      ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -596,7 +832,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   void _showCategorySheet(TransactionProvider provider) {
     final categories = provider.availableCategories;
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
@@ -638,7 +874,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   void _showTypeSheet() {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
@@ -698,27 +934,39 @@ class _ActivityScreenState extends State<ActivityScreen> {
     Color? iconColor,
     bool danger = false,
   }) {
-    final color = danger ? AppColors.danger : (iconColor ?? AppColors.brand);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+    final color =
+        danger ? AppColors.danger : (iconColor ?? AppColors.brandInk(context));
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: title,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        sound: SoundEventType.selectionChanged,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          title: Text(title,
+              style: AppText.title(context).copyWith(
+                  fontSize: 14, color: danger ? AppColors.danger : null)),
+          subtitle: subtitle != null
+              ? Text(subtitle,
+                  style: AppText.body(context).copyWith(fontSize: 11))
+              : null,
+          trailing:
+              selected ? Icon(Icons.check_circle_rounded, color: color) : null,
+          onTap: null,
         ),
-        child: Icon(icon, size: 20, color: color),
       ),
-      title: Text(title,
-          style: AppText.title(context)
-              .copyWith(fontSize: 14, color: danger ? AppColors.danger : null)),
-      subtitle: subtitle != null
-          ? Text(subtitle, style: AppText.body(context).copyWith(fontSize: 11))
-          : null,
-      trailing:
-          selected ? Icon(Icons.check_circle_rounded, color: color) : null,
-      onTap: onTap,
     );
   }
 
@@ -771,7 +1019,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 13, color: AppColors.brand),
+              Icon(icon, size: 13, color: AppColors.brandInk(context)),
               const SizedBox(width: 6),
               Text(label,
                   style: AppText.label(context).copyWith(

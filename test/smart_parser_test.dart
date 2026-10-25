@@ -18,7 +18,7 @@ void main() {
       final result = await parse(sms, 'axis');
       expect(result, isNotNull);
       expect(result!.type, TransactionType.expense);
-      expect(result.amount, 239.00);
+      expect(result.amountMinor, 23900);
       expect(result.merchant, 'Jio Prepaid Recharges');
       expect(result.bank, 'Axis Bank');
       expect(result.confidence, greaterThanOrEqualTo(0.8));
@@ -30,10 +30,10 @@ void main() {
       final result = await parse(sms, 'federal-debit');
       expect(result, isNotNull);
       expect(result!.type, TransactionType.expense);
-      expect(result.amount, 690.00);
-      expect(result.amount, isNot(1440.77));
-      expect(result.amount, isNot(987242762796));
-      expect(result.amount, isNot(18004251199));
+      expect(result.amountMinor, 69000);
+      expect(result.amountMinor, isNot(144077));
+      expect(result.amountMinor, isNot(98724276279600));
+      expect(result.amountMinor, isNot(1800425119900));
       expect(result.merchant, 'YAMA BHARATH');
       expect(result.bank, 'Federal Bank');
       expect(result.account, '0592');
@@ -55,10 +55,10 @@ void main() {
       final result = await parse(sms, 'airtel');
       expect(result, isNotNull);
       expect(result!.type, TransactionType.expense);
-      expect(result.amount, 1.00);
-      expect(result.amount, isNot(39.80));
-      expect(result.amount, isNot(217406224829));
-      expect(result.amount, isNot(180023400));
+      expect(result.amountMinor, 100);
+      expect(result.amountMinor, isNot(3980));
+      expect(result.amountMinor, isNot(21740622482900));
+      expect(result.amountMinor, isNot(18002340000));
       expect(result.bank, 'Airtel Payments Bank');
       expect(result.reference, '217406224829');
       expect(result.merchant, 'Bank Debit');
@@ -83,23 +83,23 @@ void main() {
       final withBalance = await parse(
         'Rs 250 debited via UPI to ABC STORE. Bal Rs 5000',
       );
-      expect(withBalance?.amount, 250);
+      expect(withBalance?.amountMinor, 25000);
       expect(withBalance?.merchant, 'ABC STORE');
 
       final withReference = await parse(
         'Rs 100 debited. Ref 123456789. Bal Rs 2000',
       );
-      expect(withReference?.amount, 100);
+      expect(withReference?.amountMinor, 10000);
 
       final drMarker = await parse('Rs 75 DR');
-      expect(drMarker?.amount, 75);
+      expect(drMarker?.amountMinor, 7500);
     });
 
     test('preserves contextual parsing of the Axis example', () async {
       final result = await parse(
         'Your A/c has been debited towards Jio Prepaid Recharges for INR 239.00 on 06-10-26. 1c0d8d3d98594def965529cb4668c280@ptyes - Axis Bank',
       );
-      expect(result?.amount, 239);
+      expect(result?.amountMinor, 23900);
     });
   });
 }

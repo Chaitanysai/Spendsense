@@ -42,7 +42,11 @@ app.*.map.json
 # Local machine and secret config
 CLAUDE.md
 AGENTS.md
-android/app/google-services.json
+# Firebase client config for the Android app. Tracked on purpose: it holds only
+# public client identifiers (the same apiKey already lives in the committed
+# lib/firebase_options.dart), it ships inside every APK regardless, and the
+# release build fails without it. Real secrets stay in GitHub Secrets.
+# android/app/google-services.json
 android/build/
 release/*.apk
 
@@ -55,3 +59,15 @@ release/*.apk
 *.jks
 *.keystore
 key.properties
+
+# OTA hosting output: generated only from a verified, signed APK
+/ota/public/manifest.json
+/ota/public/releases/*
+!/ota/public/releases/.gitkeep
+
+# Local agent/tooling state, caches and pre-upgrade snapshots (never publish)
+.perch/
+.kiro/
+.firebase/
+*.before-upgrade
+*.patch

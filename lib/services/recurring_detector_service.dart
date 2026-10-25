@@ -1,9 +1,10 @@
 import '../models/transaction_model.dart';
+import '../utils/money_parser.dart';
 
 class RecurringTransaction {
   final String merchant;
   final String category;
-  final double averageAmount;
+  final int averageAmountMinor;
   final int occurrenceCount;
   final DateTime firstOccurrence;
   final DateTime lastOccurrence;
@@ -13,13 +14,16 @@ class RecurringTransaction {
   RecurringTransaction({
     required this.merchant,
     required this.category,
-    required this.averageAmount,
+    required this.averageAmountMinor,
     required this.occurrenceCount,
     required this.firstOccurrence,
     required this.lastOccurrence,
     required this.frequency,
     required this.transactions,
   });
+
+  @Deprecated('Use averageAmountMinor.')
+  double get averageAmount => averageAmountMinor.toDouble();
 
   String get frequencyLabel {
     switch (frequency) {
@@ -54,9 +58,13 @@ class RecurringDetectorService {
     final recurring = <RecurringTransaction>[];
 
     for (var entry in byMerchant.entries) {
-      final merchantTx = entry.value;
+      // Recurring payments describe money leaving the account. Income rows
+      // from the same merchant must not become subscription costs.
+      final merchantTx = entry.value
+          .where((tx) => tx.type == TransactionType.expense)
+          .toList();
 
-      // Need at least 2 occurrences to detect recurring
+      // Need at least 2 expense occurrences to detect recurring
       if (merchantTx.length < 2) continue;
 
       // Sort by date
@@ -99,14 +107,15 @@ class RecurringDetectorService {
       }
 
       // Calculate average amount
-      final totalAmount =
-          merchantTx.fold<double>(0, (sum, tx) => sum + tx.amount);
-      final avgAmount = totalAmount / merchantTx.length;
+      final totalAmountMinor =
+          merchantTx.fold<int>(0, (sum, tx) => sum + tx.amountMinor);
+      final avgAmountMinor =
+          roundPaiseDivision(totalAmountMinor, merchantTx.length);
 
       recurring.add(RecurringTransaction(
         merchant: entry.key,
         category: merchantTx.first.category,
-        averageAmount: avgAmount,
+        averageAmountMinor: avgAmountMinor,
         occurrenceCount: merchantTx.length,
         firstOccurrence: merchantTx.first.date,
         lastOccurrence: merchantTx.last.date,
@@ -121,30 +130,33 @@ class RecurringDetectorService {
     return recurring;
   }
 
-  /// Get estimated monthly cost of all recurring transactions
-  double getEstimatedMonthlyCost(List<RecurringTransaction> recurring) {
-    double monthly = 0;
+  int getEstimatedMonthlyCostMinor(List<RecurringTransaction> recurring) {
+    var monthly = 0;
 
-    for (var r in recurring) {
+    for (final r in recurring) {
       switch (r.frequency) {
         case RecurrenceFrequency.daily:
-          monthly += r.averageAmount * 30;
+          monthly += r.averageAmountMinor * 30;
           break;
         case RecurrenceFrequency.weekly:
-          monthly += r.averageAmount * 4.33;
+          monthly += (r.averageAmountMinor * 433 + 50) ~/ 100;
           break;
         case RecurrenceFrequency.biWeekly:
-          monthly += r.averageAmount * 2.17;
+          monthly += (r.averageAmountMinor * 217 + 50) ~/ 100;
           break;
         case RecurrenceFrequency.monthly:
         case RecurrenceFrequency.irregular:
-          monthly += r.averageAmount;
+          monthly += r.averageAmountMinor;
           break;
       }
     }
 
     return monthly;
   }
+
+  @Deprecated('Use getEstimatedMonthlyCostMinor.')
+  double getEstimatedMonthlyCost(List<RecurringTransaction> recurring) =>
+      getEstimatedMonthlyCostMinor(recurring).toDouble();
 
   /// Find potential subscriptions (monthly recurring payments)
   List<RecurringTransaction> findSubscriptions(

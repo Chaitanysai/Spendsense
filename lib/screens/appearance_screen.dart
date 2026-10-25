@@ -6,9 +6,15 @@ import '../utils/app_colors.dart';
 import '../utils/app_palette.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import '../utils/dashboard_sections.dart';
 import '../widgets/app_background.dart';
+import '../widgets/app_page_route.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_header.dart';
+import '../widgets/pressable.dart';
+import '../services/sound_service.dart';
+import '../widgets/sound_scope.dart';
+import 'typography_screen.dart';
 
 /// Settings → Appearance: theme colours, light/dark/system, and reset.
 ///
@@ -67,7 +73,7 @@ class AppearanceScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               SectionHeader(
                 title: 'Theme colours',
-                actionLabel: 'TAP TO APPLY',
+                actionLabel: 'Tap to apply',
               ),
               const SizedBox(height: AppSpacing.md),
               GlassCard(
@@ -81,8 +87,58 @@ class AppearanceScreen extends StatelessWidget {
                         onTap: () => theme.setPalette(AppPalette.all[i]),
                       ),
                       if (i != AppPalette.all.length - 1)
-                        const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: AppSpacing.xs),
                     ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const SectionHeader(title: 'Font style'),
+              const SizedBox(height: AppSpacing.md),
+              GlassCard(
+                onTap: () => Navigator.push(
+                  context,
+                  AppPageRoute(builder: (_) => const TypographyScreen()),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(theme.fontPreset.label,
+                              style: AppText.title(context)),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Text size ${(theme.fontScale * 100).round()}% · '
+                            'tap to preview',
+                            style: AppText.body(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textTertiary(context)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const SectionHeader(title: 'Dashboard sections'),
+              const SizedBox(height: AppSpacing.md),
+              GlassCard(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Column(
+                  children: [
+                    for (final id in DashboardSection.ids)
+                      SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg),
+                        title: Text(DashboardSection.label(id),
+                            style:
+                                AppText.title(context).copyWith(fontSize: 14)),
+                        value: theme.isSectionVisible(id),
+                        onChanged: (on) => theme.setSectionVisible(id, on),
+                      ),
                   ],
                 ),
               ),
@@ -97,7 +153,7 @@ class AppearanceScreen extends StatelessWidget {
                           Text('Reset to default',
                               style: AppText.title(context)),
                           const SizedBox(height: 2),
-                          Text('Ocean Blue · Light',
+                          Text('Midnight · Light',
                               style: AppText.body(context)),
                         ],
                       ),
@@ -122,7 +178,7 @@ class AppearanceScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Reset appearance?'),
         content: const Text(
-          'Theme colours return to Ocean Blue and appearance returns to Light.',
+          'Theme colours return to Midnight and appearance returns to Light.',
         ),
         actions: [
           TextButton(
@@ -166,9 +222,14 @@ class _ModeChoice extends StatelessWidget {
       selected: selected,
       label: AppearanceScreen.modeLabel(mode),
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Pressable(
+        onTap: () {
+          if (!selected) {
+            SoundScope.play(context, SoundEventType.selectionChanged);
+          }
+          onTap();
+        },
+        sound: null,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           decoration: BoxDecoration(
@@ -229,43 +290,77 @@ class _PaletteRow extends StatelessWidget {
       selected: selected,
       label: palette.label,
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              // Swatch shows the palette's own ramp, so the preview never
-              // depends on the currently active tokens.
-              Container(
-                width: 46,
-                height: 32,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  gradient: palette.brandGradient,
-                  border: Border.all(color: AppColors.border(context)),
+      child: Pressable(
+        onTap: () {
+          if (!selected) {
+            SoundScope.play(context, SoundEventType.selectionChanged);
+          }
+          onTap();
+        },
+        sound: null,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                // Swatch shows the palette's own ramp, so the preview never
+                // depends on the currently active tokens.
+                Container(
+                  width: 46,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    gradient: palette.brandGradient,
+                    border: Border.all(color: AppColors.border(context)),
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  palette.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.title(context),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          palette.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.title(context),
+                        ),
+                      ),
+                      if (palette.id == AppPalette.defaultPalette.id) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'DEFAULT',
+                            style: AppText.label(context).copyWith(
+                              fontSize: 8.5,
+                              letterSpacing: 0.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.brandInk(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-              if (selected)
-                Icon(Icons.check_circle_rounded,
-                    size: 22, color: AppColors.navSelected(context))
-              else
-                Icon(Icons.circle_outlined,
-                    size: 22, color: AppColors.textTertiary(context)),
-            ],
+                if (selected)
+                  Icon(Icons.check_circle_rounded,
+                      size: 22, color: AppColors.navSelected(context))
+                else
+                  Icon(Icons.circle_outlined,
+                      size: 22, color: AppColors.textTertiary(context)),
+              ],
+            ),
           ),
         ),
       ),

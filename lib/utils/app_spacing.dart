@@ -15,6 +15,12 @@ class AppSpacing {
   /// Standard horizontal page padding for the Galaxy-S24 class width.
   static const double page = 20;
 
+  /// Quick-action tiles: shared metrics so every tile is identical.
+  static const double tileGap = sm;
+  static const double tileMinHeight = 88;
+  static const double tileIconBox = 38;
+  static const double tileMinWidth = 72;
+
   /// Bottom gutter that clears the floating navigation bar.
   static const double navClearance = 108;
 
@@ -22,6 +28,20 @@ class AppSpacing {
   /// end-floated Add button stacked above it. Every tab that scrolls to the
   /// bottom must use this so the last row is never hidden behind the FAB.
   static const double fabClearance = navClearance + 56;
+
+  /// Adaptive version of [fabClearance] for the five shell tabs.
+  ///
+  /// The shell's Scaffold extends the body under the floating navigation bar
+  /// and reports the bar's real height (device inset and large-text growth
+  /// included) as bottom padding, so the gutter below follows the actual bar
+  /// instead of a fixed guess. [fabClearance] is kept as the lower bound for
+  /// hosts that have no bar (tests, embedded previews).
+  static double tabBottomInset(BuildContext context) {
+    final bar = MediaQuery.paddingOf(context).bottom;
+    // Add button (58) + the gap above the bar (16) + breathing room (8).
+    final dynamicInset = bar + 58 + lg + sm;
+    return dynamicInset > fabClearance ? dynamicInset : fabClearance;
+  }
 }
 
 /// Corner radii.
@@ -47,6 +67,13 @@ class AppMotion {
   AppMotion._();
 
   static const Duration fast = Duration(milliseconds: 150);
+
+  /// Press feedback halves. Touch-down must read as immediate, so it is shorter
+  /// than a normal micro-interaction; the release settles a little slower so
+  /// the surface never snaps back.
+  static const Duration pressIn = Duration(milliseconds: 90);
+  static const Duration pressOut = Duration(milliseconds: 160);
+
   static const Duration base = Duration(milliseconds: 250);
   static const Duration slow = Duration(milliseconds: 400);
   static const Duration counter = Duration(milliseconds: 650);

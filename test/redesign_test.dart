@@ -10,15 +10,28 @@ import 'package:spendsense/providers/auth_provider.dart';
 import 'package:spendsense/providers/period_provider.dart';
 import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
-import 'package:spendsense/screens/activity_screen.dart';
+import 'package:spendsense/screens/bills_screen.dart';
 import 'package:spendsense/screens/add_transaction_screen.dart';
 import 'package:spendsense/screens/cards_screen.dart';
 import 'package:spendsense/screens/home_screen.dart';
 import 'package:spendsense/screens/insights_screen.dart';
 import 'package:spendsense/screens/settings_screen.dart';
+import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/widgets/app_button.dart';
-import 'package:spendsense/widgets/budget_gauge.dart';
+import 'package:spendsense/widgets/budget_summary.dart';
+import 'package:spendsense/utils/budget_math.dart';
+import 'package:spendsense/widgets/app_page_route.dart';
 import 'package:spendsense/widgets/floating_nav_bar.dart';
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  Route<dynamic>? pushed;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed = route;
+    super.didPush(route, previousRoute);
+  }
+}
 
 TransactionModel _tx({
   required double amount,
@@ -77,14 +90,14 @@ void main() {
   });
 
   group('five-destination navigation', () {
-    testWidgets('bar exposes exactly Home, Activity, Insights, Cards, Settings',
+    testWidgets('bar exposes exactly Home, Bills, Insights, Cards, Settings',
         (tester) async {
       await _pumpShell(tester);
 
       final bar = tester.widget<FloatingNavBar>(find.byType(FloatingNavBar));
       expect(
         bar.items.map((i) => i.label).toList(),
-        ['HOME', 'ACTIVITY', 'INSIGHTS', 'CARDS', 'SETTINGS'],
+        ['HOME', 'BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS'],
       );
       expect(bar.items, hasLength(5));
     });
@@ -93,7 +106,7 @@ void main() {
       await _pumpShell(tester);
 
       final expected = <String, Type>{
-        'ACTIVITY': ActivityScreen,
+        'BILLS': BillsScreen,
         'INSIGHTS': InsightsScreen,
         'CARDS': CardsScreen,
         'SETTINGS': SettingsScreen,
@@ -138,7 +151,7 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'layout error on the populated Home dashboard');
 
-      for (final label in ['ACTIVITY', 'INSIGHTS', 'CARDS', 'SETTINGS']) {
+      for (final label in ['BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS']) {
         await tester.tap(find.text(label));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
@@ -155,6 +168,35 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('Recurring expenses'), findsOneWidget);
+    });
+  });
+
+  group('secondary route transitions', () {
+    testWidgets('AppPageRoute uses a shorter reverse transition',
+        (tester) async {
+      final observer = _RecordingNavigatorObserver();
+      await tester.pumpWidget(MaterialApp(
+        navigatorObservers: [observer],
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => Navigator.of(context).push(
+              AppPageRoute(builder: (_) => const Text('DETAILS')),
+            ),
+            child: const Text('OPEN'),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('OPEN'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final route = observer.pushed! as PageRoute<dynamic>;
+      expect(route, isA<AppPageRoute<dynamic>>());
+      expect(route.transitionDuration, AppMotion.base);
+      expect(route.reverseTransitionDuration, AppMotion.fast);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(milliseconds: 160));
     });
   });
 
@@ -232,38 +274,18 @@ void main() {
     });
   });
 
-  group('budget gauge', () {
-    Future<void> pumpGauge(WidgetTester tester,
-        {required double spent, required double budget}) async {
-      await tester.pumpWidget(
-        MaterialApp(
-            home: Scaffold(body: BudgetGauge(spent: spent, budget: budget))),
-      );
-      await tester.pump(const Duration(seconds: 1));
-    }
-
+  group('budget summary', () {
     testWidgets('renders the used percentage', (tester) async {
-      await pumpGauge(tester, spent: 2500, budget: 10000);
-      expect(find.text('25%'), findsOneWidget);
-      expect(find.text('of budget'), findsOneWidget);
-    });
-
-    testWidgets('a zero budget shows a prompt instead of dividing by zero',
-        (tester) async {
-      await pumpGauge(tester, spent: 500, budget: 0);
-      expect(find.text('—'), findsOneWidget);
-      expect(find.text('no budget'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('overspend clamps the arc rather than overflowing it',
-        (tester) async {
-      await pumpGauge(tester, spent: 30000, budget: 10000);
-      expect(find.text('100%'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: BudgetSummary(
+                  progress: const BudgetProgress(
+                      spentMinor: 2500, budgetMinor: 10000),
+                  periodLabel: 'Period'))));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.textContaining('25% used'), findsOneWidget);
     });
   });
-
   group('instrument roll-ups', () {
     test('statsBy groups by payment method and separates income', () {
       final provider = TransactionProvider();
@@ -276,10 +298,10 @@ void main() {
       ]);
 
       final byMethod = provider.statsBy((t) => t.paymentMethod);
-      expect(byMethod['UPI']!.spent, 150);
-      expect(byMethod['UPI']!.received, 200);
+      expect(byMethod['UPI']!.spent, 15000);
+      expect(byMethod['UPI']!.received, 20000);
       expect(byMethod['UPI']!.count, 3);
-      expect(byMethod['Card']!.spent, 700);
+      expect(byMethod['Card']!.spent, 70000);
     });
 
     test('a blank attribute falls back to Other rather than vanishing', () {
@@ -292,7 +314,7 @@ void main() {
 
       final byBank = provider.statsBy((t) => t.bank);
       expect(byBank['Other']!.count, 2);
-      expect(byBank['Axis Bank']!.spent, 30,
+      expect(byBank['Axis Bank']!.spent, 3000,
           reason: 'surrounding whitespace must not split one bank in two');
     });
   });

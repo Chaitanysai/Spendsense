@@ -3,8 +3,14 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 
 /// Screen background: the scaffold colour plus three soft ambient radial glows
-/// (brand top-left, cyan upper-right, amber lower-left). Static and cheap — no
+/// (brand top-left, accent upper-right, warm lower-left). Static and cheap — no
 /// blur, so it does not tax scroll performance.
+///
+/// The dark canvas is pure black (`#000000`) for every palette, Midnight
+/// included: broad colour washes would light up the panel and defeat the point
+/// of black, so dark mode paints no glow at all. Navy and blue belong on the
+/// cards, hero cards, borders and the selected navigation chip, never on the
+/// canvas. Light mode keeps the airy tinted wash.
 class AppBackground extends StatelessWidget {
   final Widget child;
   final bool showGlow;
@@ -15,12 +21,15 @@ class AppBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
     final glow = dark ? 0.10 : 0.16;
+    // Pure-black canvas: no accent wash at all, so the palette never tints the
+    // background. Light mode keeps its airy glow.
+    final paintGlow = showGlow && !(dark && AppColors.isAmoledCanvas);
 
     return DecoratedBox(
       decoration: BoxDecoration(color: AppColors.scaffold(context)),
       child: Stack(
         children: [
-          if (showGlow) ...[
+          if (paintGlow) ...[
             Positioned(
               top: -120,
               left: -90,

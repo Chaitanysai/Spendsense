@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'pressable.dart';
+import 'sound_scope.dart';
 
 class SmsImportPrompt {
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
+    return showAppSheet(
       context: context,
-      isDismissible: false,
-      enableDrag: false,
-      isScrollControlled: true,
+      // The prompt is a helpful first-run setup, not a navigation lock. Users
+      // must still be able to reach Activity and configure the date later.
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SmsImportPromptSheet(),
     );
@@ -100,9 +105,9 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                 style: AppText.body(context).copyWith(height: 1.5),
               ),
               const SizedBox(height: AppSpacing.xl),
-              InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
+              Pressable(
                 onTap: _saving ? null : _pickDate,
+                sound: SoundEventType.buttonTap,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.lg),
@@ -165,15 +170,35 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
       initialDate: _selectedDate,
     );
     if (picked != null) {
+      // The picker returned across an async gap, so re-check before touching
+      // the scope or the state of a sheet that may have been dismissed.
+      if (!mounted) return;
+      SoundScope.play(context, SoundEventType.selectionChanged);
       setState(() => _selectedDate = picked);
     }
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    await context
-        .read<TransactionProvider>()
-        .setSmsScanStartDate(_selectedDate);
+    // Resolved before the await: this sheet pops itself once the write lands.
+    final sound = SoundScope.maybeOf(context);
+    try {
+      await context
+          .read<TransactionProvider>()
+          .setSmsScanStartDate(_selectedDate);
+    } catch (error) {
+      // The scan window was not stored, so nothing succeeded and nothing may
+      // announce success. Leave the sheet open so the date can be retried.
+      debugPrint('SmsImportPrompt: could not save start date — $error');
+      if (!mounted) return;
+      setState(() => _saving = false);
+      SoundScope.playOn(sound, SoundEventType.actionFailed);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save. Please try again.')),
+      );
+      return;
+    }
+    SoundScope.playOn(sound, SoundEventType.actionSucceeded);
     if (!mounted) return;
     Navigator.of(context).pop();
   }

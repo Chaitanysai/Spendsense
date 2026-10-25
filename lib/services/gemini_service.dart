@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import 'sms_content_policy.dart';
+import '../utils/money_parser.dart';
 import '../models/transaction_model.dart';
 import '../utils/bank_recognizer.dart';
 import 'smart_parser.dart';
@@ -90,8 +92,8 @@ class GeminiService {
     final localParser = SmartParser();
     final local = await localParser.parse(sms, id, smsDate);
     if (local == null) return null;
-    final confirmedAmount = localParser.extractDebitAmount(sms);
-    if (confirmedAmount == null) return null;
+    final confirmedAmountMinor = localParser.extractDebitAmountMinor(sms);
+    if (confirmedAmountMinor == null) return null;
     final cleanSms = sanitizeSms(sms);
 
     final providers = await _getProviders();
@@ -103,13 +105,13 @@ class GeminiService {
         sms,
         id,
         smsDate,
-        confirmedAmount,
+        confirmedAmountMinor,
       );
       if (result != null &&
           result.type == TransactionType.expense &&
-          result.amount == local.amount) {
-        debugPrint(
-            '✅ AI parsed via ${provider.name}: ${result.merchant} ₹${result.amount}');
+          result.amountMinor == local.amountMinor) {
+        // Provider name only: merchant and amount must not reach the log.
+        debugPrint('✅ AI parsed via ${provider.name}');
         return result;
       }
       debugPrint('⚠️ ${provider.name} failed — trying next…');
@@ -123,7 +125,7 @@ class GeminiService {
     String originalSms,
     String id,
     DateTime smsDate,
-    double confirmedAmount,
+    int confirmedAmountMinor,
   ) async {
     try {
       final response = await http
@@ -177,7 +179,7 @@ class GeminiService {
         originalSms,
         id,
         smsDate,
-        confirmedAmount: confirmedAmount,
+        confirmedAmountMinor: confirmedAmountMinor,
       );
     } catch (e) {
       debugPrint('🔴 ${provider.name}: $e');
@@ -194,7 +196,7 @@ class GeminiService {
   String _buildPrompt(String sms) => '''
 Parse this Indian bank/UPI SMS. Return ONLY this JSON:
 {
-  "amount": <number, no commas or symbols>,
+  "amount": "<decimal amount, no symbols>",
   "type": "expense" | "income" | "not_financial",
   "merchant": "<merchant name>",
   "category": "<Food|Shopping|Fuel|Travel|Bills|Transfer|Cash|Entertainment|Health|Investment|Other>",
@@ -207,19 +209,31 @@ Parse this Indian bank/UPI SMS. Return ONLY this JSON:
 SMS: $sms
 ''';
 
+  int? _tryParseMinor(String text) {
+    try {
+      return parseRupeesToPaise(text.replaceAll(',', ''));
+    } on MoneyParseException {
+      return null;
+    }
+  }
+
   TransactionModel? _toModel(Map<String, dynamic> json, String originalSms,
       String id, DateTime smsDate,
-      {required double confirmedAmount}) {
-    double amount = 0;
-    final rawAmt = json['amount'];
-    if (rawAmt is num) {
-      amount = rawAmt.toDouble();
-    } else if (rawAmt is String) {
-      amount =
-          double.tryParse(rawAmt.replaceAll(',', '').replaceAll('₹', '')) ?? 0;
-    }
-    if (amount <= 0 ||
-        amount != confirmedAmount ||
+      {required int confirmedAmountMinor}) {
+    final rawAmount = json['amount'];
+    final amountText = rawAmount is String
+        ? rawAmount.replaceAll('₹', '').trim()
+        : rawAmount is num
+            ? rawAmount.toString()
+            : null;
+    if (amountText == null) return null;
+
+    final amountMinor = switch (amountText) {
+      _ => _tryParseMinor(amountText),
+    };
+    if (amountMinor == null ||
+        amountMinor <= 0 ||
+        amountMinor != confirmedAmountMinor ||
         (json['type'] as String?)?.toLowerCase() != 'expense' ||
         !SmartParser.isDebitExpenseSms(originalSms)) {
       return null;
@@ -259,7 +273,7 @@ SMS: $sms
 
     return TransactionModel(
       id: id,
-      amount: amount.toInt(),
+      amountMinor: amountMinor,
       type: type,
       merchant: merchant,
       category: category,
@@ -267,7 +281,8 @@ SMS: $sms
       date: smsDate,
       time:
           '${smsDate.hour.toString().padLeft(2, '0')}:${smsDate.minute.toString().padLeft(2, '0')}',
-      originalSms: originalSms,
+      // Reduce-only policy: a new record no longer stores the raw bank SMS.
+      originalSms: SmsContentPolicy.retainedBody(originalSms) ?? '',
       isExcluded: false,
       bank: bank,
       account: account,

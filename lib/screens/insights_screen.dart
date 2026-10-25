@@ -2,20 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/ai_chat_message.dart';
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
-import '../services/ai_query_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import '../utils/formatters.dart';
+import '../utils/period_math.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/app_background.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/category_bubble.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/gradient_hero_card.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/insight_cards.dart';
+import 'assistant_screen.dart';
+import 'summary_screen.dart';
 
 class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});
@@ -23,6 +25,11 @@ class InsightsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TransactionProvider>();
+    // The shell keeps this tab mounted, so it no longer rebuilds on every visit.
+    // The month totals below are derived from DateTime.now(), so subscribe to
+    // the tab's ticker state: the screen rebuilds when the tab is shown again
+    // and cannot display a stale month after the clock rolled over.
+    TickerMode.valuesOf(context);
     final metrics = _buildMetrics(provider);
 
     return Scaffold(
@@ -30,11 +37,11 @@ class InsightsScreen extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             AppSpacing.page,
             AppSpacing.md,
             AppSpacing.page,
-            AppSpacing.fabClearance,
+            AppSpacing.tabBottomInset(context),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +54,7 @@ class InsightsScreen extends StatelessWidget {
                   style: AppText.body(context)),
               const SizedBox(height: AppSpacing.xl),
 
-              // ── Stat cards ────────────────────────────────────────────
+              // â”€â”€ Stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               SizedBox(
                 height: 168,
                 child: ListView(
@@ -55,17 +62,19 @@ class InsightsScreen extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   children: [
                     FadeSlideIn(
+                      index: 0,
                       child: _statCard(
                         context,
                         title: 'This month',
-                        value: '₹${metrics.currentTotal.toStringAsFixed(0)}',
+                        value: Formatters.currency.format(metrics.currentTotal),
                         subtitle:
                             DateFormat('MMMM yyyy').format(DateTime.now()),
-                        gradient: AppColors.heroGradient,
+                        gradient: AppColors.heroSurfaceGradient(context),
                         icon: Icons.calendar_month_rounded,
                       ),
                     ),
                     FadeSlideIn(
+                      index: 1,
                       child: _statCard(
                         context,
                         title: 'Change',
@@ -74,7 +83,7 @@ class InsightsScreen extends StatelessWidget {
                         // misleading "0.0% up".
                         value: metrics.hasPreviousMonth
                             ? '${metrics.percentChange.toStringAsFixed(1)}%'
-                            : '—',
+                            : 'â€”',
                         subtitle: !metrics.hasPreviousMonth
                             ? 'No prior month data'
                             : metrics.percentChange > 0
@@ -82,10 +91,10 @@ class InsightsScreen extends StatelessWidget {
                                 : metrics.percentChange < 0
                                     ? 'Down vs last month'
                                     : 'Same as last month',
-                        gradient: (!metrics.hasPreviousMonth ||
-                                metrics.percentChange >= 0)
-                            ? AppColors.electricGradient
-                            : AppColors.successGradient,
+                        gradient: metrics.hasPreviousMonth &&
+                                metrics.percentChange < 0
+                            ? AppColors.successGradient
+                            : AppColors.heroSurfaceGradient(context),
                         glowColor: metrics.hasPreviousMonth &&
                                 metrics.percentChange < 0
                             ? AppColors.incomeGreen
@@ -98,16 +107,13 @@ class InsightsScreen extends StatelessWidget {
                       ),
                     ),
                     FadeSlideIn(
+                      index: 2,
                       child: _statCard(
                         context,
                         title: 'Top category',
                         value: metrics.topCategory,
                         subtitle: 'Highest spend this month',
-                        gradient: LinearGradient(
-                          colors: [AppColors.navyDeep, AppColors.brand],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        gradient: AppColors.heroGradient,
                         glowColor: AppColors.brand,
                         icon: Icons.auto_awesome_rounded,
                       ),
@@ -116,11 +122,44 @@ class InsightsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              FadeSlideIn(child: _buildCategoryBubbles(context, metrics)),
+              FadeSlideIn(
+                index: 3,
+                child: _buildCategoryBubbles(context, metrics),
+              ),
               const SizedBox(height: AppSpacing.lg),
-              FadeSlideIn(child: _buildSmartTip(context, metrics)),
+              FadeSlideIn(
+                index: 4,
+                child: InsightComparisons(transactions: provider.transactions),
+              ),
               const SizedBox(height: AppSpacing.lg),
-              FadeSlideIn(child: _buildAssistantLauncherCard(context)),
+              FadeSlideIn(
+                index: 5,
+                child: GlassCard(
+                  onTap: () => Navigator.of(context).push(
+                    AppPageRoute(builder: (_) => const SummaryScreen()),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.summarize_rounded,
+                          color: AppColors.brandInk(context)),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text('Financial summary',
+                            style: AppText.title(context)),
+                      ),
+                      Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textTertiary(context)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FadeSlideIn(index: 6, child: _buildSmartTip(context, metrics)),
+              const SizedBox(height: AppSpacing.lg),
+              FadeSlideIn(
+                index: 7,
+                child: _buildAssistantLauncherCard(context),
+              ),
             ],
           ),
         ),
@@ -129,35 +168,37 @@ class InsightsScreen extends StatelessWidget {
   }
 
   _InsightMetrics _buildMetrics(TransactionProvider provider) {
+    // Calendar-month reporting, deliberately separate from the salary cycle.
+    // Both months are derived from ONE captured "now" so the pair can never
+    // straddle a midnight rollover, and membership is decided on the LOCAL
+    // calendar day.
     final now = DateTime.now();
+    final thisMonth = PeriodMath.calendarMonth(now);
+    final lastMonth =
+        PeriodMath.calendarMonth(DateTime(now.year, now.month - 1));
 
-    final currentMonthTx = provider.transactions.where((t) {
-      return t.date.month == now.month &&
-          t.date.year == now.year &&
-          !t.isExcluded &&
-          t.type == TransactionType.expense;
-    }).toList();
+    bool inMonth(TransactionModel t, DateTimeRange month) =>
+        !t.isExcluded &&
+        t.type == TransactionType.expense &&
+        PeriodMath.containsLocalDate(month, t.date);
 
-    final lastMonth = DateTime(now.year, now.month - 1);
-    final lastMonthTx = provider.transactions.where((t) {
-      return t.date.month == lastMonth.month &&
-          t.date.year == lastMonth.year &&
-          !t.isExcluded &&
-          t.type == TransactionType.expense;
-    }).toList();
+    final currentMonthTx =
+        provider.transactions.where((t) => inMonth(t, thisMonth)).toList();
+    final lastMonthTx =
+        provider.transactions.where((t) => inMonth(t, lastMonth)).toList();
 
     final currentTotal =
-        currentMonthTx.fold<double>(0, (sum, t) => sum + t.amount);
-    final lastTotal = lastMonthTx.fold<double>(0, (sum, t) => sum + t.amount);
+        currentMonthTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+    final lastTotal = lastMonthTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
 
     double percentChange = 0;
     if (lastTotal > 0) {
-      percentChange = ((currentTotal - lastTotal) / lastTotal) * 100;
+      percentChange = (currentTotal - lastTotal) * 100.0 / lastTotal;
     }
 
-    final categoryMap = <String, double>{};
+    final categoryMap = <String, int>{};
     for (final t in currentMonthTx) {
-      categoryMap[t.category] = (categoryMap[t.category] ?? 0) + t.amount;
+      categoryMap[t.category] = (categoryMap[t.category] ?? 0) + t.amountMinor;
     }
 
     final sortedCategories = categoryMap.entries.toList()
@@ -211,6 +252,7 @@ class InsightsScreen extends StatelessWidget {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(value,
+                    maxLines: 1,
                     style:
                         AppText.onGradient(size: 28, weight: FontWeight.w800)),
               ),
@@ -313,11 +355,18 @@ class InsightsScreen extends StatelessWidget {
           Text('Ask SpendSense AI',
               style: AppText.onGradient(size: 24, weight: FontWeight.w800)),
           const SizedBox(height: AppSpacing.sm),
+          // `height: 1.4` was the clipping cause: a 1.4x line box over two
+          // lines needs 2.8 * fontSize of vertical space, which overran the
+          // card's 2-line budget and cut the third line mid-glyph instead of
+          // drawing an ellipsis. Dropping `height` (the font's natural metrics
+          // fit two lines) keeps the type size and weight intact and lets
+          // `maxLines: 2` ellipsize as intended for any future longer copy.
           Text(
-            'Ask about your top categories, largest merchants, or how this month compares — all answered on-device.',
+            'Ask about transactions, preview exclusions, or undo a change — '
+            'calculated on-device, with optional Gemini assistance.',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppText.onGradient(size: 13, opacity: 0.9, height: 1.4),
+            style: AppText.onGradient(size: 13, opacity: 0.9),
           ),
         ],
       ),
@@ -368,328 +417,21 @@ class InsightsScreen extends StatelessWidget {
   }
 
   void _openAssistant(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (_) => const _AssistantChatScreen()),
+    AppPageRoute.pushOnce(
+      context,
+      name: AssistantScreen.routeName,
+      builder: (_) => const AssistantScreen(),
     );
-  }
-}
-
-/// Full-screen, self-contained assistant chat. Rendered as its own route so it
-/// sits above the shell's floating nav bar and gets correct keyboard insets.
-class _AssistantChatScreen extends StatefulWidget {
-  const _AssistantChatScreen();
-
-  @override
-  State<_AssistantChatScreen> createState() => _AssistantChatScreenState();
-}
-
-class _AssistantChatScreenState extends State<_AssistantChatScreen> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final AIQueryService _localAI = AIQueryService();
-  late final List<_ChatEntry> _messages = [
-    _ChatEntry(
-      message: AIChatMessage(
-        role: 'assistant',
-        content:
-            'I can answer questions from your locally stored transactions.',
-      ),
-    ),
-  ];
-
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<TransactionProvider>();
-
-    return AppBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          titleSpacing: 0,
-          title: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(Icons.smart_toy_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('SpendSense Bot', style: AppText.title(context)),
-                    Text('Answers from your local data',
-                        style: AppText.body(context).copyWith(fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        body: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.page, 0, AppSpacing.page, AppSpacing.md),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceAlt(context),
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.lock_outline_rounded,
-                              size: 13,
-                              color: AppColors.textSecondary(context)),
-                          const SizedBox(width: 6),
-                          Text('LOCAL ONLY',
-                              style: AppText.overline(context)
-                                  .copyWith(fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.page),
-                  children: [
-                    _promptChip(
-                      context,
-                      label: 'Top category?',
-                      onTap: () => _submitQuery(
-                          provider, 'What is my top category this month?'),
-                    ),
-                    _promptChip(
-                      context,
-                      label: 'Highest spend?',
-                      onTap: () => _submitQuery(
-                          provider, 'What is my highest transaction?'),
-                    ),
-                    _promptChip(
-                      context,
-                      label: 'Fuel spend',
-                      onTap: () => _submitQuery(
-                          provider, 'How much did I spend on fuel?'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Divider(height: 1, color: AppColors.border(context)),
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.page,
-                      AppSpacing.lg, AppSpacing.page, AppSpacing.md),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) =>
-                      _messageBubble(context, _messages[index]),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.page,
-                    AppSpacing.sm, AppSpacing.page, AppSpacing.md),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        minLines: 1,
-                        maxLines: 4,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) =>
-                            _submitQuery(provider, _controller.text.trim()),
-                        decoration: const InputDecoration(
-                          hintText: 'Ask about your spending…',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: AppColors.electricGradient,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      child: IconButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () =>
-                                _submitQuery(provider, _controller.text.trim()),
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.arrow_upward_rounded,
-                                color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _promptChip(
-    BuildContext context, {
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.sm),
-      child: ActionChip(
-        backgroundColor: AppColors.surfaceAlt(context),
-        side: BorderSide(color: AppColors.border(context)),
-        label:
-            Text(label, style: AppText.label(context).copyWith(fontSize: 12)),
-        onPressed: onTap,
-      ),
-    );
-  }
-
-  Widget _messageBubble(BuildContext context, _ChatEntry entry) {
-    final isUser = entry.message.role == 'user';
-    final bubbleColor =
-        isUser ? AppColors.brand : AppColors.surfaceAlt(context);
-    final textColor = isUser ? Colors.white : AppColors.textPrimary(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: AppColors.heroGradient,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.smart_toy_rounded,
-                  color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Text(
-                entry.message.content,
-                style: AppText.body(context)
-                    .copyWith(color: textColor, height: 1.4),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _submitQuery(
-    TransactionProvider provider,
-    String query,
-  ) async {
-    final cleaned = query.trim();
-    if (cleaned.isEmpty || _isLoading) return;
-
-    _controller.clear();
-
-    setState(() {
-      _messages.add(
-        _ChatEntry(message: AIChatMessage(role: 'user', content: cleaned)),
-      );
-      _isLoading = true;
-    });
-    _scrollToBottom();
-
-    try {
-      final localResponse = _localAI.tryAnswer(cleaned, provider.transactions);
-
-      setState(() {
-        _messages.add(
-          _ChatEntry(
-            message: AIChatMessage(
-              role: 'assistant',
-              content: localResponse ??
-                  "I can only answer supported spending questions from your local transactions. Try asking about total spent, categories, averages, income, or transaction counts.",
-            ),
-          ),
-        );
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-      _scrollToBottom();
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 120,
-        duration: const Duration(milliseconds: 250),
-        curve: AppMotion.easeOut,
-      );
-    });
   }
 }
 
 class _InsightMetrics {
-  final double currentTotal;
+  final int currentTotal;
   final double percentChange;
   final bool hasPreviousMonth;
   final String topCategory;
-  final double totalCategories;
-  final List<MapEntry<String, double>> categories;
+  final int totalCategories;
+  final List<MapEntry<String, int>> categories;
 
   const _InsightMetrics({
     required this.currentTotal,
@@ -699,10 +441,4 @@ class _InsightMetrics {
     required this.totalCategories,
     required this.categories,
   });
-}
-
-class _ChatEntry {
-  final AIChatMessage message;
-
-  const _ChatEntry({required this.message});
 }

@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// SpendSense cloud data. The financial ledger is NOT here: transactions,
+// budgets, bills and recurring plans stay in the on-device encrypted database.
+// Firestore holds one document per account, keyed by the Firebase Auth uid.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // users/{uid} — the account profile.
+    match /users/{uid} {
+      // Only the owner can read their profile.
+      allow read: if isOwner(uid);
+
+      // The client creates the document immediately after sign-up, so the
+      // shape is checked field by field and no other fields are accepted.
+      allow create: if isOwner(uid)
+                    && request.resource.data.keys().hasOnly(allowedFields())
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() <= 80
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 254;
+
+      // Later writes may only touch these fields, so a client can never
+      // rewrite createdAt or smuggle in unrelated data.
+      allow update: if isOwner(uid)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(updatableFields())
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() <= 80;
+
+      // Account deletion goes through the Auth account, not a document write.
+      allow delete: if false;
+    }
+
+    // users/{uid}/transactions/{syncId} — one document per ledger row, plus a
+    // tombstone for deletions. The document id is the transaction's syncId.
+    match /users/{uid}/transactions/{syncId} {
+      allow read: if isOwner(uid);
+
+      // Deletion is a tombstone write, not a document delete, so a device that
+      // was offline cannot resurrect the row. Both shapes are accepted here.
+      allow create, update: if isOwner(uid)
+                            && incoming()['syncId'] == syncId
+                            && incoming()['updatedAtMs'] is int
+                            && validTransactionBody();
+
+      // Reserved for pruning tombstones past the retention window.
+      allow delete: if isOwner(uid);
+    }
+
+    // Anything not matched above is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+
+  function isOwner(uid) {
+    return request.auth != null && request.auth.uid == uid;
+  }
+
+  function allowedFields() {
+    return [
+      'displayName',
+      'email',
+      'createdAt',
+      'updatedAt',
+      'lastSeenAt',
+      'schemaVersion'
+    ];
+  }
+
+  function updatableFields() {
+    return ['displayName', 'email', 'updatedAt', 'lastSeenAt', 'schemaVersion'];
+  }
+
+  function incoming() {
+    return request.resource.data;
+  }
+
+  // A tombstone only needs the deletion stamp. A live row must carry the
+  // fields the ledger needs to total itself, with money as a non-negative
+  // integer in paise — the client never gets to define a new money shape.
+  function validTransactionBody() {
+    return incoming().deletedAtMs is int
+      || (incoming().amountMinor is int
+          && incoming().amountMinor >= 0
+          && incoming().currency == 'INR'
+          && incoming().schemaVersion == 2
+          && (incoming().type == 'expense' || incoming().type == 'income')
+          && incoming().merchant is string
+          && incoming().merchant.size() <= 200
+          && incoming().category is string
+          && incoming().category.size() <= 80
+          && incoming().date is string
+          && incoming().date.size() <= 40);
+  }
+}

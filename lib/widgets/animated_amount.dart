@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
 /// Animated numeric text: eases from zero on first build and between value
 /// changes. Respects reduced-motion by snapping to the end value.
@@ -27,7 +28,12 @@ class AnimatedAmount extends StatelessWidget {
       return Text(format(value), style: style);
     }
 
+    // A new page-entry generation remounts only this small tween, so the
+    // amount counts up again from zero. Ordinary rebuilds keep the same key
+    // and therefore never restart a finished count.
+    final generation = PageEntryScope.maybeOf(context)?.generation ?? 0;
     return TweenAnimationBuilder<double>(
+      key: ValueKey('amount-entry-$generation'),
       tween: Tween<double>(begin: 0, end: value),
       duration: d,
       curve: AppMotion.emphasized,

@@ -1,62 +1,35 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
+import 'page_entry.dart';
 
-/// Plays a one-shot fade + slight upward glide when the widget first mounts.
-/// Cheap (a single controller) and reduced-motion aware: when the OS disables
-/// animations the child renders immediately at rest.
+/// Backwards-compatible name for the reusable page-entry fade + glide.
 ///
-/// Because tab bodies live inside the shell's [IndexedStack] wrapped in
-/// [TickerMode], an entrance on an off-screen tab stays parked until the tab is
-/// actually shown — so it animates exactly once, on first view.
-class FadeSlideIn extends StatefulWidget {
+/// It keeps its original one-shot behaviour when no [PageEntryHost] is above
+/// it, and replays whenever an enclosing page entry is signalled. Because the
+/// scope mechanism is shared, a retained tab or a route revealed by a pop no
+/// longer leaves this animation parked at its finished state.
+class FadeSlideIn extends StatelessWidget {
   final Widget child;
   final double offset;
 
-  const FadeSlideIn({super.key, required this.child, this.offset = 0.06});
+  /// Optional list position for the subtle bounded stagger.
+  final int? index;
 
-  @override
-  State<FadeSlideIn> createState() => _FadeSlideInState();
-}
-
-class _FadeSlideInState extends State<FadeSlideIn>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: AppMotion.slow,
-  );
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    if (MediaQuery.maybeDisableAnimationsOf(context) == true) {
-      _c.value = 1;
-    } else {
-      _c.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+  const FadeSlideIn({
+    super.key,
+    required this.child,
+    this.offset = 0.06,
+    this.index,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final curved = CurvedAnimation(parent: _c, curve: AppMotion.emphasized);
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(0, widget.offset),
-          end: Offset.zero,
-        ).animate(curved),
-        child: widget.child,
-      ),
+    return PageEntrance(
+      offset: offset,
+      duration: AppMotion.slow,
+      index: index,
+      child: child,
     );
   }
 }

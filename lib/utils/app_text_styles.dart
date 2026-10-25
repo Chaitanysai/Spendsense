@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
+import 'app_typography.dart';
 
-/// Typography tokens. Poppins is already a dependency (google_fonts) — no new
-/// packages. Monetary figures use tabular figures so live-updating numbers do
-/// not jitter.
+/// Typography tokens. Faces come from the active [FontPreset] (Poppins by
+/// default); only large headings, hero figures and large amounts use the
+/// preset's display face. Monetary figures use tabular figures so live-updating
+/// numbers do not jitter.
 class AppText {
   AppText._();
 
-  static const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
+  static const List<FontFeature> _tabular = AppTypography.tabular;
 
   /// Oversized hero balance (e.g. the dashboard total).
-  static TextStyle hero(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle hero(BuildContext context) => AppTypography.resolve(
         fontSize: 40,
+        display: false,
         fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
         height: 1.05,
@@ -21,56 +23,59 @@ class AppText {
         fontFeatures: _tabular,
       );
 
-  static TextStyle display(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle display(BuildContext context) => AppTypography.resolve(
         fontSize: 32,
+        display: false,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.8,
         color: AppColors.textPrimary(context),
         fontFeatures: _tabular,
       );
 
-  static TextStyle h1(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle h1(BuildContext context) => AppTypography.resolve(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: AppColors.textPrimary(context),
       );
 
-  static TextStyle h2(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle h2(BuildContext context) => AppTypography.resolve(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.3,
         color: AppColors.textPrimary(context),
       );
 
-  static TextStyle title(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle title(BuildContext context) => AppTypography.resolve(
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary(context),
       );
 
-  static TextStyle body(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle body(BuildContext context) => AppTypography.resolve(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 1.4,
         color: AppColors.textSecondary(context),
       );
 
-  static TextStyle label(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle label(BuildContext context) => AppTypography.resolve(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary(context),
       );
 
   /// Small uppercase eyebrow text (e.g. section labels).
-  static TextStyle overline(BuildContext context) => GoogleFonts.poppins(
+  static TextStyle overline(BuildContext context) => AppTypography.resolve(
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.2,
         color: AppColors.textTertiary(context),
       );
 
-  /// Numeric amount text with tabular figures.
+  /// Numeric amount text with tabular figures. Amounts always use the body
+  /// face, at every size, so the rupee sign and comparable digits are
+  /// guaranteed even when the display face is a decorative dot-matrix.
   static TextStyle amount(
     BuildContext context, {
     double size = 16,
@@ -78,12 +83,15 @@ class AppText {
     Color? color,
     double letterSpacing = -0.3,
   }) =>
-      GoogleFonts.poppins(
+      AppTypography.resolve(
         fontSize: size,
         fontWeight: weight,
         letterSpacing: letterSpacing,
         color: color ?? AppColors.textPrimary(context),
         fontFeatures: _tabular,
+        // Money always uses the body face: display faces often lack the
+        // rupee sign and lining figures.
+        display: false,
       );
 
   /// Text style used on coloured (gradient) surfaces.
@@ -94,7 +102,7 @@ class AppText {
     double letterSpacing = 0,
     double height = 1.2,
   }) =>
-      GoogleFonts.poppins(
+      AppTypography.resolve(
         fontSize: size,
         fontWeight: weight,
         letterSpacing: letterSpacing,

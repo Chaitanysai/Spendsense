@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
+import '../services/sms_content_policy.dart';
 import '../providers/transaction_provider.dart';
+import '../services/sound_service.dart';
 import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
 import '../widgets/gradient_hero_card.dart';
+import '../widgets/sound_scope.dart';
+import '../widgets/transaction_type_toggle.dart';
 
 class TransactionDetailsScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -49,8 +53,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     super.initState();
     _merchantController =
         TextEditingController(text: widget.transaction.merchant);
-    _amountController =
-        TextEditingController(text: widget.transaction.amount.toString());
+    _amountController = TextEditingController(
+      text: formatPaise(widget.transaction.amountMinor, trimZeroPaise: true),
+    );
     _bankController = TextEditingController(
       text: widget.transaction.bank?.trim() ?? '',
     );
@@ -108,8 +113,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        inputFormatters: const [
+                          AmountInputFormatter(),
                         ],
                         decoration: const InputDecoration(
                           labelText: 'Amount',
@@ -117,31 +122,20 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      DropdownButtonFormField<TransactionType>(
-                        initialValue: _type,
-                        decoration: const InputDecoration(
-                          labelText: 'Type',
-                          prefixIcon: Icon(Icons.swap_vert_rounded),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: TransactionType.expense,
-                            child: Text('Expense'),
-                          ),
-                          DropdownMenuItem(
-                            value: TransactionType.income,
-                            child: Text('Income'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _type = value);
-                          }
+                      // Two visible segments instead of a dropdown: a binary
+                      // choice should not open a full-width overlay. The toggle
+                      // plays the selection cue itself.
+                      TransactionTypeToggle(
+                        isIncome: _type == TransactionType.income,
+                        onSelect: (value) {
+                          if (value != _type) setState(() => _type = value);
                         },
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       DropdownButtonFormField<String>(
                         initialValue: _category,
+                        borderRadius: AppRadius.mdAll,
+                        dropdownColor: AppColors.surfaceColor(context),
                         decoration: const InputDecoration(
                           labelText: 'Category',
                           prefixIcon: Icon(Icons.category_outlined),
@@ -151,7 +145,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                                 value: item, child: Text(item)))
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) {
+                          if (value != null && value != _category) {
+                            SoundScope.play(
+                                context, SoundEventType.selectionChanged);
                             setState(() => _category = value);
                           }
                         },
@@ -202,18 +198,24 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           borderRadius: BorderRadius.circular(AppRadius.md),
                           border: Border.all(color: AppColors.border(context)),
                         ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md),
-                          title: Text('Exclude from Insights',
-                              style: AppText.title(context)
-                                  .copyWith(fontSize: 14)),
-                          subtitle: Text("Don't count this in totals",
-                              style:
-                                  AppText.body(context).copyWith(fontSize: 12)),
-                          value: _isExcluded,
-                          onChanged: (value) =>
-                              setState(() => _isExcluded = value),
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: SwitchListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md),
+                            title: Text('Exclude from Insights',
+                                style: AppText.title(context)
+                                    .copyWith(fontSize: 14)),
+                            subtitle: Text("Don't count this in totals",
+                                style: AppText.body(context)
+                                    .copyWith(fontSize: 12)),
+                            value: _isExcluded,
+                            onChanged: (value) {
+                              SoundScope.play(
+                                  context, SoundEventType.selectionChanged);
+                              setState(() => _isExcluded = value);
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
@@ -228,8 +230,18 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         ),
                         child: Text(
                           widget.transaction.originalSms.isEmpty
-                              ? 'No source message (manually added).'
-                              : widget.transaction.originalSms,
+                              // Two honest reasons a body can be absent now:
+                              // the entry was typed, or it came from SMS under
+                              // the reduce-only policy that stops storing the
+                              // raw text. Stored bodies (older records) still
+                              // display unchanged.
+                              ? (widget.transaction.source == 'Manual'
+                                  ? 'No source message (manually added).'
+                                  : 'The source message is not stored. '
+                                      'Amount, merchant and date were read '
+                                      'from your bank SMS.')
+                              : SmsContentPolicy.preserve(
+                                  widget.transaction.originalSms),
                           style: AppText.body(context).copyWith(height: 1.5),
                         ),
                       ),
@@ -248,6 +260,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   label: 'Save changes',
                   icon: Icons.save_rounded,
                   loading: _saving,
+                  // The saved cue is this button's real feedback.
+                  sound: null,
                   onPressed: _saving ? null : _save,
                 ),
               ),
@@ -303,7 +317,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              '₹ ${_amountController.text.isEmpty ? '0' : _amountController.text}',
+              _safeHeaderAmount(),
               style: AppText.onGradient(size: 38, weight: FontWeight.w800),
             ),
           ),
@@ -319,6 +333,17 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     );
   }
 
+  String _safeHeaderAmount() {
+    final raw = _amountController.text.trim();
+    if (raw.isEmpty) return '₹ 0';
+    try {
+      final minor = parseRupeesToPaise(raw);
+      return Formatters.currency.format(minor);
+    } on MoneyParseException {
+      return '₹ 0';
+    }
+  }
+
   String _normalizedCategory(String category) {
     if (_categories.contains(category)) return category;
     if (category == 'Others') return 'Other';
@@ -326,10 +351,22 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   }
 
   Future<void> _save() async {
-    final amount = int.tryParse(_amountController.text.trim());
+    final int amountMinor;
+    try {
+      amountMinor = parseRupeesToPaise(_amountController.text.trim());
+    } on MoneyParseException {
+      SoundScope.play(context, SoundEventType.actionFailed);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid merchant and amount')),
+      );
+      return;
+    }
     final merchant = _merchantController.text.trim();
 
-    if (amount == null || amount <= 0 || merchant.isEmpty) {
+    if (amountMinor <= 0 || merchant.isEmpty) {
+      // Validation failed: the user is told, and the matching cue confirms the
+      // negative outcome. No success cue is reachable from here.
+      SoundScope.play(context, SoundEventType.actionFailed);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid merchant and amount')),
       );
@@ -337,16 +374,37 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     }
 
     setState(() => _saving = true);
-    await context.read<TransactionProvider>().updateTransaction(
-          widget.transaction.id,
-          amount: amount,
-          merchant: merchant,
-          category: _category,
-          type: _type,
-          isExcluded: _isExcluded,
-          // Empty string clears the bank; the model then renders 'Others'.
-          bank: _bankController.text.trim(),
-        );
+
+    // Resolved before the await: this route pops itself once the write lands.
+    final sound = SoundScope.maybeOf(context);
+    final transactions = context.read<TransactionProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await transactions.updateTransaction(
+        widget.transaction.id,
+        amount: amountMinor,
+        merchant: merchant,
+        category: _category,
+        type: _type,
+        isExcluded: _isExcluded,
+        // Empty string clears the bank; the model then renders 'Others'.
+        bank: _bankController.text.trim(),
+      );
+    } catch (error) {
+      // The edit was not persisted, so nothing may be announced. Tell the user
+      // and keep the screen open with the edits intact.
+      debugPrint('TransactionDetailsScreen: could not save — $error');
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not save. Please try again.')),
+      );
+      return;
+    }
+
+    // Fired only once the edit is persisted and the route is still here.
+    SoundScope.playOn(sound, SoundEventType.transactionSaved);
     if (!mounted) return;
     Navigator.of(context).pop();
   }

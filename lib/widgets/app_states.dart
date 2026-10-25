@@ -36,14 +36,16 @@ class AppEmptyState extends StatelessWidget {
               height: 84,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.brand.withValues(alpha: 0.18),
-                    AppColors.cyan.withValues(alpha: 0.10),
-                  ],
+                color: AppColors.brand.withValues(alpha: 0.09),
+                border: Border.all(
+                  color: AppColors.brand.withValues(alpha: 0.16),
                 ),
               ),
-              child: Icon(icon, size: 38, color: AppColors.brand),
+              child: Icon(
+                icon,
+                size: 36,
+                color: AppColors.brandInk(context),
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             Text(
@@ -140,7 +142,18 @@ class _SkeletonBoxState extends State<SkeletonBox>
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.maybeDisableAnimationsOf(context) == true) {
+      _c.stop();
+      _c.value = 0;
+    } else if (!_c.isAnimating) {
+      _c.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {
@@ -226,7 +239,7 @@ class AppRefreshIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: AppColors.brand,
+      color: AppColors.brandInk(context),
       backgroundColor: AppColors.surfaceColor(context),
       onRefresh: onRefresh,
       child: child,

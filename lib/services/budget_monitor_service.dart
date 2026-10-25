@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/budget_math.dart';
+import '../utils/formatters.dart';
 import '../providers/transaction_provider.dart';
 
 class BudgetMonitorService {
@@ -37,32 +40,63 @@ class BudgetMonitorService {
     debugPrint(' Budget Monitor initialized');
   }
 
-  /// Check spending vs budget and show alerts
+  /// Check spending against the budget for the SALARY CYCLE (approved rule 6:
+  /// the monthly budget applies to the salary cycle, not the calendar month),
+  /// using the same boundary as the dashboard so the notification and the
+  /// gauge can never disagree.
   Future<void> checkBudgetAlert(TransactionProvider provider) async {
     await init();
 
-    final budget = provider.monthlyBudget;
-    final spent = provider.totalExpenses;
-    final percentage = (spent / budget) * 100;
+    final budget = provider.monthlyBudgetMinor;
+    final spent = provider.totalExpensesForPeriod(provider.currentSalaryCycle);
+    if (budget <= 0) return;
+
+    // Keep threshold decisions in integer paise. Only the label is double.
+    final percentage = spent * 100.0 / budget;
+
+    // The user may choose which of 50 / 80 / 100 % warn them (Budgets screen).
+    // Without a saved choice the original ladder below applies unchanged.
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getStringList('budget_alert_thresholds');
+    if (stored != null) {
+      final crossed = BudgetProgress(spentMinor: spent, budgetMinor: budget)
+          .crossedThreshold(normalizeBudgetThresholds(stored.map(int.tryParse)));
+      if (crossed == null) return;
+      final spentLabel = Formatters.currency.format(spent);
+      final budgetLabel = Formatters.currency.format(budget);
+      if (crossed >= 100) {
+        await _showNotification('Budget Exceeded!',
+            'You have spent $spentLabel out of $budgetLabel. Consider reducing expenses.');
+      } else {
+        await _showNotification(
+            crossed >= 80 ? 'Budget Warning' : 'Budget Check-in',
+            'You have spent $spentLabel out of $budgetLabel '
+            '(${percentage.toStringAsFixed(0)}%). '
+            '${Formatters.currency.format(budget - spent)} left.');
+      }
+      return;
+    }
 
     // Don't alert if under 50% - too early
-    if (percentage < 50) return;
+    if (spent * 100 < budget * 50) return;
 
     String? title;
     String? body;
 
     if (percentage >= 100) {
       title = 'Budget Exceeded!';
-      body =
-          'You have spent ${spent.toStringAsFixed(0)} out of ${budget.toStringAsFixed(0)}. Consider reducing expenses.';
+      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+          '${Formatters.currency.format(budget)}. Consider reducing expenses.';
     } else if (percentage >= 80) {
       title = 'Budget Warning';
-      body =
-          'You have spent ${spent.toStringAsFixed(0)} out of ${budget.toStringAsFixed(0)} (${percentage.toStringAsFixed(0)}%). Only ${(budget - spent).toStringAsFixed(0)} left!';
+      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+          '${Formatters.currency.format(budget)} '
+          '(${percentage.toStringAsFixed(0)}%). Only '
+          '${Formatters.currency.format(budget - spent)} left!';
     } else if (percentage >= 60) {
       title = 'Budget Check-in';
-      body =
-          'You have spent ${spent.toStringAsFixed(0)} out of ${budget.toStringAsFixed(0)}. You are doing well!';
+      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+          '${Formatters.currency.format(budget)}. You are doing well!';
     }
 
     if (title != null && body != null) {
