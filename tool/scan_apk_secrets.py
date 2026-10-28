@@ -22,7 +22,9 @@ import hashlib
 import json
 import re
 import sys
+import warnings
 import zipfile
+import zlib
 from pathlib import Path
 
 PATTERNS = {
@@ -47,8 +49,22 @@ def _sha256(value):
     return hashlib.sha256(value).hexdigest()
 
 
-def _safe_fp(value):
-    return _sha256(value)[:12]
+def _path_fields(path):
+    raw = str(path).encode("utf-8", errors="surrogatepass")
+    redacted = raw
+    for category, pattern in PATTERNS.items():
+        redacted = pattern.sub(f"[redacted-{category}]".encode("ascii"), redacted)
+    display = json.dumps(redacted.decode("utf-8", errors="surrogatepass"),
+                         ensure_ascii=True)[1:-1]
+    if len(display) > 240:
+        display = display[:237] + "..."
+    return {"path": display, "path_sha256": _sha256(raw)[:12]}
+
+
+class _SafeArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(2, "[error] Invalid scanner arguments; use --help for usage.\n")
 
 
 def resolve_firebase_key(project_root):
@@ -63,18 +79,22 @@ def resolve_firebase_key(project_root):
         config = json.loads(google_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise ScanFailure(
-            "Firebase config check failed: android/app/google-services.json is missing")
-    except (json.JSONDecodeError, OSError) as exc:
+            "Firebase config check failed: android/app/google-services.json is missing") from None
+    except (ValueError, OSError) as exc:
         raise ScanFailure(
             "Firebase config check failed: google-services.json is unreadable "
-            f"or invalid JSON ({type(exc).__name__})")
+            f"or invalid JSON ({type(exc).__name__})") from None
 
-    json_keys = {
-        entry.get("current_key", "")
-        for client in config.get("client", [])
-        for entry in client.get("api_key", [])
-        if entry.get("current_key")
-    }
+    try:
+        json_keys = {
+            entry.get("current_key", "")
+            for client in config.get("client", [])
+            for entry in client.get("api_key", [])
+            if entry.get("current_key")
+        }
+    except (AttributeError, TypeError):
+        raise ScanFailure(
+            "Firebase config check failed: malformed client key structure") from None
     if not json_keys:
         raise ScanFailure(
             "Firebase config check failed: no Android client API key in "
@@ -83,10 +103,10 @@ def resolve_firebase_key(project_root):
     dart_path = root / "lib" / "firebase_options.dart"
     try:
         dart_text = dart_path.read_text(encoding="utf-8")
-    except (FileNotFoundError, OSError) as exc:
+    except (ValueError, OSError) as exc:
         raise ScanFailure(
             "Firebase config check failed: lib/firebase_options.dart is "
-            f"unreadable ({type(exc).__name__})")
+            f"unreadable ({type(exc).__name__})") from None
     dart_keys = re.findall(r"apiKey:\s*['\"]([^'\"]+)['\"]", dart_text)
     if not dart_keys:
         raise ScanFailure(
@@ -127,28 +147,20 @@ def scan_apk(apk_path, project_root=None, expected_sha256=None):
             "Firebase config check failed: configured client key does not "
             "match the independently reviewed expected fingerprint")
 
+    apk_fields = _path_fields(apk_path)
     report = {
-        "apk_path": str(apk_path),
+        "apk_path": apk_fields["path"],
+        "apk_path_sha256": apk_fields["path_sha256"],
         "entries_scanned": 0,
         "totals": {category: 0 for category in PATTERNS},
+        "distinct": {category: 0 for category in PATTERNS},
         "exempt": {"google_gemini": {"occurrences": 0, "distinct": 0}},
         "unexpected_distinct": {category: set() for category in PATTERNS},
         "violations": [],
     }
 
-    apk = Path(apk_path)
-    if not apk.is_file():
-        report["violations"].append({
-            "path": str(apk),
-            "category": "archive",
-            "occurrences": 0,
-            "fingerprint": "-",
-            "check": "APK file missing or unreadable",
-        })
-        return report
-
     try:
-        with zipfile.ZipFile(apk) as archive:
+        with warnings.catch_warnings(action="error"), zipfile.ZipFile(apk_path) as archive:
             infos = archive.infolist()
             if len(infos) > MAX_ENTRIES:
                 raise ScanFailure(
@@ -156,23 +168,25 @@ def scan_apk(apk_path, project_root=None, expected_sha256=None):
                     f"{MAX_ENTRIES}")
             total_bytes = 0
             for info in infos:
+                path_fields = _path_fields(info.orig_filename)
+                _scan_entry(report, path_fields, info.orig_filename.encode("utf-8"),
+                            firebase_key, source="filename")
                 if info.is_dir():
                     continue
                 report["entries_scanned"] += 1
                 if Path(info.filename).name in ENV_ENTRY_NAMES:
                     report["violations"].append({
-                        "path": info.filename,
+                        **path_fields,
                         "category": "env_entry",
+                        "source": "filename",
                         "occurrences": 1,
-                        "fingerprint": "-",
                         "check": ".env entry is bundled inside the APK",
                     })
                 if info.file_size > MAX_ENTRY_BYTES:
                     report["violations"].append({
-                        "path": info.filename,
+                        **path_fields,
                         "category": "archive",
                         "occurrences": 0,
-                        "fingerprint": "-",
                         "check": "archive entry exceeds the size limit",
                     })
                     continue
@@ -182,41 +196,35 @@ def scan_apk(apk_path, project_root=None, expected_sha256=None):
                         "total uncompressed archive size exceeds limit")
                 try:
                     data = archive.read(info)
-                except (zipfile.BadZipFile, RuntimeError, OSError) as exc:
+                except (zipfile.BadZipFile, RuntimeError, OSError, ValueError,
+                        EOFError, zlib.error, Warning) as exc:
                     report["violations"].append({
-                        "path": info.filename,
+                        **path_fields,
                         "category": "archive",
                         "occurrences": 0,
-                        "fingerprint": "-",
                         "check": f"archive entry unreadable ({type(exc).__name__})",
                     })
                     continue
-                _scan_entry(report, info.filename, data, firebase_key)
-    except zipfile.BadZipFile as exc:
+                _scan_entry(report, path_fields, data, firebase_key,
+                            source="content")
+    except (zipfile.BadZipFile, OSError, ValueError, EOFError, Warning) as exc:
         report["violations"].append({
-            "path": str(apk),
+            **apk_fields,
             "category": "archive",
             "occurrences": 0,
-            "fingerprint": "-",
-            "check": f"not a valid ZIP archive ({type(exc).__name__})",
-        })
-    except OSError as exc:
-        report["violations"].append({
-            "path": str(apk),
-            "category": "archive",
-            "occurrences": 0,
-            "fingerprint": "-",
-            "check": f"APK unreadable ({type(exc).__name__})",
+            "check": f"APK unreadable or invalid ({type(exc).__name__})",
         })
 
+    exempt = report["exempt"]["google_gemini"]
+    exempt["distinct"] = 1 if exempt["occurrences"] else 0
     for category, distinct in report["unexpected_distinct"].items():
         report["unexpected_distinct"][category] = len(distinct)
-    report["exempt"]["google_gemini"]["distinct"] = \
-        1 if report["exempt"]["google_gemini"]["occurrences"] else 0
+        report["distinct"][category] = len(distinct)
+    report["distinct"]["google_gemini"] += exempt["distinct"]
     return report
 
 
-def _scan_entry(report, path, data, firebase_key):
+def _scan_entry(report, path_fields, data, firebase_key, *, source):
     firebase_bytes = firebase_key.encode("utf-8")
     for category, pattern in PATTERNS.items():
         matches = pattern.findall(data)
@@ -233,19 +241,21 @@ def _scan_entry(report, path, data, firebase_key):
             continue
         distinct = {_sha256(value) for value in matches}
         report["unexpected_distinct"][category] |= distinct
-        fingerprints = sorted(_safe_fp(value) for value in matches)
+        fingerprints = sorted({digest[:12] for digest in distinct})
         report["violations"].append({
-            "path": path,
+            **path_fields,
             "category": category,
+            "source": source,
             "occurrences": len(matches),
-            "fingerprint": fingerprints[0] if len(fingerprints) == 1 else "-",
+            "distinct": len(distinct),
+            "fingerprint": ",".join(fingerprints),
             "fingerprints": fingerprints,
             "check": "unexpected credential-pattern match",
         })
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = _SafeArgumentParser(prog="scan_apk_secrets.py", description=__doc__)
     parser.add_argument("apk_path", help="Path to the APK to scan")
     parser.add_argument(
         "--project-root", default=".",
@@ -263,11 +273,15 @@ def main(argv=None):
         print(f"[error] {exc}")
         return 1
 
-    print("APK archive validated.")
+    archive_failed = any(v["category"] == "archive" for v in report["violations"])
+    print("APK archive validation failed; counts are partial." if archive_failed
+          else "APK archive validated.")
     print(f"Archive entries scanned: {report['entries_scanned']}")
-    print("Credential-pattern occurrences by category:")
+    print("Credential-pattern counts by category (filenames and content):")
     for category, count in report["totals"].items():
-        print(f"  {category}: {count}")
+        print(f"  {category}: occurrences={count}, "
+              f"distinct={report['distinct'][category]}, "
+              f"unexpected_distinct={report['unexpected_distinct'][category]}")
     exempt = report["exempt"]["google_gemini"]
     if exempt["occurrences"]:
         print(
@@ -279,13 +293,18 @@ def main(argv=None):
         if violation["category"] == "env_entry")
     if report["violations"]:
         for violation in report["violations"]:
-            print(
+            detail = (
                 f"[error] {violation['check']}: entry={violation['path']}, "
+                f"path_sha256={violation['path_sha256']}, "
                 f"category={violation['category']}, "
-                f"occurrences={violation['occurrences']}, "
-                f"fingerprint={violation['fingerprint']}")
+                f"source={violation.get('source', 'archive')}, "
+                f"occurrences={violation['occurrences']}")
+            if "fingerprints" in violation:
+                detail += (f", distinct={violation['distinct']}, "
+                           f"fingerprints={','.join(violation['fingerprints'])}")
+            print(detail)
         print(f".env entries: {env_hits}")
-        print("Unexpected credentials: present; scan failed.")
+        print("Scan failed; see violations above.")
         return 1
 
     print("Unexpected credentials: none")
