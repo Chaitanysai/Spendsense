@@ -163,7 +163,22 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-        run: flutter build apk --release
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          # The updater's manifest URL is compiled in with --dart-define, so a
+          # release built without it silently ships with "Update channel not
+          # configured" and can never receive another update. Compile it from
+          # the same repository variable that drives manifest generation, so the
+          # APK and the manifest it will read can never disagree about origin.
+          # Absent the variable the build is unchanged (local/dev behaviour).
+          DEFINES=""
+          if [ -n "${OTA_BASE_URL:-}" ]; then
+            DEFINES="--dart-define=OTA_MANIFEST_URL=${OTA_BASE_URL%/}/manifest.json"
+            echo "Compiling update channel: ${OTA_BASE_URL%/}/manifest.json"
+          else
+            echo "::notice::OTA_BASE_URL is not set; this APK will have no update channel."
+          fi
+          flutter build apk --release $DEFINES
 
       - name: Verify and Re-label APK
         id: verify_apk

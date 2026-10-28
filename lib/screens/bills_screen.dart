@@ -439,14 +439,14 @@ class _BillRow extends StatelessWidget {
                       view.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.title(context).copyWith(fontSize: 14),
+                      style: AppText.bodyStrong(context),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _subtitle(view),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.label(context).copyWith(fontSize: 11.5),
+                      style: AppText.caption(context),
                     ),
                   ],
                 ),
@@ -476,7 +476,7 @@ class _BillRow extends StatelessWidget {
               ] else if (view.state == BillState.paid)
                 Text(
                   'Matched to a payment',
-                  style: AppText.label(context).copyWith(fontSize: 12),
+                  style: AppText.bodySmall(context),
                 ),
               const Spacer(),
               TextButton(
@@ -597,7 +597,7 @@ class _BillDetail extends StatelessWidget {
               Text(
                 'Auto-detected · '
                 '${(view.confidence! * 100).round()}% confidence',
-                style: AppText.label(context).copyWith(fontSize: 11),
+                style: AppText.caption(context),
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
@@ -617,7 +617,7 @@ class _BillDetail extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style:
-                              AppText.label(context).copyWith(fontSize: 12.5),
+                              AppText.bodySmall(context),
                         ),
                       ),
                       Text(Formatters.currency.format(t.amountMinor),
@@ -630,7 +630,7 @@ class _BillDetail extends StatelessWidget {
               'Payments need a biller, reference or category match plus a 2% '
               'amount tolerance inside the due window. A reminder alone never '
               'marks a bill paid.',
-              style: AppText.label(context).copyWith(fontSize: 11),
+              style: AppText.caption(context),
             ),
             if (onHide != null) ...[
               const SizedBox(height: AppSpacing.md),

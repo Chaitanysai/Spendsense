@@ -135,7 +135,7 @@ class AppearanceScreen extends StatelessWidget {
                             horizontal: AppSpacing.lg),
                         title: Text(DashboardSection.label(id),
                             style:
-                                AppText.title(context).copyWith(fontSize: 14)),
+                                AppText.bodyStrong(context)),
                         value: theme.isSectionVisible(id),
                         onChanged: (on) => theme.setSectionVisible(id, on),
                       ),

@@ -98,7 +98,7 @@ class _TypographyScreenState extends State<TypographyScreen> {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'Text size multiplies your phone\'s own font size setting.',
-                style: AppText.body(context).copyWith(fontSize: 12),
+                style: AppText.bodySmall(context),
               ),
               const SizedBox(height: AppSpacing.xl),
               GlassCard(
@@ -134,7 +134,7 @@ class _TypographyScreenState extends State<TypographyScreen> {
                 'downloaded once, then kept on this device. If a font cannot '
                 'be loaded, a readable system font is used instead. '
                 'Nothing here is an official Nothing, Samsung or Google font.',
-                style: AppText.body(context).copyWith(fontSize: 12),
+                style: AppText.bodySmall(context),
               ),
             ],
           ),
@@ -238,7 +238,7 @@ class _PresetCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(preset.description,
-                  style: AppText.body(context).copyWith(fontSize: 11.5)),
+                  style: AppText.caption(context)),
             ],
           ),
         ),

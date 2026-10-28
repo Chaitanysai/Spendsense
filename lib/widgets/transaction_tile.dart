@@ -102,7 +102,7 @@ class TransactionTile extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style:
-                                  AppText.title(context).copyWith(fontSize: 14),
+                                  AppText.bodyStrong(context),
                             ),
                           ),
                           if (transaction.needsReview) ...[

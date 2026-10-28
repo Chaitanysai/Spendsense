@@ -152,7 +152,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a retained tab replays its entrance when selected again',
+    testWidgets('a retained tab does NOT replay its entrance when re-selected',
         (tester) async {
       final children = [
         const Text('A'),
@@ -180,19 +180,25 @@ void main() {
       await tester.pumpWidget(host(0));
       await tester.pumpAndSettle();
       await tester.pumpWidget(host(1));
-      await tester.pump(); // replay is scheduled for this frame
       await tester.pump();
-      expect(entranceOpacity(), lessThan(1.0),
-          reason: 'returning to a retained tab must restart its entrance');
+      await tester.pump();
+
+      // Regression: this used to restart the whole page entrance (400 ms fade +
+      // slide) on every tab switch, and re-trigger everything keyed off the
+      // page-entry generation — the hero balance counting up from zero, budget
+      // bars refilling from empty. A page the user returns to is already
+      // familiar; it must appear at rest.
+      expect(entranceOpacity(), 1.0,
+          reason: 'returning to a retained tab must not replay its entrance');
 
       await tester.pump(const Duration(milliseconds: 500));
       expect(entranceOpacity(), 1.0);
 
-      // An unrelated rebuild must not start it again.
+      // An unrelated rebuild must not start it either.
       await tester.pumpWidget(host(1));
       await tester.pump();
       expect(entranceOpacity(), 1.0,
-          reason: 'only a page entry may replay a finished animation');
+          reason: 'only a first entry may play an entrance animation');
     });
   });
 
@@ -234,24 +240,28 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('Bills never starts an SMS scan on open or on return',
+    testWidgets('the shell syncs once on launch, and tab navigation never does',
         (tester) async {
       final provider = await pumpShell(tester, withStartDate: true);
-      // Nothing in the shell auto-scans any more: Activity is no longer a tab.
-      expect(provider.syncs, 0, reason: 'no tab starts a scan');
+
+      // The shell owns the launch sync now: it fires once, after the first
+      // frame, regardless of which tab is showing.
+      expect(provider.syncs, 1, reason: 'launch performs exactly one scan');
 
       await goTo(tester, 'BILLS');
-      expect(provider.syncs, 0,
+      expect(provider.syncs, 1,
           reason: 'passive navigation must not scan SMS or ask permission');
 
       await goTo(tester, 'HOME');
       await goTo(tester, 'BILLS');
-      expect(provider.syncs, 0);
+      await goTo(tester, 'INSIGHTS');
+      expect(provider.syncs, 1, reason: 'no tab switch adds a scan');
     });
 
     testWidgets('a running sync is not restarted by visiting Bills',
         (tester) async {
       final provider = await pumpShell(tester, withStartDate: true);
+      final afterLaunch = provider.syncs;
       provider.syncing = true;
 
       await goTo(tester, 'INSIGHTS');
@@ -259,7 +269,8 @@ void main() {
       await goTo(tester, 'HOME');
       await goTo(tester, 'BILLS');
 
-      expect(provider.syncs, 0, reason: 'Bills never starts or joins a scan');
+      expect(provider.syncs, afterLaunch,
+          reason: 'Bills never starts or joins a scan');
     });
 
     testWidgets('Bills stays alive across tab switches', (tester) async {

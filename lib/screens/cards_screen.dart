@@ -370,7 +370,7 @@ class _InstrumentRow extends StatelessWidget {
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.title(context).copyWith(fontSize: 14),
+                style: AppText.bodyStrong(context),
               ),
               const SizedBox(height: 3),
               Text(
@@ -378,7 +378,7 @@ class _InstrumentRow extends StatelessWidget {
                 '${stat.received > 0 ? ' · ${Formatters.currency.format(stat.received)} in' : ''}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.label(context).copyWith(fontSize: 11),
+                style: AppText.caption(context),
               ),
               const SizedBox(height: 6),
               AnimatedProgressBar(
@@ -443,7 +443,7 @@ class _SourceNote extends StatelessWidget {
                 'from your SMS inbox and entries you added manually. SpendSense '
                 'does not connect to any bank, card network or UPI directory, so '
                 'nothing here is a live balance.',
-                style: AppText.body(context).copyWith(fontSize: 12),
+                style: AppText.bodySmall(context),
               ),
             ),
           ],

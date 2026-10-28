@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../widgets/amount_input_dialog.dart';
 import '../widgets/animated_progress_bar.dart';
 import '../widgets/app_sheet.dart';
 import 'package:provider/provider.dart';
@@ -232,60 +232,26 @@ class BudgetsScreen extends StatelessWidget {
     await _guard(context, () => planner.setCategoryBudget(target, minor));
   }
 
-  /// Asks for a rupee amount; returns integer paise, or null if cancelled or
-  /// invalid (an invalid entry shows a message and changes nothing).
+  /// Asks for a rupee amount; returns integer paise, or null if cancelled.
+  ///
+  /// Validation happens inside the dialog, against the field, so an invalid
+  /// entry keeps the dialog open with the typed text intact instead of closing
+  /// and reporting the problem in a SnackBar.
   static Future<int?> _askAmount(
     BuildContext context, {
     required String title,
     required int initialMinor,
-  }) async {
-    final controller = TextEditingController(
-      text: initialMinor > 0
+  }) {
+    return showAmountDialog(
+      context,
+      title: title,
+      initialText: initialMinor > 0
           ? formatPaise(initialMinor, trimZeroPaise: true)
           : '',
+      hintText: 'e.g. 5000',
+      maxMinor: PlannerProvider.maxBudgetMinor,
+      rangeError: 'That amount is larger than this budget allows.',
     );
-    final text = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: AppText.title(ctx)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-          ],
-          decoration: const InputDecoration(
-            prefixText: '₹ ',
-            hintText: 'e.g. 5000',
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (text == null) return null;
-    try {
-      final minor = parseRupeesToPaise(text);
-      if (minor <= 0 || minor > PlannerProvider.maxBudgetMinor) {
-        throw const MoneyParseException('out of range');
-      }
-      return minor;
-    } on MoneyParseException {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter an amount greater than zero.')),
-        );
-      }
-      return null;
-    }
   }
 }
 

@@ -178,7 +178,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                             Text(
                               '${Formatters.date(widget.transaction.date)} • ${widget.transaction.time}',
                               style:
-                                  AppText.title(context).copyWith(fontSize: 14),
+                                  AppText.bodyStrong(context),
                             ),
                             const SizedBox(height: AppSpacing.lg),
                             _metaLabel('Payment method'),
@@ -186,7 +186,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                             Text(
                               widget.transaction.paymentMethod,
                               style:
-                                  AppText.title(context).copyWith(fontSize: 14),
+                                  AppText.bodyStrong(context),
                             ),
                           ],
                         ),

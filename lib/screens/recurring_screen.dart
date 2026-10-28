@@ -177,7 +177,7 @@ class _SubscriptionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${sub.frequencyLabel} • ${Formatters.currency.format(sub.averageAmountMinor)} avg',
-                      style: AppText.body(context).copyWith(fontSize: 12),
+                      style: AppText.bodySmall(context),
                     ),
                   ],
                 ),
@@ -190,7 +190,7 @@ class _SubscriptionCard extends StatelessWidget {
                           size: 18, color: AppColors.brand)),
                   const SizedBox(height: 2),
                   Text('${sub.occurrenceCount} payments',
-                      style: AppText.body(context).copyWith(fontSize: 11)),
+                      style: AppText.caption(context)),
                 ],
               ),
             ],
@@ -211,9 +211,9 @@ class _SubscriptionCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('First: ${DateFormat('dd MMM').format(sub.firstOccurrence)}',
-                  style: AppText.body(context).copyWith(fontSize: 11)),
+                  style: AppText.caption(context)),
               Text('Last: ${DateFormat('dd MMM').format(sub.lastOccurrence)}',
-                  style: AppText.body(context).copyWith(fontSize: 11)),
+                  style: AppText.caption(context)),
             ],
           ),
         ],
@@ -246,11 +246,11 @@ class _RecurringCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(recurring.merchant,
-                    style: AppText.title(context).copyWith(fontSize: 14)),
+                    style: AppText.bodyStrong(context)),
                 const SizedBox(height: 2),
                 Text(
                   '${recurring.frequencyLabel} • ${Formatters.currency.format(recurring.averageAmountMinor)}',
-                  style: AppText.body(context).copyWith(fontSize: 11),
+                  style: AppText.caption(context),
                 ),
               ],
             ),
@@ -330,7 +330,7 @@ class _PlannedBills extends StatelessWidget {
                     'Estimate from your ${plans.length} plan'
                     '${plans.length == 1 ? '' : 's'}; not yet spent.',
                     textAlign: TextAlign.end,
-                    style: AppText.body(context).copyWith(fontSize: 11.5),
+                    style: AppText.caption(context),
                   ),
                 ),
               ],
@@ -386,7 +386,7 @@ class _PlanTile extends StatelessWidget {
                         style: AppText.title(context).copyWith(fontSize: 14.5)),
                     Text(
                       '${plan.frequency.label} · PLANNED',
-                      style: AppText.body(context).copyWith(fontSize: 11),
+                      style: AppText.caption(context),
                     ),
                   ],
                 ),

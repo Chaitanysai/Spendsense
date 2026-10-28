@@ -103,7 +103,7 @@ class _CategoryBarRow extends StatelessWidget {
                   category,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.label(context).copyWith(fontSize: 12.5),
+                  style: AppText.bodySmall(context),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),

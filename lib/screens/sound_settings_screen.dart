@@ -160,11 +160,11 @@ class _SoundSwitch extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: AppText.title(context).copyWith(fontSize: 14),
+          style: AppText.bodyStrong(context),
         ),
         subtitle: Text(
           subtitle,
-          style: AppText.body(context).copyWith(fontSize: 12),
+          style: AppText.bodySmall(context),
         ),
         value: value,
         onChanged: onChanged,

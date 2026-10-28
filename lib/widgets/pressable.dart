@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 
 import '../services/sound_service.dart';
+import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import 'sound_scope.dart';
 
@@ -12,7 +13,17 @@ import 'sound_scope.dart';
 /// existing uses keep behaving exactly as before; surfaces that should tick opt
 /// in explicitly, which also keeps the cue out of gestures that are not really
 /// "buttons".
-class Pressable extends StatelessWidget {
+///
+/// ## Keyboard and switch access
+///
+/// A bare [GestureDetector] is invisible to keyboard, D-pad and switch control:
+/// it cannot take focus and cannot be activated without a touch. Every control
+/// built on [Pressable] (quick actions, transaction rows, nav slots, filter
+/// chips, the type toggle, the salary-day grid) therefore used to be
+/// touch-only. This wraps the child in a [FocusableActionDetector] so it joins
+/// the focus traversal order, activates on Enter/Space/select, and paints a
+/// visible focus ring — while leaving the tap path untouched.
+class Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final double scale;
@@ -30,26 +41,75 @@ class Pressable extends StatelessWidget {
     this.sound,
   });
 
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  bool _focused = false;
+
   /// The winning tap, and the only place a cue is ever emitted.
   ///
   /// Wired to `onTap` rather than `onTapDown` on purpose: a raw pointer-down
   /// fires before the gesture arena has decided anything, so a scroll drag that
   /// starts on this control would tick even though no tap happened.
-  void _handleTap(BuildContext context) {
-    final cue = sound;
+  void _handleTap() {
+    final cue = widget.sound;
     if (cue != null) SoundScope.play(context, cue);
-    onTap?.call();
+    widget.onTap?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     // Nothing to activate: stay a plain child, so a static card never grows a
     // feedback layer or a hit-test surface it does not need.
-    if (onTap == null) return child;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _handleTap(context),
-      child: PressFeedback(scale: scale, child: child),
+    if (widget.onTap == null) return widget.child;
+
+    final ring = widget.borderRadius ?? BorderRadius.circular(AppRadius.sm);
+
+    return FocusableActionDetector(
+      onShowFocusHighlight: (value) {
+        if (value != _focused) setState(() => _focused = value);
+      },
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            _handleTap();
+            return null;
+          },
+        ),
+        ButtonActivateIntent: CallbackAction<ButtonActivateIntent>(
+          onInvoke: (_) {
+            _handleTap();
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _handleTap,
+        child: Stack(
+          children: [
+            PressFeedback(scale: widget.scale, child: widget.child),
+            // Drawn above the child, outside its layout, so a focus ring can
+            // never shift or clip the content it decorates.
+            if (_focused)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: ring,
+                      border: Border.all(
+                        color: AppColors.brandInk(context),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -148,7 +148,7 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
           Text(
             _periodPreview(_selected),
             textAlign: TextAlign.center,
-            style: AppText.body(context).copyWith(fontSize: 12),
+            style: AppText.bodySmall(context),
           ),
 
           const SizedBox(height: AppSpacing.xl),

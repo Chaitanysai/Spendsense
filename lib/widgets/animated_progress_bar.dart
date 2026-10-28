@@ -14,6 +14,8 @@ import 'page_entry.dart';
 ///   screen instead of snapping or restarting at zero.
 /// * An unrelated rebuild (theme change, parent setState, scroll) never
 ///   restarts the animation, because the target is compared, not the widget.
+/// * Re-entering the page does **not** refill the bar from empty. It keeps the
+///   value it is painting, so a budget that was at 60% stays at 60%.
 /// * A list can pass [delay] to stagger the starts; the timer is cancelled when
 ///   the widget is disposed, so nothing keeps running off screen.
 /// * Reduced motion, a zero target or a zero [duration] paint the final value
@@ -84,8 +86,11 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   bool _started = false;
   bool _reduceMotion = false;
 
-  /// Last page-entry generation observed. A new generation replays the fill
-  /// from zero; an ordinary rebuild leaves the completed bar untouched.
+  /// Last page-entry generation observed.
+  ///
+  /// Retained only so a first build can be distinguished from a later one. A
+  /// new generation no longer restarts the fill: re-entering a page used to
+  /// refill every budget bar from empty, which read as data reloading.
   int? _generation;
 
   double get _target {
@@ -117,13 +122,10 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
       return;
     }
 
-    // A genuine page entry: replay from the initial visual state. The finite
-    // `_generation` comparison is what keeps unrelated parent rebuilds from
-    // restarting a finished bar.
+    // A later page-entry generation is NOT a reason to restart the fill. The
+    // bar keeps whatever it is painting and only moves when [fraction] changes.
     if (generation != null && generation != _generation) {
       _generation = generation;
-      _replay();
-      return;
     }
 
     // The accessibility setting changed mid-life: settle on the target.
@@ -138,25 +140,6 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
       _settle();
       return;
     }
-    _from = 0;
-    _controller.value = 0;
-    _scheduleStart(widget.delay);
-  }
-
-  void _replay() {
-    _delayTimer?.cancel();
-    _delayTimer = null;
-    _controller.stop();
-    _to = _target;
-
-    if (!widget.animate ||
-        _reduceMotion ||
-        _to <= 0 ||
-        widget.duration == Duration.zero) {
-      _settle();
-      return;
-    }
-
     _from = 0;
     _controller.value = 0;
     _scheduleStart(widget.delay);

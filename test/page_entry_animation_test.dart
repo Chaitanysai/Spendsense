@@ -33,6 +33,21 @@ double _opacityAround(WidgetTester tester, Finder content) {
   return opacities.reduce((a, b) => a < b ? a : b);
 }
 
+/// Opacity of the page *entrance* transition only.
+///
+/// Deliberately narrower than [_opacityAround]: the tab cross-fade in
+/// [FadeIndexedStack] legitimately starts at zero on a switch, so a test about
+/// entrance replay must not read it.
+double _entranceOpacity(WidgetTester tester) => tester
+    .widget<FadeTransition>(find
+        .descendant(
+          of: find.byType(PageEntrance),
+          matching: find.byType(FadeTransition),
+        )
+        .first)
+    .opacity
+    .value;
+
 double _fill(WidgetTester tester) =>
     tester
         .widget<FractionallySizedBox>(
@@ -75,7 +90,7 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
-  testWidgets('a pushed page replays when the route above it is popped',
+  testWidgets('a pushed page does NOT replay when the route above it is popped',
       (tester) async {
     final navigator = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
@@ -107,18 +122,20 @@ void main() {
     expect(find.text('details'), findsOneWidget);
 
     navigator.currentState!.pop();
-    await tester.pump(); // start the pop; didPopNext schedules the replay
-    await tester.pump(); // run the post-frame replay
+    await tester.pump(); // start the pop
+    await tester.pump(); // any post-frame work would run here
 
-    expect(_opacityAround(tester, find.text('open')), lessThan(1.0),
-        reason: 'returning to the page must restart its entrance');
+    // Regression: returning from a pushed route used to replay the page's
+    // entrance. Coming back to a page must show it at rest.
+    expect(_opacityAround(tester, find.text('open')), 1.0,
+        reason: 'returning to the page must not restart its entrance');
 
     await tester.pump(const Duration(milliseconds: 500));
     expect(_opacityAround(tester, find.text('open')), 1.0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('retained tabs replay their entrance when selected again',
+  testWidgets('retained tabs do NOT replay their entrance when selected again',
       (tester) async {
     Widget host(int index) => _app(
           FadeIndexedStack(
@@ -133,7 +150,7 @@ void main() {
     await tester.pumpWidget(host(0));
     await tester.pumpWidget(host(1));
     await tester.pumpAndSettle();
-    expect(_opacityAround(tester, find.text('second')), 1.0);
+    expect(_entranceOpacity(tester), 1.0);
 
     await tester.pumpWidget(host(0));
     await tester.pumpAndSettle();
@@ -141,19 +158,20 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(_opacityAround(tester, find.text('second')), lessThan(1.0),
-        reason: 'a retained tab must animate on every selection');
+    // Regression: every tab switch used to re-run the page entrance.
+    expect(_entranceOpacity(tester), 1.0,
+        reason: 'a retained tab must appear at rest when re-selected');
     await tester.pump(const Duration(milliseconds: 500));
-    expect(_opacityAround(tester, find.text('second')), 1.0);
+    expect(_entranceOpacity(tester), 1.0);
 
     // No remount, no duplicate state, and a plain rebuild stays settled.
     await tester.pumpWidget(host(1));
     await tester.pump();
-    expect(_opacityAround(tester, find.text('second')), 1.0,
+    expect(_entranceOpacity(tester), 1.0,
         reason: 'an unrelated rebuild must not restart the entrance');
   });
 
-  testWidgets('progress bars replay from zero and finish on the exact target',
+  testWidgets('progress bars keep their fill across a page re-entry',
       (tester) async {
     final controller = PageEntryController();
     addTearDown(controller.dispose);
@@ -165,17 +183,16 @@ void main() {
 
     controller.replay();
     await tester.pump();
-    expect(_fill(tester), 0.0, reason: 'a page entry restarts the fill');
 
-    await tester.pump(const Duration(milliseconds: 120));
-    final mid = _fill(tester);
-    expect(mid, greaterThan(0.0));
-    expect(mid, lessThan(0.6));
+    // Regression: a page entry used to reset the fill to zero, so every budget
+    // bar refilled from empty on each visit, reading as data reloading.
+    expect(_fill(tester), closeTo(0.6, 1e-9),
+        reason: 'a page entry must not restart the fill');
 
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
     expect(_fill(tester), closeTo(0.6, 1e-9),
-        reason: 'the fill must stop precisely on the target');
+        reason: 'the fill must stay on its target');
   });
 
   testWidgets('an unrelated rebuild does not restart a finished bar',

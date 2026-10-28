@@ -60,7 +60,7 @@ class CategoryBubble extends StatelessWidget {
             label!,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppText.label(context).copyWith(fontSize: 11),
+            style: AppText.caption(context),
           ),
         ],
         if (percentLabel != null)

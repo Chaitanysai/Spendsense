@@ -117,7 +117,12 @@ class GlassCard extends StatelessWidget {
     // it is only applied where the fill is actually translucent. Previously the
     // blur ran on every card, including the 90-94% opaque light and AMOLED
     // fills, so each card on a scrolling screen paid for an invisible effect.
-    final translucent = gradient == null && fill.a < 0.9;
+    //
+    // High contrast drops the blur entirely: a translucent surface over busy
+    // content is exactly what that setting exists to remove.
+    final highContrast = MediaQuery.highContrastOf(context);
+    final translucent =
+        gradient == null && fill.a < 0.9 && !highContrast;
     Widget glass = ClipRRect(
       borderRadius: borderRadius,
       child: !translucent || blur <= 0

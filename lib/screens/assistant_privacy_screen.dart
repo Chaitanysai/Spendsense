@@ -208,10 +208,10 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                               }
                             },
                       title: Text('Allow Gemini cloud assistance',
-                          style: AppText.title(context).copyWith(fontSize: 14)),
+                          style: AppText.bodyStrong(context)),
                       subtitle: Text(
                         'Off by default. Local commands never need this.',
-                        style: AppText.body(context).copyWith(fontSize: 11.5),
+                        style: AppText.caption(context),
                       ),
                       activeThumbColor: AppColors.brand,
                     ),

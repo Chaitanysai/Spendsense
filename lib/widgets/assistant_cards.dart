@@ -27,13 +27,13 @@ class AssistantSummaryCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text('Summary · ${summary.label}',
-                    style: AppText.title(context).copyWith(fontSize: 14)),
+                    style: AppText.bodyStrong(context)),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(summary.rangeLabel,
-              style: AppText.body(context).copyWith(fontSize: 12)),
+              style: AppText.bodySmall(context)),
           const SizedBox(height: AppSpacing.md),
           Semantics(
             label:
@@ -44,7 +44,7 @@ class AssistantSummaryCard extends StatelessWidget {
             ),
           ),
           Text('Spending (excluded rows not counted)',
-              style: AppText.label(context).copyWith(fontSize: 11)),
+              style: AppText.caption(context)),
           const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.lg,
@@ -176,7 +176,7 @@ class AssistantSectionCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(section.subtitle!,
                           style:
-                              AppText.body(context).copyWith(fontSize: 11.5)),
+                              AppText.caption(context)),
                     ],
                   ],
                 ),
@@ -236,7 +236,7 @@ class AssistantSectionCard extends StatelessWidget {
             Text(
               'Showing ${visible.length} of ${section.matchedCount}. Totals use '
               'all matching records; narrow the date range to see more.',
-              style: AppText.body(context).copyWith(fontSize: 11),
+              style: AppText.caption(context),
             ),
           ],
         ],
@@ -500,7 +500,7 @@ class AssistantComparisonCard extends StatelessWidget {
           if (comparison.categoryDrivers.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             Text('Category drivers',
-                style: AppText.label(context).copyWith(fontSize: 11)),
+                style: AppText.caption(context)),
             const SizedBox(height: 6),
             for (final driver in comparison.categoryDrivers.take(3))
               _DriverRow(
@@ -509,7 +509,7 @@ class AssistantComparisonCard extends StatelessWidget {
           if (comparison.merchantDrivers.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text('Merchant drivers',
-                style: AppText.label(context).copyWith(fontSize: 11)),
+                style: AppText.caption(context)),
             const SizedBox(height: 6),
             for (final driver in comparison.merchantDrivers.take(3))
               _DriverRow(driver: driver, icon: Icons.storefront_rounded),
@@ -570,7 +570,7 @@ class _DriverRow extends StatelessWidget {
             child: Text(driver.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.body(context).copyWith(fontSize: 11.5)),
+                style: AppText.caption(context)),
           ),
           Text(
             '${positive ? '+' : '−'}${Formatters.currency.format(driver.deltaMinor.abs())}',
@@ -614,7 +614,7 @@ class AssistantBillsCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text('Derived from your local plans and transactions',
-              style: AppText.body(context).copyWith(fontSize: 11)),
+              style: AppText.caption(context)),
           const SizedBox(height: AppSpacing.sm),
           for (final bill in bills)
             Padding(
@@ -715,7 +715,7 @@ class AssistantPendingActionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   danger ? 'Confirm permanent deletion' : 'Confirm exclusion',
-                  style: AppText.title(context).copyWith(fontSize: 14),
+                  style: AppText.bodyStrong(context),
                 ),
               ),
               Container(
@@ -933,7 +933,7 @@ class _SheetRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(label,
-                style: AppText.body(context).copyWith(fontSize: 11.5)),
+                style: AppText.caption(context)),
           ),
           const SizedBox(width: AppSpacing.sm),
           Flexible(

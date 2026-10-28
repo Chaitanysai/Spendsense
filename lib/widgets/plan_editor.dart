@@ -163,7 +163,7 @@ class _PlanEditorState extends State<_PlanEditor> {
             Text(
               'A plan is a reminder of what you expect to pay. It never adds '
               'a transaction by itself.',
-              style: AppText.body(context).copyWith(fontSize: 12),
+              style: AppText.bodySmall(context),
             ),
             const SizedBox(height: AppSpacing.lg),
             TextField(

@@ -129,6 +129,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
                               onPressed: () => _startEditing(prefs),
+                              // Material 3 defaults a TextButton to 40px; the
+                              // accessible minimum is 44.
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(0, 44),
+                              ),
                               icon: const Icon(Icons.tune_rounded, size: 18),
                               label: const Text('Edit dashboard'),
                             ),
@@ -437,6 +442,7 @@ class _HeaderSection extends StatelessWidget {
           children: [
             _greetingRow(context),
             const SizedBox(height: AppSpacing.lg),
+            const _SyncStatusStrip(),
             _BalanceCard(
               provider: provider,
               visible: balanceVisible,
@@ -491,8 +497,111 @@ class _HeaderSection extends StatelessWidget {
   }
 }
 
-/// Sync affordance: shows a spinner while a scan runs, otherwise the last sync
-/// time. Uses the existing SMS import prompt rather than a new surface.
+/// Actionable status for a sync that did not complete.
+///
+/// Renders nothing when the last attempt succeeded, so a healthy app stays
+/// quiet. When it does appear it names the cause and offers the one action that
+/// can fix it: open Android settings for a denied permission, retry for a scan
+/// that threw. Collapsing both into "sync failed" would tell the user nothing.
+class _SyncStatusStrip extends StatelessWidget {
+  const _SyncStatusStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<TransactionProvider>(
+      builder: (context, provider, _) {
+        final failure = provider.syncFailure;
+        if (failure == null) return const SizedBox.shrink();
+
+        final denied = failure == SyncFailure.permissionDenied;
+        final message = denied
+            ? 'SMS permission is off, so new transactions cannot be imported.'
+            : 'The last sync did not finish. Your saved transactions are '
+                'unchanged.';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.amber.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: AppColors.amber.withValues(alpha: 0.38),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  denied
+                      ? Icons.sms_failed_outlined
+                      : Icons.sync_problem_rounded,
+                  size: 18,
+                  color: AppColors.textPrimary(context),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: AppText.bodySmall(context).copyWith(
+                      color: AppColors.textPrimary(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Pressable(
+                  onTap: () {
+                    // `userInitiated: true` is what allows a permanently denied
+                    // permission to open Android settings, and it is correct
+                    // here because the user just tapped Retry/Fix themselves.
+                    // A failed scan simply runs again.
+                    provider.syncFromSms(userInitiated: true);
+                  },
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    child: Text(
+                      denied ? 'Fix' : 'Retry',
+                      style: AppText.label(context).copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brandInk(context),
+                      ),
+                    ),
+                  ),
+                ),
+                Pressable(
+                  onTap: provider.dismissSyncFailure,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xs),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Sync affordance: shows a spinner while a scan runs, otherwise how long ago
+/// the last successful sync was.
+///
+/// Tapping it syncs. It only opens the "check SMS from when?" sheet when no
+/// scan start date has been chosen yet, because that sheet is first-run setup,
+/// not a refresh. Previously the pill always opened the date sheet, so a button
+/// that displayed a sync time never actually synced — the label and the action
+/// disagreed.
 class _SyncButton extends StatelessWidget {
   const _SyncButton();
 
@@ -500,16 +609,21 @@ class _SyncButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<TransactionProvider>(
       builder: (context, provider, _) {
-        final label = provider.lastSynced == null
+        final last = provider.lastSynced;
+        final label = last == null
             ? 'Sync'
-            : DateFormat('hh:mm a').format(provider.lastSynced!);
+            : Formatters.relativeTime(last);
 
         return Semantics(
           button: true,
-          label: provider.isSyncing ? 'Syncing messages' : 'Sync messages',
+          label: provider.isSyncing
+              ? 'Syncing messages'
+              : last == null
+                  ? 'Sync messages'
+                  : 'Synced $label. Sync again',
           excludeSemantics: true,
           child: Pressable(
-            onTap: () => SmsImportPrompt.show(context),
+            onTap: () => _onTap(context, provider),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             sound: SoundEventType.buttonTap,
             child: Container(
@@ -554,6 +668,25 @@ class _SyncButton extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// First run asks for the scan window; every run after that is a real sync.
+  ///
+  /// `userInitiated: true` is what allows a permanently denied SMS permission
+  /// to open Android settings — the user just asked for this, so sending them
+  /// to the fix is the actionable response rather than a silent no-op.
+  ///
+  /// This deliberately does NOT consult [TransactionProvider.autoSyncCooldown]:
+  /// the cooldown exists to stop background triggers from re-scanning, and a
+  /// user tapping Sync is asking for a refresh right now. In-flight
+  /// deduplication still applies, so a double tap cannot start two scans.
+  static void _onTap(BuildContext context, TransactionProvider provider) {
+    if (!provider.hasSmsScanStartDate) {
+      SmsImportPrompt.show(context);
+      return;
+    }
+    if (provider.isSyncing) return;
+    provider.syncFromSms(userInitiated: true);
   }
 }
 
@@ -996,11 +1129,11 @@ class _CategoryEmpty extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('No spending this cycle',
-                    style: AppText.title(context).copyWith(fontSize: 14)),
+                    style: AppText.bodyStrong(context)),
                 const SizedBox(height: 2),
                 Text(
                   'Add a transaction and the breakdown fills in automatically.',
-                  style: AppText.body(context).copyWith(fontSize: 12),
+                  style: AppText.bodySmall(context),
                 ),
               ],
             ),

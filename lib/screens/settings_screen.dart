@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -20,6 +19,7 @@ import '../services/sound_service.dart';
 import '../services/transaction_cache_service.dart' show LedgerImportException;
 import '../widgets/sms_import_prompt.dart';
 import '../widgets/salary_day_prompt.dart';
+import '../widgets/amount_input_dialog.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -598,59 +598,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _editBudget(
       BuildContext context, TransactionProvider provider) async {
-    final controller = TextEditingController(
-      text: provider.monthlyBudgetMinor > 0
+    // Validated inside the dialog, against the field, so a bad entry keeps the
+    // dialog open with the typed text intact.
+    final savedMinor = await showAmountDialog(
+      context,
+      title: 'Monthly budget',
+      initialText: provider.monthlyBudgetMinor > 0
           ? formatPaise(provider.monthlyBudgetMinor, trimZeroPaise: true)
           : '',
+      hintText: 'e.g. 25000',
+      helperText: 'Used for the dashboard budget gauge.',
     );
-    final saved = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Monthly budget', style: AppText.title(context)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          ],
-          decoration: const InputDecoration(
-            hintText: 'e.g. 25000',
-            helperText: 'Used for the dashboard budget gauge.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-
-    if (saved == null || !context.mounted) return;
-    final int savedMinor;
-    try {
-      savedMinor = parseRupeesToPaise(saved);
-    } on MoneyParseException {
-      SoundScope.play(context, SoundEventType.actionFailed);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid budget amount')),
-      );
-      return;
-    }
-    if (savedMinor <= 0) {
-      SoundScope.play(context, SoundEventType.actionFailed);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a budget greater than zero')),
-      );
-      return;
-    }
+    if (savedMinor == null || !context.mounted) return;
     await provider.setMonthlyBudgetMinor(savedMinor);
     if (!context.mounted) return;
     SoundScope.play(context, SoundEventType.actionSucceeded);
@@ -957,13 +916,13 @@ class _SettingsTile extends StatelessWidget {
                     Text(title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.title(context).copyWith(fontSize: 14)),
+                        style: AppText.bodyStrong(context)),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(subtitle!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: AppText.body(context).copyWith(fontSize: 12)),
+                          style: AppText.bodySmall(context)),
                     ],
                   ],
                 ),

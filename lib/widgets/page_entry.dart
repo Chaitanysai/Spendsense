@@ -52,8 +52,12 @@ class PageEntryScope extends InheritedNotifier<PageEntryController> {
       context.dependOnInheritedWidgetOfExactType<PageEntryScope>()?.notifier;
 }
 
-/// Observer that tells a page it has been revealed again after a pushed route
-/// was popped. Registered once on the app's navigator.
+/// Observer registered on the app's navigator.
+///
+/// Kept because `main.dart` and the widget tests register it, and because a
+/// future page may want route-return awareness. Nothing subscribes to it for
+/// entrance replay any more: returning from a pushed route shows the page at
+/// rest (see [PageEntryHost]).
 class PageEntryRouteObserver extends RouteObserver<PageRoute<dynamic>> {
   PageEntryRouteObserver._();
 
@@ -62,28 +66,46 @@ class PageEntryRouteObserver extends RouteObserver<PageRoute<dynamic>> {
 
 /// Owns the page-entry lifecycle for one page and publishes it to descendants.
 ///
-/// It does not rebuild or remount the page. It only bumps a generation:
-/// * on the first build (descendants animate themselves from zero);
-/// * when a retained tab becomes [active] again;
-/// * when a pushed page route above this one is popped (`didPopNext`).
+/// It does not rebuild or remount the page. It bumps a generation on the first
+/// build only, so descendants animate themselves from zero exactly once.
 ///
-/// Replays are scheduled after the current frame. That keeps the notification
-/// out of Flutter's build phase and, on a tab switch, happens while the tab
-/// cross-fade is still at zero opacity, so the reset is never visible as a
-/// flash of the finished layout.
+/// ## Why there is no replay on tab return or route pop
+///
+/// This host used to bump the generation again whenever a retained tab was
+/// re-selected, and whenever a pushed route above it was popped. That meant
+/// every tab switch re-ran the whole page entrance (400 ms fade + slide), and
+/// re-triggered every descendant that keys off the generation — most visibly
+/// the hero balance counting up from zero and budget bars refilling from empty,
+/// on every single visit, forever.
+///
+/// That is motion the user did not ask for and cannot interrupt: it is not a
+/// response to a gesture, it is a scripted intro replayed at the user. Motion
+/// belongs on the input path, not in front of it. Page content now appears at
+/// rest when the user returns to it; the tab cross-fade in [FadeIndexedStack]
+/// and the route transition in `AppPageRoute` already carry the change of
+/// context.
+///
+/// [PageEntryController.replay] remains available for a caller that genuinely
+/// wants to re-run a page's entrance.
 class PageEntryHost extends StatefulWidget {
   final Widget child;
 
-  /// False for an off-screen retained tab. A tab only replays when it is
-  /// actually visible, so background tabs never animate unseen.
+  /// False for an off-screen retained tab.
+  ///
+  /// Retained for the shell's call site and for tests. It no longer drives a
+  /// replay: a tab that becomes visible again shows its content at rest.
   final bool active;
 
   /// Optional externally owned controller (used by tests and hosts that need
   /// to trigger a replay imperatively). When omitted the host owns one.
   final PageEntryController? controller;
 
-  /// Set false when a host is used outside a navigator (or when route-return
-  /// replay is not wanted). First-entry and tab replay still work.
+  /// Deprecated and inert. Route-return replay was removed: it re-ran a page's
+  /// entrance every time the user came back from a pushed route, which is
+  /// motion in front of the user rather than a response to them. Kept so
+  /// existing call sites keep compiling.
+  @Deprecated('Route-return replay was removed; this flag no longer does '
+      'anything.')
   final bool replayOnRouteReturn;
 
   const PageEntryHost({
@@ -98,10 +120,8 @@ class PageEntryHost extends StatefulWidget {
   State<PageEntryHost> createState() => _PageEntryHostState();
 }
 
-class _PageEntryHostState extends State<PageEntryHost> with RouteAware {
+class _PageEntryHostState extends State<PageEntryHost> {
   PageEntryController? _owned;
-  ModalRoute<dynamic>? _subscribedRoute;
-  bool _replayScheduled = false;
 
   PageEntryController get _controller => widget.controller ?? _owned!;
 
@@ -109,31 +129,6 @@ class _PageEntryHostState extends State<PageEntryHost> with RouteAware {
   void initState() {
     super.initState();
     if (widget.controller == null) _owned = PageEntryController();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _attachRoute();
-  }
-
-  void _attachRoute() {
-    if (!widget.replayOnRouteReturn) {
-      if (_subscribedRoute != null) {
-        PageEntryRouteObserver.instance.unsubscribe(this);
-        _subscribedRoute = null;
-      }
-      return;
-    }
-    final route = ModalRoute.of(context);
-    if (identical(route, _subscribedRoute)) return;
-    if (_subscribedRoute != null) {
-      PageEntryRouteObserver.instance.unsubscribe(this);
-    }
-    _subscribedRoute = route;
-    if (route is PageRoute<dynamic>) {
-      PageEntryRouteObserver.instance.subscribe(this, route);
-    }
   }
 
   @override
@@ -146,30 +141,10 @@ class _PageEntryHostState extends State<PageEntryHost> with RouteAware {
       }
       if (widget.controller == null) _owned = PageEntryController();
     }
-    if (!oldWidget.active && widget.active) _scheduleReplay();
-    if (widget.replayOnRouteReturn != oldWidget.replayOnRouteReturn) {
-      _attachRoute();
-    }
-  }
-
-  @override
-  void didPopNext() => _scheduleReplay();
-
-  void _scheduleReplay() {
-    if (_replayScheduled) return;
-    _replayScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _replayScheduled = false;
-      if (!mounted || !widget.active) return;
-      _controller.replay();
-    });
   }
 
   @override
   void dispose() {
-    if (_subscribedRoute != null) {
-      PageEntryRouteObserver.instance.unsubscribe(this);
-    }
     _owned?.dispose();
     super.dispose();
   }
@@ -183,11 +158,16 @@ class _PageEntryHostState extends State<PageEntryHost> with RouteAware {
   }
 }
 
-/// Fade + restrained upward glide that replays on every page entry.
+/// Fade + restrained upward glide that plays once, on first entry.
 ///
 /// Place it once at the page level, or with [index] for a staggered card/row.
 /// Without an enclosing [PageEntryHost] it still plays its first-entry
 /// animation; there is simply no later replay signal to listen to.
+///
+/// It does not replay when a retained tab is re-selected or a pushed route is
+/// popped. A page the user returns to is already familiar; re-running its
+/// entrance every time is noise, and it re-triggers anything keyed off the
+/// generation (see [PageEntryHost]).
 class PageEntrance extends StatefulWidget {
   final Widget child;
   final double offset;

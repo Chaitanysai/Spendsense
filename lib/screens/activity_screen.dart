@@ -502,7 +502,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
       sound: SoundEventType.selectionChanged,
       child: AnimatedContainer(
         duration: AppMotion.respect(context, AppMotion.fast),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        // 14px vertical padding keeps the chip at/above the 44px minimum touch
+        // target at the 12px label size; 12px computed to ~40px.
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: active
               ? AppColors.brand.withValues(alpha: 0.14)
@@ -960,7 +963,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   fontSize: 14, color: danger ? AppColors.danger : null)),
           subtitle: subtitle != null
               ? Text(subtitle,
-                  style: AppText.body(context).copyWith(fontSize: 11))
+                  style: AppText.caption(context))
               : null,
           trailing:
               selected ? Icon(Icons.check_circle_rounded, color: color) : null,

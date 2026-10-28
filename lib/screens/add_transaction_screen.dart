@@ -58,6 +58,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   String _category = 'Food';
   bool _saving = false;
+
+  /// Inline validation message for the amount field, or null when it is valid.
+  String? _amountError;
   late TransactionType _type = widget.initialType;
 
   bool get _isIncome => _type == TransactionType.income;
@@ -78,7 +81,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   void initState() {
     super.initState();
-    _amountController.addListener(() => setState(() {}));
+    _amountController.addListener(() {
+      setState(() {
+        // Editing the amount clears a stale error, so the message never sits
+        // against text the user has already corrected.
+        if (_amountError != null) _amountError = null;
+      });
+    });
     _merchantController.addListener(() => setState(() {}));
   }
 
@@ -116,7 +125,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Saved locally to this device',
-                    style: AppText.body(context).copyWith(fontSize: 12),
+                    style: AppText.bodySmall(context),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
@@ -126,6 +135,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   amountController: _amountController,
                   amount: _amount,
                   isIncome: _isIncome,
+                  errorText: _amountError,
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 Text('Merchant', style: AppText.title(context)),
@@ -218,10 +228,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     try {
       amountMinor = parseRupeesToPaise(_amountController.text);
     } on MoneyParseException {
-      debugPrint('Manual amount parse rejected');
+      // Previously this returned silently: the button did nothing and said
+      // nothing. The error now appears against the amount field.
+      setState(() => _amountError = 'Enter a valid amount.');
+      SoundScope.play(context, SoundEventType.actionFailed);
       return;
     }
-    if (amountMinor <= 0) return;
+    if (amountMinor <= 0) {
+      setState(() => _amountError = 'Enter an amount greater than zero.');
+      SoundScope.play(context, SoundEventType.actionFailed);
+      return;
+    }
+    if (_amountError != null) setState(() => _amountError = null);
 
     final provider = context.read<TransactionProvider>();
     final navigator = Navigator.of(context);
@@ -302,6 +320,9 @@ class _AmountCard extends StatelessWidget {
   final double amount;
   final bool isIncome;
 
+  /// Inline validation message, shown under the field on the card itself.
+  final String? errorText;
+
   static String _safePreview(double amount) {
     final raw = amount.toString();
     // Guard against exponential notation and NaN/Infinity from double
@@ -319,6 +340,7 @@ class _AmountCard extends StatelessWidget {
     required this.amountController,
     required this.amount,
     required this.isIncome,
+    this.errorText,
   });
 
   @override
@@ -393,6 +415,19 @@ class _AmountCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.6),
                   ),
                 ),
+                // The card is a saturated gradient, so the theme's error colour
+                // would not be legible here. A white message with a warning
+                // glyph carries the meaning on this surface.
+                errorStyle: AppText.onGradient(size: 12, weight: FontWeight.w600),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                ),
+                errorText: errorText,
               ),
             ),
           ],

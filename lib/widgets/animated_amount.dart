@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_spacing.dart';
-import 'page_entry.dart';
 
-/// Animated numeric text: eases from zero on first build and between value
-/// changes. Respects reduced-motion by snapping to the end value.
+/// Animated numeric text: eases from zero on first build, then eases between
+/// value changes. Respects reduced-motion by snapping to the end value.
+///
+/// It deliberately does NOT re-count from zero when the page is re-entered.
+/// Keying the tween to the page-entry generation made the hero balance count up
+/// from ₹0 on every tab switch, which reads as a loading state that never
+/// finishes. A value that has not changed stays put.
 class AnimatedAmount extends StatelessWidget {
   final double value;
   final TextStyle? style;
@@ -28,12 +32,10 @@ class AnimatedAmount extends StatelessWidget {
       return Text(format(value), style: style);
     }
 
-    // A new page-entry generation remounts only this small tween, so the
-    // amount counts up again from zero. Ordinary rebuilds keep the same key
-    // and therefore never restart a finished count.
-    final generation = PageEntryScope.maybeOf(context)?.generation ?? 0;
+    // No page-entry key: the tween is keyed to nothing, so an ordinary rebuild
+    // (or a page re-entry) keeps the finished value and only a genuine `value`
+    // change animates — from wherever it currently is.
     return TweenAnimationBuilder<double>(
-      key: ValueKey('amount-entry-$generation'),
       tween: Tween<double>(begin: 0, end: value),
       duration: d,
       curve: AppMotion.emphasized,

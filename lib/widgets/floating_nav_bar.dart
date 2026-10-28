@@ -45,6 +45,10 @@ class FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
     final borderRadius = BorderRadius.circular(AppRadius.pill);
+    // High contrast: a translucent pill over scrolling content is precisely the
+    // legibility problem that setting exists to fix. Drop the blur, make the
+    // fill near-solid and give the edge a defined border.
+    final highContrast = MediaQuery.highContrastOf(context);
 
     return SafeArea(
       top: false,
@@ -60,7 +64,10 @@ class FloatingNavBar extends StatelessWidget {
         child: ClipRRect(
           borderRadius: borderRadius,
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(
+              sigmaX: highContrast ? 0 : 12,
+              sigmaY: highContrast ? 0 : 12,
+            ),
             child: Container(
               // Minimum, not fixed: the pill grows with a large system font
               // scale instead of clipping the labels it contains.
@@ -73,31 +80,41 @@ class FloatingNavBar extends StatelessWidget {
                 // Near-black translucent near the top of the pill so the blur
                 // reads as depth, easing off at the base so the blur is visible
                 // against content scrolling underneath.
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: AppColors.isGlassCanvas(context)
-                      ? [
-                          AppColors.darkSurfaceAlt.withValues(alpha: 0.78),
-                          AppColors.darkBackground.withValues(alpha: 0.62),
-                        ]
-                      : dark
-                          ? [
-                              Colors.black.withValues(alpha: 0.62),
-                              Colors.black.withValues(alpha: 0.38),
-                            ]
-                          : [
-                              Colors.white.withValues(alpha: 0.80),
-                              Colors.white.withValues(alpha: 0.62),
-                            ],
-                ),
+                gradient: highContrast
+                    ? null
+                    : LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: AppColors.isGlassCanvas(context)
+                            ? [
+                                AppColors.darkSurfaceAlt
+                                    .withValues(alpha: 0.78),
+                                AppColors.darkBackground
+                                    .withValues(alpha: 0.62),
+                              ]
+                            : dark
+                                ? [
+                                    Colors.black.withValues(alpha: 0.62),
+                                    Colors.black.withValues(alpha: 0.38),
+                                  ]
+                                : [
+                                    Colors.white.withValues(alpha: 0.80),
+                                    Colors.white.withValues(alpha: 0.62),
+                                  ],
+                      ),
+                color: highContrast
+                    ? (dark ? AppColors.darkSurfaceAlt : Colors.white)
+                    : null,
                 borderRadius: borderRadius,
                 // A crisp top highlight plus a faint full outline: two low-cost
                 // Borders instead of a gradient-stroked painter.
                 border: Border.all(
-                  color: dark
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : Colors.black.withValues(alpha: 0.06),
+                  color: highContrast
+                      ? AppColors.textPrimary(context)
+                      : dark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : Colors.black.withValues(alpha: 0.06),
+                  width: highContrast ? 1.5 : 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -197,6 +214,10 @@ class FloatingNavBar extends StatelessWidget {
     return AnimatedContainer(
       duration: duration,
       curve: AppMotion.easeOut,
+      // Fixed padding, not animated. Padding is a layout property: animating it
+      // re-lays-out the chip on every frame of the switch. The chip's size is
+      // constant here, so only colour, gradient, border and shadow animate —
+      // all of which paint without touching layout.
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,

@@ -310,7 +310,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
           ),
           const SizedBox(height: 4),
           Text(description,
-              style: AppText.body(context).copyWith(fontSize: 12)),
+              style: AppText.bodySmall(context)),
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: controller,

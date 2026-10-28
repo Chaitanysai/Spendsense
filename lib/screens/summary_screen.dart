@@ -204,7 +204,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 'The saved file has totals and category names only — no '
                 'merchants, accounts or SMS text. Nothing is shared unless '
                 'you share the file yourself.',
-                style: AppText.body(context).copyWith(fontSize: 11.5),
+                style: AppText.caption(context),
               ),
             ],
           ),

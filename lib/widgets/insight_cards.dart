@@ -83,7 +83,7 @@ class _ComparisonCard extends StatelessWidget {
             'Each period is compared with the same number of days earlier, '
             'so a partly finished week or month is never judged against a '
             'full one. Income is not subtracted from spending.',
-            style: AppText.body(context).copyWith(fontSize: 11.5),
+            style: AppText.caption(context),
           ),
         ],
       ),
@@ -111,7 +111,7 @@ class _ComparisonCard extends StatelessWidget {
         Text(
           '${_range(c.current)}  vs  ${_range(c.previous)} '
           '(${Formatters.currency.format(c.previousMinor)})',
-          style: AppText.body(context).copyWith(fontSize: 11.5),
+          style: AppText.caption(context),
         ),
         Text(describeChange(tenths, basis: basis),
             style: AppText.label(context).copyWith(color: tone)),
@@ -211,7 +211,7 @@ class _LargestCard extends StatelessWidget {
                                   color: AppColors.textPrimary(context))),
                           Text(
                             '${t.category} · ${DateFormat('d MMM').format(t.date)}',
-                            style: AppText.body(context).copyWith(fontSize: 11),
+                            style: AppText.caption(context),
                           ),
                         ],
                       ),
@@ -290,7 +290,7 @@ class _TrendCard extends StatelessWidget {
           if (months.isNotEmpty && maxMinor > 0)
             Text(
               'The latest month is still in progress.',
-              style: AppText.body(context).copyWith(fontSize: 11.5),
+              style: AppText.caption(context),
             ),
         ],
       ),

@@ -17,6 +17,14 @@ import '../services/budget_monitor_service.dart';
 class TransactionProvider with ChangeNotifier {
   static const _smsScanStartKey = 'sms_scan_start_date';
 
+  /// How long an automatic sync stays "fresh".
+  ///
+  /// Automatic triggers (app launch, resume from background) are skipped while
+  /// the last successful sync is younger than this. Manual sync ignores it.
+  /// Without a cooldown, every resume — a notification glance, a permission
+  /// dialog, a share sheet — would start a full inbox scan.
+  static const Duration autoSyncCooldown = Duration(minutes: 5);
+
   List<TransactionModel> _transactions = [];
   bool _isSyncing = false;
   bool _isLoadingCache = true;
@@ -25,6 +33,16 @@ class TransactionProvider with ChangeNotifier {
   DateTime? _smsScanStartDate;
   int _monthlyBudgetMinor = 2000000;
   int _newThisSync = 0;
+
+  /// Why the most recent sync attempt did not complete, or null when the last
+  /// attempt succeeded (or none has run).
+  ///
+  /// A failed sync used to be indistinguishable from a no-op: the scan caught
+  /// its error and only wrote to the device log, and a denied SMS permission
+  /// returned early in silence. Both now surface here so the UI can say what
+  /// happened and offer a retry.
+  SyncFailure? _syncFailure;
+  bool _isAutoSyncing = false;
 
   final TransactionCacheService _cache = TransactionCacheService();
   final LedgerTombstoneStore _tombstones = LedgerTombstoneStore();
@@ -69,6 +87,34 @@ class TransactionProvider with ChangeNotifier {
   DateTime? get lastSynced => _lastSynced;
   DateTime? get smsScanStartDate => _smsScanStartDate;
   bool get hasSmsScanStartDate => _smsScanStartDate != null;
+
+  /// Why the last sync attempt failed, or null when it succeeded.
+  SyncFailure? get syncFailure => _syncFailure;
+
+  /// True when the last sync attempt did not complete and the user has not
+  /// dismissed it. Drives the actionable status strip.
+  bool get hasSyncFailure => _syncFailure != null;
+
+  /// True while an automatic (launch or resume) sync is running, as opposed to
+  /// a user-initiated one.
+  bool get isAutoSyncing => _isAutoSyncing;
+
+  /// Whether an automatic sync would be a no-op right now.
+  ///
+  /// Exposed so the UI and tests can reason about the cooldown without
+  /// duplicating the rule.
+  bool get isAutoSyncFresh {
+    final last = _lastSynced;
+    if (last == null) return false;
+    return DateTime.now().difference(last) < autoSyncCooldown;
+  }
+
+  /// Clears the visible failure once the user has acknowledged it.
+  void dismissSyncFailure() {
+    if (_syncFailure == null) return;
+    _syncFailure = null;
+    _notifyIfAlive();
+  }
   int get monthlyBudgetMinor => _monthlyBudgetMinor;
 
   /// Compatibility getter. The returned number is integer paise.
@@ -79,13 +125,21 @@ class TransactionProvider with ChangeNotifier {
   /// [resyncFetcher] is a test seam: it replaces the SMS inbox source so the
   /// sync pipeline can be driven without the platform channel or the SMS
   /// permission. Null in production, where the real inbox is read.
+  ///
+  /// [smsService] is the second half of that seam: the permission check runs
+  /// before any inbox read, so a test that only fakes the fetcher would still
+  /// hit the real permission channel. Injecting the service lets a test decide
+  /// whether permission is granted without a platform round trip.
   TransactionProvider({
     @visibleForTesting Future<List<SmsMessageModel>> Function()? resyncFetcher,
-  }) : _resyncFetcher = resyncFetcher {
+    @visibleForTesting SmsService? smsService,
+  })  : _resyncFetcher = resyncFetcher,
+        _smsServiceOverride = smsService {
     _initialization = _init();
   }
 
   final Future<List<SmsMessageModel>> Function()? _resyncFetcher;
+  final SmsService? _smsServiceOverride;
 
   /// Completes when the initial cache/budget load has finished.
   @visibleForTesting
@@ -424,6 +478,41 @@ class TransactionProvider with ChangeNotifier {
     return operation;
   }
 
+  /// The automatic trigger: app launch and resume from background.
+  ///
+  /// This is the entry point the shell calls, and it is deliberately separate
+  /// from [syncFromSms] so the automatic path can never open Android settings
+  /// or bypass the cooldown. It returns without doing anything when:
+  ///
+  /// * the ledger failed to load (there is nothing safe to scan into);
+  /// * no SMS scan start date has been chosen yet — a first-run user gets the
+  ///   date prompt instead, and scanning with no window would import nothing
+  ///   meaningful;
+  /// * a sync is already in flight (launch and resume can fire back to back);
+  /// * the last successful sync is younger than [autoSyncCooldown].
+  ///
+  /// It always uses the incremental [syncFromSms], never the full rebuild in
+  /// [resyncFromSms].
+  ///
+  /// Returns true when a scan was actually started.
+  Future<bool> ensureAutoSync() async {
+    await _initialization;
+    if (_ledgerInitError != null) return false;
+    if (!hasSmsScanStartDate) return false;
+    if (_smsSyncInFlight != null) return false;
+    if (isAutoSyncFresh) return false;
+
+    _isAutoSyncing = true;
+    _notifyIfAlive();
+    try {
+      await syncFromSms();
+      return true;
+    } finally {
+      _isAutoSyncing = false;
+      _notifyIfAlive();
+    }
+  }
+
   Future<void> _syncFromSms({bool userInitiated = false}) async {
     await _initialization;
     if (_ledgerInitError != null) return;
@@ -432,7 +521,7 @@ class TransactionProvider with ChangeNotifier {
     _notifyIfAlive();
 
     try {
-      final smsService = SmsService();
+      final smsService = _smsServiceOverride ?? SmsService();
       final smartParser = SmartParser();
       final aiParser = GeminiService();
 
@@ -440,6 +529,9 @@ class TransactionProvider with ChangeNotifier {
         openSettingsIfBlocked: userInitiated,
       );
       if (!hasPermission) {
+        // A denied permission is a real, actionable state: nothing was scanned
+        // and the user can fix it. It used to return in silence.
+        _syncFailure = SyncFailure.permissionDenied;
         _isSyncing = false;
         _notifyIfAlive();
         return;
@@ -461,6 +553,7 @@ class TransactionProvider with ChangeNotifier {
 
       if (newMessages.isEmpty) {
         _lastSynced = DateTime.now();
+        _syncFailure = null;
         await _cache.updateSyncMeta();
         _isSyncing = false;
         _notifyIfAlive();
@@ -519,15 +612,28 @@ class TransactionProvider with ChangeNotifier {
       ]);
 
       _lastSynced = DateTime.now();
+      _syncFailure = null;
       debugPrint(
           '✅ Sync complete — ${newTxs.length} new transactions saved locally');
-
-      await _budgetMonitor.checkBudgetAlert(this);
     } catch (e) {
-      debugPrint('❌ Sync error: $e');
+      // Never silent: a scan that threw did not update the ledger, so the UI
+      // must not imply it did.
+      debugPrint('❌ Sync error: ${e.runtimeType}');
+      _syncFailure = SyncFailure.scanFailed;
     } finally {
       _isSyncing = false;
       _notifyIfAlive();
+    }
+
+    // The budget alert is a notification side effect, not part of the sync.
+    // It runs after the outcome is recorded and its own failure is contained:
+    // a broken alert must never relabel a successful sync as failed.
+    if (_syncFailure == null) {
+      try {
+        await _budgetMonitor.checkBudgetAlert(this);
+      } catch (e) {
+        debugPrint('Budget alert skipped (${e.runtimeType})');
+      }
     }
   }
 
@@ -924,4 +1030,18 @@ class InstrumentStat {
   int spent = 0;
   int received = 0;
   int count = 0;
+}
+
+/// Why a sync attempt did not complete.
+///
+/// The two cases need different words and different actions: a denied
+/// permission is fixed in Android settings, while a scan that threw is fixed by
+/// retrying. Collapsing them into one "sync failed" message would leave the
+/// user with no idea what to do.
+enum SyncFailure {
+  /// The SMS permission is not granted, so no inbox could be read.
+  permissionDenied,
+
+  /// The permission was granted but reading or parsing the inbox threw.
+  scanFailed,
 }

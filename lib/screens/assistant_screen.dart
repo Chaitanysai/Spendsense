@@ -196,7 +196,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                             : 'Local-first finance assistant',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.body(context).copyWith(fontSize: 11),
+                        style: AppText.caption(context),
                       ),
                     ),
                   ],
@@ -378,7 +378,7 @@ class _PromptRail extends StatelessWidget {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.label(context).copyWith(fontSize: 11),
+              style: AppText.caption(context),
             ),
           );
         },
@@ -624,7 +624,7 @@ class _ThinkingBubble extends StatelessWidget {
                 Flexible(
                   child: Text(
                     status.isEmpty ? 'Working…' : status,
-                    style: AppText.body(context).copyWith(fontSize: 11.5),
+                    style: AppText.caption(context),
                   ),
                 ),
               ],

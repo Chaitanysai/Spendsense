@@ -95,7 +95,7 @@ class BudgetSummary extends StatelessWidget {
             spentText,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppText.title(context).copyWith(fontSize: 14),
+            style: AppText.bodyStrong(context),
           ),
           const SizedBox(height: AppSpacing.sm),
           _UsageBar(

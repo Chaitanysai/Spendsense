@@ -399,12 +399,45 @@ class MainNavigationShell extends StatefulWidget {
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
+class _MainNavigationShellState extends State<MainNavigationShell>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   /// The Add button hides while the user scrolls down (so it never sits on top
   /// of the content being read) and returns on scroll up or a tab change.
   bool _fabVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // The automatic sync on launch. Deferred to after the first frame so the
+    // dashboard paints from the local cache before any inbox query runs: the
+    // user sees their data immediately and the scan fills in behind it.
+    //
+    // This is the shell, not a tab, so it fires regardless of which tab is
+    // showing. The provider's own gate makes it idempotent — a rebuild, a
+    // second shell, or a resume moments later cannot start a second scan.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TransactionProvider>().ensureAutoSync();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (!mounted) return;
+    // Same gate as launch: the five-minute cooldown means a quick trip to the
+    // notification shade or a permission dialog does not re-scan the inbox.
+    context.read<TransactionProvider>().ensureAutoSync();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   bool _onUserScroll(UserScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
