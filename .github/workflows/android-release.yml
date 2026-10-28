@@ -71,8 +71,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      # Local copy of subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      # (v2). The upstream composite action declares `uses: actions/cache@v5`
+      # in its own definition, which this repository's Actions policy rejects
+      # during job setup (sha_pinning_required), even though the cache steps
+      # never ran here. The copy drops only those two steps; see
+      # .github/actions/flutter-setup/action.yaml.
       - name: Setup Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        uses: ./.github/actions/flutter-setup
         with:
           channel: 'stable'
 
