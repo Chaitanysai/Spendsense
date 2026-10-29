@@ -90,30 +90,39 @@ class UpdateProvider extends ChangeNotifier {
     final installedVersion = installed ?? await installedVersionLoader();
     installed = installedVersion;
 
-    final result = await service.checkForUpdates(installed: installedVersion);
-    lastStatus = result.status;
-    manifest = result.manifest;
-    message = result.message;
+    try {
+      final result = await service.checkForUpdates(installed: installedVersion);
+      lastStatus = result.status;
+      manifest = result.manifest;
+      message = result.message;
 
-    switch (result.status) {
-      case UpdateCheckStatus.notConfigured:
-        state = UpdateUiState.idle;
-        break;
-      case UpdateCheckStatus.upToDate:
-        state = UpdateUiState.upToDate;
-        break;
-      case UpdateCheckStatus.optional:
-      case UpdateCheckStatus.required:
-        state = UpdateUiState.available;
-        break;
-      case UpdateCheckStatus.invalidManifest:
-      case UpdateCheckStatus.networkError:
-        state = UpdateUiState.error;
-        break;
+      switch (result.status) {
+        case UpdateCheckStatus.notConfigured:
+          state = UpdateUiState.idle;
+          break;
+        case UpdateCheckStatus.upToDate:
+          state = UpdateUiState.upToDate;
+          break;
+        case UpdateCheckStatus.optional:
+        case UpdateCheckStatus.required:
+          state = UpdateUiState.available;
+          break;
+        case UpdateCheckStatus.invalidManifest:
+        case UpdateCheckStatus.networkError:
+          state = UpdateUiState.error;
+          break;
+      }
+    } catch (_) {
+      // checkForUpdates maps expected failures to statuses, but an unexpected
+      // exception (an Error, or a future regression) must not leave the
+      // provider stuck in `checking` with _busy set, which would block every
+      // later check until the app restarts.
+      state = UpdateUiState.error;
+      message = 'The update check could not complete. Try again later.';
+    } finally {
+      _busy = false;
+      _notify();
     }
-
-    _busy = false;
-    _notify();
   }
 
   Future<void> download() async {
