@@ -204,8 +204,13 @@ jobs:
             exit 1
           fi
           cat apk-certs.txt
-          SIGNER=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-certs.txt \
-                     | head -n1 | tr -d ': ' | tr 'A-F' 'a-f')
+          # apksigner labels the line "Signer #1 certificate SHA-256 digest:" on
+          # some build-tools and "V2 Signer: certificate SHA-256 digest:" on
+          # others, so anchor on the label rather than the prefix. sort -u
+          # collapses repeated signers; two different digests leave two lines,
+          # which fails the equality check below instead of silently using one.
+          SIGNER=$(sed -n 's/.*certificate SHA-256 digest:[[:space:]]*//p' apk-certs.txt \
+                     | tr -d ': ' | tr 'A-F' 'a-f' | sort -u)
           PINNED="${{ steps.pin.outputs.pinned }}"
 
           echo "APK signer : $SIGNER"
