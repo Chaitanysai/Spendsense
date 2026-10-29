@@ -83,23 +83,49 @@ flutter run
 
 ### 5. Automated Cloud Android Builds
 
-This repository is configured with a GitHub Actions workflow `.github/workflows/android-release.yml` that automatically:
+This repository is configured with a GitHub Actions workflow `.github/workflows/android-release.yml` that:
 - Checks out the latest code
 - Runs static analysis (`flutter analyze`) and tests (`flutter test`)
-- Securely builds signed Release APKs
-- Publishes automated GitHub Releases containing the `.apk` on every new version tag (`v*.*.*`)
-- Validates the build outputs 
+- Generates `android/app/google-services.json` from the `FIREBASE_ANDROID_GOOGLE_SERVICES` secret (the file is gitignored and never committed)
+- Builds a signed Release APK
+- Verifies the APK's signature and scans its contents for bundled secrets
 
-To sign effectively, the workflow expects GitHub Action Secrets:
+It runs on `v*` tags, on pushes to `feat/spendsense-sync-20261017`, and by manual
+dispatch. It does **not** run on pull requests, because its build job can reach
+release-signing secrets.
+
+To sign, the workflow requires these GitHub Action Secrets:
 - `SIGNING_KEY` (Base64 of your upload-keystore.jks)
-- `KEY_ALIAS` 
+- `KEY_ALIAS`
 - `KEY_PASSWORD`
 - `STORE_PASSWORD`
+- `FIREBASE_ANDROID_GOOGLE_SERVICES` (content of `google-services.json`, or its base64)
 
-If they are missing, it safely falls back to the debug keystore for testing without failing the build.
+**The build fails closed.** If signing credentials are missing or the keystore
+cannot be decoded, the workflow stops with an error. It never falls back to the
+debug keystore, so a debug-signed APK can never be mistaken for a release.
+
+The workflow does **not** create a GitHub Release or push a tag. Publishing is a
+separate, explicit step.
 
 ## Version
 
 Current app version in `pubspec.yaml`:
 
-- `2.0.0`
+- `2.0.0+20`
+
+### Versioning policy
+
+The version has two parts, and they are not interchangeable:
+
+- `version:` in `pubspec.yaml` is `name+build`, e.g. `2.0.0+20`. Flutter maps
+  this to Android `versionName` = `2.0.0` and `versionCode` = `20`.
+  **`versionCode` must increase on every published build.**
+- Git tags mark a published release. Use **`v<name>`**, matching `versionName`
+  (`v2.0.0`), to fit the `v*` trigger.
+
+Tags already present: `v2.0.0`, `v2.0.1`, `v2.0.2`, `v1.0.4+4`, `v1.0.5+5`,
+plus a legacy `2.1.0` tag that does not match this policy.
+
+Not every `pubspec.yaml` change is a release. Until a public release version is
+chosen and merged, the value stays at whatever the last published source used.
