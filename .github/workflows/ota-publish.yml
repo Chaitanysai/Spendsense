@@ -184,6 +184,7 @@ jobs:
           APK="ota/public/releases/spendsense-${NAME}+${BUILD}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "$APK"
           echo "version=$NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
           echo "Staged $APK"
           echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
@@ -197,7 +198,14 @@ jobs:
           # Normalise once, the same way the build step does, so the manifest's
           # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree.
           BASE="${OTA_BASE_URL%/}"
-          set -- --base-url "$BASE" --out ota/public/manifest.json
+          # --apk is required: the generator hashes the staged APK to produce the
+          # manifest's sha256. Omitting it failed the run with exit 64.
+          APK="${{ steps.version.outputs.apk_path }}"
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "::error::Staged APK not found at '$APK'"
+            exit 1
+          fi
+          set -- --apk "$APK" --base-url "$BASE" --out ota/public/manifest.json
           if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
           if [ -n "$MINIMUM" ]; then set -- "$@" --minimum "$MINIMUM"; fi
           dart run tool/generate_ota_manifest.dart "$@"
