@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "appId": "com.example.spendsense",
+  "latestVersion": "2.0.0",
+  "latestBuildNumber": 20,
+  "minimumSupportedVersion": "2.0.0",
+  "downloadUrl": "https://YOUR_APPROVED_HOST/releases/spendsense-2.0.0+20.apk",
+  "releaseNotes": [
+    "Initial OTA-enabled release"
+  ],
+  "sha256": "GENERATED_APK_SHA256",
+  "signingCertSha256": "42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367",
+  "publishedAt": "GENERATED_UTC_TIMESTAMP"
+}

@@ -9,6 +9,7 @@ import 'providers/transaction_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/period_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/update_provider.dart';
 
 import 'services/app_check/app_check_bootstrap.dart';
 import 'screens/home_screen.dart';
@@ -44,6 +45,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // OTA. `init()` loads the installed version and performs one silent,
+        // non-blocking manifest check when OTA_MANIFEST_URL was supplied at
+        // build time. With no channel configured it does nothing, so startup
+        // and the offline ledger are unaffected.
+        ChangeNotifierProvider(create: (_) => UpdateProvider()..init()),
       ],
       child: const SpendSenseApp(),
     ),

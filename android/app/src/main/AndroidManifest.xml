@@ -9,6 +9,13 @@
          POST_NOTIFICATIONS
                     - lib/services/budget_monitor_service.dart:94, immediate
                       budget threshold alerts (no scheduled/alarm delivery).
+         REQUEST_INSTALL_PACKAGES
+                    - lib/services/update_platform.dart: OTA updates hand a
+                      verified APK to the system installer
+                      (android/app/src/main/kotlin/.../MainActivity.kt). It does
+                      not grant silent installs: the user confirms in the
+                      system UI, and Android additionally requires the
+                      "install unknown apps" toggle per app.
 
          RECEIVE_SMS, SCHEDULE_EXACT_ALARM and USE_EXACT_ALARM were previously
          declared but have no reference anywhere in lib/: there is no SMS
@@ -20,6 +27,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_SMS"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
     <!-- Financial data must not leak through device/cloud backups. -->
     <application
@@ -50,6 +58,19 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Exposes only the verified APK in cache/updates to the system
+             installer. Not exported; per-URI read permission is granted to the
+             installer intent, not to other apps. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 </manifest>
