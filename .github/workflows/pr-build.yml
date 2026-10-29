@@ -76,6 +76,22 @@ jobs:
         # graph other than the committed one. Fail instead of accepting drift.
         run: git diff --exit-code -- pubspec.lock
 
+      - name: Verify Dart formatting of the change set (read-only)
+        # --output=none never writes files; --set-exit-if-changed makes any
+        # misformatted file a failure instead of silently rewriting source.
+        # Scope is the App Check change set on purpose: a repo-wide
+        # `dart format lib test` reports unrelated baseline files under Flutter
+        # 3.47.8's formatter, which would fail this gate for reasons unrelated
+        # to the change under test. Widen to `lib test` once the baseline has
+        # been reformatted in a dedicated change.
+        run: |
+          dart format --output=none --set-exit-if-changed \
+            lib/main.dart \
+            lib/services/app_check \
+            lib/services/assistant/assistant_auth.dart \
+            tool/write_google_services.dart \
+            test/app_check
+
       - name: Write Firebase Android config
         id: firebase_config
         # google-services.json is gitignored, so it is materialised from the
