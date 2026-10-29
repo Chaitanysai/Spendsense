@@ -143,12 +143,22 @@ jobs:
           echo "OK: OTA pin matches the release signing certificate"
 
       - name: Build signed release APK
+        # OTA_MANIFEST_URL is compile-time: without it UpdateConfig reports
+        # "not configured" and the shipped APK can never check for updates.
+        # Passing it here is what makes a published build OTA-capable.
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-        run: flutter build apk --release
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          if [ -z "${OTA_BASE_URL:-}" ]; then
+            echo "::error::OTA_BASE_URL repository variable is not set"
+            exit 1
+          fi
+          flutter build apk --release \
+            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
 
       - name: Stage APK under ota/public/releases
         id: version
@@ -167,26 +177,39 @@ jobs:
           echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Generate manifest
+        id: manifest
         env:
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
           RELEASE_NOTES: ${{ inputs.notes }}
           MINIMUM: ${{ inputs.minimum_version }}
         run: |
-          ARGS="--base-url $OTA_BASE_URL --out ota/public/manifest.json"
-          if [ -n "$RELEASE_NOTES" ]; then ARGS="$ARGS --notes \"$RELEASE_NOTES\""; fi
-          if [ -n "$MINIMUM" ]; then ARGS="$ARGS --minimum $MINIMUM"; fi
-          eval dart run tool/generate_ota_manifest.dart $ARGS
-          echo "--- manifest ---"
-          cat ota/public/manifest.json | sed -e 's/\("sha256": *"\)[^"]*/\1<redacted-in-log>/'
+          # Normalise once, the same way the build step does, so the manifest's
+          # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree.
+          BASE="${OTA_BASE_URL%/}"
+          set -- --base-url "$BASE" --out ota/public/manifest.json
+          if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
+          if [ -n "$MINIMUM" ]; then set -- "$@" --minimum "$MINIMUM"; fi
+          dart run tool/generate_ota_manifest.dart "$@"
+          echo "--- manifest (sha256 redacted) ---"
+          sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' ota/public/manifest.json
+          echo "manifest_url=$BASE/manifest.json" >> "$GITHUB_OUTPUT"
 
       - name: Verify manifest integrity locally
         env:
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
         run: |
+          BASE="${OTA_BASE_URL%/}"
+          HOST=$(printf '%s' "$BASE" | sed -E 's#https?://([^/]+).*#\1#')
+          APK=$(ls ota/public/releases/*.apk | head -n1)
+          if [ -z "$APK" ]; then
+            echo "::error::No staged APK found in ota/public/releases"
+            exit 1
+          fi
+          echo "Checking $APK against ota/public/manifest.json"
           dart run tool/validate_ota_manifest.dart \
             --manifest ota/public/manifest.json \
-            --apk "ota/public/releases/spendsense-${{ steps.version.outputs.version }}+$(sed -n 's/^version: *//p' pubspec.yaml | sed 's/.*+//' | tr -d '[:space:]').apk" \
-            --expect-host "$(echo "$OTA_BASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+            --apk "$APK" \
+            --expect-host "$HOST"
 
       - name: Summary
         run: |
@@ -205,7 +228,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-    environment: ota-production
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
