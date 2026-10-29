@@ -31,6 +31,14 @@ dependencies:
   # 🔑 API key management
   flutter_secure_storage: ^9.0.0
 
+  # Secure cloud access: Firebase App Check attests this app installation
+  # before any cloud call, and firebase_auth supplies the signed-in user's
+  # token. Client-only project configuration lives in
+  # lib/firebase_options.dart (no secret is stored there).
+  firebase_core: ^5.1.0
+  firebase_app_check: ^0.5.1
+  firebase_auth: ^7.0.1
+
 flutter:
   uses-material-design: true
 
