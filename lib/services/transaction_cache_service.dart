@@ -213,7 +213,7 @@ class TransactionCacheService {
       }
       await _migrateLegacyStore(legacyIds);
       // Only the ids that actually got an encrypted record join the ledger;
-      // anything else is dropped or adopted by [_reconcileIndex].
+      // anything else is dropped or set aside by [_reconcileIndex].
       _cachedIds.addAll(legacyIds.where(
           (id) => _prefs.getString('$_encryptedPrefix$id') != null));
     }
@@ -313,11 +313,12 @@ class TransactionCacheService {
   ///
   /// * an indexed id with no payload is dropped (its bytes are already gone;
   ///   the rest of the ledger must still open);
-  /// * a payload with no index entry is adopted when it authenticates, because
-  ///   an interrupted activation can leave a completely written record
-  ///   invisible;
-  /// * a payload that cannot be authenticated is moved to a quarantine key, so
-  ///   it cannot block startup and is not silently destroyed either.
+  /// * a payload with no index entry is moved to a quarantine key. The index is
+  ///   the only thing that makes a record visible, so a payload outside it is
+  ///   either a write whose index commit never landed or the leftover of a
+  ///   delete/replace cut short — indistinguishable on disk, and adopting it
+  ///   would resurrect rows the ledger decided not to show, so it is set aside
+  ///   rather than loaded.
   ///
   /// Only this bookkeeping mismatch is healed. Authentication of the index
   /// itself still fails closed (see [_loadIndex]).
@@ -337,20 +338,11 @@ class TransactionCacheService {
     ]..sort();
     if (missing.isEmpty && orphans.isEmpty) return;
 
-    var adopted = 0;
-    var quarantined = 0;
     for (final id in orphans) {
-      try {
-        await _readEncrypted(id);
-        _cachedIds.add(id);
-        adopted++;
-      } on LedgerMigrationException {
-        await _quarantine('$_encryptedPrefix$id');
-        quarantined++;
-      }
+      await _quarantine('$_encryptedPrefix$id');
     }
 
-    if (missing.isNotEmpty || adopted > 0) {
+    if (missing.isNotEmpty) {
       // Only ids that still have a payload may stay in the index; an id whose
       // record is gone would make loadAll throw on every launch.
       _cachedIds.removeAll(missing);
@@ -360,8 +352,8 @@ class TransactionCacheService {
         ..clear()
         ..addAll(next);
     }
-    debugPrint('🧩 Ledger index reconciled — $adopted adopted, '
-        '${missing.length} dropped, $quarantined quarantined');
+    debugPrint('🧩 Ledger index reconciled — ${missing.length} dropped, '
+        '${orphans.length} set aside');
   }
 
   /// Copies [key] aside and removes it from the live namespace.
@@ -388,9 +380,8 @@ class TransactionCacheService {
         .map((key) => key.substring(_encryptedPrefix.length))
         .toSet();
     if (stagedIds.isNotEmpty) {
-      // Payloads without a matching legacy index entry are adopted later by
-      // [_reconcileIndex] once they authenticate; failing here would make an
-      // interrupted first upgrade permanent.
+      // Staged payloads mean an earlier pass already created the key; creating
+      // it again would mint a second key and orphan every encrypted record.
       await _encryption.requireExistingKey();
     } else {
       await _encryption.createKeyIfMissing();
@@ -777,16 +768,29 @@ class TransactionCacheService {
         // `updatedAtMs` the comparison could never match again, so init threw
         // `legacy_conflict` on every launch (the data reappeared only after a
         // retry, which skipped the checks). Retiring the source ends that.
-        _cachedIds.add(id);
+        //
+        // The record may have been written by an earlier pass that died before
+        // its index commit. The source proves this id belongs in the ledger, so
+        // finish that commit here: the index is what makes a record visible,
+        // and no other path may add an un-indexed payload back.
+        if (!_cachedIds.contains(id)) {
+          final nextIds = {..._cachedIds, id}.toList()..sort();
+          await _writeIndex(nextIds);
+          _cachedIds
+            ..clear()
+            ..addAll(nextIds);
+        }
         converted.add(id);
         await _prefs.remove('$_prefix$id');
         continue;
       }
 
       // No usable encrypted record: the plaintext source is the only copy of
-      // this transaction, so it is restored into the encrypted ledger.
+      // this transaction, so it is restored into the encrypted ledger. The
+      // index is committed BEFORE the source is retired, so an interruption
+      // here leaves the source in place for the next start to resume from
+      // instead of an un-indexed payload nothing would ever look at.
       await _writeEncrypted(source);
-      await _prefs.remove('$_prefix$id');
       final nextIds = {..._cachedIds, id}.toList()..sort();
       await _writeIndex(nextIds);
       _cachedIds
@@ -795,6 +799,7 @@ class TransactionCacheService {
       converted.add(id);
       await _writeMigrationProgress(
           'legacy_reconciliation', 'copying', ordered, converted);
+      await _prefs.remove('$_prefix$id');
     }
 
     await _writeMigrationProgress(
@@ -1561,10 +1566,14 @@ class TransactionCacheService {
 
   /// Completes an encrypted activation that a crash interrupted.
   ///
-  /// A journal that cannot be read or applied is set aside rather than thrown:
-  /// it describes a write that never became visible, so nothing in it was ever
-  /// part of the ledger, and leaving it in place used to make every later
-  /// start fail at recovery.
+  /// A journal that cannot be INTERPRETED is set aside: it describes a write
+  /// that never became visible, so nothing in it was ever part of the ledger,
+  /// and leaving it in place used to make every later start fail at recovery.
+  ///
+  /// A journal whose writes fail is different: the activation may be half
+  /// applied, and the journal is the only record of how to finish it. That
+  /// failure is surfaced (as `journal_recovery_failed`) so the caller sees an
+  /// error and the next start retries recovery instead of discarding it.
   Future<void> _recoverJournal() async {
     final Map<String, dynamic>? read;
     try {
@@ -1601,8 +1610,8 @@ class TransactionCacheService {
         throw const FormatException('unsupported journal phase');
       }
       // A recovered 'pending' replace-commit must also drop the payloads the
-      // replace superseded; otherwise they linger as orphans that a later
-      // reconciliation could adopt back into the ledger.
+      // replace superseded; otherwise they linger outside the index and the
+      // next start has to set them aside.
       if (phase == 'committed' ||
           (phase == 'pending' && journal['replace'] == true)) {
         for (final id
@@ -1612,17 +1621,18 @@ class TransactionCacheService {
       }
       await _remove(_journalKey);
       debugPrint('♻️ Finished an interrupted encrypted activation');
+    } on LedgerMigrationException {
+      // Reading or writing the ledger failed. The journal still records how to
+      // finish, so keep it and let the next start retry.
+      rethrow;
+    } on StateError {
+      throw const LedgerMigrationException(
+          'journal_recovery_failed', 'The ledger activation could not recover.');
     } catch (_) {
-      // The journal cannot be applied, so its records are unrecoverable. A
-      // half-applied replace must not let superseded payloads be adopted back
-      // into the ledger, so those are dropped before the journal is set aside.
-      final remove = journal['remove'];
-      if (remove is List) {
-        for (final id in remove.whereType<String>()) {
-          await _prefs.remove('$_encryptedPrefix$id');
-        }
-      }
-      debugPrint('⚠️ Ledger journal could not be applied — set aside');
+      // The journal cannot be interpreted, so no activation can be completed
+      // from it and nothing it lists was ever visible. Set it aside — the
+      // txq_ copy keeps the evidence — instead of failing every later start.
+      debugPrint('⚠️ Ledger journal could not be interpreted — set aside');
       await _quarantine(_journalKey);
     }
   }

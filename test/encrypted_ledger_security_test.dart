@@ -248,9 +248,11 @@ void main() {
   group('import journal robustness', () {
     // An import journal describes a write that never became visible: its
     // records were not part of the ledger yet. A journal this build cannot
-    // read or apply is therefore set aside rather than retried forever. The
-    // visible ledger must be byte-for-byte untouched, and the journal bytes
-    // are kept under a quarantine key for diagnosis.
+    // INTERPRET is therefore set aside rather than retried forever. (A journal
+    // it can interpret but fails to apply is different: that failure is thrown
+    // and retried on the next start.) The visible ledger must be byte-for-byte
+    // untouched, and the journal bytes are kept under a quarantine key for
+    // diagnosis.
     Future<void> expectSetAsideAndLedgerIntact(String recordId) async {
       final prefs = await SharedPreferences.getInstance();
       final cache = TransactionCacheService();

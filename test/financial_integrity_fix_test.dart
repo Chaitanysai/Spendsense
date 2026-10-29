@@ -150,7 +150,7 @@ void main() {
     await expectFailure(_FakeKeyStore()..throwOnRead = true);
   });
 
-  test('a fully written orphan record is adopted on restart', () async {
+  test('an unindexed orphan record is set aside, not resurrected', () async {
     final encryption = LedgerEncryptionService();
     await encryption.createKeyIfMissing();
     final tx = _tx('orphan', 12500, DateTime(2026, 10, 1));
@@ -168,15 +168,23 @@ void main() {
       'txe_orphan': payload,
     });
 
-    // An activation that wrote its payload but died before the index commit
-    // leaves an orphan. It authenticates, so it is exactly the record the user
-    // saved: adopting it is recovery, not corruption.
+    // The index is the only thing that makes a record visible. A payload
+    // outside it is either a write whose index commit never landed or the
+    // leftover of a delete/replace that was cut short, and the two look
+    // identical on disk. Adopting it would bring deleted rows back, so it is
+    // moved to a quarantine key: kept for diagnosis, never loaded.
     final cache = TransactionCacheService();
     await cache.init();
     final records = await cache.loadAll();
 
-    expect(records.single.id, 'orphan');
-    expect(records.single.amountMinor, 12500);
+    expect(records, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('txe_orphan'), isNull);
+    expect(
+      prefs.getKeys().where(
+          (k) => k.startsWith('txq_') && k.endsWith('_txe_orphan')),
+      isNotEmpty,
+    );
   });
 
   test('an unauthenticatable orphan is quarantined, not loaded', () async {
