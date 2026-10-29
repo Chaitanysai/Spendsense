@@ -23,8 +23,9 @@ void main() {
     return FirebaseAppCheckTokenProvider(
       appCheckGate: gate,
       configured: configured,
-      // Keep the post-activation token read from blocking a unit test; it has
-      // no platform channel here and resolves to a safe failure.
+      // Keep the post-activation token read from blocking a unit test: there is
+      // no Firebase plugin here, so the platform call fails immediately with a
+      // sanitized auth_unavailable rather than waiting on an answer.
       timeout: const Duration(milliseconds: 200),
     );
   }
@@ -32,14 +33,21 @@ void main() {
   test('the token provider reuses the shared App Check gate', () async {
     final gate = _CountingGate();
 
-    // The platform call after activation cannot succeed under flutter_test, so
-    // pin the exact code: it proves the gate ran and control reached the token
-    // read, rather than failing somewhere else with a generic exception.
+    // Pin the exact sanitized code. It proves the gate ran and control reached
+    // the token read: before the token read the only failures are
+    // auth_not_configured (asserted elsewhere) and the gate's own propagated
+    // error. A regression that skipped the gate cannot produce this value.
     await expectLater(
       providerWith(gate).getToken(),
       throwsA(
         isA<AssistantAuthException>()
-            .having((error) => error.code, 'code', 'auth_timeout'),
+            .having((error) => error.code, 'code', 'auth_unavailable')
+            .having(
+              (error) => error.message,
+              'message',
+              'The assistant could not verify this app installation. Local '
+                  'assistant commands still work.',
+            ),
       ),
     );
     expect(gate.calls, 1);
