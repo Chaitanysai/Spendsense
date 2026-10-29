@@ -55,3 +55,7 @@ release/*.apk
 *.jks
 *.keystore
 key.properties
+
+# Node modules installed by CI-only tooling (tool/validate_yaml.js). The
+# dependency is installed with --no-save, so nothing else here is tracked.
+node_modules/

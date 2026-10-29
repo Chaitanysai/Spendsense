@@ -77,6 +77,14 @@ jobs:
         # graph other than the committed one. Fail instead of accepting drift.
         run: git diff --exit-code -- pubspec.lock
 
+      - name: Validate every YAML file
+        # A malformed workflow is not a lint nit: GitHub refuses to register the
+        # job ("This run likely failed because of a workflow file issue") and no
+        # check ever runs. Cheap, and it exits non-zero on any parse failure.
+        run: |
+          npm install --no-save --no-audit --no-fund yaml
+          node tool/validate_yaml.js
+
       - name: Verify Dart formatting of the change set (read-only)
         # --output=none never writes files; --set-exit-if-changed makes any
         # misformatted file a failure instead of silently rewriting source.

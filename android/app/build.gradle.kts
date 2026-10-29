@@ -28,10 +28,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     defaultConfig {
         applicationId = "com.example.spendsense"
         minSdk = flutter.minSdkVersion
@@ -67,6 +63,15 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+}
+
+// Kotlin 2.x removed `android { kotlinOptions { ... } }`; the compiler options
+// DSL replaces it and the build fails to even compile the script otherwise.
+// Declared outside `android { }` on purpose.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 flutter {
