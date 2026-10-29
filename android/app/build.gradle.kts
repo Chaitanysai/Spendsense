@@ -6,8 +6,9 @@ plugins {
     id("org.jetbrains.kotlin.android") // ✅ use this (not kotlin-android)
     id("dev.flutter.flutter-gradle-plugin")
 
-    // 🔥 Firebase plugin
-    // id("com.google.gms.google-services")
+    // Required by the firebase_auth plugin. Reads android/app/google-services.json,
+    // which is gitignored and supplied by tool/write_google_services.dart.
+    id("com.google.gms.google-services")
 }
 
 val keystorePropertiesFile = rootProject.file("key.properties")

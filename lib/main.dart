@@ -1,13 +1,16 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'firebase_options.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/period_provider.dart';
 import 'providers/theme_provider.dart';
 
+import 'services/app_check/app_check_bootstrap.dart';
 import 'screens/home_screen.dart';
 import 'screens/activity_screen.dart';
 import 'screens/settings_screen.dart';
@@ -24,11 +27,15 @@ import 'widgets/floating_nav_bar.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
 ///
-/// API keys are never bundled with the app: they come from --dart-define
-/// (CI/development) or from the in-app AI settings, which persist them in
-/// platform-encrypted storage on the user's device.
+/// Provider API keys are never bundled with the app: they come from
+/// --dart-define (CI/development) or from the in-app AI settings, which persist
+/// them in platform-encrypted storage on the user's device. The Firebase client
+/// identifier in `firebase_options.dart` is public configuration, not a
+/// credential.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await _initializeFirebase();
 
   runApp(
     MultiProvider(
@@ -41,6 +48,42 @@ void main() async {
       child: const SpendSenseApp(),
     ),
   );
+}
+
+/// Starts Firebase for the platform from `lib/firebase_options.dart`, then
+/// activates App Check once through the shared bootstrap gate.
+///
+/// Cloud features need it; the local ledger does not. A failure here is logged
+/// and swallowed so the offline-first app still opens (for example on a
+/// platform with no Firebase app registered, or with no network on first run)
+/// instead of dying on launch.
+Future<void> _initializeFirebase() async {
+  if (Firebase.apps.isEmpty) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (error) {
+      debugPrint(
+        'Firebase did not start (${error.runtimeType}); running offline-only.',
+      );
+      return;
+    }
+  }
+
+  try {
+    await AppCheckBootstrap.shared.ensureActivated();
+  } catch (error) {
+    // App Check is fail-closed once enforcement is enabled, so a failure is
+    // never replaced by a debug provider. Keep startup working so the local
+    // ledger still opens; cloud features may be unavailable. Only the stable
+    // code is logged: exception details can carry Firebase configuration.
+    final code = error is AppCheckBootstrapException ? ': ${error.code}' : '';
+    debugPrint(
+      'App Check did not start (${error.runtimeType}$code); '
+      'cloud features may be unavailable.',
+    );
+  }
 }
 
 class SpendSenseApp extends StatelessWidget {

@@ -20,7 +20,10 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // firebase_auth ships Kotlin metadata 2.4.0, which the Kotlin 2.2 compiler
+    // rejects ("compiled with an incompatible version of Kotlin"). 2.4.0 is the
+    // minimum that can consume it.
+    id("org.jetbrains.kotlin.android") version "2.4.0" apply false
 }
 
 include(":app")
