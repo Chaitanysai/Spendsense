@@ -1,0 +1,92 @@
+name: Pull Request Build
+
+# Satisfies the required `build` context on pull requests with validation and a
+# debug build only. It never runs a release build, never references signing
+# secrets, and never uploads an artifact, so nothing it produces can be
+# published or installed against a production signing identity.
+#
+# The job id is `build-verify` and the check name is `build`: branch
+# protection matches the reported check name, not the job id.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/pr-build.yml'
+      - '.github/actions/flutter-setup/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-verify:
+    name: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Record checked-out commit
+        run: |
+          {
+            echo "### Build validation commit"
+            echo '```'
+            echo "event:      ${GITHUB_SHA}"
+            echo "git HEAD:   $(git rev-parse HEAD)"
+            echo "ref:        ${GITHUB_REF}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          channel: 'stable'
+          flutter-version: '3.47.8'
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Verify pubspec.lock was not rewritten
+        # A different resolution means validation ran against a dependency
+        # graph other than the committed one. Fail instead of accepting drift.
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build debug APK (verification only, never uploaded)
+        # Proves the Android toolchain still assembles with these dependencies.
+        # A debug build uses the debug keystore, so no release signing identity
+        # is involved and the output is discarded with the runner.
+        run: flutter build apk --debug
+
+      - name: Discard build output
+        run: rm -rf build
