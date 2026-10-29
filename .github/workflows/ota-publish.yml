@@ -50,6 +50,7 @@ jobs:
     outputs:
       deploy_intent: ${{ steps.intent.outputs.deploy_intent }}
       version: ${{ steps.version.outputs.version }}
+      apk_path: ${{ steps.version.outputs.apk_path }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -118,6 +119,7 @@ jobs:
           printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
 
       - name: Assert the OTA certificate pin matches the release keystore
+        id: pin
         # The pin lives in lib/config/update_config.dart and is the only thing
         # standing between a manifest and an installer. A keystore rotation
         # would otherwise silently orphan every installed build, so fail here.
@@ -151,6 +153,7 @@ jobs:
             echo "::error::OTA certificate pin does not match the release keystore; installed builds could never apply an update"
             exit 1
           fi
+          echo "pinned=$PINNED" >> "$GITHUB_OUTPUT"
           echo "OK: OTA pin matches the release signing certificate"
 
       - name: Build signed release APK
@@ -170,6 +173,48 @@ jobs:
           fi
           flutter build apk --release \
             --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
+
+      - name: Verify the built APK is signed with the pinned certificate
+        # Checking the keystore proves the pin matches the key we hold. It says
+        # nothing about the APK that was actually produced: android/app/
+        # build.gradle.kts falls back to the debug signing config when no
+        # signing environment is visible, and generate_ota_manifest.dart writes
+        # signingCertSha256 from the pin rather than from the artifact. So
+        # without this step a debug-signed APK would ship under a manifest that
+        # claims the release certificate, and no installed build could verify
+        # or install it.
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          if [ ! -s "$APK" ]; then
+            echo "::error::Release APK not found at $APK"
+            exit 1
+          fi
+
+          BUILD_TOOLS_DIR="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* 2>/dev/null | sort -V | tail -n1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          if [ -z "$BUILD_TOOLS_DIR" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "::error::apksigner not found under ${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+            exit 1
+          fi
+
+          # Capture to a file: apksigner's output stream varies with the JDK.
+          if ! "$APKSIGNER" verify --print-certs "$APK" > apk-certs.txt 2>&1; then
+            cat apk-certs.txt
+            echo "::error::apksigner rejected the release APK"
+            exit 1
+          fi
+          cat apk-certs.txt
+          SIGNER=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-certs.txt \
+                     | head -n1 | tr -d ': ' | tr 'A-F' 'a-f')
+          PINNED="${{ steps.pin.outputs.pinned }}"
+
+          echo "APK signer : $SIGNER"
+          echo "pinned     : $PINNED"
+          if [ -z "$SIGNER" ] || [ "$SIGNER" != "$PINNED" ]; then
+            echo "::error::The built APK is not signed by the pinned release certificate; refusing to publish it"
+            exit 1
+          fi
+          echo "OK: the built APK is signed by the pinned release certificate"
 
       - name: Stage APK under ota/public/releases
         id: version
@@ -219,9 +264,12 @@ jobs:
         run: |
           BASE="${OTA_BASE_URL%/}"
           HOST=$(printf '%s' "$BASE" | sed -E 's#https?://([^/]+).*#\1#')
-          APK=$(ls ota/public/releases/*.apk | head -n1)
-          if [ -z "$APK" ]; then
-            echo "::error::No staged APK found in ota/public/releases"
+          # The exact APK this run staged. Globbing the directory would depend on
+          # whatever else is present and could verify a different artifact than
+          # the one the manifest was generated from.
+          APK="${{ steps.version.outputs.apk_path }}"
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "::error::No staged APK at '$APK'"
             exit 1
           fi
           echo "Checking $APK against ota/public/manifest.json"
@@ -229,6 +277,18 @@ jobs:
             --manifest ota/public/manifest.json \
             --apk "$APK" \
             --expect-host "$HOST"
+
+      - name: Upload the validated OTA payload
+        # The deploy job runs on a fresh checkout, where ota/public holds only
+        # its .gitkeep placeholders. Without this handoff the deploy would
+        # publish an empty site and delete the live manifest and APKs; with it,
+        # hosting receives exactly the bytes validated above.
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ota-payload
+          path: ota/public
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Summary
         run: |
@@ -252,6 +312,33 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+
+      - name: Download the validated OTA payload
+        # firebase deploy replaces the whole hosting release, so the payload
+        # must come from the validate job rather than from this checkout: a
+        # checkout has no APK and no manifest, and deploying it would remove
+        # every live file.
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ota-payload
+          path: ota/public
+
+      - name: Assert the payload is the one that will be published
+        env:
+          STAGED_APK: ${{ needs.validate.outputs.apk_path }}
+        run: |
+          if [ ! -s ota/public/manifest.json ]; then
+            echo "::error::No validated manifest.json in the payload; refusing to publish an empty site"
+            exit 1
+          fi
+          # The name the validate job staged. Comparing against it proves the
+          # downloaded payload is that artifact rather than a leftover checkout.
+          APK_NAME="${STAGED_APK##*/}"
+          if [ -z "$APK_NAME" ] || [ ! -s "ota/public/releases/$APK_NAME" ]; then
+            echo "::error::The payload has no releases/$APK_NAME; refusing to publish"
+            exit 1
+          fi
+          echo "Publishing ota/public/manifest.json + ota/public/releases/$APK_NAME"
 
       - name: Setup Node
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
