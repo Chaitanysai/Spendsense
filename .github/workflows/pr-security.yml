@@ -13,6 +13,7 @@ on:
       - main
     paths:
       - '.github/workflows/pr-security.yml'
+      - '.github/workflows/**'
       - 'lib/**'
       - 'android/**'
       - 'pubspec.yaml'
@@ -71,13 +72,41 @@ jobs:
       - name: Semgrep - secrets
         # Secret detection is pure regex, so it is cheap to run separately and
         # cannot be masked by a memory failure in the analysis pass below.
+        # --verbose makes Semgrep print the files it actually scanned.
         run: |
           semgrep \
             --config p/secrets \
             --metrics=off \
             --error \
             --jobs 1 \
-            lib android .github
+            --verbose \
+            lib android .github 2>&1 | tee semgrep-secrets.log
+
+      - name: Record which workflow files were scanned
+        # Proves coverage instead of inferring it from a file count: print the
+        # scanned .github paths, then fail if a workflow changed by this PR is
+        # absent from that list. A green run must mean "these files were read".
+        run: |
+          echo "Workflow files Semgrep scanned:"
+          grep -oE '\.github/[A-Za-z0-9_./-]+\.ya?ml' semgrep-secrets.log \
+            | sort -u | sed 's/^/  /' | tee scanned-workflows.txt
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat scanned-workflows.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          MISSING=0
+          for f in $(find .github/workflows .github/actions -name '*.y*ml' 2>/dev/null); do
+            rel=${f#./}
+            if ! grep -qxF "$rel" scanned-workflows.txt; then
+              echo "::error file=$rel::Workflow file was not reported as scanned by Semgrep"
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -ne 0 ]; then
+            echo "Semgrep did not report every workflow file; coverage is not proven"
+            exit 1
+          fi
+          echo "OK: every workflow and action file under .github was scanned"
 
       - name: Semgrep - security audit
         # Same rule set as the release gate, bounded so the 4 GB runner cannot
