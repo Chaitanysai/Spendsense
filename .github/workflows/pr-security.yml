@@ -57,7 +57,11 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.x'
+          # Pinned, not '3.x': the release gate last ran on Python 3.12.15 and
+          # succeeded. '3.x' now resolves to 3.15.1, where semgrep-core
+          # segfaults (exit -11) immediately. Pinning keeps this check stable
+          # instead of tracking a runtime semgrep does not support yet.
+          python-version: '3.12'
 
       - name: Install Semgrep
         # Same version android-release.yml pins for reproducible results.
