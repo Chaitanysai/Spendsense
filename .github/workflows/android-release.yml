@@ -223,7 +223,8 @@ jobs:
       # Regression gate for the "no secret material in the APK" security fix:
       # .env entries and known provider API-key patterns must be absent.
       # Only counts are printed - secret values are never echoed.
-      - name: Verify no secret material is bundled in the APK        env:
+      - name: Verify no secret material is bundled in the APK
+        env:
           ARTIFACT_PATH: ${{ env.ARTIFACT_PATH }}
         run: |
           echo "── Bundled .env check ──"
