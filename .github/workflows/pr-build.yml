@@ -76,6 +76,38 @@ jobs:
         # graph other than the committed one. Fail instead of accepting drift.
         run: git diff --exit-code -- pubspec.lock
 
+      - name: Write Firebase Android config
+        id: firebase_config
+        # google-services.json is gitignored, so it is materialised from the
+        # repository secret instead of being committed. Allowing the repository
+        # default token here keeps the value out of the environment until it is
+        # actually present.
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES }}
+        run: |
+          if [ -z "${FIREBASE_ANDROID_GOOGLE_SERVICES:-}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Android build not attempted"
+              echo "The \`FIREBASE_ANDROID_GOOGLE_SERVICES\` repository secret is"
+              echo "not set, so \`android/app/google-services.json\` cannot be"
+              echo "materialised. Flutter analysis and the full test suite still"
+              echo "ran above. Add the secret to enable the debug-build gate."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          dart run tool/write_google_services.dart
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the generated config stays untracked
+        if: steps.firebase_config.outputs.available == 'true'
+        run: |
+          if git ls-files --error-unmatch android/app/google-services.json 2>/dev/null; then
+            echo "::error::android/app/google-services.json is tracked; it must stay gitignored"
+            exit 1
+          fi
+          git status --porcelain
+
       - name: Static analysis
         run: flutter analyze
 
@@ -83,10 +115,12 @@ jobs:
         run: flutter test
 
       - name: Build debug APK (verification only, never uploaded)
+        if: steps.firebase_config.outputs.available == 'true'
         # Proves the Android toolchain still assembles with these dependencies.
         # A debug build uses the debug keystore, so no release signing identity
         # is involved and the output is discarded with the runner.
         run: flutter build apk --debug
 
       - name: Discard build output
+        if: steps.firebase_config.outputs.available == 'true'
         run: rm -rf build
