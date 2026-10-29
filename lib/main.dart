@@ -13,6 +13,7 @@ import 'providers/sound_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/update_provider.dart';
 
+import 'services/app_check/app_check_bootstrap.dart';
 import 'services/sound_service.dart';
 
 import 'screens/auth/auth_screen.dart';
@@ -75,14 +76,28 @@ void main() async {
 /// instead of dying on launch (for example on a platform with no Firebase app
 /// registered, or with no network on first run).
 Future<void> _initializeFirebase() async {
-  if (Firebase.apps.isNotEmpty) return;
+  if (Firebase.apps.isEmpty) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (error) {
+      debugPrint(
+        'Firebase did not start (${error.runtimeType}); running offline-only.',
+      );
+      return;
+    }
+  }
+
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await AppCheckBootstrap.shared.ensureActivated();
   } catch (error) {
+    // App Check is fail-closed once enforcement is enabled, so a failure is
+    // never replaced by a debug provider. Keep startup working so the local
+    // ledger still opens; cloud features may be unavailable.
     debugPrint(
-      'Firebase did not start (${error.runtimeType}); running offline-only.',
+      'App Check did not start (${error.runtimeType}); '
+      'cloud features may be unavailable.',
     );
   }
 }

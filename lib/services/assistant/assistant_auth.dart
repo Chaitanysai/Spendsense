@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_check/app_check_bootstrap.dart';
+
 /// Authentication failure that is safe to show (and log by code only).
 class AssistantAuthException implements Exception {
   final String code;
@@ -40,6 +42,8 @@ abstract interface class AssistantIdentityTokenProvider {
 abstract final class AssistantAuthConfig {
   /// Debug-only App Check token. Set it in the local build command after
   /// registering it in Firebase Console -> App Check -> Manage debug tokens.
+  /// The startup bootstrap (`AppCheckBootstrap`) reads this same
+  /// `FIREBASE_APP_CHECK_DEBUG_TOKEN` define and only uses it in debug builds.
   /// Never commit it.
   static const String debugToken =
       String.fromEnvironment('FIREBASE_APP_CHECK_DEBUG_TOKEN');
@@ -54,49 +58,23 @@ abstract final class AssistantAuthConfig {
 /// Firebase Authentication identity. A request is accepted only after the
 /// backend verifies both.
 class FirebaseAppCheckTokenProvider implements AssistantAuthTokenProvider {
-  static Future<void>? _initialization;
   final Duration timeout;
+  final AppCheckGate? appCheckGate;
+  final bool? configured;
 
   const FirebaseAppCheckTokenProvider({
     this.timeout = const Duration(seconds: 15),
+    this.appCheckGate,
+    this.configured,
   });
+
+  /// Reuses the same activation that app startup performs; no second
+  /// `activate` call is made here.
+  AppCheckGate get _gate => appCheckGate ?? AppCheckBootstrap.shared;
 
   @override
   bool get isConfigured =>
-      AssistantAuthConfig.isAndroid && Firebase.apps.isNotEmpty;
-
-  static Future<void> _initialize() async {
-    if (Firebase.apps.isEmpty) {
-      throw const AssistantAuthException(
-        'auth_not_configured',
-        'Secure app authentication is not configured in this build.',
-      );
-    }
-    final useDebugProvider =
-        kDebugMode && AssistantAuthConfig.debugToken.trim().isNotEmpty;
-    await FirebaseAppCheck.instance.activate(
-      providerAndroid: useDebugProvider
-          ? AndroidDebugProvider(
-              debugToken: AssistantAuthConfig.debugToken.trim(),
-            )
-          : const AndroidPlayIntegrityProvider(),
-    );
-  }
-
-  Future<void> _ensureInitialized() {
-    final existing = _initialization;
-    if (existing != null) return existing;
-    final created = _initialize();
-    _initialization = created;
-    created.then<void>(
-      (_) {},
-      onError: (Object _) {
-        // Allow a later attempt while preserving the safe error for this call.
-        _initialization = null;
-      },
-    );
-    return created;
-  }
+      configured ?? (AssistantAuthConfig.isAndroid && Firebase.apps.isNotEmpty);
 
   @override
   Future<String> getToken() async {
@@ -107,7 +85,7 @@ class FirebaseAppCheckTokenProvider implements AssistantAuthTokenProvider {
       );
     }
     try {
-      await _ensureInitialized().timeout(timeout);
+      await _gate.ensureActivated().timeout(timeout);
       var token = await FirebaseAppCheck.instance.getToken().timeout(timeout);
       token ??= await FirebaseAppCheck.instance.getToken(true).timeout(timeout);
       if (token == null || token.trim().isEmpty) {
@@ -124,6 +102,8 @@ class FirebaseAppCheckTokenProvider implements AssistantAuthTokenProvider {
         'auth_timeout',
         'App verification timed out. Local assistant commands still work.',
       );
+    } on AppCheckBootstrapException catch (error) {
+      throw AssistantAuthException(error.code, error.message);
     } catch (_) {
       // Never include exception details: they can contain Firebase config.
       throw const AssistantAuthException(
