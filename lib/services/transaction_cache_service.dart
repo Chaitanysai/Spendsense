@@ -144,6 +144,10 @@ class TransactionCacheService {
   /// Deliberately outside the `tx_` namespace so no record id can collide.
   static const _journalKey = 'txj_import_journal';
 
+  /// Where an unreadable record or journal is moved aside. Outside both the
+  /// `tx_` and `txe_` namespaces, so nothing reads it back into the ledger.
+  static const _quarantinePrefix = 'txq_';
+
   /// `tx_` + id is a storage key, so these ids would overwrite the ledger's
   /// own bookkeeping keys.
   static const _indexRecordId = '__ledger_index__';
@@ -186,36 +190,76 @@ class TransactionCacheService {
     if (_initialised) return;
     _prefs = await SharedPreferences.getInstance();
 
+    // Every step below can fail, and a retry re-runs all of them. Starting from
+    // empty in-memory state keeps a half-finished earlier attempt from being
+    // mistaken for the stored ledger.
+    _cachedIds.clear();
+    _rejected.clear();
+    _legacyPlaintextIndex = false;
+
     final encryptedRaw = _prefs.getString(_encryptedIdsKey);
     if (encryptedRaw != null) {
       await _loadIndex(encryptedRaw);
     } else {
       final legacyRaw = _prefs.getString(_idsKey);
-      final legacyIds = legacyRaw == null ? <String>[] : _decodeIds(legacyRaw);
+      List<String> legacyIds;
+      try {
+        legacyIds = legacyRaw == null ? <String>[] : _decodeIds(legacyRaw);
+      } on LedgerMigrationException {
+        // A damaged plaintext index loses the id order, not the records; the
+        // sources are still on disk, so fall back to those.
+        debugPrint('⚠️ Legacy index unreadable — using the sources on disk');
+        legacyIds = await _legacySourceIds();
+      }
       await _migrateLegacyStore(legacyIds);
-      _cachedIds.addAll(legacyIds);
+      // Only the ids that actually got an encrypted record join the ledger;
+      // anything else is dropped or set aside by [_reconcileIndex].
+      _cachedIds.addAll(legacyIds.where(
+          (id) => _prefs.getString('$_encryptedPrefix$id') != null));
     }
 
-    final rawRejected = _prefs.getString(_rejectedIdsKey);
-    if (rawRejected != null) {
-      final list = jsonDecode(rawRejected) as List;
-      for (final entry in list) {
-        final parsed = RejectedMessage.tryParse(entry);
-        if (parsed != null) _rejected[parsed.id] = parsed;
-      }
-    }
-    _initialised = true;
+    await _readRejected();
     await _recoverJournal();
     if (_legacyPlaintextIndex) {
       await _writeIndex(_cachedIds.toList());
       _legacyPlaintextIndex = false;
     }
     await _reconcileLegacyStore();
-    await _validateIndexConsistency();
+    await _reconcileIndex();
     await _migrateSyncMetadata();
     await _pruneRejected();
+
+    // Marked ready only once EVERY step succeeded. Setting this earlier made a
+    // failed start look initialized, so the retry the error card offers
+    // returned immediately and the ledger stayed empty until a full resync.
+    _initialised = true;
     debugPrint(
         '📦 Local DB init — ${_cachedIds.length} txs, ${_rejected.length} rejected');
+  }
+
+  /// Loads the skipped-message list, tolerating damaged contents.
+  ///
+  /// This list holds only SMS ids and coarse reason codes, so an unreadable
+  /// copy costs a re-scan of those messages — it must never keep the whole
+  /// ledger from opening, which is what a plain `jsonDecode` cast did.
+  Future<void> _readRejected() async {
+    final raw = _prefs.getString(_rejectedIdsKey);
+    if (raw == null) return;
+    Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      decoded = null;
+    }
+    if (decoded is! List) {
+      debugPrint('⚠️ Skipped-message list unreadable — reset');
+      await _prefs.remove(_rejectedIdsKey);
+      return;
+    }
+    for (final entry in decoded) {
+      final parsed = RejectedMessage.tryParse(entry);
+      if (parsed != null) _rejected[parsed.id] = parsed;
+    }
   }
 
   Future<void> _loadIndex(String raw) async {
@@ -229,8 +273,9 @@ class TransactionCacheService {
       );
       ids = _decodeIds(clear);
     } else {
-      // Compatibility with the old plaintext index. Upgrade it only after
-      // validating all payloads and retaining the old source records.
+      // Compatibility with the old plaintext index. It is upgraded in place;
+      // each plaintext source is kept until its encrypted copy has been
+      // verified, then retired by [_reconcileLegacyStore].
       ids = _decodeIds(raw);
       final hasPayloads =
           _prefs.getKeys().any((key) => key.startsWith(_encryptedPrefix));
@@ -258,18 +303,74 @@ class TransactionCacheService {
     return ids;
   }
 
-  Future<void> _validateIndexConsistency() async {
+  /// Makes the id index agree with the records actually on disk.
+  ///
+  /// SharedPreferences cannot write several keys atomically, so an interrupted
+  /// activation — or a platform that dropped a write — can leave the index and
+  /// its payloads disagreeing. That used to throw `index_inconsistent` on
+  /// every start, which is indistinguishable from "the ledger is empty" to a
+  /// reader that ignores the error, and never repaired itself. Instead:
+  ///
+  /// * an indexed id with no payload is dropped (its bytes are already gone;
+  ///   the rest of the ledger must still open);
+  /// * a payload with no index entry is moved to a quarantine key. The index is
+  ///   the only thing that makes a record visible, so a payload outside it is
+  ///   either a write whose index commit never landed or the leftover of a
+  ///   delete/replace cut short — indistinguishable on disk, and adopting it
+  ///   would resurrect rows the ledger decided not to show, so it is set aside
+  ///   rather than loaded.
+  ///
+  /// Only this bookkeeping mismatch is healed. Authentication of the index
+  /// itself still fails closed (see [_loadIndex]).
+  Future<void> _reconcileIndex() async {
     final payloadIds = _prefs
         .getKeys()
         .where((key) => key.startsWith(_encryptedPrefix))
         .map((key) => key.substring(_encryptedPrefix.length))
         .toSet();
-    final indexedIds = _cachedIds.toSet();
-    if (payloadIds.length != indexedIds.length ||
-        !payloadIds.containsAll(indexedIds)) {
-      throw const LedgerMigrationException('index_inconsistent',
-          'The encrypted ledger index does not match its records.');
+    final missing = [
+      for (final id in _cachedIds)
+        if (!payloadIds.contains(id)) id
+    ];
+    final orphans = [
+      for (final id in payloadIds)
+        if (!_cachedIds.contains(id)) id
+    ]..sort();
+    if (missing.isEmpty && orphans.isEmpty) return;
+
+    for (final id in orphans) {
+      await _quarantine('$_encryptedPrefix$id');
     }
+
+    if (missing.isNotEmpty) {
+      // Only ids that still have a payload may stay in the index; an id whose
+      // record is gone would make loadAll throw on every launch.
+      _cachedIds.removeAll(missing);
+      final next = _cachedIds.toList()..sort();
+      await _writeIndex(next);
+      _cachedIds
+        ..clear()
+        ..addAll(next);
+    }
+    debugPrint('🧩 Ledger index reconciled — ${missing.length} dropped, '
+        '${orphans.length} set aside');
+  }
+
+  /// Copies [key] aside and removes it from the live namespace.
+  ///
+  /// The bytes stay on the device for diagnosis; nothing reads the copy back,
+  /// so a record that can no longer be authenticated cannot keep the ledger
+  /// from opening.
+  Future<void> _quarantine(String key) async {
+    final raw = _prefs.getString(key);
+    if (raw == null) return;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final target = '$_quarantinePrefix${stamp}_$key';
+    if (!await _prefs.setString(target, raw)) {
+      debugPrint('⚠️ Quarantine write failed — leaving $key in place');
+      return;
+    }
+    await _prefs.remove(key);
   }
 
   Future<void> _migrateLegacyStore(List<String> legacyIds) async {
@@ -279,11 +380,9 @@ class TransactionCacheService {
         .map((key) => key.substring(_encryptedPrefix.length))
         .toSet();
     if (stagedIds.isNotEmpty) {
+      // Staged payloads mean an earlier pass already created the key; creating
+      // it again would mint a second key and orphan every encrypted record.
       await _encryption.requireExistingKey();
-      if (legacyIds.isEmpty || !stagedIds.every(legacyIds.contains)) {
-        throw const LedgerMigrationException('index_inconsistent',
-            'Staged ledger records have no matching legacy index.');
-      }
     } else {
       await _encryption.createKeyIfMissing();
     }
@@ -294,21 +393,31 @@ class TransactionCacheService {
       for (final id in legacyIds) {
         final raw = _prefs.getString('$_prefix$id');
         if (raw == null) {
-          throw const LedgerMigrationException(
-              'missing_record', 'A legacy ledger record is missing.');
+          debugPrint('⚠️ Legacy record $id is missing — skipped');
+          continue;
         }
-        final decoded = jsonDecode(raw);
-        if (decoded is! Map) {
-          throw const LedgerMigrationException(
-              'invalid_record', 'A legacy ledger record is invalid.');
+        final TransactionModel tx;
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is! Map) throw const FormatException('not an object');
+          tx = _decodeLegacyTransaction(
+            Map<String, dynamic>.from(decoded),
+            expectedId: id,
+          );
+        } catch (_) {
+          // Undecodable sources cannot be migrated. They keep their plaintext
+          // copy, which the reconciliation step sets aside.
+          debugPrint('⚠️ Legacy record $id is undecodable — skipped');
+          continue;
         }
-        final tx = _decodeLegacyTransaction(
-          Map<String, dynamic>.from(decoded),
-          expectedId: id,
-        );
 
         if (converted.contains(id)) {
-          final staged = await _readEncrypted(id);
+          TransactionModel? staged;
+          try {
+            staged = await _readEncrypted(id);
+          } on LedgerMigrationException {
+            staged = null;
+          }
           if (staged != null && _sameTransaction(staged, tx)) continue;
           converted.remove(id);
         }
@@ -340,9 +449,6 @@ class TransactionCacheService {
           'legacy_money_migration', 'committed', legacyIds, converted);
     } on LedgerMigrationException {
       rethrow;
-    } on FormatException {
-      throw const LedgerMigrationException('ambiguous_record',
-          'A legacy ledger record has an unsupported format.');
     } catch (_) {
       throw const LedgerMigrationException(
           'encryption_failed', 'The ledger migration could not be completed.');
@@ -562,7 +668,15 @@ class TransactionCacheService {
   Future<List<String>> _legacySourceIds() async {
     final ids = <String>{};
     final rawIndex = _prefs.getString(_idsKey);
-    if (rawIndex != null) ids.addAll(_decodeIds(rawIndex));
+    if (rawIndex != null) {
+      // The key scan below still finds every source, so a damaged plaintext
+      // index is ignored instead of aborting the reconciliation.
+      try {
+        ids.addAll(_decodeIds(rawIndex));
+      } catch (_) {
+        debugPrint('⚠️ Legacy index unreadable — ignored');
+      }
+    }
 
     for (final key in _prefs.getKeys()) {
       if (!key.startsWith(_prefix) || key.startsWith(_encryptedPrefix)) {
@@ -616,41 +730,68 @@ class TransactionCacheService {
     for (final id in ordered) {
       final raw = _prefs.getString('$_prefix$id');
       if (raw == null) {
-        throw const LedgerMigrationException(
-            'missing_record', 'A legacy ledger record is missing.');
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) {
-        throw const LedgerMigrationException(
-            'invalid_record', 'A legacy ledger record is invalid.');
-      }
-      final source = _decodeLegacyTransaction(
-        Map<String, dynamic>.from(decoded),
-        expectedId: id,
-      );
-
-      if (_cachedIds.contains(id)) {
-        final current = await _readEncrypted(id);
-        if (current == null || !_sameTransaction(current, source)) {
-          throw const LedgerMigrationException('legacy_conflict',
-              'A legacy record conflicts with its encrypted v2 record.');
-        }
-        converted.add(id);
+        // The plaintext source is gone. When the ledger still holds the record
+        // the migration for it is simply already finished.
+        if (_cachedIds.contains(id)) converted.add(id);
         continue;
       }
 
-      final staged = _prefs.getString('$_encryptedPrefix$id');
-      if (staged != null) {
-        final recovered = await _readEncrypted(id);
-        if (recovered == null || !_sameTransaction(recovered, source)) {
-          throw const LedgerMigrationException('legacy_conflict',
-              'A staged legacy record conflicts with its source.');
-        }
-      } else {
-        await _writeEncrypted(source);
+      final TransactionModel source;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map) throw const FormatException('not an object');
+        source = _decodeLegacyTransaction(
+          Map<String, dynamic>.from(decoded),
+          expectedId: id,
+        );
+      } catch (_) {
+        // A source that cannot be decoded restores nothing, and it must never
+        // veto startup. The encrypted record, if any, is kept as it is; the
+        // undecodable bytes are set aside rather than deleted.
+        if (_cachedIds.contains(id)) converted.add(id);
+        debugPrint('⚠️ Legacy source $id is unreadable — set aside');
+        await _quarantine('$_prefix$id');
+        continue;
       }
 
-      final nextIds = [..._cachedIds, id]..sort();
+      TransactionModel? current;
+      try {
+        current = await _readEncrypted(id);
+      } on LedgerMigrationException {
+        current = null;
+      }
+
+      if (current != null) {
+        // The encrypted record is authoritative: it carries the user's edits
+        // and the sync metadata the plaintext source never had. Re-comparing
+        // the two on every start meant that once the sync stamped
+        // `updatedAtMs` the comparison could never match again, so init threw
+        // `legacy_conflict` on every launch (the data reappeared only after a
+        // retry, which skipped the checks). Retiring the source ends that.
+        //
+        // The record may have been written by an earlier pass that died before
+        // its index commit. The source proves this id belongs in the ledger, so
+        // finish that commit here: the index is what makes a record visible,
+        // and no other path may add an un-indexed payload back.
+        if (!_cachedIds.contains(id)) {
+          final nextIds = {..._cachedIds, id}.toList()..sort();
+          await _writeIndex(nextIds);
+          _cachedIds
+            ..clear()
+            ..addAll(nextIds);
+        }
+        converted.add(id);
+        await _prefs.remove('$_prefix$id');
+        continue;
+      }
+
+      // No usable encrypted record: the plaintext source is the only copy of
+      // this transaction, so it is restored into the encrypted ledger. The
+      // index is committed BEFORE the source is retired, so an interruption
+      // here leaves the source in place for the next start to resume from
+      // instead of an un-indexed payload nothing would ever look at.
+      await _writeEncrypted(source);
+      final nextIds = {..._cachedIds, id}.toList()..sort();
       await _writeIndex(nextIds);
       _cachedIds
         ..clear()
@@ -658,11 +799,15 @@ class TransactionCacheService {
       converted.add(id);
       await _writeMigrationProgress(
           'legacy_reconciliation', 'copying', ordered, converted);
+      await _prefs.remove('$_prefix$id');
     }
 
     await _writeMigrationProgress(
         'legacy_reconciliation', 'committed', ordered, converted);
     await _prefs.remove(_migrationKey);
+    // The plaintext index has no role once the encrypted one owns the ledger;
+    // leaving it behind made every later start re-walk a stale id list.
+    await _prefs.remove(_idsKey);
   }
 
   Future<void> _writeIndex(List<String> ids) async {
@@ -853,14 +998,32 @@ class TransactionCacheService {
   /// repeated scans cannot extend the 90-day retention window.
   Future<void> markRejected(String smsId, {String reason = 'UNKNOWN'}) async {
     _assertInit();
-    if (smsId.isEmpty || _rejected.containsKey(smsId)) return;
-    _rejected[smsId] = RejectedMessage(
-      id: smsId,
-      reason: reason,
-      firstSeen: DateTime.now(),
-    );
-    await _pruneRejected();
+    await markRejectedAll({smsId: reason});
+  }
+
+  /// Records several skipped messages through ONE flush.
+  ///
+  /// A scan skips dozens of messages; writing the whole list once per message
+  /// rewrote the same key text for every one of them. New ids inherit the
+  /// mapped reason; already-known ids keep their original `firstSeen`.
+  Future<int> markRejectedAll(Map<String, String> reasons) async {
+    _assertInit();
+    final now = DateTime.now();
+    var added = 0;
+    for (final entry in reasons.entries) {
+      final id = entry.key;
+      if (id.isEmpty || _rejected.containsKey(id)) continue;
+      _rejected[id] = RejectedMessage(
+        id: id,
+        reason: entry.value,
+        firstSeen: now,
+      );
+      added++;
+    }
+    if (added == 0) return 0;
+    await _pruneRejected(flush: false);
     await _flushRejected();
+    return added;
   }
 
   /// Skipped messages still inside the retention window, newest first. Ids and
@@ -895,7 +1058,7 @@ class TransactionCacheService {
     return _pruneRejected(now: now);
   }
 
-  Future<int> _pruneRejected({DateTime? now}) async {
+  Future<int> _pruneRejected({DateTime? now, bool flush = true}) async {
     final cutoff = (now ?? DateTime.now()).subtract(rejectedRetention);
     final expired = [
       for (final r in _rejected.values)
@@ -905,15 +1068,22 @@ class TransactionCacheService {
     for (final id in expired) {
       _rejected.remove(id);
     }
-    await _flushRejected();
+    if (flush) await _flushRejected();
     return expired.length;
   }
 
+  /// Persists the skipped-message list through the same write seam as every
+  /// other mutation, but a failure is not fatal: the list only saves a re-scan,
+  /// so losing it costs nothing the next start cannot rebuild.
   Future<void> _flushRejected() async {
-    await _prefs.setString(
-      _rejectedIdsKey,
-      jsonEncode([for (final r in _rejected.values) r.toJson()]),
-    );
+    try {
+      await _set(
+        _rejectedIdsKey,
+        jsonEncode([for (final r in _rejected.values) r.toJson()]),
+      );
+    } catch (error) {
+      debugPrint('⚠️ Skipped-message list not saved (${error.runtimeType})');
+    }
   }
 
   Future<void> clearAll() async {
@@ -921,6 +1091,11 @@ class TransactionCacheService {
     for (final id in List.of(_cachedIds)) {
       await _prefs.remove('$_encryptedPrefix$id');
       await _prefs.remove('$_prefix$id');
+    }
+    // Quarantined bytes belong to this ledger too; a clear must not leave them.
+    for (final key
+        in _prefs.getKeys().where((k) => k.startsWith(_quarantinePrefix)).toList()) {
+      await _prefs.remove(key);
     }
     _cachedIds.clear();
     await _prefs.remove(_encryptedIdsKey);
@@ -946,8 +1121,16 @@ class TransactionCacheService {
   DateTime? get lastSyncTime {
     final raw = _prefs.getString(_metaKey);
     if (raw == null) return null;
-    final ms = (jsonDecode(raw) as Map)['lastSyncMs'] as int?;
-    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final ms = decoded['lastSyncMs'];
+      if (ms is! int) return null;
+      return DateTime.fromMillisecondsSinceEpoch(ms);
+    } catch (_) {
+      // Sync bookkeeping must never be able to abort startup.
+      return null;
+    }
   }
 
   int get cachedCount => _cachedIds.length;
@@ -1382,9 +1565,28 @@ class TransactionCacheService {
   }
 
   /// Completes an encrypted activation that a crash interrupted.
+  ///
+  /// A journal that cannot be INTERPRETED is set aside: it describes a write
+  /// that never became visible, so nothing in it was ever part of the ledger,
+  /// and leaving it in place used to make every later start fail at recovery.
+  ///
+  /// A journal whose writes fail is different: the activation may be half
+  /// applied, and the journal is the only record of how to finish it. That
+  /// failure is surfaced (as `journal_recovery_failed`) so the caller sees an
+  /// error and the next start retries recovery instead of discarding it.
   Future<void> _recoverJournal() async {
-    final journal = await _readJournal();
-    if (journal == null) return;
+    final Map<String, dynamic>? read;
+    try {
+      read = await _readJournal();
+    } catch (error) {
+      // Reaching this point means the encryption key already opened the index,
+      // so an unreadable journal is a damaged journal, not a key problem.
+      debugPrint('⚠️ Ledger journal unreadable (${error.runtimeType}) — set aside');
+      await _quarantine(_journalKey);
+      return;
+    }
+    if (read == null) return;
+    final journal = read;
     try {
       if (journal['v'] != 2) {
         throw const FormatException('unsupported journal version');
@@ -1408,8 +1610,8 @@ class TransactionCacheService {
         throw const FormatException('unsupported journal phase');
       }
       // A recovered 'pending' replace-commit must also drop the payloads the
-      // replace superseded; otherwise the orphan fails the very next
-      // index-consistency validation and init can never succeed again.
+      // replace superseded; otherwise they linger outside the index and the
+      // next start has to set them aside.
       if (phase == 'committed' ||
           (phase == 'pending' && journal['replace'] == true)) {
         for (final id
@@ -1419,9 +1621,19 @@ class TransactionCacheService {
       }
       await _remove(_journalKey);
       debugPrint('♻️ Finished an interrupted encrypted activation');
+    } on LedgerMigrationException {
+      // Reading or writing the ledger failed. The journal still records how to
+      // finish, so keep it and let the next start retry.
+      rethrow;
+    } on StateError {
+      throw const LedgerMigrationException(
+          'journal_recovery_failed', 'The ledger activation could not recover.');
     } catch (_) {
-      throw const LedgerMigrationException('journal_recovery_failed',
-          'The ledger activation could not recover.');
+      // The journal cannot be interpreted, so no activation can be completed
+      // from it and nothing it lists was ever visible. Set it aside — the
+      // txq_ copy keeps the evidence — instead of failing every later start.
+      debugPrint('⚠️ Ledger journal could not be interpreted — set aside');
+      await _quarantine(_journalKey);
     }
   }
 

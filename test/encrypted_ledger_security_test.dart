@@ -246,7 +246,28 @@ void main() {
   });
 
   group('import journal robustness', () {
-    test('malformed import journal fails closed', () async {
+    // An import journal describes a write that never became visible: its
+    // records were not part of the ledger yet. A journal this build cannot
+    // INTERPRET is therefore set aside rather than retried forever. (A journal
+    // it can interpret but fails to apply is different: that failure is thrown
+    // and retried on the next start.) The visible ledger must be byte-for-byte
+    // untouched, and the journal bytes are kept under a quarantine key for
+    // diagnosis.
+    Future<void> expectSetAsideAndLedgerIntact(String recordId) async {
+      final prefs = await SharedPreferences.getInstance();
+      final cache = TransactionCacheService();
+      await cache.init();
+
+      expect((await cache.loadAll()).single.id, recordId);
+      expect(prefs.getString('txj_import_journal'), isNull);
+      expect(
+        prefs.getKeys().where(
+            (k) => k.startsWith('txq_') && k.endsWith('_txj_import_journal')),
+        isNotEmpty,
+      );
+    }
+
+    test('malformed import journal is set aside', () async {
       final seed = await _seedEncryptedLedger('journaled');
       SharedPreferences.setMockInitialValues({
         ...seed,
@@ -254,16 +275,7 @@ void main() {
       });
       final prefs = await SharedPreferences.getInstance();
 
-      // The outer envelope decode currently surfaces as a FormatException
-      // rather than LedgerMigrationException; either way it must fail closed
-      // and preserve the ledger.
-      await expectLater(
-        TransactionCacheService().init(),
-        throwsA(anyOf(
-          isA<LedgerMigrationException>(),
-          isA<FormatException>(),
-        )),
-      );
+      await expectSetAsideAndLedgerIntact('journaled');
       expect(prefs.getString('txe_journaled'), seed['txe_journaled']);
     });
 
@@ -274,7 +286,7 @@ void main() {
       return jsonEncode({'schemaVersion': 2, 'ciphertext': encrypted});
     }
 
-    test('import journal with unsupported version fails closed', () async {
+    test('import journal with unsupported version is set aside', () async {
       final seed = await _seedEncryptedLedger('journaled');
       SharedPreferences.setMockInitialValues({
         ...seed,
@@ -285,13 +297,10 @@ void main() {
         }),
       });
 
-      await expectLater(
-        TransactionCacheService().init(),
-        throwsA(isA<LedgerMigrationException>()),
-      );
+      await expectSetAsideAndLedgerIntact('journaled');
     });
 
-    test('import journal with unsupported phase fails closed', () async {
+    test('import journal with unsupported phase is set aside', () async {
       final seed = await _seedEncryptedLedger('journaled');
       SharedPreferences.setMockInitialValues({
         ...seed,
@@ -302,10 +311,7 @@ void main() {
         }),
       });
 
-      await expectLater(
-        TransactionCacheService().init(),
-        throwsA(isA<LedgerMigrationException>()),
-      );
+      await expectSetAsideAndLedgerIntact('journaled');
     });
   });
 

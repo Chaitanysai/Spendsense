@@ -11,6 +11,7 @@ import '../services/bill_classifier.dart';
 import '../services/smart_parser.dart';
 import '../services/gemini_service.dart';
 import '../services/transaction_cache_service.dart';
+import '../services/ledger_encryption_service.dart';
 import '../services/ledger_tombstone_store.dart';
 import '../services/budget_monitor_service.dart';
 
@@ -83,6 +84,22 @@ class TransactionProvider with ChangeNotifier {
   /// must never be presented the same way.
   Object? get ledgerInitError => _ledgerInitError;
   bool get hasLedgerInitError => _ledgerInitError != null;
+
+  /// A stable, non-sensitive code for [ledgerInitError].
+  ///
+  /// The runtime type cannot tell an unavailable key from an index mismatch or
+  /// a failed journal recovery, and the error card needs to say which — the
+  /// user's next step differs. Never includes record contents.
+  String? get ledgerInitErrorCode {
+    final error = _ledgerInitError;
+    if (error == null) return null;
+    if (error is LedgerMigrationException) return error.code;
+    if (error is LedgerImportException) return error.code;
+    if (error is LedgerKeyUnavailableException) {
+      return 'ledger_key_unavailable';
+    }
+    return error.runtimeType.toString();
+  }
 
   DateTime? get lastSynced => _lastSynced;
   DateTime? get smsScanStartDate => _smsScanStartDate;
@@ -208,6 +225,7 @@ class TransactionProvider with ChangeNotifier {
       await _cache.init();
       await Future.wait([_loadBudget(), _loadFromCache()]);
       _lastSynced = _cache.lastSyncTime;
+      _ledgerInitError = null;
     } catch (error) {
       // The ledger failed closed: nothing was wiped or replaced, it just could
       // not be read. Surface the failure instead of letting it masquerade as a
@@ -245,15 +263,20 @@ class TransactionProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final versioned = prefs.getString('monthly_budget_v2');
     if (versioned != null) {
-      final data = jsonDecode(versioned);
-      if (data is Map &&
-          data['schemaVersion'] == 2 &&
-          data['currency'] == 'INR' &&
-          data['amountMinor'] is int) {
-        _monthlyBudgetMinor = data['amountMinor'] as int;
-      } else {
-        throw const LedgerMigrationException(
-            'invalid_budget', 'The saved budget format is invalid.');
+      // A damaged budget must not hide a healthy ledger behind an init error:
+      // the default is the safe fallback and the next save rewrites the key.
+      try {
+        final data = jsonDecode(versioned);
+        if (data is Map &&
+            data['schemaVersion'] == 2 &&
+            data['currency'] == 'INR' &&
+            data['amountMinor'] is int) {
+          _monthlyBudgetMinor = data['amountMinor'] as int;
+        } else {
+          debugPrint('⚠️ Saved budget ignored — unsupported format');
+        }
+      } catch (_) {
+        debugPrint('⚠️ Saved budget ignored — unreadable');
       }
     } else {
       final legacy = prefs.getDouble('monthly_budget');
@@ -561,14 +584,11 @@ class TransactionProvider with ChangeNotifier {
       }
 
       final newTxs = <TransactionModel>[];
+      final rejected = <String, String>{};
 
       for (final msg in newMessages) {
         if (!SmartParser.isDebitExpenseSms(msg.body)) {
-          debugPrint(
-            'SMS FILTER: REJECT reason=${SmartParser.debitSmsRejectionReason(msg.body)}',
-          );
-          await _cache.markRejected(msg.id,
-              reason: SmartParser.debitSmsRejectionReason(msg.body));
+          rejected[msg.id] = SmartParser.debitSmsRejectionReason(msg.body);
           continue;
         }
         final localResult = await smartParser.parse(msg.body, msg.id, msg.date);
@@ -591,20 +611,37 @@ class TransactionProvider with ChangeNotifier {
         }
 
         if (finalResult != null) {
-          finalResult = _stampSyncMeta(_withBillHint(finalResult, msg.body));
-          newTxs.add(finalResult);
-          final newIds = {finalResult.id};
-          _transactions.removeWhere((t) => newIds.contains(t.id));
-          _transactions.add(finalResult);
-          _transactions.sort((a, b) => b.date.compareTo(a.date));
-          _newThisSync++;
-          await _cache.put(finalResult);
-          _notifyIfAlive(); // Yield to UI
+          newTxs.add(_stampSyncMeta(_withBillHint(finalResult, msg.body)));
         } else {
           // Both local and AI rejected this valid-looking debit
-          await _cache.markRejected(msg.id,
-              reason: SmartParser.debitSmsRejectionReason(msg.body));
+          rejected[msg.id] = SmartParser.debitSmsRejectionReason(msg.body);
         }
+      }
+
+      if (rejected.isNotEmpty) {
+        debugPrint('SMS FILTER: ${rejected.length} messages skipped');
+      }
+
+      if (newTxs.isNotEmpty) {
+        final byId = <String, TransactionModel>{
+          for (final tx in newTxs) tx.id: tx,
+        };
+        // ONE journalled activation for the whole scan. Saving each message as
+        // it was parsed rewrote the journal and re-encrypted the full id index
+        // for every SMS, which is what made a first sync take minutes.
+        await _locked(
+            () => _cache.putAll(byId.values.toList(growable: false)));
+        _transactions = [
+          ...byId.values,
+          for (final tx in _transactions)
+            if (!byId.containsKey(tx.id)) tx,
+        ]..sort((a, b) => b.date.compareTo(a.date));
+        _newThisSync = byId.length;
+      }
+
+      if (rejected.isNotEmpty) {
+        // One flush for the whole scan, not one per skipped message.
+        await _cache.markRejectedAll(rejected);
       }
 
       await Future.wait([
@@ -620,6 +657,14 @@ class TransactionProvider with ChangeNotifier {
       // must not imply it did.
       debugPrint('❌ Sync error: ${e.runtimeType}');
       _syncFailure = SyncFailure.scanFailed;
+      // The batch is written all-or-nothing, so anything parsed but not
+      // committed must not stay on screen. Reload what is actually stored.
+      try {
+        await _locked(() => _loadFromCache());
+      } catch (reloadError) {
+        debugPrint('⚠️ Reload after failed sync failed '
+            '(${reloadError.runtimeType})');
+      }
     } finally {
       _isSyncing = false;
       _notifyIfAlive();

@@ -150,7 +150,7 @@ void main() {
     await expectFailure(_FakeKeyStore()..throwOnRead = true);
   });
 
-  test('orphan encrypted payload fails closed', () async {
+  test('an unindexed orphan record is set aside, not resurrected', () async {
     final encryption = LedgerEncryptionService();
     await encryption.createKeyIfMissing();
     final tx = _tx('orphan', 12500, DateTime(2026, 10, 1));
@@ -168,13 +168,62 @@ void main() {
       'txe_orphan': payload,
     });
 
+    // The index is the only thing that makes a record visible. A payload
+    // outside it is either a write whose index commit never landed or the
+    // leftover of a delete/replace that was cut short, and the two look
+    // identical on disk. Adopting it would bring deleted rows back, so it is
+    // moved to a quarantine key: kept for diagnosis, never loaded.
+    final cache = TransactionCacheService();
+    await cache.init();
+    final records = await cache.loadAll();
+
+    expect(records, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('txe_orphan'), isNull);
     expect(
-      TransactionCacheService().init(),
-      throwsA(isA<LedgerMigrationException>()),
+      prefs.getKeys().where(
+          (k) => k.startsWith('txq_') && k.endsWith('_txe_orphan')),
+      isNotEmpty,
     );
   });
 
-  test('malformed legacy records are not substituted', () async {
+  test('an unauthenticatable orphan is quarantined, not loaded', () async {
+    final encryption = LedgerEncryptionService();
+    await encryption.createKeyIfMissing();
+    final tx = _tx('poisoned', 12500, DateTime(2026, 10, 1));
+    final payload = jsonDecode(await encryption.encryptText(
+      jsonEncode(tx.toJson()),
+      recordId: tx.id,
+    )) as Map<String, dynamic>;
+    final ciphertext = payload['ciphertext'] as String;
+    payload['ciphertext'] =
+        (ciphertext.startsWith('A') ? 'B' : 'A') + ciphertext.substring(1);
+    final index = await encryption.encryptText(
+      jsonEncode(<String>[]),
+      recordId: '__ledger_index__',
+    );
+
+    SharedPreferences.setMockInitialValues({
+      'tx_cache_ids_v2': index,
+      'txe_poisoned': jsonEncode(payload),
+    });
+
+    final cache = TransactionCacheService();
+    await cache.init();
+    expect(await cache.loadAll(), isEmpty);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('txe_poisoned'), isNull,
+        reason: 'an unauthenticated record cannot enter the ledger');
+    expect(
+      prefs.getKeys().where(
+          (k) => k.startsWith('txq_') && k.endsWith('_txe_poisoned')),
+      isNotEmpty,
+      reason: 'its bytes are kept aside for diagnosis, not deleted',
+    );
+  });
+
+  test('malformed legacy records are set aside, never substituted', () async {
     SharedPreferences.setMockInitialValues({
       'tx_cache_ids': jsonEncode(['legacy']),
       'tx_legacy': jsonEncode({
@@ -190,9 +239,17 @@ void main() {
       }),
     });
 
+    // An undecodable source cannot become a record, and it must not wedge the
+    // ledger either: it is moved out of the live namespace.
+    final cache = TransactionCacheService();
+    await cache.init();
+    expect(await cache.loadAll(), isEmpty);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('tx_legacy'), isNull);
     expect(
-      TransactionCacheService().init(),
-      throwsA(isA<LedgerMigrationException>()),
+      prefs.getKeys().where((k) => k.startsWith('txq_') && k.endsWith('_tx_legacy')),
+      isNotEmpty,
     );
   });
 
@@ -346,7 +403,8 @@ void main() {
     expect(prefs.getString('tx_money_migration_v2'), isNull);
   });
 
-  test('conflicting legacy and encrypted IDs fail closed', () async {
+  test('a stale legacy source never overrides or blocks its encrypted record',
+      () async {
     final cache = TransactionCacheService();
     await cache.init();
     await cache.put(_tx('same-id', 10000, DateTime(2026, 10, 1)));
@@ -354,10 +412,16 @@ void main() {
     await prefs.setString('tx_cache_ids', jsonEncode(['same-id']));
     await prefs.setString('tx_same-id', jsonEncode(_legacy('same-id', 239)));
 
-    expect(
-      TransactionCacheService().init(),
-      throwsA(isA<LedgerMigrationException>()),
-    );
+    // The encrypted record is authoritative. Comparing the two on every start
+    // made this conflict permanent: once the sync stamped `updatedAtMs` the
+    // comparison could never match, so init failed on every launch.
+    final restarted = TransactionCacheService();
+    await restarted.init();
+    final records = await restarted.loadAll();
+
+    expect(records.single.amountMinor, 10000);
+    expect(prefs.getString('tx_same-id'), isNull,
+        reason: 'the superseded plaintext source is retired');
   });
 
   test('legacy reconciliation resumes after index interruption', () async {
