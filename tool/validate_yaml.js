@@ -98,6 +98,25 @@ function checkOtaPayloadHandoff(doc, rel) {
       `${rel}: deploy downloads the payload to "${target}" but hosting serves "${hostingDir}"`,
     );
   }
+
+  // GitHub drops a job output whose value matches a registered secret, so an
+  // APK path passed from validate can arrive empty and a guard that trusts it
+  // fails closed on every real deploy. The payload must be verified directly.
+  const deploySteps = stepsOf(deploy);
+  if (JSON.stringify(deploySteps).includes('outputs.apk_path')) {
+    failures.push(
+      `${rel}: deploy reads needs.validate.outputs.apk_path, which GitHub silently drops when the value matches a secret`,
+    );
+  }
+  const digestGuard = deploySteps.find((step) => {
+    const run = String((step && step.run) || '');
+    return run.includes('sha256sum') && run.includes('manifest.json');
+  });
+  if (!digestGuard) {
+    failures.push(
+      `${rel}: no deploy step re-checks the payload APK digest against manifest.json before publishing`,
+    );
+  }
 }
 
 for (const file of files) {
