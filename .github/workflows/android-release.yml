@@ -79,6 +79,25 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      - name: Write Firebase Android config
+        # The fused com.google.gms.google-services plugin reads
+        # android/app/google-services.json, which is gitignored. Materialise it
+        # from the repository secret so no Firebase Android config is committed.
+        # This fails the build when the secret is absent: a release cannot be
+        # assembled without it, and silently skipping it would only defer the
+        # failure to Gradle with a less useful message.
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES }}
+        run: dart run tool/write_google_services.dart
+
+      - name: Verify the generated config stays untracked
+        run: |
+          if git ls-files --error-unmatch android/app/google-services.json 2>/dev/null; then
+            echo "::error::android/app/google-services.json is tracked; it must stay gitignored"
+            exit 1
+          fi
+          echo "OK: android/app/google-services.json is present and untracked"
+
       # The repo tracks pubspec.lock, but developer laptops do not have Flutter
       # installed. When this commit's dependency manifest changed the resolved
       # lock, upload the refreshed lock so it can be committed back remotely.
@@ -108,26 +127,49 @@ jobs:
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
-          if [ -n "$SIGNING_KEY" ]; then
-            echo "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
-            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
-          else
-            echo "Skipping keystore creation as SIGNING_KEY secret is not found."
-            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::error::SIGNING_KEY is not configured; cannot prepare the release keystore"
+            exit 1
           fi
+          if ! printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks 2>/dev/null; then
+            echo "::error::SIGNING_KEY is not valid base64; the keystore could not be decoded"
+            exit 1
+          fi
+          echo "OK: decoded release keystore ($(stat -c%s android/app/upload-keystore.jks) bytes)"
 
-      - name: Build release APK (Secured)
-        if: env.HAS_KEYSTORE == 'true'
+      - name: Require release signing
+        # A release build must never be signed with the debug key and shipped
+        # as if it were a release. If the keystore or any signing credential is
+        # missing, stop here with an actionable error instead of falling back.
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -z "$SIGNING_KEY" ]     && MISSING="$MISSING SIGNING_KEY"
+          [ -z "$KEY_ALIAS" ]       && MISSING="$MISSING KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ]    && MISSING="$MISSING KEY_PASSWORD"
+          [ -z "$STORE_PASSWORD" ]  && MISSING="$MISSING STORE_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Release signing is not configured; missing:$MISSING"
+            echo "Refusing to build a release. A debug-signed APK must not be published as a release." >&2
+            exit 1
+          fi
+          if [ ! -s android/app/upload-keystore.jks ]; then
+            echo "::error::android/app/upload-keystore.jks is missing or empty after decoding SIGNING_KEY"
+            exit 1
+          fi
+          echo "OK: release signing credentials are present"
+
+      - name: Build release APK
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: flutter build apk --release
-
-      - name: Build debug-signed sideload APK (Fallback)
-        if: env.HAS_KEYSTORE == 'false'
-        run: flutter build apk --release # Falls back to the debug signing config when no keystore is present
 
       - name: Verify and Re-label APK
         id: verify_apk
@@ -144,18 +186,14 @@ jobs:
           fi
           echo "APK generated successfully. Size: $SIZE bytes."
 
-          if [ "$HAS_KEYSTORE" = "true" ]; then
-            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-release.apk"
-            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-release.apk" >> $GITHUB_ENV
-            echo "ARTIFACT_NAME=spendsense-release.apk" >> $GITHUB_ENV
-            echo "SIGNING_STATUS=release-key" >> $GITHUB_ENV
-          else
-            echo "::warning::Private signing key not provided. APK is signed with the debug key and should only be used for testing/sideloading."
-            mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk"
-            echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
-            echo "ARTIFACT_NAME=spendsense-debug-signed-sideload.apk" >> $GITHUB_ENV
-            echo "SIGNING_STATUS=debug-key" >> $GITHUB_ENV
-          fi
+          # Reaching this step means the Require-release-signing gate passed, so
+          # the artifact is signed with the release key by construction. There is
+          # deliberately no debug-signed fallback: a release job that cannot sign
+          # has already failed above.
+          mv "$APK_PATH" "build/app/outputs/flutter-apk/spendsense-release.apk"
+          echo "ARTIFACT_PATH=build/app/outputs/flutter-apk/spendsense-release.apk" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=spendsense-release.apk" >> $GITHUB_ENV
+          echo "SIGNING_STATUS=release-key" >> $GITHUB_ENV
 
       - name: Verify APK metadata and signing certificate
         env:
