@@ -121,6 +121,12 @@ jobs:
         # The pin lives in lib/config/update_config.dart and is the only thing
         # standing between a manifest and an installer. A keystore rotation
         # would otherwise silently orphan every installed build, so fail here.
+        #
+        # Extraction uses tool/read_ota_pin.dart rather than shell matching: the
+        # constant is declared across two lines and its name also appears as a
+        # usage reference, which made a one-line sed return an empty string and
+        # report a false mismatch. The tool fails closed on missing, malformed
+        # or ambiguous declarations.
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -133,10 +139,15 @@ jobs:
             echo "::error::Could not read the certificate fingerprint from the keystore"
             exit 1
           fi
-          PINNED=$(sed -n "s/.*pinnedSigningCertSha256 *= *'\([0-9a-f]*\)'.*/\1/p" lib/config/update_config.dart | head -n1)
+
+          if ! PINNED=$(dart run tool/read_ota_pin.dart --file lib/config/update_config.dart); then
+            echo "::error::Could not read the pinned OTA certificate from lib/config/update_config.dart"
+            exit 1
+          fi
+
           echo "keystore SHA-256 : $FP"
           echo "pinned in code   : $PINNED"
-          if [ "$FP" != "$PINNED" ]; then
+          if [ -z "$PINNED" ] || [ "$FP" != "$PINNED" ]; then
             echo "::error::OTA certificate pin does not match the release keystore; installed builds could never apply an update"
             exit 1
           fi
