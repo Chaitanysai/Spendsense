@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paths this app may share through its FileProvider.
+
+     Only the OTA staging directory is exposed, and only to the package
+     installer via a per-URI grant. MainActivity additionally refuses any path
+     outside cache/updates, so the two checks agree. Financial data, the
+     database and the keystore are deliberately not reachable here. -->
+<paths>
+    <cache-path
+        name="ota_updates"
+        path="updates/" />
+</paths>

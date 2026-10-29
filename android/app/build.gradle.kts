@@ -63,6 +63,11 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // FileProvider, used by MainActivity to hand a verified OTA APK to the
+    // system installer. Declared explicitly rather than relying on it arriving
+    // transitively from a Flutter plugin.
+    implementation("androidx.core:core-ktx:1.13.1")
 }
 
 // Kotlin 2.x removed `android { kotlinOptions { ... } }`; the compiler options

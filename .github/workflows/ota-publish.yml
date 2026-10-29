@@ -1,0 +1,271 @@
+name: OTA Publish
+
+# Publishes a release APK to Firebase Hosting plus its manifest, so installed
+# builds can self-update. This is the ONLY workflow that writes to production
+# hosting, and it never runs automatically on a pull request.
+#
+# Two separate jobs:
+#   validate - builds nothing, deploys nothing. Generates the manifest from an
+#              existing artifact and proves the manifest contains the pinned
+#              certificate fingerprint.
+#   deploy   - runs only when explicitly dispatched with confirm=deploy, and
+#              only after validate succeeds.
+#
+# Firebase credentials are read from the FIREBASE_TOKEN secret only. Absent
+# credentials fail the deploy job with an actionable message; the workflow never
+# invents an endpoint or a token.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to publish to Firebase Hosting. Anything else validates only.'
+        required: true
+        default: 'validate'
+        type: string
+      notes:
+        description: 'Release notes (one line).'
+        required: false
+        default: ''
+        type: string
+      minimum_version:
+        description: 'Oldest version still supported, x.y.z. Defaults to this build.'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Build manifest and validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      deploy_intent: ${{ steps.intent.outputs.deploy_intent }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Decide intent
+        id: intent
+        run: |
+          if [ "${{ inputs.confirm }}" = "deploy" ]; then
+            echo "deploy_intent=true" >> "$GITHUB_OUTPUT"
+            echo "Intent: DEPLOY (will publish to Firebase Hosting)"
+          else
+            echo "deploy_intent=false" >> "$GITHUB_OUTPUT"
+            echo "Intent: VALIDATE ONLY (input was '${{ inputs.confirm }}')"
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          channel: 'stable'
+          flutter-version: '3.47.8'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Write Firebase Android config
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES }}
+        run: dart run tool/write_google_services.dart
+
+      - name: Require OTA host configuration
+        # No invented endpoint: the published origin must be stated explicitly.
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          if [ -z "${OTA_BASE_URL:-}" ]; then
+            echo "::error::Repository variable OTA_BASE_URL is not set."
+            echo "Set it to the Firebase Hosting origin that serves ota/public, e.g. https://spendsense-ota-2026.web.app" >&2
+            exit 1
+          fi
+          echo "OTA host: $OTA_BASE_URL"
+
+      - name: Require release signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -z "$SIGNING_KEY" ]    && MISSING="$MISSING SIGNING_KEY"
+          [ -z "$KEY_ALIAS" ]      && MISSING="$MISSING KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ]   && MISSING="$MISSING KEY_PASSWORD"
+          [ -z "$STORE_PASSWORD" ] && MISSING="$MISSING STORE_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Release signing is not configured; missing:$MISSING"
+            exit 1
+          fi
+          printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Assert the OTA certificate pin matches the release keystore
+        # The pin lives in lib/config/update_config.dart and is the only thing
+        # standing between a manifest and an installer. A keystore rotation
+        # would otherwise silently orphan every installed build, so fail here.
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          KEYSTORE=android/app/upload-keystore.jks
+          FP=$(keytool -list -v -keystore "$KEYSTORE" -alias "$KEY_ALIAS" \
+                 -storepass "$STORE_PASSWORD" 2>/dev/null \
+               | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ': ' | tr 'A-F' 'a-f')
+          if [ -z "$FP" ]; then
+            echo "::error::Could not read the certificate fingerprint from the keystore"
+            exit 1
+          fi
+          PINNED=$(sed -n "s/.*pinnedSigningCertSha256 *= *'\([0-9a-f]*\)'.*/\1/p" lib/config/update_config.dart | head -n1)
+          echo "keystore SHA-256 : $FP"
+          echo "pinned in code   : $PINNED"
+          if [ "$FP" != "$PINNED" ]; then
+            echo "::error::OTA certificate pin does not match the release keystore; installed builds could never apply an update"
+            exit 1
+          fi
+          echo "OK: OTA pin matches the release signing certificate"
+
+      - name: Build signed release APK
+        # OTA_MANIFEST_URL is compile-time: without it UpdateConfig reports
+        # "not configured" and the shipped APK can never check for updates.
+        # Passing it here is what makes a published build OTA-capable.
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_PATH: upload-keystore.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          if [ -z "${OTA_BASE_URL:-}" ]; then
+            echo "::error::OTA_BASE_URL repository variable is not set"
+            exit 1
+          fi
+          flutter build apk --release \
+            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
+
+      - name: Stage APK under ota/public/releases
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | tr -d '[:space:]')
+          NAME="${VERSION%%+*}"; BUILD="${VERSION##*+}"
+          if [ -z "$NAME" ] || [ -z "$BUILD" ] || [ "$NAME" = "$VERSION" ]; then
+            echo "::error::pubspec version '$VERSION' is not name+build"
+            exit 1
+          fi
+          mkdir -p ota/public/releases
+          APK="ota/public/releases/spendsense-${NAME}+${BUILD}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$APK"
+          echo "version=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Staged $APK"
+          echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate manifest
+        id: manifest
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          MINIMUM: ${{ inputs.minimum_version }}
+        run: |
+          # Normalise once, the same way the build step does, so the manifest's
+          # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree.
+          BASE="${OTA_BASE_URL%/}"
+          set -- --base-url "$BASE" --out ota/public/manifest.json
+          if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
+          if [ -n "$MINIMUM" ]; then set -- "$@" --minimum "$MINIMUM"; fi
+          dart run tool/generate_ota_manifest.dart "$@"
+          echo "--- manifest (sha256 redacted) ---"
+          sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' ota/public/manifest.json
+          echo "manifest_url=$BASE/manifest.json" >> "$GITHUB_OUTPUT"
+
+      - name: Verify manifest integrity locally
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          BASE="${OTA_BASE_URL%/}"
+          HOST=$(printf '%s' "$BASE" | sed -E 's#https?://([^/]+).*#\1#')
+          APK=$(ls ota/public/releases/*.apk | head -n1)
+          if [ -z "$APK" ]; then
+            echo "::error::No staged APK found in ota/public/releases"
+            exit 1
+          fi
+          echo "Checking $APK against ota/public/manifest.json"
+          dart run tool/validate_ota_manifest.dart \
+            --manifest ota/public/manifest.json \
+            --apk "$APK" \
+            --expect-host "$HOST"
+
+      - name: Summary
+        run: |
+          {
+            echo "### OTA ${{ steps.intent.outputs.deploy_intent == 'true' && 'DEPLOY' || 'VALIDATE ONLY' }}"
+            echo "- version: \`${{ steps.version.outputs.version }}\`"
+            echo "- sha256: \`${{ steps.version.outputs.sha256 }}\`"
+            echo "- pin: matched release keystore"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Publish to Firebase Hosting
+    needs: validate
+    if: needs.validate.outputs.deploy_intent == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
+        with:
+          node-version: '22'
+
+      - name: Require Firebase credentials
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "${FIREBASE_TOKEN:-}" ]; then
+            echo "::error::No Firebase deploy credential."
+            echo "Add a FIREBASE_TOKEN secret (firebase login:ci) scoped to the" >&2
+            echo "spendsense-ota-2026 project, or a GOOGLE_APPLICATION_CREDENTIALS" >&2
+            echo "service account with Firebase Hosting Admin." >&2
+            exit 1
+          fi
+
+      - name: Deploy hosting only
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npx --yes firebase-tools@13 deploy \
+            --only hosting \
+            --project spendsense-ota-2026 \
+            --token "$FIREBASE_TOKEN" \
+            --non-interactive
+
+      - name: Record what was published
+        run: |
+          {
+            echo "### Published to Firebase Hosting"
+            echo "- project: \`spendsense-ota-2026\`"
+            echo "- version: \`${{ needs.validate.outputs.version }}\`"
+            echo "- channel: production (\`--only hosting\`)"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -39,6 +39,13 @@ dependencies:
   firebase_app_check: ^0.5.1
   firebase_auth: ^7.0.1
 
+  # OTA updates. `crypto` verifies the downloaded APK's SHA-256 against the
+  # manifest before anything reaches the installer; `package_info_plus` reads
+  # the installed versionName/versionCode so a build can tell whether a
+  # published release is actually newer than itself.
+  crypto: 3.0.7
+  package_info_plus: ^9.0.1
+
 flutter:
   uses-material-design: true
 
