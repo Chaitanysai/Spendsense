@@ -30,9 +30,13 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     expect(records.single.amountMinor, 12500);
-    expect(prefs.getString('tx_legacy-1'), isNotNull);
     expect(prefs.getString('txe_legacy-1'), isNotNull);
     expect(prefs.getString('txe_legacy-1'), isNot(contains('Legacy Shop')));
+    // The plaintext source is retired once the encrypted copy is verified: it
+    // holds the merchant and amount in clear text, and keeping it let a stale
+    // copy block every later start.
+    expect(prefs.getString('tx_legacy-1'), isNull);
+    expect(prefs.getString('tx_cache_ids'), isNull);
   });
 
   test('tampered encrypted data fails closed', () async {

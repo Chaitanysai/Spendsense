@@ -97,6 +97,8 @@ void main() {
     expect(provider.hasLedgerInitError, isTrue,
         reason: 'a failed ledger read must not look like a successful load');
     expect(provider.ledgerInitError, isA<LedgerKeyUnavailableException>());
+    expect(provider.ledgerInitErrorCode, 'ledger_key_unavailable',
+        reason: 'the card must name the cause, not the runtime type');
     expect(provider.transactions, isEmpty);
     expect(provider.isLoadingCache, isFalse);
 
@@ -140,6 +142,8 @@ void main() {
 
     expect(find.text("Couldn't load your ledger"), findsWidgets,
         reason: 'the error must be visible on the dashboard');
+    expect(find.textContaining('ledger_key_unavailable'), findsWidgets,
+        reason: 'the card names the cause so the fix is diagnosable');
     expect(find.text('Nothing found'), findsNothing,
         reason: 'an error state must not reuse the empty-ledger copy');
     expect(find.text('No transactions yet'), findsNothing);

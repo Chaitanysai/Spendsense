@@ -361,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: "Couldn't load your ledger",
           message: 'Your transactions are still saved and encrypted on '
               'this device, but the ledger could not be read '
-              '(${provider.ledgerInitError.runtimeType}). '
+              '(${provider.ledgerInitErrorCode}). '
               'Nothing was deleted.',
           actionLabel: 'Try again',
           onAction: () => provider.retryLedgerInit(),
