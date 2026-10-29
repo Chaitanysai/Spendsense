@@ -7,14 +7,14 @@ on:
   pull_request:
     paths:
       - '.github/workflows/flutter-test-only.yml'
+      - '.github/actions/flutter-setup/**'
       - 'lib/main.dart'
-      - 'lib/services/app_check/**'
-      - 'lib/services/assistant/assistant_auth.dart'
-      - 'test/app_check/**'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
+      - 'lib/firebase_options.dart'
       - 'lib/services/**'
       - 'test/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
   workflow_dispatch:
 
 # Least privilege: the job reads the repository and nothing else. No secrets
@@ -30,9 +30,9 @@ concurrency:
 jobs:
   test:
     name: Analyze and test
-    # Same image as android-release.yml: ubuntu-latest migrated to Ubuntu 26
-    # (Oct 2026) and this repository has not validated its Flutter toolchain
-    # there yet. Linux is the cheapest host that runs headless widget tests.
+    # Pinned, not ubuntu-latest: GitHub migrated ubuntu-latest to a newer image
+    # in Oct 2026 and this repository has not validated its Flutter toolchain
+    # there. Linux is the cheapest host that runs headless widget tests.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -62,11 +62,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Flutter
-        # Local copy of subosito/flutter-action v2, already used by
-        # android-release.yml (upstream's action/cache steps are rejected by
-        # this repository's sha_pinning_required policy). 3.47.8 is the SDK the
-        # tracked pubspec.lock was resolved with (it requires Flutter >=3.44.0
-        # and Dart >=3.11.0); keep this pinned so resolution stays reproducible.
+        # Local copy of subosito/flutter-action v2 (upstream's actions/cache
+        # steps are rejected by this repository's sha_pinning_required policy,
+        # so upstream cannot be used directly). 3.47.8 is the SDK this branch's
+        # pubspec.lock was resolved with; note the lock only requires Flutter
+        # >=3.38.4, so this pin is stricter than the constraint.
         uses: ./.github/actions/flutter-setup
         with:
           channel: 'stable'

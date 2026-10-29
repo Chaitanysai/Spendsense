@@ -56,6 +56,13 @@ inputs:
     description: If true, get outputs but do not install Flutter
     required: false
     default: "false"
+  install-yq:
+    description: >-
+      Install yq through Chocolatey on Windows runners. Only needed when
+      flutter-version-file is used; the spendSense workflows pass an explicit
+      flutter-version, so this defaults to false and installs nothing.
+    required: false
+    default: "false"
   git-source:
     description: Git clone source
     required: false
@@ -95,7 +102,7 @@ runs:
     # It's not preinstalled on Windows runners.
     # See https://github.com/actions/runner-images/issues/7443#issuecomment-1514597691
     - name: Make yq tool available on Windows runners
-      if: runner.os == 'Windows' && inputs.flutter-version-file != '' && !endsWith(inputs.flutter-version-file, '.fvmrc') && !endsWith(inputs.flutter-version-file, 'fvm_config.json')
+      if: inputs.install-yq == 'true' && runner.os == 'Windows' && inputs.flutter-version-file != '' && !endsWith(inputs.flutter-version-file, '.fvmrc') && !endsWith(inputs.flutter-version-file, 'fvm_config.json')
       run: choco install yq
       shell: bash
 
@@ -106,6 +113,8 @@ runs:
     - name: Set action inputs
       id: flutter-action
       shell: bash
+      env:
+        CHANNEL: ${{ inputs.channel }}
       run: |
         $GITHUB_ACTION_PATH/setup.sh -p \
           -n '${{ inputs.flutter-version }}' \
@@ -116,15 +125,17 @@ runs:
           -l '${{ inputs.pub-cache-key }}' \
           -d '${{ inputs.pub-cache-path }}' \
           -g '${{ inputs.git-source }}' \
-          ${{ inputs.channel }}
+          "$CHANNEL"
 
     - name: Run setup script
       shell: bash
       if: ${{ inputs.dry-run != 'true' && inputs.dry-run != true }}
+      env:
+        CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
       run: |
         $GITHUB_ACTION_PATH/setup.sh \
           -n '${{ steps.flutter-action.outputs.VERSION }}' \
           -a '${{ steps.flutter-action.outputs.ARCHITECTURE }}' \
           -c '${{ steps.flutter-action.outputs.CACHE-PATH }}' \
           -d '${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}' \
-          ${{ steps.flutter-action.outputs.CHANNEL }}
+          "$CHANNEL"

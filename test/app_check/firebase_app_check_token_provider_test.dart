@@ -32,9 +32,15 @@ void main() {
   test('the token provider reuses the shared App Check gate', () async {
     final gate = _CountingGate();
 
+    // The platform call after activation cannot succeed under flutter_test, so
+    // pin the exact code: it proves the gate ran and control reached the token
+    // read, rather than failing somewhere else with a generic exception.
     await expectLater(
       providerWith(gate).getToken(),
-      throwsA(isA<AssistantAuthException>()),
+      throwsA(
+        isA<AssistantAuthException>()
+            .having((error) => error.code, 'code', 'auth_timeout'),
+      ),
     );
     expect(gate.calls, 1);
   });
@@ -68,6 +74,29 @@ void main() {
 
     await expectLater(
       providerWith(gate, configured: false).getToken(),
+      throwsA(
+        isA<AssistantAuthException>()
+            .having((error) => error.code, 'code', 'auth_not_configured'),
+      ),
+    );
+    expect(gate.calls, 0);
+  });
+
+  test(
+      'without an explicit override the provider derives configuration from '
+      'the platform and Firebase state', () async {
+    // No `configured` override: this exercises the production default
+    // (AssistantAuthConfig.isAndroid && Firebase.apps.isNotEmpty). Under the
+    // test binding there is no Firebase app, so the provider must fail closed
+    // before touching the gate. A regression that made the default permissive
+    // would turn this into 'auth_timeout' and fail here.
+    final gate = _CountingGate();
+
+    await expectLater(
+      FirebaseAppCheckTokenProvider(
+        appCheckGate: gate,
+        timeout: const Duration(milliseconds: 200),
+      ).getToken(),
       throwsA(
         isA<AssistantAuthException>()
             .having((error) => error.code, 'code', 'auth_not_configured'),

@@ -90,10 +90,17 @@ void main() {
         isA<AppCheckBootstrapException>()
             .having(
                 (error) => error.code, 'code', 'app_check_activation_failed')
+            // Exact stable text: a regression that copied error.toString()
+            // into the message would fail this rather than pass a loose check.
             .having(
               (error) => error.message,
               'message',
-              isNot(contains('config')),
+              'Secure app verification could not start.',
+            )
+            .having(
+              (error) => error.toString(),
+              'toString',
+              isNot(contains('Bad state')),
             ),
       ),
     );

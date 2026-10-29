@@ -27,9 +27,11 @@ import 'widgets/floating_nav_bar.dart';
 
 /// 🔥 SpendSense 2.0: Local-First, Offline Personal Expense Tracker
 ///
-/// API keys are never bundled with the app: they come from --dart-define
-/// (CI/development) or from the in-app AI settings, which persist them in
-/// platform-encrypted storage on the user's device.
+/// Provider API keys are never bundled with the app: they come from
+/// --dart-define (CI/development) or from the in-app AI settings, which persist
+/// them in platform-encrypted storage on the user's device. The Firebase client
+/// identifier in `firebase_options.dart` is public configuration, not a
+/// credential.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -74,9 +76,11 @@ Future<void> _initializeFirebase() async {
   } catch (error) {
     // App Check is fail-closed once enforcement is enabled, so a failure is
     // never replaced by a debug provider. Keep startup working so the local
-    // ledger still opens; cloud features may be unavailable.
+    // ledger still opens; cloud features may be unavailable. Only the stable
+    // code is logged: exception details can carry Firebase configuration.
+    final code = error is AppCheckBootstrapException ? ': ${error.code}' : '';
     debugPrint(
-      'App Check did not start (${error.runtimeType}); '
+      'App Check did not start (${error.runtimeType}$code); '
       'cloud features may be unavailable.',
     );
   }
