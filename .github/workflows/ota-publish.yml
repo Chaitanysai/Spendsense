@@ -50,7 +50,10 @@ jobs:
     outputs:
       deploy_intent: ${{ steps.intent.outputs.deploy_intent }}
       version: ${{ steps.version.outputs.version }}
-      apk_path: ${{ steps.version.outputs.apk_path }}
+      # No APK path output on purpose. GitHub drops a job output whose value
+      # matches a registered secret, and any secret whose value occurs inside
+      # the APK filename empties it silently. The uploaded payload is the
+      # handoff; deploy re-checks that payload rather than trusting an output.
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -329,21 +332,34 @@ jobs:
           path: ota/public
 
       - name: Assert the payload is the one that will be published
-        env:
-          STAGED_APK: ${{ needs.validate.outputs.apk_path }}
         run: |
+          set -euo pipefail
           if [ ! -s ota/public/manifest.json ]; then
             echo "::error::No validated manifest.json in the payload; refusing to publish an empty site"
             exit 1
           fi
-          # The name the validate job staged. Comparing against it proves the
-          # downloaded payload is that artifact rather than a leftover checkout.
-          APK_NAME="${STAGED_APK##*/}"
-          if [ -z "$APK_NAME" ] || [ ! -s "ota/public/releases/$APK_NAME" ]; then
-            echo "::error::The payload has no releases/$APK_NAME; refusing to publish"
+          shopt -s nullglob
+          apks=(ota/public/releases/*.apk)
+          shopt -u nullglob
+          if [ ${#apks[@]} -ne 1 ]; then
+            echo "::error::Expected exactly one APK in ota/public/releases, found ${#apks[@]}; refusing to publish"
             exit 1
           fi
-          echo "Publishing ota/public/manifest.json + ota/public/releases/$APK_NAME"
+          APK="${apks[0]}"
+          APK_NAME="${APK##*/}"
+          # The manifest must describe this exact file, and its digest must be
+          # this file's digest. Anything else means the payload is a mix of
+          # runs, and publishing it would advertise an APK the site lacks.
+          if ! grep -qF "releases/$APK_NAME" ota/public/manifest.json; then
+            echo "::error::manifest.json does not reference releases/$APK_NAME; refusing to publish"
+            exit 1
+          fi
+          SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
+          if ! grep -qF "$SHA" ota/public/manifest.json; then
+            echo "::error::manifest.json does not carry the sha256 of releases/$APK_NAME; refusing to publish"
+            exit 1
+          fi
+          echo "Publishing ota/public/manifest.json + ota/public/releases/$APK_NAME (sha256 $SHA)"
 
       - name: Setup Node
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
