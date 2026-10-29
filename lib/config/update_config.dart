@@ -44,9 +44,20 @@ class UpdateConfig {
         ? null
         : Uri.tryParse(rawManifestUrl.trim());
 
+    // HTTPS is required, not merely preferred: a cleartext manifest can be
+    // tampered with in transit, which both leaks update-check metadata and lets
+    // a network attacker deny updates by serving an invalid manifest. The APK
+    // download path already enforces HTTPS; this makes the two agree.
+    // A non-HTTPS value is discarded, so the build reports "not configured"
+    // rather than silently polluting the approved-host list.
+    final usableManifestUri =
+        (manifestUri != null && manifestUri.scheme.toLowerCase() == 'https')
+            ? manifestUri
+            : null;
+
     final hosts = <String>{};
-    if (manifestUri != null && manifestUri.host.isNotEmpty) {
-      hosts.add(manifestUri.host.toLowerCase());
+    if (usableManifestUri != null && usableManifestUri.host.isNotEmpty) {
+      hosts.add(usableManifestUri.host.toLowerCase());
     }
     if (rawExtraHosts.trim().isNotEmpty) {
       for (final host in rawExtraHosts.split(',')) {
@@ -56,7 +67,7 @@ class UpdateConfig {
     }
 
     return UpdateConfig(
-      manifestUri: manifestUri,
+      manifestUri: usableManifestUri,
       appId: applicationId,
       pinnedCertSha256: pinnedSigningCertSha256,
       approvedHosts: Set.unmodifiable(hosts),

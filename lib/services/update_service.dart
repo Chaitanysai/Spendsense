@@ -122,6 +122,14 @@ class UpdateService {
         message: 'No update channel is configured for this build.',
       );
     }
+    // Defence in depth: UpdateConfig already drops a non-HTTPS URL, but a
+    // directly constructed config must not bypass it either.
+    if (manifestUri.scheme.toLowerCase() != 'https') {
+      return const UpdateCheckResult(
+        UpdateCheckStatus.notConfigured,
+        message: 'No update channel is configured for this build.',
+      );
+    }
 
     try {
       final body =
@@ -345,6 +353,12 @@ class UpdateService {
         'storage',
         'The update could not be saved. Free up device storage and retry.',
       );
+    } catch (_) {
+      // The doc comment promises the partial file is deleted on every failure.
+      // An unmodelled exception would otherwise reach `finally` (which only
+      // closes the client) and leave a stale APK in cache/updates.
+      await _safeDelete(file);
+      rethrow;
     } finally {
       client.close();
     }

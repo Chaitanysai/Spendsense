@@ -1,0 +1,398 @@
+name: OTA Publish
+
+# Publishes a release APK to Firebase Hosting plus its manifest, so installed
+# builds can self-update. This is the ONLY workflow that writes to production
+# hosting, and it never runs automatically on a pull request.
+#
+# Two separate jobs:
+#   validate - builds nothing, deploys nothing. Generates the manifest from an
+#              existing artifact and proves the manifest contains the pinned
+#              certificate fingerprint.
+#   deploy   - runs only when explicitly dispatched with confirm=deploy, and
+#              only after validate succeeds.
+#
+# Firebase credentials are read from the FIREBASE_TOKEN secret only. Absent
+# credentials fail the deploy job with an actionable message; the workflow never
+# invents an endpoint or a token.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to publish to Firebase Hosting. Anything else validates only.'
+        required: true
+        default: 'validate'
+        type: string
+      notes:
+        description: 'Release notes (one line).'
+        required: false
+        default: ''
+        type: string
+      minimum_version:
+        description: 'Oldest version still supported, x.y.z. Defaults to this build.'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Build manifest and validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      deploy_intent: ${{ steps.intent.outputs.deploy_intent }}
+      version: ${{ steps.version.outputs.version }}
+      # No APK path output on purpose. GitHub drops a job output whose value
+      # matches a registered secret, and any secret whose value occurs inside
+      # the APK filename empties it silently. The uploaded payload is the
+      # handoff; deploy re-checks that payload rather than trusting an output.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Decide intent
+        id: intent
+        run: |
+          if [ "${{ inputs.confirm }}" = "deploy" ]; then
+            echo "deploy_intent=true" >> "$GITHUB_OUTPUT"
+            echo "Intent: DEPLOY (will publish to Firebase Hosting)"
+          else
+            echo "deploy_intent=false" >> "$GITHUB_OUTPUT"
+            echo "Intent: VALIDATE ONLY (input was '${{ inputs.confirm }}')"
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          channel: 'stable'
+          flutter-version: '3.47.8'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Write Firebase Android config
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES }}
+        run: dart run tool/write_google_services.dart
+
+      - name: Require OTA host configuration
+        # No invented endpoint: the published origin must be stated explicitly.
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          if [ -z "${OTA_BASE_URL:-}" ]; then
+            echo "::error::Repository variable OTA_BASE_URL is not set."
+            echo "Set it to the Firebase Hosting origin that serves ota/public, e.g. https://spendsense-ota-2026.web.app" >&2
+            exit 1
+          fi
+          echo "OTA host: $OTA_BASE_URL"
+
+      - name: Require release signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -z "$SIGNING_KEY" ]    && MISSING="$MISSING SIGNING_KEY"
+          [ -z "$KEY_ALIAS" ]      && MISSING="$MISSING KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ]   && MISSING="$MISSING KEY_PASSWORD"
+          [ -z "$STORE_PASSWORD" ] && MISSING="$MISSING STORE_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Release signing is not configured; missing:$MISSING"
+            exit 1
+          fi
+          printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Assert the OTA certificate pin matches the release keystore
+        id: pin
+        # The pin lives in lib/config/update_config.dart and is the only thing
+        # standing between a manifest and an installer. A keystore rotation
+        # would otherwise silently orphan every installed build, so fail here.
+        #
+        # Extraction uses tool/read_ota_pin.dart rather than shell matching: the
+        # constant is declared across two lines and its name also appears as a
+        # usage reference, which made a one-line sed return an empty string and
+        # report a false mismatch. The tool fails closed on missing, malformed
+        # or ambiguous declarations.
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          KEYSTORE=android/app/upload-keystore.jks
+          FP=$(keytool -list -v -keystore "$KEYSTORE" -alias "$KEY_ALIAS" \
+                 -storepass "$STORE_PASSWORD" 2>/dev/null \
+               | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ': ' | tr 'A-F' 'a-f')
+          if [ -z "$FP" ]; then
+            echo "::error::Could not read the certificate fingerprint from the keystore"
+            exit 1
+          fi
+
+          if ! PINNED=$(dart run tool/read_ota_pin.dart --file lib/config/update_config.dart); then
+            echo "::error::Could not read the pinned OTA certificate from lib/config/update_config.dart"
+            exit 1
+          fi
+
+          echo "keystore SHA-256 : $FP"
+          echo "pinned in code   : $PINNED"
+          if [ -z "$PINNED" ] || [ "$FP" != "$PINNED" ]; then
+            echo "::error::OTA certificate pin does not match the release keystore; installed builds could never apply an update"
+            exit 1
+          fi
+          echo "pinned=$PINNED" >> "$GITHUB_OUTPUT"
+          echo "OK: OTA pin matches the release signing certificate"
+
+      - name: Build signed release APK
+        # OTA_MANIFEST_URL is compile-time: without it UpdateConfig reports
+        # "not configured" and the shipped APK can never check for updates.
+        # Passing it here is what makes a published build OTA-capable.
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_PATH: upload-keystore.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          if [ -z "${OTA_BASE_URL:-}" ]; then
+            echo "::error::OTA_BASE_URL repository variable is not set"
+            exit 1
+          fi
+          flutter build apk --release \
+            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
+
+      - name: Verify the built APK is signed with the pinned certificate
+        # Checking the keystore proves the pin matches the key we hold. It says
+        # nothing about the APK that was actually produced: android/app/
+        # build.gradle.kts falls back to the debug signing config when no
+        # signing environment is visible, and generate_ota_manifest.dart writes
+        # signingCertSha256 from the pin rather than from the artifact. So
+        # without this step a debug-signed APK would ship under a manifest that
+        # claims the release certificate, and no installed build could verify
+        # or install it.
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          if [ ! -s "$APK" ]; then
+            echo "::error::Release APK not found at $APK"
+            exit 1
+          fi
+
+          BUILD_TOOLS_DIR="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* 2>/dev/null | sort -V | tail -n1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          if [ -z "$BUILD_TOOLS_DIR" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "::error::apksigner not found under ${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+            exit 1
+          fi
+
+          # Capture to a file: apksigner's output stream varies with the JDK.
+          if ! "$APKSIGNER" verify --print-certs "$APK" > apk-certs.txt 2>&1; then
+            cat apk-certs.txt
+            echo "::error::apksigner rejected the release APK"
+            exit 1
+          fi
+          cat apk-certs.txt
+          # apksigner labels the line "Signer #1 certificate SHA-256 digest:" on
+          # some build-tools and "V2 Signer: certificate SHA-256 digest:" on
+          # others, so anchor on the label rather than the prefix. sort -u
+          # collapses repeated signers; two different digests leave two lines,
+          # which fails the equality check below instead of silently using one.
+          SIGNER=$(sed -n 's/.*certificate SHA-256 digest:[[:space:]]*//p' apk-certs.txt \
+                     | tr -d ': ' | tr 'A-F' 'a-f' | sort -u)
+          PINNED="${{ steps.pin.outputs.pinned }}"
+
+          echo "APK signer : $SIGNER"
+          echo "pinned     : $PINNED"
+          if [ -z "$SIGNER" ] || [ "$SIGNER" != "$PINNED" ]; then
+            echo "::error::The built APK is not signed by the pinned release certificate; refusing to publish it"
+            exit 1
+          fi
+          echo "OK: the built APK is signed by the pinned release certificate"
+
+      - name: Stage APK under ota/public/releases
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | tr -d '[:space:]')
+          NAME="${VERSION%%+*}"; BUILD="${VERSION##*+}"
+          if [ -z "$NAME" ] || [ -z "$BUILD" ] || [ "$NAME" = "$VERSION" ]; then
+            echo "::error::pubspec version '$VERSION' is not name+build"
+            exit 1
+          fi
+          mkdir -p ota/public/releases
+          APK="ota/public/releases/spendsense-${NAME}+${BUILD}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$APK"
+          echo "version=$NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+          echo "Staged $APK"
+          echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate manifest
+        id: manifest
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          MINIMUM: ${{ inputs.minimum_version }}
+        run: |
+          # Normalise once, the same way the build step does, so the manifest's
+          # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree.
+          BASE="${OTA_BASE_URL%/}"
+          # --apk is required: the generator hashes the staged APK to produce the
+          # manifest's sha256. Omitting it failed the run with exit 64.
+          APK="${{ steps.version.outputs.apk_path }}"
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "::error::Staged APK not found at '$APK'"
+            exit 1
+          fi
+          set -- --apk "$APK" --base-url "$BASE" --out ota/public/manifest.json
+          if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
+          if [ -n "$MINIMUM" ]; then set -- "$@" --minimum "$MINIMUM"; fi
+          dart run tool/generate_ota_manifest.dart "$@"
+          echo "--- manifest (sha256 redacted) ---"
+          sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' ota/public/manifest.json
+          echo "manifest_url=$BASE/manifest.json" >> "$GITHUB_OUTPUT"
+
+      - name: Verify manifest integrity locally
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          BASE="${OTA_BASE_URL%/}"
+          HOST=$(printf '%s' "$BASE" | sed -E 's#https?://([^/]+).*#\1#')
+          # The exact APK this run staged. Globbing the directory would depend on
+          # whatever else is present and could verify a different artifact than
+          # the one the manifest was generated from.
+          APK="${{ steps.version.outputs.apk_path }}"
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "::error::No staged APK at '$APK'"
+            exit 1
+          fi
+          echo "Checking $APK against ota/public/manifest.json"
+          dart run tool/validate_ota_manifest.dart \
+            --manifest ota/public/manifest.json \
+            --apk "$APK" \
+            --expect-host "$HOST"
+
+      - name: Upload the validated OTA payload
+        # The deploy job runs on a fresh checkout, where ota/public holds only
+        # its .gitkeep placeholders. Without this handoff the deploy would
+        # publish an empty site and delete the live manifest and APKs; with it,
+        # hosting receives exactly the bytes validated above.
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ota-payload
+          path: ota/public
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Summary
+        run: |
+          {
+            echo "### OTA ${{ steps.intent.outputs.deploy_intent == 'true' && 'DEPLOY' || 'VALIDATE ONLY' }}"
+            echo "- version: \`${{ steps.version.outputs.version }}\`"
+            echo "- sha256: \`${{ steps.version.outputs.sha256 }}\`"
+            echo "- pin: matched release keystore"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Publish to Firebase Hosting
+    needs: validate
+    if: needs.validate.outputs.deploy_intent == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Download the validated OTA payload
+        # firebase deploy replaces the whole hosting release, so the payload
+        # must come from the validate job rather than from this checkout: a
+        # checkout has no APK and no manifest, and deploying it would remove
+        # every live file.
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ota-payload
+          path: ota/public
+
+      - name: Assert the payload is the one that will be published
+        run: |
+          set -euo pipefail
+          if [ ! -s ota/public/manifest.json ]; then
+            echo "::error::No validated manifest.json in the payload; refusing to publish an empty site"
+            exit 1
+          fi
+          shopt -s nullglob
+          apks=(ota/public/releases/*.apk)
+          shopt -u nullglob
+          if [ ${#apks[@]} -ne 1 ]; then
+            echo "::error::Expected exactly one APK in ota/public/releases, found ${#apks[@]}; refusing to publish"
+            exit 1
+          fi
+          APK="${apks[0]}"
+          APK_NAME="${APK##*/}"
+          # The manifest must describe this exact file, and its digest must be
+          # this file's digest. Anything else means the payload is a mix of
+          # runs, and publishing it would advertise an APK the site lacks.
+          if ! grep -qF "releases/$APK_NAME" ota/public/manifest.json; then
+            echo "::error::manifest.json does not reference releases/$APK_NAME; refusing to publish"
+            exit 1
+          fi
+          SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
+          if ! grep -qF "$SHA" ota/public/manifest.json; then
+            echo "::error::manifest.json does not carry the sha256 of releases/$APK_NAME; refusing to publish"
+            exit 1
+          fi
+          echo "Publishing ota/public/manifest.json + ota/public/releases/$APK_NAME (sha256 $SHA)"
+
+      - name: Setup Node
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
+        with:
+          node-version: '22'
+
+      - name: Require Firebase credentials
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "${FIREBASE_TOKEN:-}" ]; then
+            echo "::error::No Firebase deploy credential."
+            echo "Add a FIREBASE_TOKEN secret (firebase login:ci) scoped to the" >&2
+            echo "spendsense-ota-2026 project, or a GOOGLE_APPLICATION_CREDENTIALS" >&2
+            echo "service account with Firebase Hosting Admin." >&2
+            exit 1
+          fi
+
+      - name: Deploy hosting only
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npx --yes firebase-tools@13 deploy \
+            --only hosting \
+            --project spendsense-ota-2026 \
+            --token "$FIREBASE_TOKEN" \
+            --non-interactive
+
+      - name: Record what was published
+        run: |
+          {
+            echo "### Published to Firebase Hosting"
+            echo "- project: \`spendsense-ota-2026\`"
+            echo "- version: \`${{ needs.validate.outputs.version }}\`"
+            echo "- channel: production (\`--only hosting\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
