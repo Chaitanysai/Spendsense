@@ -74,7 +74,13 @@ jobs:
         # cannot be masked by a memory failure in the analysis pass below.
         # -o writes machine-readable JSON, which is what proves coverage; the
         # human-readable output is kept for the log.
+        #
+        # pipefail is set explicitly: the default runner shell is `bash -e {0}`,
+        # and with a pipe into tee the step would otherwise report tee's status
+        # (0) even when semgrep exits 1 (findings) or 2 (crash).
+        shell: bash
         run: |
+          set -o pipefail
           semgrep \
             --config p/secrets \
             --metrics=off \
@@ -91,8 +97,20 @@ jobs:
         run: |
           node -e '
             const fs = require("fs");
-            const report = JSON.parse(fs.readFileSync("semgrep-secrets.json", "utf8"));
-            const scanned = new Set((report.paths?.scanned ?? []).map((p) => p.replace(/^\.\//, "")));
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync("semgrep-secrets.json", "utf8"));
+            } catch (e) {
+              // A missing or truncated report means the scan did not complete.
+              console.error(`::error::semgrep-secrets.json is missing or unparseable (${e.message}); the scan did not produce a result`);
+              process.exit(1);
+            }
+            if (!report.paths || !Array.isArray(report.paths.scanned)) {
+              // Fail closed: without the scanned list, coverage cannot be proven.
+              console.error("::error::semgrep report has no paths.scanned array; refusing to claim coverage");
+              process.exit(1);
+            }
+            const scanned = new Set((report.paths.scanned ?? []).map((p) => p.replace(/^\.\//, "")));
             const skipped = (report.paths?.skipped ?? []).map((p) => (p.path ?? p).replace(/^\.\//, ""));
             const targets = fs
               .readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f)).map((f) => `.github/workflows/${f}`)

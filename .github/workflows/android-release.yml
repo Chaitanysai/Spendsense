@@ -215,7 +215,14 @@ jobs:
           # tracked options file. Replacing that file with a different Firebase
           # project changes the exempt value automatically, and a missing file
           # breaks the build rather than silently passing.
-          APK_CONTENT=$(unzip -p "$ARTIFACT_PATH" "*" 2>/dev/null || true)
+          if ! APK_CONTENT=$(unzip -p "$ARTIFACT_PATH" "*" 2>/dev/null); then
+            echo "::error::Could not read APK entries with unzip; refusing to report a clean scan on unreadable content"
+            exit 1
+          fi
+          if [ -z "$APK_CONTENT" ]; then
+            echo "::error::APK produced no extractable content; refusing to report a clean scan"
+            exit 1
+          fi
 
           FIREBASE_KEY=$(sed -n "s/.*apiKey: *'\(AIza[0-9A-Za-z_-]*\)'.*/\1/p" lib/firebase_options.dart | head -n1)
           if [ -z "$FIREBASE_KEY" ]; then
@@ -224,12 +231,14 @@ jobs:
           fi
 
           count() {
-            # $1 = extended regex. Counts matching lines; 0 when there is none.
-            printf '%s' "$APK_CONTENT" | grep -aEc "$1" || true
+            # $1 = extended regex. Counts OCCURRENCES, not lines: APK content is
+            # largely binary, so two keys on one line must not collapse to one
+            # match and let an extra key slip past the comparison below.
+            printf '%s' "$APK_CONTENT" | grep -aoE "$1" | wc -l | tr -d ' '
           }
 
           GEMINI_HITS=$(count "AIza[0-9A-Za-z_-]{35}")
-          FIREBASE_PRESENT=$(printf '%s' "$APK_CONTENT" | grep -aFc "$FIREBASE_KEY" || true)
+          FIREBASE_PRESENT=$(printf '%s' "$APK_CONTENT" | grep -aoF "$FIREBASE_KEY" | wc -l | tr -d ' ')
           GROQ_HITS=$(count "gsk_[0-9A-Za-z]{40,}")
           CEREBRAS_HITS=$(count "csk-[0-9A-Za-z]{40,}")
           OPENROUTER_HITS=$(count "sk-or-[0-9A-Za-z-]{20,}")
@@ -249,7 +258,7 @@ jobs:
             exit 1
           fi
           if [ "$GEMINI_HITS" -gt "$FIREBASE_PRESENT" ]; then
-            echo "::error::Bundled APK content has more AIza-pattern lines ($GEMINI_HITS) than occurrences of the public Firebase client key ($FIREBASE_PRESENT); assume a real Gemini key is bundled"
+            echo "::error::Bundled APK content has more AIza-pattern matches ($GEMINI_HITS) than occurrences of the public Firebase client key ($FIREBASE_PRESENT); assume a real Gemini key is bundled"
             exit 1
           fi
           echo "OK: the only AIza match is the public Firebase client key; no provider key patterns found"
