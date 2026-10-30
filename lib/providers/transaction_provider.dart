@@ -132,6 +132,7 @@ class TransactionProvider with ChangeNotifier {
     _syncFailure = null;
     _notifyIfAlive();
   }
+
   int get monthlyBudgetMinor => _monthlyBudgetMinor;
 
   /// Compatibility getter. The returned number is integer paise.
@@ -512,7 +513,12 @@ class TransactionProvider with ChangeNotifier {
   ///   date prompt instead, and scanning with no window would import nothing
   ///   meaningful;
   /// * a sync is already in flight (launch and resume can fire back to back);
-  /// * the last successful sync is younger than [autoSyncCooldown].
+  /// * the last successful sync is younger than [autoSyncCooldown] AND the
+  ///   ledger already has rows to show.
+  ///
+  /// The cooldown never suppresses the scan for an empty ledger: a restart that
+  /// comes up with nothing on screen must try to fill itself, rather than
+  /// waiting for the user to press Sync.
   ///
   /// It always uses the incremental [syncFromSms], never the full rebuild in
   /// [resyncFromSms].
@@ -523,7 +529,7 @@ class TransactionProvider with ChangeNotifier {
     if (_ledgerInitError != null) return false;
     if (!hasSmsScanStartDate) return false;
     if (_smsSyncInFlight != null) return false;
-    if (isAutoSyncFresh) return false;
+    if (isAutoSyncFresh && _transactions.isNotEmpty) return false;
 
     _isAutoSyncing = true;
     _notifyIfAlive();
@@ -629,8 +635,7 @@ class TransactionProvider with ChangeNotifier {
         // ONE journalled activation for the whole scan. Saving each message as
         // it was parsed rewrote the journal and re-encrypted the full id index
         // for every SMS, which is what made a first sync take minutes.
-        await _locked(
-            () => _cache.putAll(byId.values.toList(growable: false)));
+        await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
         _transactions = [
           ...byId.values,
           for (final tx in _transactions)

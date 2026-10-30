@@ -162,7 +162,8 @@ void main() {
   });
 
   group('five-minute cooldown', () {
-    test('a second automatic trigger inside the window does not scan', () async {
+    test('a second automatic trigger inside the window does not scan',
+        () async {
       var fetches = 0;
       final provider = await _provider(
         fetcher: () async {
@@ -178,6 +179,27 @@ void main() {
       expect(await provider.ensureAutoSync(), isFalse,
           reason: 'a fresh sync must not be repeated');
       expect(fetches, 1, reason: 'the inbox must not be read twice');
+      provider.dispose();
+    });
+
+    test('an empty ledger retries inside the window', () async {
+      var fetches = 0;
+      final provider = await _provider(
+        fetcher: () async {
+          fetches++;
+          return [];
+        },
+      );
+
+      await provider.ensureAutoSync();
+      expect(fetches, 1);
+      expect(provider.isAutoSyncFresh, isTrue);
+      expect(provider.transactions, isEmpty);
+
+      // The dashboard is showing zero. A launch or resume inside the cooldown
+      // must scan again rather than leave the user waiting for a manual Sync.
+      expect(await provider.ensureAutoSync(), isTrue);
+      expect(fetches, 2);
       provider.dispose();
     });
 
@@ -200,8 +222,8 @@ void main() {
 
       // Nothing in the public API fakes the clock, so assert the rule directly:
       // a sync older than the cooldown is not fresh.
-      final stale = DateTime.now()
-          .subtract(TransactionProvider.autoSyncCooldown + const Duration(seconds: 1));
+      final stale = DateTime.now().subtract(
+          TransactionProvider.autoSyncCooldown + const Duration(seconds: 1));
       expect(
         DateTime.now().difference(stale) < TransactionProvider.autoSyncCooldown,
         isFalse,

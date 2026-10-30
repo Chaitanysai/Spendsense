@@ -214,8 +214,8 @@ class TransactionCacheService {
       await _migrateLegacyStore(legacyIds);
       // Only the ids that actually got an encrypted record join the ledger;
       // anything else is dropped or set aside by [_reconcileIndex].
-      _cachedIds.addAll(legacyIds.where(
-          (id) => _prefs.getString('$_encryptedPrefix$id') != null));
+      _cachedIds.addAll(legacyIds
+          .where((id) => _prefs.getString('$_encryptedPrefix$id') != null));
     }
 
     await _readRejected();
@@ -225,6 +225,9 @@ class TransactionCacheService {
       _legacyPlaintextIndex = false;
     }
     await _reconcileLegacyStore();
+    // Only a start that began without an index can have lost it; a legacy
+    // migration writes its own index above, so presence now says nothing.
+    await _recoverEmptyIndex(indexWasMissing: encryptedRaw == null);
     await _reconcileIndex();
     await _migrateSyncMetadata();
     await _pruneRejected();
@@ -301,6 +304,60 @@ class TransactionCacheService {
           'invalid_index', 'The ledger index contains duplicate or empty ids.');
     }
     return ids;
+  }
+
+  /// Rebuilds a lost id index from the payloads that authenticate with the
+  /// ledger key.
+  ///
+  /// The index is the last write of an activation and is a single key. If it
+  /// goes missing while its payloads survive — an interrupted write, a platform
+  /// that dropped one key — every record is unindexed, so the next
+  /// [_reconcileIndex] would set them all aside and the app would open empty
+  /// with no error. A sync then re-imports the same rows, and the cycle repeats
+  /// on the next launch. That is the field symptom this recovery ends.
+  ///
+  /// Only a completely empty ledger gets here. A payload that authenticates
+  /// proves it was written by this key, and deletions remove payloads (through
+  /// a journalled index switch that [_recoverJournal] has already finished for
+  /// this start), so a surviving payload is not a deleted row.
+  ///
+  /// The index must have been missing when this start began, not merely empty:
+  /// an existing index that says `[]` is a committed answer — the ledger
+  /// intends to show nothing — and its unlisted payloads keep the stricter
+  /// quarantine rule. Only a missing key means no activation ever committed,
+  /// which is the state that strands payloads and used to empty the dashboard.
+  ///
+  /// A key that cannot be read is rethrown: the caller must see the error card
+  /// instead of losing records to a key problem.
+  Future<void> _recoverEmptyIndex({required bool indexWasMissing}) async {
+    if (_cachedIds.isNotEmpty) return;
+    if (!indexWasMissing) return;
+    final payloadKeys = _prefs
+        .getKeys()
+        .where((key) => key.startsWith(_encryptedPrefix))
+        .toList();
+    if (payloadKeys.isEmpty) return;
+
+    await _encryption.requireExistingKey();
+
+    final recovered = <String>[];
+    for (final key in payloadKeys) {
+      final id = key.substring(_encryptedPrefix.length);
+      try {
+        if (await _readEncrypted(id) != null) recovered.add(id);
+      } on LedgerMigrationException {
+        // Unauthenticated bytes are left for [_reconcileIndex] to set aside.
+        debugPrint('⚠️ Unindexed payload $id could not be authenticated');
+      }
+    }
+    if (recovered.isEmpty) return;
+
+    recovered.sort();
+    await _writeIndex(recovered);
+    _cachedIds
+      ..clear()
+      ..addAll(recovered);
+    debugPrint('🧩 Ledger index rebuilt from ${recovered.length} payloads');
   }
 
   /// Makes the id index agree with the records actually on disk.
@@ -1093,8 +1150,10 @@ class TransactionCacheService {
       await _prefs.remove('$_prefix$id');
     }
     // Quarantined bytes belong to this ledger too; a clear must not leave them.
-    for (final key
-        in _prefs.getKeys().where((k) => k.startsWith(_quarantinePrefix)).toList()) {
+    for (final key in _prefs
+        .getKeys()
+        .where((k) => k.startsWith(_quarantinePrefix))
+        .toList()) {
       await _prefs.remove(key);
     }
     _cachedIds.clear();
@@ -1581,7 +1640,8 @@ class TransactionCacheService {
     } catch (error) {
       // Reaching this point means the encryption key already opened the index,
       // so an unreadable journal is a damaged journal, not a key problem.
-      debugPrint('⚠️ Ledger journal unreadable (${error.runtimeType}) — set aside');
+      debugPrint(
+          '⚠️ Ledger journal unreadable (${error.runtimeType}) — set aside');
       await _quarantine(_journalKey);
       return;
     }
@@ -1626,8 +1686,8 @@ class TransactionCacheService {
       // finish, so keep it and let the next start retry.
       rethrow;
     } on StateError {
-      throw const LedgerMigrationException(
-          'journal_recovery_failed', 'The ledger activation could not recover.');
+      throw const LedgerMigrationException('journal_recovery_failed',
+          'The ledger activation could not recover.');
     } catch (_) {
       // The journal cannot be interpreted, so no activation can be completed
       // from it and nothing it lists was ever visible. Set it aside — the

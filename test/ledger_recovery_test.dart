@@ -236,4 +236,104 @@ void main() {
       expect(writes, isEmpty);
     });
   });
+
+  group('a lost id index does not read as an empty ledger', () {
+    test(
+        'payloads alone are recovered and the rebuilt index survives a restart',
+        () async {
+      final encryption = LedgerEncryptionService();
+      await encryption.createKeyIfMissing();
+      final records = [_tx('a', 25000), _tx('b', 12000)];
+      // The field state behind "restart shows zero": the payloads landed, the
+      // index write did not. Before the fix, every payload was quarantined and
+      // the dashboard showed an empty ledger with no error card.
+      SharedPreferences.setMockInitialValues({
+        for (final tx in records)
+          'txe_${tx.id}': await encryption.encryptText(
+            jsonEncode(tx.toJson()),
+            recordId: tx.id,
+          ),
+      });
+
+      final cache = TransactionCacheService();
+      await cache.init();
+
+      final loaded = await cache.loadAll();
+      expect(loaded.map((t) => t.id).toSet(), {'a', 'b'});
+      expect(cache.cachedIds.toSet(), {'a', 'b'});
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('tx_cache_ids_v2'), isNotNull,
+          reason: 'without a rewritten index the next launch repeats recovery');
+      expect(
+        prefs.getKeys().where((key) => key.startsWith('txq_')),
+        isEmpty,
+        reason: 'an authenticating payload is a record, not debris',
+      );
+
+      // The restart the user actually performs.
+      final restarted = TransactionCacheService();
+      await restarted.init();
+      expect((await restarted.loadAll()).map((t) => t.id).toSet(), {'a', 'b'});
+    });
+
+    test('an index that exists but is empty is a committed empty ledger',
+        () async {
+      final encryption = LedgerEncryptionService();
+      await encryption.createKeyIfMissing();
+      final orphan = _tx('orphan', 9900);
+      SharedPreferences.setMockInitialValues({
+        'txe_orphan': await encryption.encryptText(
+          jsonEncode(orphan.toJson()),
+          recordId: 'orphan',
+        ),
+        'tx_cache_ids_v2': await encryption.encryptText(
+          jsonEncode(const <String>[]),
+          recordId: '__ledger_index__',
+        ),
+      });
+
+      final cache = TransactionCacheService();
+      await cache.init();
+
+      // An empty index is the ledger saying "show nothing", not a lost index;
+      // recovery must not resurrect a payload its own index does not list.
+      expect(await cache.loadAll(), isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getKeys().where(
+            (key) => key.startsWith('txq_') && key.endsWith('_txe_orphan')),
+        isNotEmpty,
+      );
+    });
+
+    test('an unauthenticated payload is quarantined, the rest recovered',
+        () async {
+      final encryption = LedgerEncryptionService();
+      await encryption.createKeyIfMissing();
+      final badPayload = await encryption.encryptText(
+        jsonEncode(_tx('bad', 7000).toJson()),
+        recordId: 'bad',
+      );
+      SharedPreferences.setMockInitialValues({
+        'txe_good': await encryption.encryptText(
+          jsonEncode(_tx('good', 5000).toJson()),
+          recordId: 'good',
+        ),
+        'txe_bad': _flip(badPayload),
+      });
+
+      final cache = TransactionCacheService();
+      await cache.init();
+
+      expect((await cache.loadAll()).single.id, 'good');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('txe_bad'), isNull,
+          reason: 'bytes the key cannot authenticate are moved aside');
+      expect(
+          prefs.getKeys().where((key) => key.startsWith('txq_')), isNotEmpty);
+      expect(prefs.getString('tx_cache_ids_v2'), isNotNull);
+    });
+  });
 }
