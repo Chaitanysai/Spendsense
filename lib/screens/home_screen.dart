@@ -324,7 +324,10 @@ class _HomeScreenState extends State<HomeScreen> {
       case DashboardSection.weekly:
         return [
           const SectionHeader(title: 'Last 7 days'),
-          _DailySpendCard(expenses: trackedExpenses),
+          _DailySpendCard(
+            key: const Key('daily-spend-card'),
+            expenses: trackedExpenses,
+          ),
           const SizedBox(height: AppSpacing.xxl),
         ];
       case DashboardSection.recent:
@@ -610,9 +613,7 @@ class _SyncButton extends StatelessWidget {
     return Consumer<TransactionProvider>(
       builder: (context, provider, _) {
         final last = provider.lastSynced;
-        final label = last == null
-            ? 'Sync'
-            : Formatters.relativeTime(last);
+        final label = last == null ? 'Sync' : Formatters.relativeTime(last);
 
         return Semantics(
           button: true,
@@ -1148,151 +1149,254 @@ class _CategoryEmpty extends StatelessWidget {
 /// bubble alone cannot be read for an amount.
 // ── Daily spend ──────────────────────────────────────────────────────────────
 
-class _DailySpendCard extends StatelessWidget {
+class _DailySpendCard extends StatefulWidget {
   final List<TransactionModel> expenses;
 
-  const _DailySpendCard({required this.expenses});
+  const _DailySpendCard({super.key, required this.expenses});
+
+  @override
+  State<_DailySpendCard> createState() => _DailySpendCardState();
+}
+
+class _DailySpendCardState extends State<_DailySpendCard> {
+  static const int _todayIndex = 6;
+
+  /// Which bar the header describes. Defaults to today and survives parent
+  /// rebuilds, so a sync landing mid-inspection does not move the answer.
+  int _selected = _todayIndex;
+
+  void _select(int index) {
+    if (index == _selected) return;
+    setState(() => _selected = index);
+  }
+
+  /// Compares calendar days in local time, matching how the provider draws
+  /// period boundaries. A stored offset must not move a row to another bar.
+  bool _isSameDay(DateTime value, DateTime day) {
+    final local = value.toLocal();
+    return local.year == day.year &&
+        local.month == day.month &&
+        local.day == day.day;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = PeriodMath.dateOnly(now);
+    final today = PeriodMath.dateOnly(DateTime.now());
     final days = List.generate(7, (i) {
       // Calendar arithmetic: stepping back 6..0 days must stay on the same
       // wall-clock day across a DST change (Duration would shift it).
       final day = PeriodMath.addDays(today, i - 6);
-      final totalMinor = expenses
-          .where((t) =>
-              t.date.year == day.year &&
-              t.date.month == day.month &&
-              t.date.day == day.day)
+      final totalMinor = widget.expenses
+          .where((t) => _isSameDay(t.date, day))
           .fold<int>(0, (s, t) => s + t.amountMinor);
       return _DayBar(day: day, amount: totalMinor.toDouble());
     });
 
-    final todayTotal = days.last.amount;
+    final selectedIndex = _selected.clamp(0, days.length - 1);
+    final selected = days[selectedIndex];
     final maxAmount =
         days.fold<double>(0, (m, d) => d.amount > m ? d.amount : m);
     final barMax = maxAmount <= 0 ? 100.0 : maxAmount * 1.25;
+    final hasSpending = maxAmount > 0;
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Today', style: AppText.label(context)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selectedIndex == _todayIndex
+                        ? 'Today'
+                        : DateFormat('EEEE').format(selected.day),
+                    style: AppText.label(context),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    DateFormat('d MMM').format(selected.day),
+                    style: AppText.caption(context),
+                  ),
+                ],
+              ),
               const Spacer(),
               Text(
-                Formatters.currency.format(todayTotal),
+                Formatters.currency.format(selected.amount),
                 style: AppText.amount(context, size: 17),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 104,
-            child: TweenAnimationBuilder<double>(
-              // Replays the seven-day bars when the dashboard is entered
-              // again; a normal rebuild keeps the same key and does not
-              // restart a finished chart.
-              key: ValueKey(
-                'daily-spend-entry-'
-                '${PageEntryScope.maybeOf(context)?.generation ?? 0}',
+          if (!hasSpending)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Center(
+                child: Text(
+                  'No spending in the last 7 days',
+                  style: AppText.bodySmall(context),
+                ),
               ),
-              tween: Tween(begin: 0, end: 1),
-              duration: AppMotion.respect(context, AppMotion.chart),
-              curve: AppMotion.emphasized,
-              builder: (context, t, _) => BarChart(
-                BarChartData(
-                  maxY: barMax,
-                  alignment: BarChartAlignment.spaceAround,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        getTitlesWidget: (value, meta) {
-                          final i = value.toInt();
-                          if (i < 0 || i >= days.length) {
-                            return const SizedBox.shrink();
-                          }
-                          final isToday = i == days.length - 1;
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              DateFormat('EEEEE')
-                                  .format(days[i].day)
-                                  .substring(0, 1),
-                              style: AppText.label(context).copyWith(
-                                fontSize: 10,
-                                color: isToday
-                                    ? AppColors.brandInk(context)
-                                    : AppColors.textTertiary(context),
-                                fontWeight:
-                                    isToday ? FontWeight.w800 : FontWeight.w600,
+            )
+          else ...[
+            SizedBox(
+              height: 104,
+              child: TweenAnimationBuilder<double>(
+                // Replays the seven-day bars when the dashboard is entered
+                // again; a normal rebuild keeps the same key and does not
+                // restart a finished chart.
+                key: ValueKey(
+                  'daily-spend-entry-'
+                  '${PageEntryScope.maybeOf(context)?.generation ?? 0}',
+                ),
+                tween: Tween(begin: 0, end: 1),
+                duration: AppMotion.respect(context, AppMotion.chart),
+                curve: AppMotion.emphasized,
+                builder: (context, t, _) => Stack(
+                  children: [
+                    Positioned.fill(
+                      child: BarChart(
+                        BarChartData(
+                          maxY: barMax,
+                          alignment: BarChartAlignment.spaceAround,
+                          gridData: const FlGridData(show: false),
+                          borderData: FlBorderData(show: false),
+                          titlesData: const FlTitlesData(show: false),
+                          // Selection is persistent, so the transient
+                          // fl_chart tooltip would only compete with it.
+                          barTouchData: BarTouchData(enabled: false),
+                          barGroups: days.asMap().entries.map((e) {
+                            final isSelected = e.key == selectedIndex;
+                            return BarChartGroupData(
+                              x: e.key,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: e.value.amount * t,
+                                  width: 15,
+                                  borderRadius: BorderRadius.circular(7),
+                                  gradient: LinearGradient(
+                                    colors: isSelected
+                                        ? [
+                                            AppColors.brandBright,
+                                            AppColors.brand,
+                                          ]
+                                        : [
+                                            AppColors.brand
+                                                .withValues(alpha: 0.30),
+                                            AppColors.brand
+                                                .withValues(alpha: 0.12),
+                                          ],
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < days.length; i++)
+                            Expanded(
+                              child: Semantics(
+                                button: true,
+                                selected: i == selectedIndex,
+                                label: _semanticsLabel(days[i]),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => _select(i),
+                                  // A child is required: without one the
+                                  // column collapses to zero height and only
+                                  // its centre line stays tappable.
+                                  child: const SizedBox.expand(),
+                                ),
                               ),
                             ),
-                          );
-                        },
+                        ],
                       ),
                     ),
-                  ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: AppColors.isDark(context)
-                          ? AppColors.darkSurfaceAlt
-                          : AppColors.navyDeep,
-                      getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-                        '${DateFormat('d MMM').format(days[group.x].day)}\n'
-                        '${Formatters.currency.format(rod.toY)}',
-                        AppText.onGradient(size: 11, weight: FontWeight.w600),
-                      ),
+                  ],
+                ),
+              ),
+            ),
+            ExcludeSemantics(
+              child: Row(
+                children: [
+                  for (var i = 0; i < days.length; i++)
+                    _WeekdayLabel(
+                      label: DateFormat('EEEEE')
+                          .format(days[i].day)
+                          .substring(0, 1),
+                      selected: i == selectedIndex,
+                      onTap: () => _select(i),
                     ),
-                  ),
-                  barGroups: days.asMap().entries.map((e) {
-                    final isToday = e.key == days.length - 1;
-                    return BarChartGroupData(
-                      x: e.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: e.value.amount * t,
-                          width: 15,
-                          borderRadius: BorderRadius.circular(7),
-                          gradient: isToday
-                              ? LinearGradient(
-                                  colors: [
-                                    AppColors.brandBright,
-                                    AppColors.brand,
-                                  ],
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                )
-                              : LinearGradient(
-                                  colors: [
-                                    AppColors.brand.withValues(alpha: 0.30),
-                                    AppColors.brand.withValues(alpha: 0.12),
-                                  ],
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _semanticsLabel(_DayBar bar) {
+    final weekday = DateFormat('EEEE').format(bar.day);
+    final date = DateFormat('d MMM').format(bar.day);
+    final amount = Formatters.currency.format(bar.amount);
+    return '$weekday, $date, $amount';
+  }
+}
+
+/// One weekday initial under the chart. Tappable as a second, larger target
+/// for the same selection the chart columns offer.
+class _WeekdayLabel extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _WeekdayLabel({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.sm),
+          child: Center(
+            child: AnimatedContainer(
+              duration: AppMotion.respect(context, AppMotion.fast),
+              curve: AppMotion.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.brand.withValues(alpha: 0.16)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text(
+                label,
+                style: AppText.label(context).copyWith(
+                  fontSize: 10,
+                  color: selected
+                      ? AppColors.brandInk(context)
+                      : AppColors.textTertiary(context),
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
