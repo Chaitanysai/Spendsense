@@ -16,12 +16,13 @@ import '../utils/budget_math.dart';
 import '../utils/dashboard_sections.dart';
 import '../utils/formatters.dart';
 import '../utils/period_math.dart';
-import '../widgets/animated_amount.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
 import '../widgets/budget_summary.dart';
-import '../widgets/category_spending_bars.dart';
+import '../widgets/category_rail.dart';
+import '../widgets/cycle_hero.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/home_action_dock.dart';
 import '../widgets/page_entry.dart';
 import '../widgets/pressable.dart';
 import '../widgets/profile_avatar.dart';
@@ -97,9 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: () => provider.syncFromSms(userInitiated: true),
         child: CustomScrollView(
           slivers: [
-            // Greeting row + balance card. The balance card is the single
-            // saturated surface on the screen; everything below it is a calm
-            // white/near-black card.
+            // Greeting + one ring. The ring is the only loud object on the
+            // page; every surface below it is neutral and quiet.
             SliverToBoxAdapter(
               child: PageEntrance(
                 child: _HeaderSection(
@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       delegate: SliverChildListDelegate([
                         const PageEntrance(child: _QuickActions()),
                         if (prefs != null) ...[
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: AppSpacing.sm),
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
@@ -134,13 +134,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: TextButton.styleFrom(
                                 minimumSize: const Size(0, 44),
                               ),
-                              icon: const Icon(Icons.tune_rounded, size: 18),
+                              icon: const Icon(Icons.tune_rounded, size: 17),
                               label: const Text('Edit dashboard'),
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.xs),
+                          const SizedBox(height: AppSpacing.md),
                         ] else
-                          const SizedBox(height: AppSpacing.xxl),
+                          const SizedBox(height: AppSpacing.xxxl),
                         for (final (sectionIndex, id)
                             in (prefs?.visibleSectionOrder ??
                                     DashboardSection.ids)
@@ -306,6 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return [
           SectionHeader(
             title: 'Monthly budget',
+            large: true,
             actionLabel: 'Manage',
             actionIcon: Icons.chevron_right_rounded,
             onAction: () => Navigator.of(context).push(
@@ -313,27 +314,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const _BudgetCard(),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xxxl),
         ];
       case DashboardSection.categories:
+        final totals = <String, int>{};
+        for (final t in trackedExpenses) {
+          totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
+        }
         return [
-          const SectionHeader(title: 'Spending by category'),
-          _CategoryCard(expenses: trackedExpenses),
-          const SizedBox(height: AppSpacing.xxl),
+          const SectionHeader(
+            title: 'Spending by category',
+            large: true,
+          ),
+          CategoryRail(totalsMinor: totals),
+          const SizedBox(height: AppSpacing.xxxl),
         ];
       case DashboardSection.weekly:
         return [
-          const SectionHeader(title: 'Last 7 days'),
+          const SectionHeader(title: 'Last 7 days', large: true),
           _DailySpendCard(
             key: const Key('daily-spend-card'),
             expenses: trackedExpenses,
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xxxl),
         ];
       case DashboardSection.recent:
         return [
           SectionHeader(
             title: 'Recent transactions',
+            large: true,
             actionLabel: 'See all',
             actionIcon: Icons.chevron_right_rounded,
             onAction: () => AppPageRoute.pushOnce(
@@ -390,13 +399,12 @@ class _HomeScreenState extends State<HomeScreen> {
           onAction: () => provider.syncFromSms(userInitiated: true),
         )
       else
-        ...trackedTransactions.take(20).toList().asMap().entries.map(
-              (entry) => PageEntrance(
-                index: entry.key,
-                offset: 0.04,
-                child: TransactionTile(transaction: entry.value),
-              ),
-            ),
+        PageEntrance(
+          offset: 0.03,
+          child: _RecentFeed(
+            transactions: trackedTransactions.take(20).toList(),
+          ),
+        ),
       if (trackedTransactions.isNotEmpty && provider.isSyncing)
         Padding(
           padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -410,12 +418,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+/// Recent transactions as one flat feed rather than a stack of separate tiles.
+///
+/// The transactions are the content of this surface, not five more cards: hair-
+/// line dividers carry the rhythm and the amounts line up in one column. This
+/// is the Suno track-list move; it also removes four borders and four shadows
+/// per screen from the scroll path.
+class _RecentFeed extends StatelessWidget {
+  final List<TransactionModel> transactions;
+
+  const _RecentFeed({required this.transactions});
+
+  @override
+  Widget build(BuildContext context) {
+    if (transactions.isEmpty) return const SizedBox.shrink();
+    final border = AppColors.border(context);
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceColor(context),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < transactions.length; i++) ...[
+            TransactionTile(transaction: transactions[i], flat: true),
+            if (i < transactions.length - 1)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 68,
+                endIndent: AppSpacing.md,
+                color: border.withValues(alpha: 0.72),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 // ── Header ───────────────────────────────────────────────────────────────────
 
-/// Greeting row and the balance hero. Kept together because they share the same
-/// page gutter and read as one header block, but the balance card is a real card
-/// rather than a full-bleed banner: it gives the layout the reference's "floating
-/// balance panel" shape and keeps the canvas visible on both sides.
+/// Editorial greeting, a quiet sync status, and the one instrument.
+///
+/// Suno's home opens with a huge line of type and almost nothing else above the
+/// fold; GO Club's opens with the number you came for. This block is both: the
+/// name is the headline, the ring underneath is the answer.
 class _HeaderSection extends StatelessWidget {
   final AuthProvider auth;
   final TransactionProvider provider;
@@ -431,71 +482,153 @@ class _HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final greeting = Formatters.greeting(DateTime.now());
+    final name = auth.greetingName;
+    final today = DateFormat('EEE d MMM').format(DateTime.now()).toUpperCase();
+
     return SafeArea(
       bottom: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.page,
-          AppSpacing.sm,
+          AppSpacing.md,
           AppSpacing.page,
-          AppSpacing.xs,
+          0,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _greetingRow(context),
-            const SizedBox(height: AppSpacing.lg),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$greeting,',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.h2(context).copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary(context),
+                          height: 1.2,
+                        ),
+                      ),
+                      Text(
+                        name.isEmpty ? 'there.' : '$name.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.display(context).copyWith(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.1,
+                          height: 1.05,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.brandBright,
+                        AppColors.lime,
+                      ],
+                    ),
+                  ),
+                  child: ProfileAvatar(
+                    imageBytes: auth.profileImageBytes,
+                    name: auth.name,
+                    radius: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Status metadata, not an eyebrow above the headline: the greeting
+            // itself carries the top of the hierarchy. A Wrap lets the sync
+            // line and the date fall to a second run at large text sizes
+            // instead of truncating or overflowing.
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const _SyncButton(),
+                Text(
+                  'Welcome back',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.overline(context).copyWith(
+                    fontSize: 9,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                Text(
+                  today,
+                  style: AppText.overline(context)
+                      .copyWith(fontSize: 9, letterSpacing: 1.1),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
             const _SyncStatusStrip(),
-            _BalanceCard(
+            _CycleSection(
               provider: provider,
               visible: balanceVisible,
-              onToggle: onToggleBalance,
+              onToggleVisibility: onToggleBalance,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _greetingRow(BuildContext context) {
-    final name = auth.greetingName;
-    final greeting = Formatters.greeting(DateTime.now());
+/// Wires the provider values into the presentational [CycleHero].
+class _CycleSection extends StatelessWidget {
+  final TransactionProvider provider;
+  final bool visible;
+  final VoidCallback onToggleVisibility;
 
-    return Row(
-      children: [
-        ProfileAvatar(
-          imageBytes: auth.profileImageBytes,
-          name: auth.name,
-          radius: 22,
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome back',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.label(context).copyWith(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textTertiary(context),
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                name.isEmpty ? '$greeting there' : '$greeting, $name',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.h2(context).copyWith(fontSize: 19),
-              ),
-            ],
+  const _CycleSection({
+    required this.provider,
+    required this.visible,
+    required this.onToggleVisibility,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<PeriodProvider>(
+      builder: (context, period, _) {
+        final current = period.currentPeriod;
+        final previous = period.previousPeriod;
+        return CycleHero(
+          spentMinor: provider.totalExpensesForPeriod(current),
+          budgetMinor: provider.monthlyBudgetMinor,
+          transactionCount: provider.trackedTransactions.length,
+          topCategory: provider.topTrackedCategory,
+          periodLabel: period.periodLabel,
+          periodEnd: current.end,
+          previousSpentMinor: previous == null
+              ? null
+              : provider.totalExpensesForPeriod(previous),
+          visible: visible,
+          onToggleVisibility: onToggleVisibility,
+          ledgerError: provider.hasLedgerInitError,
+          onSetBudget: () => Navigator.of(context).push(
+            AppPageRoute(builder: (_) => const BudgetsScreen()),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        const _SyncButton(),
-      ],
+        );
+      },
     );
   }
 }
@@ -613,7 +746,11 @@ class _SyncButton extends StatelessWidget {
     return Consumer<TransactionProvider>(
       builder: (context, provider, _) {
         final last = provider.lastSynced;
-        final label = last == null ? 'Sync' : Formatters.relativeTime(last);
+        final label = provider.isSyncing
+            ? 'Syncing…'
+            : last == null
+                ? 'Sync messages'
+                : 'Synced ${Formatters.relativeTime(last)}';
 
         return Semantics(
           button: true,
@@ -621,45 +758,45 @@ class _SyncButton extends StatelessWidget {
               ? 'Syncing messages'
               : last == null
                   ? 'Sync messages'
-                  : 'Synced $label. Sync again',
+                  : 'Synced ${Formatters.relativeTime(last)}. Sync again',
           excludeSemantics: true,
           child: Pressable(
             onTap: () => _onTap(context, provider),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             sound: SoundEventType.buttonTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor(context),
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(color: AppColors.border(context)),
-              ),
+            child: ConstrainedBox(
+              // The visual is a quiet line of caption text; the target is still
+              // a full 44dp high row.
+              constraints: const BoxConstraints(minHeight: 44),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (provider.isSyncing)
                     SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: 13,
+                      height: 13,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
+                        strokeWidth: 1.8,
                         color: AppColors.brandInk(context),
                       ),
                     )
                   else
                     Icon(
                       Icons.sync_rounded,
-                      size: 15,
-                      color: AppColors.brandInk(context),
+                      size: 13,
+                      color: AppColors.textTertiary(context),
                     ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: AppText.label(context).copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary(context),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption(context).copyWith(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ],
@@ -691,324 +828,18 @@ class _SyncButton extends StatelessWidget {
   }
 }
 
-// ── Balance hero ─────────────────────────────────────────────────────────────
-
-/// The Home hero prioritizes current salary-cycle spending. Income and the
-/// all-time balance remain supporting data rather than the primary metric.
-class _BalanceCard extends StatelessWidget {
-  final TransactionProvider provider;
-  final bool visible;
-  final VoidCallback onToggle;
-
-  const _BalanceCard({
-    required this.provider,
-    required this.visible,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tracked = provider.trackedTransactions;
-    final income = provider.totalTrackedIncome;
-    final expenses = provider.totalTrackedExpenses;
-
-    return Consumer<PeriodProvider>(
-      builder: (context, period, _) {
-        final cycleSpent =
-            provider.totalExpensesForPeriod(period.currentPeriod);
-        return _buildCard(
-          context,
-          tracked: tracked,
-          income: income,
-          expenses: expenses,
-          cycleSpent: cycleSpent,
-        );
-      },
-    );
-  }
-
-  Widget _buildCard(
-    BuildContext context, {
-    required Iterable<TransactionModel> tracked,
-    required int income,
-    required int expenses,
-    required int cycleSpent,
-  }) {
-    final radius = BorderRadius.circular(AppRadius.lg);
-
-    // Dark mode keeps the green as a focal accent: the gradient is pulled toward
-    // the near-black surface so the card does not glow against the black canvas.
-    final gradient = AppColors.heroSurfaceGradient(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: radius,
-        // A hairline defines the card edge (light on navy glass).
-        border: AppColors.heroBorder(context),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.brand
-                .withValues(alpha: AppColors.heroGlowAlpha(context) * 0.8),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: Stack(
-          children: [
-            // Controlled decorative rings: one clipped crescent top-right, one
-            // broad low-contrast disc bottom-left. Static, so no paint cost
-            // beyond the card itself.
-            Positioned(
-              top: -70,
-              right: -50,
-              child: _Ring(size: 200, opacity: 0.10),
-            ),
-            Positioned(
-              bottom: -80,
-              left: -40,
-              child: _Ring(size: 180, opacity: 0.07),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                AppSpacing.lg,
-                AppSpacing.xl,
-                AppSpacing.xl,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Total spent this cycle',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.onGradient(
-                            size: 12,
-                            weight: FontWeight.w600,
-                            opacity: 0.82,
-                          ),
-                        ),
-                      ),
-                      _VisibilityToggle(
-                        visible: visible,
-                        onToggle: onToggle,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: visible
-                              ? AnimatedAmount(
-                                  value: cycleSpent.toDouble(),
-                                  format: (v) => Formatters.currency.format(v),
-                                  style: AppText.onGradient(
-                                    size: 36,
-                                    weight: FontWeight.w800,
-                                    letterSpacing: -0.8,
-                                  ),
-                                )
-                              : Text(
-                                  '••••••',
-                                  style: AppText.onGradient(
-                                    size: 34,
-                                    weight: FontWeight.w800,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.account_balance_wallet_rounded,
-                          size: 19,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    provider.hasLedgerInitError
-                        ? 'Couldn\'t load your ledger'
-                        : tracked.isEmpty
-                            ? 'Add or sync transactions to see spending'
-                            : 'Income ${Formatters.currency.format(income)} · '
-                                'Spent ${Formatters.currency.format(expenses)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.onGradient(
-                      size: 11,
-                      weight: FontWeight.w500,
-                      opacity: 0.78,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _CyclePill(provider: provider),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Ring extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _Ring({required this.size, required this.opacity});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: opacity),
-            width: size * 0.14,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _VisibilityToggle extends StatelessWidget {
-  final bool visible;
-  final VoidCallback onToggle;
-
-  const _VisibilityToggle({required this.visible, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: visible ? 'Hide balance' : 'Show balance',
-      excludeSemantics: true,
-      child: InkResponse(
-        onTap: onToggle,
-        radius: 24,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(
-            visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-            size: 19,
-            color: Colors.white.withValues(alpha: 0.9),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Cycle-over-cycle spending change, shown as the reference's lime pill. Only
-/// rendered when a comparable previous window exists — never as a fabricated
-/// "up this month".
-class _CyclePill extends StatelessWidget {
-  final TransactionProvider provider;
-
-  const _CyclePill({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<PeriodProvider>(
-      builder: (context, period, _) {
-        final previous = period.previousPeriod;
-        if (previous == null) return const SizedBox.shrink();
-
-        final current = provider
-            .expensesInPeriod(period.currentPeriod)
-            .fold<int>(0, (sum, t) => sum + t.amountMinor);
-        final before = provider
-            .expensesInPeriod(previous)
-            .fold<int>(0, (sum, t) => sum + t.amountMinor);
-        if (before <= 0) return const SizedBox.shrink();
-
-        final delta = (current - before) * 100.0 / before;
-        final rising = delta > 0.05;
-        final falling = delta < -0.05;
-        final label = !rising && !falling
-            ? 'Same as last cycle'
-            : '${delta.abs().toStringAsFixed(1)}% '
-                '${rising ? 'more' : 'less'} than last cycle';
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.lime,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                rising
-                    ? Icons.trending_up_rounded
-                    : falling
-                        ? Icons.trending_down_rounded
-                        : Icons.remove_rounded,
-                size: 13,
-                color: AppColors.onLime(context),
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.onGradient(
-                    size: 11,
-                    weight: FontWeight.w700,
-                  ).copyWith(color: AppColors.onLime(context)),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ── Quick actions ────────────────────────────────────────────────────────────
 
 /// Four real actions: money out, money in, an SMS sync, and a jump to the full
 /// activity list. Every destination already existed; none is a placeholder.
-/// Layout (equal tiles, 4-across or 2 x 2) lives in [QuickActionGrid].
+/// They live in one floating dock so the dashboard has a command surface, not
+/// another grid of cards to read.
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
   @override
   Widget build(BuildContext context) {
-    return QuickActionGrid(
+    return HomeActionDock(
       actions: [
         QuickAction(
           label: 'Add expense',
@@ -1052,6 +883,7 @@ class _BudgetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      radius: AppRadius.lg,
       child: Consumer2<TransactionProvider, PeriodProvider>(
         builder: (context, txProvider, period, _) {
           final range = period.currentPeriod;
@@ -1073,80 +905,6 @@ class _BudgetCard extends StatelessWidget {
     );
   }
 }
-// ── Category card ────────────────────────────────────────────────────────────
-
-class _CategoryCard extends StatelessWidget {
-  final List<TransactionModel> expenses;
-
-  const _CategoryCard({required this.expenses});
-
-  @override
-  Widget build(BuildContext context) {
-    final totals = <String, int>{};
-    for (final t in expenses) {
-      totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
-    }
-    final hasData = totals.values.any((v) => v > 0);
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (hasData)
-            CategorySpendingBars(totalsMinor: totals)
-          else
-            _CategoryEmpty(),
-        ],
-      ),
-    );
-  }
-}
-
-/// Polished, non-decorative empty state: one line of guidance, no gradients
-/// competing with the balance card.
-class _CategoryEmpty extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt(context),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(
-              Icons.pie_chart_outline_rounded,
-              size: 21,
-              color: AppColors.textTertiary(context),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('No spending this cycle',
-                    style: AppText.bodyStrong(context)),
-                const SizedBox(height: 2),
-                Text(
-                  'Add a transaction and the breakdown fills in automatically.',
-                  style: AppText.bodySmall(context),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Exact figures for the leading categories — the bubbles convey share, but a
-/// bubble alone cannot be read for an amount.
 // ── Daily spend ──────────────────────────────────────────────────────────────
 
 class _DailySpendCard extends StatefulWidget {
@@ -1213,19 +971,31 @@ class _DailySpendCardState extends State<_DailySpendCard> {
                     selectedIndex == _todayIndex
                         ? 'Today'
                         : DateFormat('EEEE').format(selected.day),
-                    style: AppText.label(context),
+                    style: AppText.label(context).copyWith(
+                      fontSize: 11,
+                      letterSpacing: 0.3,
+                      color: AppColors.textTertiary(context),
+                    ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   Text(
                     DateFormat('d MMM').format(selected.day),
-                    style: AppText.caption(context),
+                    style: AppText.caption(context).copyWith(fontSize: 10.5),
                   ),
                 ],
               ),
-              const Spacer(),
-              Text(
-                Formatters.currency.format(selected.amount),
-                style: AppText.amount(context, size: 17),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      Formatters.currency.format(selected.amount),
+                      style: AppText.amount(context, size: 20),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1274,19 +1044,19 @@ class _DailySpendCardState extends State<_DailySpendCard> {
                               barRods: [
                                 BarChartRodData(
                                   toY: e.value.amount * t,
-                                  width: 15,
-                                  borderRadius: BorderRadius.circular(7),
+                                  width: 16,
+                                  borderRadius: BorderRadius.circular(8),
                                   gradient: LinearGradient(
                                     colors: isSelected
                                         ? [
+                                            AppColors.lime,
                                             AppColors.brandBright,
-                                            AppColors.brand,
                                           ]
                                         : [
                                             AppColors.brand
-                                                .withValues(alpha: 0.30),
+                                                .withValues(alpha: 0.32),
                                             AppColors.brand
-                                                .withValues(alpha: 0.12),
+                                                .withValues(alpha: 0.10),
                                           ],
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,
@@ -1379,9 +1149,7 @@ class _WeekdayLabel extends StatelessWidget {
               curve: AppMotion.easeOut,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.brand.withValues(alpha: 0.16)
-                    : Colors.transparent,
+                color: selected ? AppColors.lime : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: Text(
@@ -1389,7 +1157,7 @@ class _WeekdayLabel extends StatelessWidget {
                 style: AppText.label(context).copyWith(
                   fontSize: 10,
                   color: selected
-                      ? AppColors.brandInk(context)
+                      ? AppColors.onLime(context)
                       : AppColors.textTertiary(context),
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),

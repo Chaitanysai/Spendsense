@@ -15,12 +15,17 @@ class SectionHeader extends StatelessWidget {
   final VoidCallback? onAction;
   final IconData? actionIcon;
 
+  /// Dashboard sections use the larger editorial title; every other screen
+  /// keeps the original compact header.
+  final bool large;
+
   const SectionHeader({
     super.key,
     required this.title,
     this.actionLabel,
     this.onAction,
     this.actionIcon,
+    this.large = false,
   });
 
   @override
@@ -29,18 +34,18 @@ class SectionHeader extends StatelessWidget {
         (actionLabel != null || actionIcon != null) && onAction != null;
 
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.xs,
-        bottom: AppSpacing.sm,
+      padding: EdgeInsets.only(
+        top: large ? AppSpacing.sm : AppSpacing.xs,
+        bottom: large ? AppSpacing.md : AppSpacing.sm,
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               title,
-              maxLines: 1,
+              maxLines: large ? 2 : 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.h2(context).copyWith(fontSize: 17),
+              style: AppText.h2(context).copyWith(fontSize: large ? 21 : 17),
             ),
           ),
           if (hasAction)

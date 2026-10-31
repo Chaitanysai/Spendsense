@@ -25,11 +25,17 @@ class TransactionTile extends StatelessWidget {
   /// uses the space for the bank. Home has no headers and keeps the date.
   final bool showDate;
 
+  /// Flat rows sit inside a shared list surface instead of carrying their own
+  /// card. The dashboard uses this so a feed of transactions reads as one
+  /// object, the way Suno's track list does, rather than as a stack of tiles.
+  final bool flat;
+
   const TransactionTile({
     super.key,
     required this.transaction,
     this.dense = false,
     this.showDate = true,
+    this.flat = false,
   });
 
   @override
@@ -49,7 +55,7 @@ class TransactionTile extends StatelessWidget {
     ].join(' · ');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: EdgeInsets.only(bottom: flat ? 0 : AppSpacing.sm),
       child: Pressable(
         borderRadius: radius,
         onTap: () => Navigator.of(context).push(
@@ -68,11 +74,13 @@ class TransactionTile extends StatelessWidget {
               horizontal: AppSpacing.md,
               vertical: dense ? AppSpacing.sm : AppSpacing.md,
             ),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceColor(context),
-              borderRadius: radius,
-              border: Border.all(color: AppColors.border(context)),
-            ),
+            decoration: flat
+                ? null
+                : BoxDecoration(
+                    color: AppColors.surfaceColor(context),
+                    borderRadius: radius,
+                    border: Border.all(color: AppColors.border(context)),
+                  ),
             child: Row(
               children: [
                 Container(
@@ -101,8 +109,7 @@ class TransactionTile extends StatelessWidget {
                               transaction.merchant,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style:
-                                  AppText.bodyStrong(context),
+                              style: AppText.bodyStrong(context),
                             ),
                           ),
                           if (transaction.needsReview) ...[
