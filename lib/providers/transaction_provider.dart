@@ -781,7 +781,7 @@ class TransactionProvider with ChangeNotifier {
         return false;
       }
       final manual = _transactions
-          .where((t) => t.source == 'Manual')
+          .where((t) => t.source == 'Manual' || t.source == 'Email-Gmail')
           .toList(growable: false);
       final finalSet = [...manual, ...staged];
       final unique = <String, TransactionModel>{
@@ -983,53 +983,93 @@ class TransactionProvider with ChangeNotifier {
   /// committed in one journalled write, matching the SMS scan. Raw email text
   /// is never stored: the record keeps only the same derived fields as SMS and
   /// a `Email-Gmail` source marker; the Gmail message id is the dedupe key.
+  ///
+  /// The Gmail cursor is advanced only after that write succeeds, and only to
+  /// the newest message that was actually committed. A failed or interrupted
+  /// import therefore re-reads the same messages next time instead of silently
+  /// skipping them.
   Future<int> importFromGmail({GmailEmailSource? source}) async {
     await _initialization;
     if (_ledgerInitError != null) return 0;
-    final gmailSource = source ?? GmailEmailSource();
-    final alerts = await gmailSource.fetchBankAlerts(
-      seenIds: _cache.cachedIds,
-      since: await gmailSource.lastSyncAt(),
-    );
-    if (alerts.isEmpty) return 0;
-
-    final parser = SmartParser();
-    final accepted = <TransactionModel>[];
-    final rejected = <String, String>{};
-    for (final alert in alerts) {
-      final id = 'gmail:${alert.id}';
-      final parsed = await parser.parse(alert.text, id, alert.date);
-      if (parsed == null) {
-        rejected[id] = 'EMAIL_NOT_A_DEBIT';
-        continue;
-      }
-      accepted.add(parsed.copyWith(
-        source: 'Email-Gmail',
-        originalSms: '',
-        paymentMethod:
-            parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
-      ));
-    }
-
-    if (accepted.isNotEmpty) {
-      final byId = <String, TransactionModel>{
-        for (final tx in accepted) tx.id: _stampSyncMeta(tx),
-      };
-      await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
-      _transactions = [
-        ...byId.values,
-        for (final tx in _transactions)
-          if (!byId.containsKey(tx.id)) tx,
-      ]..sort((a, b) => b.date.compareTo(a.date));
-      _newThisSync = byId.length;
-    }
-    if (rejected.isNotEmpty) {
-      await _cache.markRejectedAll(rejected);
-    }
-    await _cache.updateSyncMeta();
-    _lastSynced = DateTime.now();
+    if (_isSyncing) throw const EmailImportBusyException();
+    _isSyncing = true;
+    _newThisSync = 0;
     _notifyIfAlive();
-    return accepted.length;
+    final gmailSource = source ?? GmailEmailSource();
+    try {
+      final alerts = await gmailSource.fetchBankAlerts(
+        seenIds: _cache.cachedIds,
+        since: await gmailSource.lastSyncAt(),
+      );
+      if (alerts.isEmpty) {
+        _syncFailure = null;
+        _lastSynced = DateTime.now();
+        return 0;
+      }
+
+      final parser = SmartParser();
+      final accepted = <TransactionModel>[];
+      final rejected = <String, String>{};
+      for (final alert in alerts) {
+        final id = 'gmail:${alert.id}';
+        final parsed = await parser.parse(alert.text, id, alert.date);
+        if (parsed == null) {
+          rejected[id] = 'EMAIL_NOT_A_DEBIT';
+          continue;
+        }
+        accepted.add(parsed.copyWith(
+          source: 'Email-Gmail',
+          originalSms: '',
+          paymentMethod:
+              parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
+        ));
+      }
+
+      if (accepted.isNotEmpty) {
+        final byId = <String, TransactionModel>{
+          for (final tx in accepted) tx.id: _stampSyncMeta(tx),
+        };
+        await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
+        _transactions = [
+          ...byId.values,
+          for (final tx in _transactions)
+            if (!byId.containsKey(tx.id)) tx,
+        ]..sort((a, b) => b.date.compareTo(a.date));
+        _newThisSync = byId.length;
+      }
+      if (rejected.isNotEmpty) {
+        await _cache.markRejectedAll(rejected);
+      }
+      await _cache.updateSyncMeta();
+
+      // Commit succeeded: only now is it safe to move the cursor. Advance to the
+      // newest listed alert only when every alert was committed; a partial
+      // failure keeps the old cursor so the unparsed mail is retried.
+      final allCommitted = accepted.length + rejected.length >= alerts.length;
+      if (allCommitted) {
+        final newestSeen = alerts
+            .map((a) => a.date)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+        await gmailSource.markImported(newestSeen);
+      }
+
+      _lastSynced = DateTime.now();
+      _syncFailure = null;
+      return accepted.length;
+    } catch (e) {
+      debugPrint('❌ Email import error: ${e.runtimeType}');
+      _syncFailure = SyncFailure.scanFailed;
+      try {
+        await _locked(() => _loadFromCache());
+      } catch (reloadError) {
+        debugPrint('⚠️ Reload after failed email import failed '
+            '(${reloadError.runtimeType})');
+      }
+      rethrow;
+    } finally {
+      _isSyncing = false;
+      _notifyIfAlive();
+    }
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
