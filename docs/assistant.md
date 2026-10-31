@@ -1,6 +1,8 @@
-# SpendSense Assistant — Implementation Notes
+# SpendSense Assistant — implementation notes
 
-Status: implemented, tested, **not deployed**, version unchanged (`2.0.8+29`).
+The assistant is optional. Its local tools always work; cloud assistance is
+opt-in and requires a configured proxy. This document describes the design and
+trust boundaries, not a deployment status.
 
 ## Architecture
 
@@ -159,11 +161,9 @@ prompt injection, consent/offline/rate/model errors, and 2x-text layout.
    Integrity enabled, and the matching `SPENDSENSE_ANDROID_APP_ID` configured
    server-side. Until then the client deliberately disables cloud assistance
    and remains local-only.
-2. Play Integrity recognizes Play-distributed installations. SpendSense
-   currently ships by OTA sideload, so a usable production verdict is not yet
-   confirmed; if it is not available, this authentication design still needs an
-   approved policy decision. Firebase ID-token auth is additive and does not
-   remove App Check.
+2. Play Integrity recognises Play-distributed installations. If the app is
+   distributed another way, validate the App Check verdict for that install
+   path. Firebase ID-token auth is additive and does not remove App Check.
 3. Rate limits are per function instance; horizontal scaling needs a shared
    limiter (Firestore/Redis) for a true global cap.
 4. No per-user quota is applied yet; the verified UID is available for that
@@ -173,5 +173,3 @@ prompt injection, consent/offline/rate/model errors, and 2x-text layout.
 6. Month comparisons use calendar months (the dashboard uses salary cycles);
    the assistant always states the exact range it used.
 7. Deletion undo depends on the local encrypted audit record (last 20 changes).
-8. The backend has not been deployed or tested against a live App Check or
-   Firebase ID token, or the real Gemini API.

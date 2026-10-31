@@ -1,28 +1,19 @@
 # Typography
 
-## Status of the requested NDot faces
+SpendSense uses a small, locally bundled type system. Every family is declared
+in `pubspec.yaml` and resolved with a plain `TextStyle(fontFamily: …)`; no font
+is fetched at runtime, so the chosen face renders on a cold or offline start.
 
-**NDot-55 and NDot-57 are not bundled.** They are proprietary typefaces owned by
-Nothing Technology Limited. The research leads supplied (nothing.wiki,
-Nothing's brand reference, the community thread) describe and preview the faces
-but do not grant a redistribution licence. Shipping the files inside a
-third-party APK would be a licence violation, so the exact fonts were **not**
-integrated and nothing here claims they were.
-
-What is implemented instead is the full typography *system*: centrally resolved
-families, locally bundled files, correct weight registration, and a
-display/body split. Swapping in NDot later is a three-line change once a
-licence exists:
-
-1. Drop the licensed files into `assets/fonts/`.
-2. Declare them under `flutter: fonts:` in `pubspec.yaml`.
-3. Point a `FontPreset` at the new family names.
+Proprietary display faces (including Nothing's NDot family) are not bundled
+because their licences do not permit redistribution. Adding a licensed family is
+a three-step change: place the files in `assets/fonts/`, declare them under
+`flutter: fonts:`, and point a `FontPreset` at the new family.
 
 ## Bundled families
 
 All files are licensed under the **SIL Open Font License 1.1**; the licence text
 for each family is checked in under `assets/fonts/licenses/`. Sources are the
-`google/fonts` repository (the canonical OFL distribution).
+`google/fonts` repository.
 
 | Family | File | Weights | Role |
 | --- | --- | --- | --- |
@@ -34,18 +25,6 @@ for each family is checked in under `assets/fonts/licenses/`. Sources are the
 
 Variable families get an explicit `FontVariation('wght', …)` so `w600` renders
 semibold instead of being synthesised.
-
-## Why fonts previously failed to apply
-
-`AppTypography` called `GoogleFonts.getFont(...)`, and `google_fonts` **fetches
-the file from fonts.gstatic.com on first use**. On a cold or offline start the
-fetch fails (or races the first frame), the style falls back to the platform
-face, and the user sees the wrong font despite having selected a preset. The
-`debugSkipFontLoading` test seam hid this in tests.
-
-The rewrite removes the runtime fetch entirely: every family is declared in
-`pubspec.yaml` and resolved with a plain `TextStyle(fontFamily: …)`. No network
-access is required at runtime, and tests exercise the real bundled faces.
 
 ## Rules
 

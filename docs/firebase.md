@@ -1,21 +1,16 @@
-# Firebase
+# Firebase setup
 
-SpendSense uses Firebase for accounts, and nothing else. The expense ledger
-stays on the device.
-
-- Project: `spendsense-ota-2026`
-- Android app: `com.example.spendsense`
-  (`1:35486869641:android:62072850e90abafabc7e58`)
-- Region: Firestore `asia-south1`, the same region the assistant proxy runs in
+Firebase is optional. It provides accounts; the expense ledger and SMS parsing
+work without it.
 
 ## What lives where
 
 | Data | Store | Notes |
 | --- | --- | --- |
-| Account (email, password hash) | Firebase Authentication | Email/Password provider only |
+| Account (email, password hash) | Firebase Authentication | Email/Password provider |
 | Profile (`users/{uid}`) | Cloud Firestore | `displayName`, `email`, `createdAt`, `updatedAt`, `lastSeenAt`, `schemaVersion` |
-| Transactions, budgets, bills, recurring plans | On-device SQLite, encrypted | Never uploaded by this feature |
-| Profile photo | On-device (SharedPreferences, base64) | Local preference, not an account asset |
+| Transactions, budgets, bills, recurring plans | On-device SQLite, encrypted | Not uploaded by the profile feature |
+| Profile photo | On-device | Local preference, not an account asset |
 
 ## Configuration files
 
@@ -25,20 +20,23 @@ stays on the device.
 | `android/app/google-services.json` | yes | Gradle plugin input; public client identifiers only |
 | `firestore.rules` | yes | Deployed with `firebase deploy --only firestore:rules` |
 
-Both config files hold public client identifiers — the same API key ships
-inside every APK by design. They are tracked so a clone builds without extra
-setup. Nothing in them grants access: authorisation comes from
+Both config files hold public client identifiers — the same key ships inside
+every APK by design. Nothing in them grants access; authorisation comes from
 `firestore.rules`.
 
 ## First-time setup
 
-Already done for this project. To reproduce it on a new machine:
+Use your own Firebase project. Do not commit project-specific replacement files
+unless they contain only public client identifiers.
 
 ```bash
 dart pub global activate flutterfire_cli
-flutterfire configure --project=spendsense-ota-2026 --platforms=android
+flutterfire configure --project=<your-project> --platforms=android
 npx -y firebase-tools@latest deploy --only firestore:rules
 ```
+
+Register your release signing certificate SHA-256 in Firebase Console → Project
+settings → Your apps. Enable App Check → Play Integrity for release builds.
 
 ## Code map
 
@@ -54,38 +52,25 @@ npx -y firebase-tools@latest deploy --only firestore:rules
 ## Behaviour
 
 - **Start-up never depends on Firebase.** If initialisation or the network
-  fails, `AuthGate` falls through to the local app, and every ledger feature
-  keeps working.
-- **Signed out means signed out.** The gate shows the auth screen; local data is
-  untouched, so signing back in returns to the same ledger.
-- **Profile writes are best-effort.** Name and email are cached in
-  SharedPreferences first, then mirrored to Firestore; an offline write never
-  blocks UI. The cloud copy is re-read on the next sign-in.
-- **Errors are mapped, not echoed.** `authMessageForError` turns Firebase codes
-  into actionable copy and deliberately gives one message for both
-  "no such user" and "wrong password", so the form cannot be used to enumerate
-  accounts.
+  fails, the app falls through to the local ledger.
+- **Local data is independent of the account.** Signing out does not delete the
+  on-device ledger.
+- **Profile writes are best-effort.** Name and email are cached locally, then
+  mirrored to Firestore; an offline write does not block the UI.
+- **Errors are mapped, not echoed.** Auth error codes become actionable copy;
+  "no such user" and "wrong password" share one message so the form cannot be
+  used to enumerate accounts.
 
 ## Security rules
 
 `firestore.rules` allows `read`/`create`/`update` on `users/{uid}` only when
-`request.auth.uid == uid`, restricts writes to a fixed field list (so a client
-cannot rewrite `createdAt` or add unrelated fields), and denies every other
-path. Document deletion is disabled: accounts are deleted through the Auth
-record, not by dropping a document.
+`request.auth.uid == uid`, restricts writes to a fixed field list, and denies
+every other path. Account deletion happens through the Auth record, not by
+dropping a document.
 
-## Assistant authentication (App Check + user ID token)
+## Assistant authentication
 
-The assistant backend verifies both an App Check token and the signed-in user's
-Firebase Authentication ID token. `lib/services/assistant/assistant_auth.dart`
-reuses the already-initialised Firebase app from `firebase_options.dart`; no
-duplicate `FIREBASE_*` build defines are required. The existing Email/Password
-session supplies the ID token, so no new sign-in UX was added.
-
-Registering the release SHA-256 in Firebase Console → Project settings → Your
-apps and enabling App Check → Play Integrity is required before attestation can
-succeed for release builds. App Check remains mandatory and is not replaced by
-user authentication.
-
-`SPENDSENSE_ANDROID_APP_ID` must be configured server-side to match the Android
-app id, and both auth checks must pass before Gemini is called.
+The assistant proxy verifies both an App Check token and the signed-in user's
+Firebase ID token. The app reuses its existing Firebase app and Email/Password
+session. `SPENDSENSE_ANDROID_APP_ID` must match the registered Android app
+server-side; both checks must pass before a model call is made.
