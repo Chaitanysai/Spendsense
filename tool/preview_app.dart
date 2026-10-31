@@ -1,9 +1,10 @@
-// A device preview harness for the Home redesign.
+// A device preview harness for the whole app.
 //
-// It runs the real HomeScreen with a fixed, in-memory ledger and budget so the
-// redesigned states can be reviewed on hardware without touching the installed
-// SpendSense app or any real data. Build it under a separate application id
-// (the `preview` flavor step is documented in docs/design-research).
+// It boots the real app (all tabs and screens) with a fixed, in-memory ledger
+// and budget so every page, palette and theme can be reviewed on hardware
+// without touching the installed SpendSense app or any real data. Build it
+// under a separate application id (the preview build step is documented in
+// docs/design-research/palette-system.md).
 //
 // Run:
 //   flutter run -t tool/preview_app.dart -d <device>
@@ -11,24 +12,22 @@
 // ignore_for_file: invalid_use_of_visible_for_testing_member
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:spendsense/main.dart';
 import 'package:spendsense/models/transaction_model.dart';
 import 'package:spendsense/providers/auth_provider.dart';
 import 'package:spendsense/providers/period_provider.dart';
 import 'package:spendsense/providers/planner_provider.dart';
+import 'package:spendsense/providers/sound_provider.dart';
 import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/providers/transaction_provider.dart';
 import 'package:spendsense/providers/update_provider.dart';
-import 'package:spendsense/screens/add_transaction_screen.dart';
-import 'package:spendsense/screens/home_screen.dart';
-import 'package:spendsense/widgets/app_background.dart';
 import 'package:spendsense/utils/app_colors.dart';
 import 'package:spendsense/utils/app_palette.dart';
-import 'package:spendsense/widgets/floating_nav_bar.dart';
+import 'package:spendsense/widgets/sound_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +43,7 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('theme_mode', 'dark');
-  await prefs.setString('palette_id', 'midnight');
+  await prefs.setString('palette_id', 'premium_blue');
   await prefs.setString('name', 'Chaitanya');
   await prefs.setString('email', 'chai@example.com');
   await prefs.setBool('salary_day_setup', true);
@@ -55,7 +54,7 @@ Future<void> main() async {
     DateTime.now().toIso8601String(),
   );
 
-  AppColors.applyPalette(AppPalette.midnight);
+  AppColors.applyPalette(AppPalette.premiumBlue);
 
   final transactions = TransactionProvider();
   await transactions.ready;
@@ -74,16 +73,21 @@ Future<void> main() async {
   }
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: transactions),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => PlannerProvider()),
-        ChangeNotifierProvider(create: (_) => UpdateProvider()),
-      ],
-      child: const _PreviewApp(),
+    SoundScope(
+      provider: SoundProvider(),
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: transactions),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => PlannerProvider()),
+          ChangeNotifierProvider(create: (_) => UpdateProvider()),
+        ],
+        // The real app, all tabs and routes intact. Palette and light/dark are
+        // switched live in Settings → Appearance.
+        child: const SpendSenseApp(),
+      ),
     ),
   );
 }
@@ -132,82 +136,4 @@ List<TransactionModel> _demoLedger() {
     tx('p12', 65000, 'Salary', 'Income', 2,
         type: TransactionType.income, method: 'Bank'),
   ];
-}
-
-class _PreviewApp extends StatelessWidget {
-  const _PreviewApp();
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'SpendSense Preview',
-      themeMode: ThemeMode.dark,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.brand,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: Colors.black,
-      ),
-      home: const _PreviewShell(),
-    );
-  }
-}
-
-class _PreviewShell extends StatefulWidget {
-  const _PreviewShell();
-
-  @override
-  State<_PreviewShell> createState() => _PreviewShellState();
-}
-
-class _PreviewShellState extends State<_PreviewShell> {
-  /// Mirrors the production shell: the Add button steps out of the way while
-  /// the user scrolls down, so the chart and list underneath stay tappable.
-  bool _fabVisible = true;
-
-  bool _onScroll(UserScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    final visible = switch (notification.direction) {
-      ScrollDirection.reverse => false,
-      ScrollDirection.forward => true,
-      ScrollDirection.idle => _fabVisible,
-    };
-    if (visible != _fabVisible) setState(() => _fabVisible = visible);
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      body: NotificationListener<UserScrollNotification>(
-        onNotification: _onScroll,
-        child: const AppBackground(child: HomeScreen()),
-      ),
-      floatingActionButton: _fabVisible
-          ? FloatingActionButton(
-              onPressed: () => showAddTransactionSheet(context),
-              backgroundColor: AppColors.filledBrand,
-              tooltip: 'Add transaction',
-              child: const Icon(Icons.add_rounded, color: Colors.white),
-            )
-          : null,
-      bottomNavigationBar: FloatingNavBar(
-        items: const [
-          NavItem(Icons.home_rounded, 'HOME'),
-          NavItem(Icons.event_note_rounded, 'BILLS'),
-          NavItem(Icons.insights_rounded, 'INSIGHTS'),
-          NavItem(Icons.credit_card_rounded, 'CARDS'),
-          NavItem(Icons.settings_rounded, 'SETTINGS'),
-        ],
-        currentIndex: 0,
-        onTap: (_) {},
-      ),
-    );
-  }
 }

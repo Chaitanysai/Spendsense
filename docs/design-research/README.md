@@ -11,6 +11,10 @@ Reference screens and pattern notes for the SpendSense home redesign.
 - `device-*.png`: real OnePlus 7T screenshots from the separate
   `com.example.spendsense.preview` package — home, privacy, sections, recent,
   add sheet and edit mode. See the device section of the redesign document.
+- [palette-system.md](./palette-system.md): the four 2026 premium palettes,
+  token mapping, invariants, and the 19-screen × 4-palette × 2-theme sweep.
+- `palette-gallery/`: contact sheets of every screen in every premium palette,
+  light and dark.
 
 Appllama skills used: `appllama-usage` and `appllama-app-design-skill` from
 <https://github.com/Appllama/appllama-skills>. The Appllama MCP

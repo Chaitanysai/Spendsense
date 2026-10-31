@@ -40,10 +40,10 @@ class AppPalette {
   /// broad glows and tinted washes so the canvas stays genuinely black.
   bool get isAmoled => darkBackground == amoledBackground;
 
-  // ── Shared neutral AMOLED foundation ──────────────────────────────────────
-  // Every palette shares one neutral black dark canvas. Palettes only supply
-  // accents; they never tint backgrounds or surfaces (the old per-palette
-  // maroon/navy/brown canvases are gone).
+  // ── Shared AMOLED foundation ──────────────────────────────────────────────
+  // The legacy identities share one neutral black dark canvas. The 2026
+  // premium set deliberately tints its dark canvas and glass surfaces; both
+  // kinds use the same money semantics and text tokens.
   static const Color amoledBackground = Color(0xFF000000);
   static const Color amoledSurface = Color(0xFF121212);
   static const Color amoledSurfaceAlt = Color(0xFF1A1A1A);
@@ -356,6 +356,100 @@ class AppPalette {
     borderDark: amoledBorder,
   );
 
+  // ── 2026 premium set ────────────────────────────────────────────────────────
+  // Four curated six-colour palettes. Unlike the older identities these tint
+  // the dark canvas and their glass surfaces with the palette's own hue, so
+  // every screen carries the selected world instead of only its accents.
+  // Money semantics (red out / green in) and the warning amber stay invariant.
+
+  /// Soft pastel neutrals with a muted-teal brand and a blush highlight.
+  static const softPastelTeal = AppPalette(
+    id: 'soft_pastel_teal',
+    label: 'Soft Pastel Teal',
+    deep: Color(0xFF384A4A),
+    brand: Color(0xFF5D6B6B),
+    bright: Color(0xFFB0D7D8),
+    mid: Color(0xFF7E9A9A),
+    accent: Color(0xFFB0D7D8),
+    warm: Color(0xFFF7CBCA),
+    lime: Color(0xFFF7CBCA),
+    background: Color(0xFFF1F7F7),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFD5E5E5),
+    borderLight: Color(0xFFDDD3D3),
+    darkBackground: Color(0xFF0E1818),
+    darkSurface: Color(0xFF1B2A29),
+    darkSurfaceAlt: Color(0xFF243635),
+    borderDark: Color(0xFF3A4C4B),
+    glass: true,
+  );
+
+  /// Deep navy and cool neutrals — the most restrained of the premium set.
+  static const deepNavy = AppPalette(
+    id: 'deep_navy',
+    label: 'Deep Navy',
+    deep: Color(0xFF06141B),
+    brand: Color(0xFF253745),
+    bright: Color(0xFF9BA8AB),
+    mid: Color(0xFF4A5C6A),
+    accent: Color(0xFFCCD0CF),
+    warm: Color(0xFFCCD0CF),
+    lime: Color(0xFFCCD0CF),
+    background: Color(0xFFF2F5F6),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE4E9EA),
+    borderLight: Color(0xFFCCD0CF),
+    darkBackground: Color(0xFF06141B),
+    darkSurface: Color(0xFF11212D),
+    darkSurfaceAlt: Color(0xFF253745),
+    borderDark: Color(0xFF4A5C6A),
+    glass: true,
+  );
+
+  /// Royal blue into ice blue; the new default identity.
+  static const premiumBlue = AppPalette(
+    id: 'premium_blue',
+    label: 'Premium Blue',
+    deep: Color(0xFF021024),
+    brand: Color(0xFF5483B3),
+    bright: Color(0xFF7DA0CA),
+    mid: Color(0xFF5187C1),
+    accent: Color(0xFFC1E8FF),
+    warm: Color(0xFFC1E8FF),
+    lime: Color(0xFFC1E8FF),
+    background: Color(0xFFF2F8FF),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE1F0FF),
+    borderLight: Color(0xFFC1E8FF),
+    darkBackground: Color(0xFF021024),
+    darkSurface: Color(0xFF052659),
+    darkSurfaceAlt: Color(0xFF0A3468),
+    borderDark: Color(0xFF1E4A85),
+    glass: true,
+  );
+
+  /// Plum, mauve and blush — warm, editorial, still high contrast.
+  static const plumBlush = AppPalette(
+    id: 'plum_blush',
+    label: 'Plum & Blush',
+    deep: Color(0xFF190019),
+    brand: Color(0xFF854F6C),
+    bright: Color(0xFFDFB6B2),
+    mid: Color(0xFF522B5B),
+    accent: Color(0xFFFBE4D8),
+    warm: Color(0xFFDFB6B2),
+    lime: Color(0xFFDFB6B2),
+    background: Color(0xFFFFF7F2),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFF6E7E1),
+    borderLight: Color(0xFFE8CFC8),
+    darkBackground: Color(0xFF190019),
+    darkSurface: Color(0xFF2B124C),
+    darkSurfaceAlt: Color(0xFF522B5B),
+    borderDark: Color(0xFF854F6C),
+    glass: true,
+  );
+
   /// Deep-navy glass identity: navy hero gradients, translucent navy glass
   /// cards over a pure-black AMOLED canvas, and a restrained electric-blue
   /// accent. Money semantics stay unchanged.
@@ -382,11 +476,16 @@ class AppPalette {
   );
 
   /// Palette used when nothing valid is stored (new installs, reset).
-  static const AppPalette defaultPalette = midnight;
+  /// Premium Blue is the 2026 default identity.
+  static const AppPalette defaultPalette = premiumBlue;
 
-  /// Shown in Settings → Appearance, in this order. Midnight is first and is
-  /// the default / reset target.
+  /// Shown in Settings → Appearance, in this order. The 2026 premium set is
+  /// first and Premium Blue is the default / reset target.
   static const List<AppPalette> all = [
+    premiumBlue,
+    deepNavy,
+    softPastelTeal,
+    plumBlush,
     midnight,
     emerald,
     oceanBlue,

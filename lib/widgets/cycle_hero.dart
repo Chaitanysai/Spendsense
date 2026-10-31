@@ -93,17 +93,17 @@ class CycleHero extends StatelessWidget {
     final tone = _over
         ? AppColors.expenseRed
         : _nearLimit
-            ? AppColors.amber
+            ? AppColors.warning
             : AppColors.brand;
     final ringEnd = _over
         ? AppColors.expenseRed
         : _nearLimit
-            ? AppColors.amber
+            ? AppColors.warning
             : AppColors.brandBright;
     final head = _over
         ? AppColors.expenseRed
         : _nearLimit
-            ? AppColors.amber
+            ? AppColors.warning
             : (dark ? AppColors.lime : AppColors.brand);
 
     return LayoutBuilder(

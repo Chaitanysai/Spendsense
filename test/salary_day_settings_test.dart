@@ -228,6 +228,8 @@ void main() {
       final period = await _pumpSettings(tester);
       expect(period.salaryDay, 1);
 
+      await tester.ensureVisible(find.text('Salary day'));
+      await tester.pump();
       await tester.tap(find.text('Salary day'));
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));

@@ -38,7 +38,7 @@ class BudgetSummary extends StatelessWidget {
         : over
             ? AppColors.expenseRed
             : (full || nearLimit)
-                ? AppColors.amber
+                ? AppColors.warning
                 : AppColors.incomeGreen;
     final IconData icon = !hasBudget
         ? Icons.tune_rounded
@@ -103,7 +103,7 @@ class BudgetSummary extends StatelessWidget {
             tone: over
                 ? AppColors.expenseRed
                 : (full || nearLimit)
-                    ? AppColors.amber
+                    ? AppColors.warning
                     : AppColors.brandBright,
           ),
           const SizedBox(height: AppSpacing.md),

@@ -394,11 +394,10 @@ class InsightsScreen extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              gradient: AppColors.amberGradient,
+              gradient: AppColors.brandGradient,
               borderRadius: BorderRadius.circular(14),
             ),
-            child:
-                const Icon(Icons.lightbulb_rounded, color: Color(0xFF5A3B00)),
+            child: const Icon(Icons.lightbulb_rounded, color: Colors.white),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

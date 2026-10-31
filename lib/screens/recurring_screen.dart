@@ -245,8 +245,7 @@ class _RecurringCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(recurring.merchant,
-                    style: AppText.bodyStrong(context)),
+                Text(recurring.merchant, style: AppText.bodyStrong(context)),
                 const SizedBox(height: 2),
                 Text(
                   '${recurring.frequencyLabel} • ${Formatters.currency.format(recurring.averageAmountMinor)}',
@@ -359,7 +358,7 @@ class _PlanTile extends StatelessWidget {
     final tone = days < 0
         ? AppColors.expenseRed
         : days <= 3
-            ? AppColors.amber
+            ? AppColors.warning
             : AppColors.textSecondary(context);
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),

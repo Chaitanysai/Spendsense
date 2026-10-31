@@ -114,12 +114,18 @@ void main() {
       return box.decoration as BoxDecoration;
     }
 
-    testWidgets('dark AppBackground is #000000 with no glow for every palette',
+    testWidgets('legacy AMOLED canvases stay #000000 with no glow',
         (tester) async {
-      for (final palette in AppPalette.all) {
+      for (final palette in AppPalette.all.where((p) => p.isAmoled)) {
         AppColors.applyPalette(palette);
         await tester.pumpWidget(
-          _app(const AppBackground(child: SizedBox.expand()), dark: true),
+          _app(
+            AppBackground(
+              key: ValueKey(palette.id),
+              child: const SizedBox.expand(),
+            ),
+            dark: true,
+          ),
         );
         await tester.pumpAndSettle();
         final decoration = backgroundDecoration(tester);
@@ -131,6 +137,30 @@ void main() {
             w.decoration is BoxDecoration &&
             (w.decoration! as BoxDecoration).gradient is RadialGradient);
         expect(radial, findsNothing, reason: palette.label);
+      }
+    });
+
+    testWidgets('premium canvases use the palette tint and its glows',
+        (tester) async {
+      for (final palette in AppPalette.all.where((p) => !p.isAmoled)) {
+        AppColors.applyPalette(palette);
+        await tester.pumpWidget(
+          _app(
+            AppBackground(
+              key: ValueKey(palette.id),
+              child: const SizedBox.expand(),
+            ),
+            dark: true,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final decoration = backgroundDecoration(tester);
+        expect(decoration.color, palette.darkBackground, reason: palette.label);
+        final radial = find.byWidgetPredicate((w) =>
+            w is Container &&
+            w.decoration is BoxDecoration &&
+            (w.decoration! as BoxDecoration).gradient is RadialGradient);
+        expect(radial, findsWidgets, reason: palette.label);
       }
     });
 

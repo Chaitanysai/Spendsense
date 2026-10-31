@@ -679,10 +679,10 @@ class _SyncStatusStrip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.amber.withValues(alpha: 0.14),
+              color: AppColors.warning.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(
-                color: AppColors.amber.withValues(alpha: 0.38),
+                color: AppColors.warning.withValues(alpha: 0.38),
               ),
             ),
             child: Row(

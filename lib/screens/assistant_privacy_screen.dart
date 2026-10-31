@@ -221,7 +221,7 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   _BulletCard(
                     icon: Icons.upload_rounded,
-                    color: AppColors.amber,
+                    color: AppColors.warning,
                     items: AssistantPrivacy.sent,
                   ),
                   const SizedBox(height: AppSpacing.xl),

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'app_palette.dart';
 
-/// SpendSense design tokens — a premium green fintech identity (primary green,
-/// deep green canopy, one lime highlight) by default, and user-selectable beyond
-/// that.
+/// SpendSense design tokens, now led by the 2026 premium palette set
+/// (Premium Blue by default): tinted canvases, glass surfaces, one highlight
+/// accent and neutral typography.
 ///
 /// This class is the single read point for every colour in the app. The values
 /// below mirror the **active** [AppPalette] into mutable statics, which keeps
@@ -12,11 +12,10 @@ import 'app_palette.dart';
 /// working unchanged while still allowing the palette to be swapped at runtime:
 /// [applyPalette] rewrites these fields and the widget tree then rebuilds.
 ///
-/// The brand ramp is deliberately calm at the base so the balance card reads as
-/// "premium finance", with the lime accent reserved for selective highlights
-/// (the cycle-change pill, the selected marker). A single warm accent is kept
-/// for money/salary cues, because an all-green palette gives the eye nothing to
-/// prioritise against.
+/// Two kinds of colour are deliberately *not* palette-driven: money semantics
+/// (red out, green in) and [warning]. Everything else — surfaces, borders,
+/// shadows, the highlight pill's ink, category tints and chart ramps — follows
+/// the selected world.
 class AppColors {
   AppColors._();
 
@@ -60,15 +59,30 @@ class AppColors {
     // The income ramp is shared by the income hero and the "spending went
     // down" stat, so it must refresh with the palette like every other token.
     successGradient = AppPalette.incomeGradient;
+
+    // Lime is a light highlight in every palette, but its hue ranges from lime
+    // through blush to ice blue. The ink has to follow the palette's deep stop
+    // instead of staying green, or the cycle pill clashes with the world.
+    final limeAccent = next.limeAccent;
+    _limeInk =
+        _contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black);
   }
+
+  static Color _limeInk = AppPalette.emerald.deep;
+
+  /// Fixed semantic warning. Warning is not a brand accent: it must stay
+  /// recognisable as "attention" in every palette, including the monochrome
+  /// navy and ice-blue ones.
+  static const Color warning = Color(0xFFF0B429);
 
   /// True when the active palette paints a genuine black dark-mode canvas.
   /// Broad ambient washes are suppressed in that case so the canvas stays black.
   static bool get isAmoledCanvas => _palette.isAmoled;
 
-  /// True when the active palette draws translucent navy glass cards over the
-  /// pure-black canvas (Midnight). The canvas itself is still #000000; this
-  /// flag only selects the card, hero, border and overlay treatment.
+  /// True when the active palette draws translucent glass cards over its dark
+  /// canvas (Midnight and the 2026 premium set). This flag only selects the
+  /// card, hero, border and overlay treatment; the canvas colour comes from the
+  /// palette and may be black or tinted.
   static bool get isGlassPalette => _palette.glass;
 
   // ── Brand ramp ─────────────────────────────────────────────────────────────
@@ -160,14 +174,27 @@ class AppColors {
   static Color panel(BuildContext context) =>
       isDark(context) ? darkSurfaceAlt : surfaceMuted;
 
+  // Neutral typography, deliberately colour-agnostic: the palette lives in the
+  // surfaces, accents and borders, while text stays a clean ink so it keeps its
+  // contrast on pastel off-whites, navy, ice blue and plum alike.
   static Color textPrimary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFF5F5F5) : const Color(0xFF0A1A14);
+      textPrimaryFor(isDark(context));
 
   static Color textSecondary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFB3B3B3) : const Color(0xFF4A5A53);
+      textSecondaryFor(isDark(context));
 
   static Color textTertiary(BuildContext context) =>
-      isDark(context) ? const Color(0xFF8A8A8A) : const Color(0xFF6B7A72);
+      textTertiaryFor(isDark(context));
+
+  /// Context-free text tiers, for [ThemeData] construction.
+  static Color textPrimaryFor(bool isDark) =>
+      isDark ? const Color(0xFFF5F5F5) : const Color(0xFF101314);
+
+  static Color textSecondaryFor(bool isDark) =>
+      isDark ? const Color(0xFFDCDCDC) : const Color(0xFF4B5355);
+
+  static Color textTertiaryFor(bool isDark) =>
+      isDark ? const Color(0xFFB0B0B0) : const Color(0xFF566063);
 
   static Color border(BuildContext context) =>
       isDark(context) ? borderDark : borderLight;
@@ -178,7 +205,7 @@ class AppColors {
 
   static Color shadow(BuildContext context) => isDark(context)
       ? Colors.black.withValues(alpha: 0.6)
-      : const Color(0xFF0B3B2C).withValues(alpha: 0.08);
+      : _palette.deep.withValues(alpha: 0.10);
 
   /// Brand colour that is safe as *text or icon ink* on the current canvas.
   ///
@@ -218,9 +245,13 @@ class AppColors {
   /// [brandInk]: the small 9px label needs the deeper green in light mode.
   static Color navSelected(BuildContext context) => brandInk(context);
 
-  /// Ink used *on* a lime highlight (the cycle-change pill). Lime is a light
-  /// accent in every palette, so this stays a near-black green: ~13:1.
-  static Color onLime(BuildContext context) => const Color(0xFF0B3B2C);
+  /// Ink used *on* a lime highlight (the cycle-change pill). The highlight is
+  /// light in every palette, so the palette's deep stop is the natural ink; a
+  /// black fallback covers palettes whose deep stop does not clear 4.5:1.
+  static Color onLime(BuildContext context) => _limeInk;
+
+  /// Context-free form for building [ThemeData].
+  static Color get onLimeInk => _limeInk;
 
   /// A green fill that white text can sit on. The primary green is only ~3.4:1
   /// against white, so filled text surfaces (chat bubbles, badges) use this
@@ -285,14 +316,13 @@ class AppColors {
     return isGlassPalette ? 0.32 : 0.18;
   }
 
-  /// Card fill. Light mode is deliberately near-opaque white: on the airy
-  /// off-white canvas a translucent card made the thin green-grey border the
-  /// only thing separating card from page. Dark mode stays a restrained
-  /// near-black wash so cards read as surfaces, never as green panels.
+  /// Card fill. Light mode is deliberately near-opaque: on a pastel canvas a
+  /// translucent card made the thin border the only thing separating card from
+  /// page. Dark mode stays a restrained wash so cards read as surfaces; glass
+  /// palettes (Midnight and the 2026 premium set) let the tinted canvas show
+  /// through their cards.
   static Color glassFill(BuildContext context) {
-    if (!isDark(context)) return Colors.white.withValues(alpha: 0.90);
-    // The canvas is pure black for every palette. Glass palettes (Midnight)
-    // keep translucent navy cards on it; the others keep their opaque ones.
+    if (!isDark(context)) return surface.withValues(alpha: 0.92);
     return isGlassPalette
         ? darkSurfaceAlt.withValues(alpha: 0.62)
         : darkSurface.withValues(alpha: 0.94);

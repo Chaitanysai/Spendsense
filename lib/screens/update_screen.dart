@@ -145,9 +145,9 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.verified_user_outlined,
-                      color: Color(0xFF2E7D5B),
+                      color: AppColors.incomeGreen,
                       size: 22,
                     ),
                     const SizedBox(width: AppSpacing.md),

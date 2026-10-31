@@ -146,7 +146,7 @@ cards, and the recent feed rows grow naturally.
 | `lib/widgets/transaction_tile.dart` | Added `flat` variant for the grouped recent feed. |
 | `lib/screens/home_screen.dart` | Greeting, hero wiring, dock, sections, grouped feed, edit mode. |
 | `tool/home_preview_test.dart` | Deterministic 390 × 844 dark/light preview renderer. |
-| `tool/preview_app.dart` | On-device preview entry point with an in-memory demo ledger; separate app id. |
+| `tool/preview_app.dart` | On-device whole-app preview entry point with an in-memory demo ledger; separate app id. |
 
 ## Device verification — OnePlus 7T (HD1901), Android 16
 
@@ -178,8 +178,13 @@ Screenshots: [device-home-dark.png](./device-home-dark.png),
 [device-edit-dashboard.png](./device-edit-dashboard.png).
 
 The preview is a separate package so it can be launched from the app drawer as
-"SpendSense Preview" without touching the release install. To rebuild it, set
-`applicationId` to `com.example.spendsense.preview` in
+"SpendSense Preview" without touching the release install. It now boots the
+**whole app** (all five tabs and their routes) with the seeded in-memory ledger,
+so every page can be opened on hardware. SMS access is revoked for the preview
+package; this keeps real bank messages out of the demo database. Palette and
+light/dark are switched live in **Settings → Appearance**.
+
+To rebuild it, set `applicationId` to `com.example.spendsense.preview` in
 `android/app/build.gradle.kts`, add the matching package to
 `android/app/google-services.json`, then run:
 
@@ -188,7 +193,9 @@ flutter run -t tool/preview_app.dart -d <device-id>
 ```
 
 Revert those two build-config edits afterwards; they are deliberately not
-committed.
+committed. The palette gallery at
+[`palette-gallery/`](./palette-gallery/) shows all four premium palettes in both
+themes across all 19 screens.
 
 ## Verification
 

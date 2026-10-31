@@ -294,18 +294,18 @@ void main() {
   });
 
   group('themes', () {
-    testWidgets(
-        'AMOLED dark mode resolves a dark theme on a pitch-black canvas',
+    testWidgets('dark mode resolves on the active palette canvas',
         (tester) async {
       await _pumpShell(tester, dark: true);
       await tester.pump(const Duration(milliseconds: 500));
 
       final theme = Theme.of(tester.element(find.byType(HomeScreen)));
       expect(theme.brightness, Brightness.dark);
-      // Regression: the glass pass briefly tinted this navy. The canvas is
-      // #000000; navy lives on the cards, not behind them.
-      expect(AppColors.darkBackground, const Color(0xFF000000));
-      expect(theme.scaffoldBackgroundColor, const Color(0xFF000000));
+      // The default identity is Premium Blue, whose dark canvas is tinted on
+      // purpose; the legacy AMOLED palettes keep their #000000 canvas.
+      expect(AppColors.palette, AppPalette.premiumBlue);
+      expect(AppColors.darkBackground, AppPalette.premiumBlue.darkBackground);
+      expect(theme.scaffoldBackgroundColor, AppColors.darkBackground);
     });
 
     testWidgets('light and dark both lay the dashboard out without errors',

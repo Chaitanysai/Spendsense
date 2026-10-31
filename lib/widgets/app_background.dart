@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 
 /// Screen background: the scaffold colour plus three soft ambient radial glows
-/// (brand top-left, accent upper-right, warm lower-left). Static and cheap — no
-/// blur, so it does not tax scroll performance.
+/// (brand top-left, accent upper-right, highlight lower-left). Static and cheap
+/// — no blur, so it does not tax scroll performance.
 ///
-/// The dark canvas is pure black (`#000000`) for every palette, Midnight
-/// included: broad colour washes would light up the panel and defeat the point
-/// of black, so dark mode paints no glow at all. Navy and blue belong on the
-/// cards, hero cards, borders and the selected navigation chip, never on the
-/// canvas. Light mode keeps the airy tinted wash.
+/// Legacy AMOLED palettes keep a pure-black canvas and paint no glow: a wash
+/// would defeat the point of black. The 2026 premium palettes deliberately tint
+/// their canvas and keep the three glows, so their world reaches the page
+/// behind the cards. Light mode always keeps the airy tinted wash.
 class AppBackground extends StatelessWidget {
   final Widget child;
   final bool showGlow;
@@ -52,7 +51,7 @@ class AppBackground extends StatelessWidget {
               bottom: -140,
               left: -60,
               child: _Glow(
-                color: AppColors.amber,
+                color: AppColors.lime,
                 size: 280,
                 opacity: glow * 0.6,
               ),

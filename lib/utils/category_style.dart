@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 /// Single source of truth for category presentation.
 ///
 /// Replaces scattered emoji maps with a consistent Material icon + colour so
 /// the UI stays coherent (the ui-ux-pro-max guidance flags emoji-as-icon).
+///
+/// The hues below are *data encoding* — they keep neighbouring categories
+/// separable — but each one is pulled 18% toward the active brand at read time
+/// so a plum, navy or pastel world tints its categories instead of showing a
+/// fixed rainbow that belongs to the emerald theme.
 class CategoryStyle {
   CategoryStyle._();
 
@@ -46,8 +53,10 @@ class CategoryStyle {
   static IconData icon(String category) =>
       _icons[category] ?? Icons.account_balance_wallet_rounded;
 
-  static Color color(String category) =>
-      _colors[category] ?? const Color(0xFF4C9BFF);
+  static Color color(String category) {
+    final base = _colors[category] ?? AppColors.brandBright;
+    return Color.lerp(base, AppColors.brand, 0.18) ?? base;
+  }
 
   /// The user-visible category list for pickers (kept in sync with the model).
   static const List<String> pickerCategories = [

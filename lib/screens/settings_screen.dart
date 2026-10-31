@@ -219,9 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: 'End this session on this device',
                     // Disabled while a sign-in/out is already in flight so
                     // the destructive action cannot be double-submitted.
-                    onTap: auth.isBusy
-                        ? null
-                        : () => _confirmSignOut(context),
+                    onTap: auth.isBusy ? null : () => _confirmSignOut(context),
                   ),
                 ],
               ),
@@ -282,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _divider(context),
                 _SettingsTile(
                   icon: Icons.key_rounded,
-                  iconColor: AppColors.amber,
+                  iconColor: AppColors.warning,
                   title: 'SMS parsing AI keys',
                   subtitle: 'Optional legacy keys for SMS parsing only; the '
                       'assistant never uses a key from this device',
@@ -470,7 +468,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _divider(context),
                 _SettingsTile(
                   icon: Icons.info_outline_rounded,
-                  iconColor: const Color(0xFF6B7A72),
+                  iconColor: AppColors.textTertiary(context),
                   title: 'App version',
                   subtitle: _installedVersionLabel(update),
                   onTap: null,
@@ -584,10 +582,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign out', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Sign out', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

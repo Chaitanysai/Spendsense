@@ -342,7 +342,7 @@ class _BudgetRow extends StatelessWidget {
         : progress.isOver
             ? AppColors.expenseRed
             : (crossed != null && crossed >= 80)
-                ? AppColors.amber
+                ? AppColors.warning
                 : AppColors.incomeGreen;
     final status = !progress.hasBudget
         ? 'No budget set'

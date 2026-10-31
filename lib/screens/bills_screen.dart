@@ -493,7 +493,7 @@ class _BillRow extends StatelessWidget {
   static Color _tone(BuildContext context, BillState state) => switch (state) {
         BillState.paid => AppColors.incomeGreen,
         BillState.overdue => AppColors.expenseRed,
-        BillState.dueSoon => AppColors.amber,
+        BillState.dueSoon => AppColors.warning,
         BillState.upcoming => AppColors.textSecondary(context),
       };
 
@@ -616,8 +616,7 @@ class _BillDetail extends StatelessWidget {
                           '${fmt.format(t.date)} · ${t.merchant}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              AppText.bodySmall(context),
+                          style: AppText.bodySmall(context),
                         ),
                       ),
                       Text(Formatters.currency.format(t.amountMinor),

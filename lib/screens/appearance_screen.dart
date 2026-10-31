@@ -127,19 +127,24 @@ class AppearanceScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               GlassCard(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                child: Column(
-                  children: [
-                    for (final id in DashboardSection.ids)
-                      SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.lg),
-                        title: Text(DashboardSection.label(id),
-                            style:
-                                AppText.bodyStrong(context)),
-                        value: theme.isSectionVisible(id),
-                        onChanged: (on) => theme.setSectionVisible(id, on),
-                      ),
-                  ],
+                // ListTiles paint their ink on the nearest Material. The glass
+                // fill is a DecoratedBox, so without this transparent Material
+                // Flutter warns that taps and splashes are invisible.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    children: [
+                      for (final id in DashboardSection.ids)
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg),
+                          title: Text(DashboardSection.label(id),
+                              style: AppText.bodyStrong(context)),
+                          value: theme.isSectionVisible(id),
+                          onChanged: (on) => theme.setSectionVisible(id, on),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -153,8 +158,10 @@ class AppearanceScreen extends StatelessWidget {
                           Text('Reset to default',
                               style: AppText.title(context)),
                           const SizedBox(height: 2),
-                          Text('Midnight · Light',
-                              style: AppText.body(context)),
+                          Text(
+                            '${AppPalette.defaultPalette.label} · Light',
+                            style: AppText.body(context),
+                          ),
                         ],
                       ),
                     ),
@@ -177,8 +184,9 @@ class AppearanceScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Reset appearance?'),
-        content: const Text(
-          'Theme colours return to Midnight and appearance returns to Light.',
+        content: Text(
+          'Theme colours return to ${AppPalette.defaultPalette.label} and '
+          'appearance returns to Light.',
         ),
         actions: [
           TextButton(

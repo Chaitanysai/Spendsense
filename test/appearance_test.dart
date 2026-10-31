@@ -21,19 +21,24 @@ void main() {
   }
 
   group('AppPalette', () {
-    test('ships the curated palettes with Midnight first', () {
-      expect(AppPalette.all, hasLength(8));
-      expect(AppPalette.all.first, same(AppPalette.midnight));
+    test('ships the 2026 premium set first and keeps the legacy palettes', () {
+      expect(AppPalette.all, hasLength(12));
+      expect(AppPalette.all.first, same(AppPalette.premiumBlue));
       expect(
         AppPalette.all.map((p) => p.label),
         containsAll([
+          'Premium Blue',
+          'Deep Navy',
+          'Soft Pastel Teal',
+          'Plum & Blush',
+          'Midnight',
           'Emerald',
           'Ocean Blue',
           'Warm Amber',
           'Forest Green',
           'Royal Purple',
           'Rose',
-          'Teal'
+          'Teal',
         ]),
       );
     });
@@ -43,11 +48,15 @@ void main() {
       expect(ids, hasLength(AppPalette.all.length));
     });
 
-    test('byId resolves known ids and falls back to Midnight', () {
+    test('byId resolves known ids and falls back to Premium Blue', () {
       expect(AppPalette.byId('forest_green'), same(AppPalette.forestGreen));
       expect(AppPalette.byId('emerald'), same(AppPalette.emerald));
-      expect(AppPalette.byId('does_not_exist'), same(AppPalette.midnight));
-      expect(AppPalette.byId(null), same(AppPalette.midnight));
+      expect(AppPalette.byId('premium_blue'), same(AppPalette.premiumBlue));
+      expect(
+        AppPalette.byId('does_not_exist'),
+        same(AppPalette.premiumBlue),
+      );
+      expect(AppPalette.byId(null), same(AppPalette.premiumBlue));
     });
 
     test('money semantics are identical in every palette', () {
@@ -67,19 +76,58 @@ void main() {
       expect(AppPalette.emerald.background, const Color(0xFFF7F9F8));
     });
 
-    test('Emerald dark mode is a true-black AMOLED canvas', () {
+    test('legacy palettes keep the true-black AMOLED canvas', () {
       expect(AppPalette.emerald.darkBackground, const Color(0xFF000000));
       expect(AppPalette.emerald.isAmoled, isTrue);
-      // Every palette, Midnight included, has a pitch-black dark canvas.
-      for (final p in AppPalette.all) {
+
+      for (final p in AppPalette.all.where((p) => p.isAmoled)) {
         expect(p.darkBackground, const Color(0xFF000000), reason: p.label);
-        expect(p.isAmoled, isTrue, reason: p.label);
       }
+
       // Only Midnight layers navy glass cards on that black canvas.
       expect(AppPalette.midnight.glass, isTrue);
-      for (final p in AppPalette.all.where((p) => p != AppPalette.midnight)) {
+      for (final p in AppPalette.all.where(
+        (p) => p.isAmoled && p != AppPalette.midnight,
+      )) {
         expect(p.glass, isFalse, reason: p.label);
       }
+    });
+
+    test('2026 premium palettes tint the dark canvas on purpose', () {
+      final premium = [
+        AppPalette.premiumBlue,
+        AppPalette.deepNavy,
+        AppPalette.softPastelTeal,
+        AppPalette.plumBlush,
+      ];
+      for (final p in premium) {
+        expect(p.isAmoled, isFalse, reason: p.label);
+        expect(p.glass, isTrue, reason: p.label);
+        expect(p.darkBackground, isNot(const Color(0xFF000000)),
+            reason: p.label);
+      }
+      // Premium Blue is the default identity and the reset target.
+      expect(AppPalette.defaultPalette, AppPalette.premiumBlue);
+    });
+
+    test('2026 palettes carry the supplied premium colours', () {
+      expect(AppPalette.premiumBlue.brand, const Color(0xFF5483B3));
+      expect(AppPalette.premiumBlue.deep, const Color(0xFF021024));
+      expect(AppPalette.premiumBlue.background, const Color(0xFFF2F8FF));
+
+      expect(AppPalette.deepNavy.brand, const Color(0xFF253745));
+      expect(AppPalette.deepNavy.darkBackground, const Color(0xFF06141B));
+
+      expect(AppPalette.softPastelTeal.brand, const Color(0xFF5D6B6B));
+      expect(AppPalette.softPastelTeal.limeAccent, const Color(0xFFF7CBCA));
+      expect(
+        AppPalette.softPastelTeal.background,
+        const Color(0xFFF1F7F7),
+      );
+
+      expect(AppPalette.plumBlush.brand, const Color(0xFF854F6C));
+      expect(AppPalette.plumBlush.limeAccent, const Color(0xFFDFB6B2));
+      expect(AppPalette.plumBlush.darkBackground, const Color(0xFF190019));
     });
 
     test('a palette without an explicit lime falls back to its accent', () {
@@ -174,8 +222,10 @@ void main() {
   });
 
   group('AMOLED dark foundation', () {
-    test('every palette shares neutral black surfaces, borders and text', () {
-      for (final p in AppPalette.all.where((p) => p != AppPalette.midnight)) {
+    test('legacy AMOLED palettes share neutral black surfaces and borders', () {
+      for (final p in AppPalette.all.where(
+        (p) => p.isAmoled && p != AppPalette.midnight,
+      )) {
         expect(p.darkBackground, const Color(0xFF000000), reason: p.label);
         for (final c in [p.darkSurface, p.darkSurfaceAlt, p.borderDark]) {
           final r = (c.r * 255).round();
@@ -270,20 +320,66 @@ void main() {
       expect(contrast, greaterThanOrEqualTo(4.5));
     });
 
-    test('lime ink stays legible on the lime highlight', () {
-      AppColors.applyPalette(AppPalette.emerald);
-      final contrast = _contrast(
-        const Color(0xFF0B3B2C),
-        AppPalette.emerald.limeAccent,
-      );
-      expect(contrast, greaterThanOrEqualTo(7));
+    test('lime ink stays legible on every palette highlight', () {
+      for (final p in AppPalette.all) {
+        AppColors.applyPalette(p);
+        final contrast = _contrast(
+          AppColors.onLimeInk,
+          p.limeAccent,
+        );
+        expect(contrast, greaterThanOrEqualTo(4.5), reason: p.label);
+      }
+    });
+
+    test('neutral text tiers keep AA on every light surface', () {
+      for (final p in AppPalette.all) {
+        AppColors.applyPalette(p);
+        for (final surface in [p.background, p.surfaceMuted]) {
+          expect(
+            _contrast(AppColors.textPrimaryFor(false), surface),
+            greaterThanOrEqualTo(7),
+            reason: '${p.label} primary',
+          );
+          expect(
+            _contrast(AppColors.textSecondaryFor(false), surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '${p.label} secondary',
+          );
+          expect(
+            _contrast(AppColors.textTertiaryFor(false), surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '${p.label} tertiary',
+          );
+        }
+      }
+    });
+
+    test('neutral text tiers keep AA on every dark surface', () {
+      for (final p in AppPalette.all) {
+        AppColors.applyPalette(p);
+        expect(
+          _contrast(AppColors.textPrimaryFor(true), p.darkSurfaceAlt),
+          greaterThanOrEqualTo(7),
+          reason: p.label,
+        );
+        expect(
+          _contrast(AppColors.textSecondaryFor(true), p.darkSurfaceAlt),
+          greaterThanOrEqualTo(7),
+          reason: p.label,
+        );
+        expect(
+          _contrast(AppColors.textTertiaryFor(true), p.darkSurfaceAlt),
+          greaterThanOrEqualTo(4.5),
+          reason: p.label,
+        );
+      }
     });
   });
 
   group('ThemeProvider', () {
-    test('defaults to Midnight in light mode', () async {
+    test('defaults to Premium Blue in light mode', () async {
       final provider = await loaded({});
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.premiumBlue));
       expect(provider.themeMode, ThemeMode.light);
     });
 
@@ -309,9 +405,9 @@ void main() {
       expect(second.palette, same(AppPalette.forestGreen));
     });
 
-    test('an unknown persisted id falls back to Midnight', () async {
+    test('an unknown persisted id falls back to Premium Blue', () async {
       final provider = await loaded({'palette_id': 'chartreuse'});
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.premiumBlue));
     });
 
     test('setThemeMode persists light, dark and system', () async {
@@ -329,16 +425,16 @@ void main() {
       expect(provider.themeMode, ThemeMode.dark);
     });
 
-    test('resetToDefaults restores Midnight and light mode', () async {
+    test('resetToDefaults restores Premium Blue and light mode', () async {
       final provider = await loaded({});
       await provider.setPalette(AppPalette.royalPurple);
       await provider.setThemeMode(ThemeMode.dark);
 
       await provider.resetToDefaults();
 
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.premiumBlue));
       expect(provider.themeMode, ThemeMode.light);
-      expect(AppColors.brand, AppPalette.midnight.brand);
+      expect(AppColors.brand, AppPalette.premiumBlue.brand);
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('palette_id'), isNull);

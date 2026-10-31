@@ -32,8 +32,7 @@ class AssistantSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(summary.rangeLabel,
-              style: AppText.bodySmall(context)),
+          Text(summary.rangeLabel, style: AppText.bodySmall(context)),
           const SizedBox(height: AppSpacing.md),
           Semantics(
             label:
@@ -71,7 +70,7 @@ class AssistantSummaryCard extends StatelessWidget {
                   label: 'Investments',
                   value: Formatters.currency.format(summary.investmentMinor),
                   detail: 'included in spending',
-                  color: AppColors.amber,
+                  color: AppColors.warning,
                 ),
               if (summary.transferMinor > 0)
                 _Metric(
@@ -174,9 +173,7 @@ class AssistantSectionCard extends StatelessWidget {
                         style: AppText.title(context).copyWith(fontSize: 15)),
                     if (section.subtitle != null) ...[
                       const SizedBox(height: 2),
-                      Text(section.subtitle!,
-                          style:
-                              AppText.caption(context)),
+                      Text(section.subtitle!, style: AppText.caption(context)),
                     ],
                   ],
                 ),
@@ -208,7 +205,7 @@ class AssistantSectionCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             _InlineNote(
               icon: Icons.trending_up_rounded,
-              color: AppColors.amber,
+              color: AppColors.warning,
               text: '${Formatters.currency.format(section.investmentMinor)} is '
                   'money moved to investments/transfers, not consumption.',
             ),
@@ -364,7 +361,7 @@ class AssistantTransactionRow extends StatelessWidget {
       AssistantTransactionKind.income => AppColors.incomeGreen,
       AssistantTransactionKind.refund => AppColors.incomeGreen,
       AssistantTransactionKind.transfer => AppColors.azure,
-      AssistantTransactionKind.investment => AppColors.amber,
+      AssistantTransactionKind.investment => AppColors.incomeGreen,
       AssistantTransactionKind.expense => AppColors.expenseRed,
     };
   }
@@ -499,8 +496,7 @@ class AssistantComparisonCard extends StatelessWidget {
           ),
           if (comparison.categoryDrivers.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
-            Text('Category drivers',
-                style: AppText.caption(context)),
+            Text('Category drivers', style: AppText.caption(context)),
             const SizedBox(height: 6),
             for (final driver in comparison.categoryDrivers.take(3))
               _DriverRow(
@@ -508,8 +504,7 @@ class AssistantComparisonCard extends StatelessWidget {
           ],
           if (comparison.merchantDrivers.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text('Merchant drivers',
-                style: AppText.caption(context)),
+            Text('Merchant drivers', style: AppText.caption(context)),
             const SizedBox(height: 6),
             for (final driver in comparison.merchantDrivers.take(3))
               _DriverRow(driver: driver, icon: Icons.storefront_rounded),
@@ -664,7 +659,7 @@ class AssistantBillsCard extends StatelessWidget {
   static Color _statusColor(BuildContext context, String status) {
     return switch (status) {
       'Overdue' => AppColors.danger,
-      'Due soon' => AppColors.amber,
+      'Due soon' => AppColors.warning,
       'Paid' => AppColors.incomeGreen,
       _ => AppColors.azure,
     };
@@ -684,7 +679,7 @@ class AssistantPendingActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final danger = action.isDeletion;
-    final accent = danger ? AppColors.danger : AppColors.amber;
+    final accent = danger ? AppColors.danger : AppColors.warning;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -814,7 +809,7 @@ class _ConfirmSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final danger = action.isDeletion;
-    final accent = danger ? AppColors.danger : AppColors.amber;
+    final accent = danger ? AppColors.danger : AppColors.warning;
     final media = MediaQuery.of(context);
     return DraggableScrollableSheet(
       expand: false,
@@ -932,8 +927,7 @@ class _SheetRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(label,
-                style: AppText.caption(context)),
+            child: Text(label, style: AppText.caption(context)),
           ),
           const SizedBox(width: AppSpacing.sm),
           Flexible(

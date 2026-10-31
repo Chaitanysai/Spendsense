@@ -312,7 +312,7 @@ class _PrivacyStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cloudOn = controller.cloudConfigured && controller.cloudConsent;
-    final color = cloudOn ? AppColors.amber : AppColors.incomeGreen;
+    final color = cloudOn ? AppColors.warning : AppColors.incomeGreen;
     final text = !controller.cloudConfigured
         ? 'On-device only. Gemini is not configured in this build.'
         : cloudOn
