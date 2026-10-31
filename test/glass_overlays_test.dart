@@ -212,8 +212,9 @@ void main() {
       return (hi + 0.05) / (lo + 0.05);
     }
 
-    // Regression (found on a OnePlus 7T): Cancel/Save in a navy dialog used the
-    // raw blue brand fill, which measures under 3:1 on the navy surface. Every
+    // Regression (found on a physical Android device): Cancel/Save in a navy
+    // dialog used the raw blue brand fill, which measures under 3:1 on the navy
+    // surface. Every
     // palette is asserted in both modes. Ocean Blue (4.16:1) and Royal Purple
     // (4.42:1) were under the bar in *dark* mode; their light-mode ink was
     // already above 11:1.
@@ -332,9 +333,9 @@ void main() {
     testWidgets(
         'a sheet that paints its own surface reaches the bottom of the screen',
         (tester) async {
-      // Regression (found on a OnePlus 7T): wrapping a transparent-background
-      // sheet in a SafeArea left a see-through strip under it, so the page
-      // behind showed through below the sheet.
+      // Regression (found on a physical Android device): wrapping a
+      // transparent-background sheet in a SafeArea left a see-through strip
+      // under it, so the page behind showed through below the sheet.
       tester.view.devicePixelRatio = 1;
       tester.view.padding = const FakeViewPadding(bottom: 24);
       tester.view.viewPadding = const FakeViewPadding(bottom: 24);

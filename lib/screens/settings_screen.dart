@@ -571,7 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
-            hintText: 'e.g. Chaitanya',
+            hintText: 'Your name',
             helperText:
                 'Shown in your Home greeting. Leave blank to remove it.',
           ),
