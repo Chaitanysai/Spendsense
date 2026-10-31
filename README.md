@@ -15,9 +15,10 @@ that screen before enabling it.
 
 - **Local SMS import** — scans the Android inbox for transaction messages,
   classifies debits and credits, and extracts amount, merchant, bank and
-  category. Messages stay on the device.
+  category. Messages stay on the device unless cloud SMS parsing is explicitly
+  enabled as described above.
 - **Manual entries** — add income or expense records without SMS.
-- **Encrypted ledger** — records are stored in an on-device SQLite database
+- **Encrypted ledger** — records are stored in an on-device encrypted store
   protected with AES-256-GCM; the key lives in platform secure storage.
 - **Budgets and alerts** — monthly cycle budget, category budgets and warning
   thresholds.
