@@ -1,0 +1,41 @@
+# Default owner for code review requirements.
+#
+# `main` has `require_code_owner_reviews: true`. Without a CODEOWNERS file that
+# rule is unsatisfiable: no path has an owner, so no review can satisfy it. This
+# file makes ownership explicit and limits who may merge sensitive paths.
+#
+# Ownership rules that matter here:
+#   * A review from the owner of a changed path is required, in addition to the
+#     configured approving-review count.
+#   * Authorship does not grant a review: GitHub never lets an author approve
+#     their own pull request, so the owner can still only approve other people's
+#     changes to these paths. That is the intended separation.
+#
+# Keep this file's owner list in sync with repository collaborators. Each line
+# must name a user or team with write access to this repository; a stale handle
+# silently makes the matching paths unreviewable.
+
+# CI that can run on untrusted pull requests, and the policies it enforces.
+/.github/workflows/   @Chaitanysai
+/.github/actions/     @Chaitanysai
+
+# Android build, signing and manifest configuration. A mistake here can ship a
+# debug-signed or misconfigured release, so it is never merged unreviewed.
+/android/             @Chaitanysai
+
+# Dependency resolution: a lockfile change alters what actually ships.
+/pubspec.yaml         @Chaitanysai
+/pubspec.lock         @Chaitanysai
+
+# Firebase client configuration (public identifier, but still a cloud binding).
+/lib/firebase_options.dart  @Chaitanysai
+
+# Build-time materialisation of gitignored secrets.
+/tool/                @Chaitanysai
+
+# Instructions that steer automated agents contributing to this repository.
+/AGENTS.md            @Chaitanysai
+
+# App Check attestation logic: weakening it affects every cloud call.
+/lib/services/app_check/            @Chaitanysai
+/lib/services/assistant/assistant_auth.dart  @Chaitanysai
