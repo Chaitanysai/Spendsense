@@ -954,10 +954,28 @@ class _SettingsTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
+                  color: iconColor.withValues(
+                    alpha: AppColors.isDark(context) ? 0.22 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-                child: Icon(icon, size: 19, color: iconColor),
+                // The well is a 12% tint of the icon's own colour, so painting
+                // the glyph in that colour measured ~2-3:1 and some icons all
+                // but vanished (worst in dark mode). Lift the glyph until it
+                // clears AA against the well it actually sits on.
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: AppColors.inkOn(
+                    iconColor,
+                    iconColor.withValues(
+                      alpha: AppColors.isDark(context) ? 0.22 : 0.12,
+                    ),
+                    AppColors.isDark(context)
+                        ? AppColors.surface
+                        : AppColors.surfaceColor(context),
+                  ),
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

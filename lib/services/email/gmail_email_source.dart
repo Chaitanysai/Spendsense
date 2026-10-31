@@ -215,8 +215,10 @@ class GmailEmailSource {
         throw const EmailAuthUnavailableException('Google sign-in cancelled.');
       }
       throw const EmailAuthUnavailableException(
-        'Gmail is not configured for this build. '
-        'The OAuth Android client or consent screen is missing.',
+        'Gmail is not available in this build: the Android OAuth client is '
+        'missing from google-services.json. Re-download that file after '
+        'creating the client for package com.example.spendsense and this '
+        "build's signing SHA-1, then rebuild and reinstall.",
       );
     } catch (_) {
       throw const EmailAuthUnavailableException(

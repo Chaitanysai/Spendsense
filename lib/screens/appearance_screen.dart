@@ -255,8 +255,11 @@ class _ModeChoice extends StatelessWidget {
               Icon(
                 _icons[mode],
                 size: 20,
+                // Selected sits on a 12%-brand capsule, not the canvas, so the
+                // glyph uses capsule-aware ink; navSelected measured against the
+                // canvas was too dim there.
                 color: selected
-                    ? AppColors.navSelected(context)
+                    ? AppColors.brandWellInk(context)
                     : AppColors.textSecondary(context),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -268,7 +271,7 @@ class _ModeChoice extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
-                      ? AppColors.navSelected(context)
+                      ? AppColors.brandWellInk(context)
                       : AppColors.textSecondary(context),
                 ),
               ),
@@ -353,7 +356,7 @@ class _PaletteRow extends StatelessWidget {
                               fontSize: 8.5,
                               letterSpacing: 0.5,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.brandInk(context),
+                              color: AppColors.brandWellInk(context),
                             ),
                           ),
                         ),
