@@ -46,15 +46,17 @@ for banks that send transaction alerts by email instead of SMS.
      (DN: `CN=chaitanya.sai, OU=me, O=Mine, L=Hyderabad, ST=Telangana, C=IN`;
      SHA-256: `42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367`)
    - Also add the debug keystore SHA-1 if you want to test locally.
-5. The Android OAuth client does **not** expose a client secret. SpendSense
-   reads the client configuration from Google Play services; no secret needs to
-   be shipped. The optional `GMAIL_SERVER_CLIENT_ID` define is only needed if
-   the Google project uses a separate web/server OAuth client (for example, to
-   test on the Android emulator).
-6. To ship the define in OTA builds, set the repository variable
-   `GMAIL_SERVER_CLIENT_ID` to that client ID. The OTA workflow passes it as
-   `--dart-define`. Leave the variable unset to ship with email import
-   configured off.
+5. The **Android** OAuth client does not expose a client secret. On a real
+   Android phone, Google Play services matches this client by package name and
+   signing SHA-1; SpendSense does not need to ship any secret. In that normal
+   path, `GMAIL_SERVER_CLIENT_ID` can stay unset.
+6. If you test on an emulator or use a separate web/desktop OAuth client, set
+   `GMAIL_SERVER_CLIENT_ID` to the client ID of a **Web application** OAuth
+   client in the same project. Create that client, then set the repository
+   variable of the same name; the OTA workflow passes it as `--dart-define`.
+7. Nothing is required in the OTA workflow for the normal Android path: if the
+   variable is unset, the build simply leaves email import configured off and
+   the Android Play-services path is used when the person connects.
 
 ## Testing
 
