@@ -112,7 +112,7 @@ class CycleHero extends StatelessWidget {
         // Cap the dial so it never becomes a dinner plate on a tablet; on a
         // normal phone it uses the page width.
         final ringSize =
-            width < 240 ? width : (width - 16).clamp(200.0, 280.0).toDouble();
+            width < 240 ? width : (width - 16).clamp(200.0, 252.0).toDouble();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

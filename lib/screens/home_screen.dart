@@ -108,6 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   balanceVisible: _balanceVisible,
                   onToggleBalance: () =>
                       setState(() => _balanceVisible = !_balanceVisible),
+                  onEditDashboard:
+                      prefs == null ? null : () => _startEditing(prefs),
                 ),
               ),
             ),
@@ -123,24 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   : SliverList(
                       delegate: SliverChildListDelegate([
                         const PageEntrance(child: _QuickActions()),
-                        if (prefs != null) ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => _startEditing(prefs),
-                              // Material 3 defaults a TextButton to 40px; the
-                              // accessible minimum is 44.
-                              style: TextButton.styleFrom(
-                                minimumSize: const Size(0, 44),
-                              ),
-                              icon: const Icon(Icons.tune_rounded, size: 17),
-                              label: const Text('Edit dashboard'),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                        ] else
-                          const SizedBox(height: AppSpacing.xxxl),
+                        // The edit affordance lives in the header, beside the
+                        // avatar. A separate "Edit dashboard" row here pushed
+                        // the first section header under the floating Add
+                        // button on 411dp-wide phones.
+                        const SizedBox(height: AppSpacing.xxxl),
                         for (final (sectionIndex, id)
                             in (prefs?.visibleSectionOrder ??
                                     DashboardSection.ids)
@@ -472,12 +461,14 @@ class _HeaderSection extends StatelessWidget {
   final TransactionProvider provider;
   final bool balanceVisible;
   final VoidCallback onToggleBalance;
+  final VoidCallback? onEditDashboard;
 
   const _HeaderSection({
     required this.auth,
     required this.provider,
     required this.balanceVisible,
     required this.onToggleBalance,
+    this.onEditDashboard,
   });
 
   @override
@@ -531,6 +522,34 @@ class _HeaderSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
+                if (onEditDashboard != null) ...[
+                  Tooltip(
+                    message: 'Edit dashboard',
+                    child: Semantics(
+                      button: true,
+                      label: 'Edit dashboard',
+                      // A Semantics wrapper with excludeSemantics drops the
+                      // Pressable's tap action, so expose it explicitly for
+                      // TalkBack and switch access.
+                      onTap: onEditDashboard,
+                      excludeSemantics: true,
+                      child: Pressable(
+                        onTap: onEditDashboard,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(
+                            Icons.tune_rounded,
+                            size: 17,
+                            color: AppColors.textTertiary(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
@@ -854,7 +873,12 @@ class _QuickActions extends StatelessWidget {
         QuickAction(
           label: 'Sync SMS',
           icon: Icons.sync_rounded,
-          onTap: () => SmsImportPrompt.show(context),
+          // First run only: the start date is a one-time question. Once it is
+          // stored, this action is a plain sync and never re-prompts.
+          onTap: () => _SyncButton._onTap(
+            context,
+            context.read<TransactionProvider>(),
+          ),
         ),
         QuickAction(
           label: 'Activity',
