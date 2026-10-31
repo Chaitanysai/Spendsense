@@ -1,20 +1,22 @@
 # OTA hosting directory
 
-`firebase.json` at the repository root points Firebase Hosting at
-`ota/public/`. Only generated release files belong there:
+The static site in `ota/public/` is what installed builds read for updates.
+`firebase.json` points the hosting configuration at this directory.
+
+Generated layout:
 
 ```
 ota/public/
 ├── manifest.json                              # generated from the signed APK
 └── releases/
-    ├── spendsense-2.0.0+20.apk                # immutable, versioned
-    └── spendsense-2.0.0+20.apk.sha256         # optional checksum sidecar
+    ├── spendsense-<version>+<build>.apk       # immutable, versioned
+    └── spendsense-<version>+<build>.apk.sha256 # optional checksum sidecar
 ```
 
-`manifest.json` and the APKs are **generated artifacts** and are ignored by
-git. They are produced by the release workflow (or locally with
-`tool/generate_ota_manifest.dart`) from an APK that has already passed signature
+`manifest.json` and the APKs are generated artifacts and are ignored by Git.
+They are produced by the release workflow, or locally with
+`tool/generate_ota_manifest.dart`, from an APK that has already passed signature
 and SHA-256 verification.
 
-Nothing in this directory is committed or deployed without explicit
-authorization. See `docs/OTA_UPDATES.md` for the full process.
+See [docs/OTA_UPDATES.md](../docs/OTA_UPDATES.md) for the trust model and
+publishing process.

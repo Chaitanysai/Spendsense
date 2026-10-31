@@ -1,105 +1,117 @@
 # SpendSense
 
-SpendSense is an offline-first Flutter expense tracking app focused on Indian bank and UPI transaction workflows. It reliably reads transaction SMS messages from the Android device inbox, extracts expense entries locally, caches them locally, and presents spending activity, insights, budget tracking, and manual transaction management in a mobile UI.
+SpendSense is a local-first expense tracker for Android. It reads bank and UPI
+transaction messages from the device inbox, parses them on the phone, and turns
+them into a searchable ledger with budgets, bills, recurring plans and spending
+insights.
 
-## Features
+The ledger is encrypted and stored on the device. The standard Android build
+uses an account for sign-in; SMS contents are never uploaded.
 
-- Local-first SMS-based transaction sync from the device inbox
-- Smart transaction parsing with strict regex-first rule validation and debit filtering
-- Optional local AI fallback strictly for ambiguous debit messages matching context
-- Persistent local SQLite caching with real-time UI updates
-- Monthly budget tracking & historical insights
-- Offline-first architecture - works without internet, no Firebase login required 
-- Full manual transaction entry and history search
-- Fast start times and automatic background synchronization
+## What it does
 
-## Tech Stack
+- **Local SMS import** — scans the Android inbox for transaction messages,
+  classifies debits and credits, and extracts amount, merchant, bank and
+  category. Messages stay on the device.
+- **Manual entries** — add income or expense records without SMS.
+- **Encrypted ledger** — records are stored in an on-device SQLite database
+  protected with AES-256-GCM; the key lives in platform secure storage.
+- **Budgets and alerts** — monthly cycle budget, category budgets and warning
+  thresholds.
+- **Bills and recurring plans** — detects repeat payments and tracks upcoming
+  obligations.
+- **Insights** — category breakdown, seven-day activity, month-over-month
+  comparison and instrument-level spending.
+- **Optional assistant** — a local, deterministic finance assistant. Cloud
+  assistance is opt-in and proxied through a server that holds the model key.
+- **Offline first** — the app opens and works without a network connection.
+- **Appearance** — four curated premium palettes and additional themes, each in
+  light and dark mode.
+- **OTA updates** — released builds can check for and install signed updates
+  from Settings → Software update.
 
-- Flutter & Dart
-- Provider for state management
-- `sqflite` for robust local database caching
-- `flutter_dotenv` for configurable API keys (kept out of source control)
-- `shared_preferences` for fast local configurations
-- `flutter_sms_inbox` & `permission_handler` for local text extraction
-- `fl_chart` for insights and charts
+## Install
 
-## Project Structure
+Android 7.0 or newer.
 
-```text
-lib/
-  main.dart                         App entrypoint and initialization
-  models/transaction_model.dart     Transaction data configurations
-  providers/
-    transaction_provider.dart       Heart of transactions: sync, logic & caching
-    theme_provider.dart             Dynamic theme and appearance logic
-    period_provider.dart            Date/period filters for UI
-  screens/
-    home_screen.dart                Main dashboard
-    activity_screen.dart            List of synced and manual transactions
-    insights_screen.dart            Analytics and categorization
-    settings_screen.dart            App config and backup
-  services/
-    smart_parser.dart               Strict rule-based debit parser
-    sms_service.dart                Android inbox access
-    gemini_service.dart             LLM fallback for edge extraction
-    database_service.dart           SQLite driver
-    transaction_cache_service.dart  Db operations
-```
+1. Open the [latest release](https://github.com/Chaitanysai/Spendsense/releases/latest).
+2. Download the `.apk`.
+3. Allow installs from the browser or file manager when prompted.
+4. Install. Updating over an existing build with the same signing key preserves
+   local data.
 
-## Setup & Build
+## Build from source
 
-### 1. Install Flutter dependencies
+Requirements:
+
+- Flutter 3.47 or newer with the Android toolchain
+- An Android device or emulator
+- JDK 17 for the Android build
 
 ```bash
 flutter pub get
-```
-
-### 2. Configure AI Provider Keys (Optional)
-
-SpendSense supports multiple AI providers for intelligent transaction parsing: **Groq**, **Cerebras**, **Gemini**, and **OpenRouter**.
-
-**🔐 Recommended:** Configure keys at runtime via the in-app settings:
-1. Launch the app
-2. Go to **Settings → AI Provider Settings**
-3. Enter your API keys securely (stored in platform-encrypted storage)
-4. Keys never leave your device and are not compiled into the APK
-
-**Alternative (Development Only):** Use `.env` files:
-1. Copy `.env.example` to `.env`
-2. Fill in your keys (e.g., `GROQ_API_KEY`, `CEREBRAS_API_KEY`)
-3. `.env` remains untracked via `.gitignore`
-
-**Priority:** Secure Storage > .env > --dart-define (CI/CD)
-
-### 3. Android permissions
-
-The app requires SMS read permission on Android devices for transaction sync. Test on a real device with transaction SMS messages available in the inbox.
-
-### 4. Running the App
-
-```bash
+flutter analyze
+flutter test
 flutter run
 ```
 
-### 5. Automated Cloud Android Builds
+Create a release APK with your own signing configuration:
 
-This repository is configured with a GitHub Actions workflow `.github/workflows/android-release.yml` that automatically:
-- Checks out the latest code
-- Runs static analysis (`flutter analyze`) and tests (`flutter test`)
-- Securely builds signed Release APKs
-- Publishes automated GitHub Releases containing the `.apk` on every new version tag (`v*.*.*`)
-- Validates the build outputs 
+```bash
+flutter build apk --release
+```
 
-To sign effectively, the workflow expects GitHub Action Secrets:
-- `SIGNING_KEY` (Base64 of your upload-keystore.jks)
-- `KEY_ALIAS` 
-- `KEY_PASSWORD`
-- `STORE_PASSWORD`
+The repository does not contain signing keys. CI builds are signed from GitHub
+Actions secrets; local release builds use your own keystore.
 
-If they are missing, it safely falls back to the debug keystore for testing without failing the build.
+### Optional services
 
-## Version
+- **Accounts** require a Firebase project; see
+  [docs/firebase.md](docs/firebase.md).
+- **Cloud assistant** requires the proxy in
+  [backend/assistant_proxy](backend/assistant_proxy/README.md) and an API key
+  stored server-side.
+- **OTA** uses a static manifest and a signed APK; see
+  [docs/OTA_UPDATES.md](docs/OTA_UPDATES.md).
 
-Current app version in `pubspec.yaml`:
+The ledger and SMS parsing work offline. A build without Firebase configuration
+runs without an account.
 
-- `2.0.0`
+## Project layout
+
+```text
+lib/
+  main.dart                 app shell, navigation and theme
+  models/                   transaction, recurring plan and update models
+  providers/                ledger, period, theme, planner and update state
+  screens/                  home, activity, insights, budgets, bills, settings
+  services/                 SMS import, parsing, storage and updates
+  utils/                    design tokens, formatting and period math
+  widgets/                  shared cards, charts, navigation and controls
+assets/                     icons, fonts and sound cues
+backend/assistant_proxy/    optional assistant proxy
+docs/                       architecture and setup notes
+ota/                        OTA hosting layout
+```
+
+## Privacy
+
+- Transaction SMS text is parsed on the device and is not uploaded.
+- The local database is encrypted; the key is kept in platform secure storage.
+- The optional assistant sends only the typed question, recent chat text and
+  validated tool calls to its proxy — never the database, raw SMS or account
+  tokens beyond the request's short-lived authentication token.
+
+## Contributing
+
+Issues and pull requests are welcome. Run `flutter analyze` and `flutter test`
+before opening a pull request, and keep changes scoped to one concern.
+
+## Documentation
+
+- [Assistant architecture](docs/assistant.md)
+- [OTA updates](docs/OTA_UPDATES.md)
+- [Firebase setup](docs/firebase.md)
+- [Spending semantics](docs/spending-semantics.md)
+- [Typography](docs/typography.md)
+- [Sound credits](assets/sounds/CREDITS.md)
