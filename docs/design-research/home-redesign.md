@@ -65,7 +65,7 @@ Observed across the App Store set (near-black `#1E1919` surfaces, coral
 
 | Reference move | SpendSense translation |
 |---|---|
-| GO Club's single hero metric | Salary-cycle spending is the one number. Ring is 280dp, amount is 40sp, budget caption and cycle delta sit inside it. |
+| GO Club's single hero metric | Salary-cycle spending is the one number. Ring is 252dp, amount is 40sp, budget caption and cycle delta sit inside it. |
 | GO Club's three-stat strip | `Left` / `Per day` / `Days left`, or `Activity` / `Top category` / `Days left` when no budget exists. |
 | GO Club's floating action dock | One glass command dock with four real actions; 2 × 2 at large text. |
 | Suno's near-black canvas | Keeps the existing AMOLED dark mode; the redesign stops tinting the hero card and lets the canvas be the stage. |
@@ -82,10 +82,11 @@ Observed across the App Store set (near-black `#1E1919` surfaces, coral
 Top to bottom, in the order a new user reads it:
 
 1. **Greeting** — "Good morning," in secondary text, name in 34sp display
-   weight. Avatar sits in the brand/lime ring at the top right. A meta row
-   carries sync state ("Synced 2h ago"), "Welcome back" and the date. No eyebrow
-   above the headline.
-2. **Cycle hero** — a 280dp ring on the canvas (no card behind it):
+   weight. Avatar sits in the brand/lime ring at the top right, with the tune
+   icon beside it for dashboard editing. A meta row carries sync state
+   ("Synced 2h ago"), "Welcome back" and the date. No eyebrow above the
+   headline.
+2. **Cycle hero** — a 252dp ring on the canvas (no card behind it):
    - track: theme border, 78% of the arc width; arc: brand → brandBright,
      returning to its start colour at 100% so the seam is invisible;
    - lit head dot with a radial halo at the current position;
@@ -103,8 +104,9 @@ Top to bottom, in the order a new user reads it:
 4. **Editable sections** — Monthly budget (`BudgetSummary` preserved), Spending
    by category (rail), Last 7 days (seven bars, today in lime), Recent
    transactions (grouped flat feed, max 20).
-5. **Edit dashboard** — unchanged behaviour: reorder, hide via Settings, cancel
-   vs done. Only the surface styling follows the new card language.
+5. **Edit dashboard** — opened from the tune icon beside the avatar; unchanged
+   behaviour once open: reorder, hide via Settings, cancel vs done. Only the
+   surface styling follows the new card language.
 
 ### Large text
 
@@ -144,6 +146,49 @@ cards, and the recent feed rows grow naturally.
 | `lib/widgets/transaction_tile.dart` | Added `flat` variant for the grouped recent feed. |
 | `lib/screens/home_screen.dart` | Greeting, hero wiring, dock, sections, grouped feed, edit mode. |
 | `tool/home_preview_test.dart` | Deterministic 390 × 844 dark/light preview renderer. |
+| `tool/preview_app.dart` | On-device preview entry point with an in-memory demo ledger; separate app id. |
+
+## Device verification — OnePlus 7T (HD1901), Android 16
+
+The real `HomeScreen` was run on the connected phone through
+`tool/preview_app.dart`, installed under the separate id
+`com.example.spendsense.preview` so the user's installed 2.0.4 app and its data
+were never touched. Device: 1080 × 2400 at 420dpi (411 × 914dp), Impeller
+Vulkan.
+
+Checked on hardware:
+
+- hero amount, budget caption, delta and three-stat strip;
+- eye toggle — amount, budget caption, delta and money stats mask, "Days left"
+  stays readable;
+- Add expense dock → shared sheet → save; the hero updated from ₹26,856 to
+  ₹27,106 and "Left" from ₹23,144 to ₹22,894, so the read/write loop is live;
+- category rail peeks the third card; weekly bars and day selection; grouped
+  recent feed; edit mode opens from the header tune icon and cancels cleanly;
+- the floating Add button steps away on scroll, exactly as the production shell
+  does (the preview shell mirrors it);
+- logcat showed no `RenderFlex overflowed` or Flutter exception during the
+  flows. Debug and profile builds both launched and rendered.
+
+Screenshots: [device-home-dark.png](./device-home-dark.png),
+[device-home-privacy.png](./device-home-privacy.png),
+[device-home-sections.png](./device-home-sections.png),
+[device-home-recent.png](./device-home-recent.png),
+[device-add-sheet.png](./device-add-sheet.png),
+[device-edit-dashboard.png](./device-edit-dashboard.png).
+
+The preview is a separate package so it can be launched from the app drawer as
+"SpendSense Preview" without touching the release install. To rebuild it, set
+`applicationId` to `com.example.spendsense.preview` in
+`android/app/build.gradle.kts`, add the matching package to
+`android/app/google-services.json`, then run:
+
+```bash
+flutter run -t tool/preview_app.dart -d <device-id>
+```
+
+Revert those two build-config edits afterwards; they are deliberately not
+committed.
 
 ## Verification
 
