@@ -90,7 +90,20 @@ class UpdateProvider extends ChangeNotifier {
     final installedVersion = installed ?? await installedVersionLoader();
     installed = installedVersion;
 
-    final result = await service.checkForUpdates(installed: installedVersion);
+    // A service is allowed to throw for reasons the UI has no vocabulary for
+    // (a platform channel that is missing, a programming error). If that
+    // escapes, `_busy` stays true and every later check is silently rejected,
+    // so the failure has to be absorbed here and surfaced as an error state.
+    final UpdateCheckResult result;
+    try {
+      result = await service.checkForUpdates(installed: installedVersion);
+    } catch (_) {
+      state = UpdateUiState.error;
+      message = 'The update check failed. Try again.';
+      _busy = false;
+      _notify();
+      return;
+    }
     lastStatus = result.status;
     manifest = result.manifest;
     message = result.message;
