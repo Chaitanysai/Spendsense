@@ -79,14 +79,35 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
-    final trackedTransactions = provider.trackedTransactions.toList()
+    // Section visibility and history are display preferences only. Absent
+    // provider (e.g. an embedded preview) means "show everything".
+    final prefs = context.watch<ThemeProvider?>();
+    final period = context.watch<PeriodProvider>();
+    final showHistory = prefs?.includeHistory ?? false;
+
+    final allTransactions = provider.trackedTransactions.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-    final trackedExpenses = provider.trackedExpenses.toList()
+    final allExpenses = provider.trackedExpenses.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    // Section visibility is a display preference only. Absent provider (e.g.
-    // an embedded preview) means "show everything".
-    final prefs = context.watch<ThemeProvider?>();
+    // Home is a current-cycle dashboard. When history is off, every card below
+    // the hero (category mix, recent list) is filtered to the active salary
+    // cycle, so changing the cycle hides earlier transactions without deleting
+    // anything from the encrypted ledger.
+    final trackedTransactions = showHistory
+        ? allTransactions
+        : allTransactions
+            .where(
+              (t) => PeriodMath.containsLocalDate(period.currentPeriod, t.date),
+            )
+            .toList();
+    final trackedExpenses = showHistory
+        ? allExpenses
+        : allExpenses
+            .where(
+              (t) => PeriodMath.containsLocalDate(period.currentPeriod, t.date),
+            )
+            .toList();
     // Clears the floating navigation bar *and* the Add button stacked above
     // it, using the bar's real height rather than a fixed guess.
     final scrollBottomInset = AppSpacing.tabBottomInset(context);
@@ -115,9 +136,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                AppSpacing.page,
-                AppSpacing.lg,
-                AppSpacing.page,
+                AppSpacing.homePage,
+                AppSpacing.homeHeaderGap,
+                AppSpacing.homePage,
                 scrollBottomInset,
               ),
               sliver: _editing
@@ -129,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         // avatar. A separate "Edit dashboard" row here pushed
                         // the first section header under the floating Add
                         // button on 411dp-wide phones.
-                        const SizedBox(height: AppSpacing.xxxl),
+                        const SizedBox(height: AppSpacing.homeSectionGap),
                         for (final (sectionIndex, id)
                             in (prefs?.visibleSectionOrder ??
                                     DashboardSection.ids)
@@ -229,10 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // onReorderItem already accounts for the removed item; the helper
             // expects the pre-removal index (ReorderableList.onReorder form).
             _draftOrder = DashboardSection.reorderVisible(
-                _draftOrder,
-                _draftHidden,
-                oldIndex,
-                newIndex > oldIndex ? newIndex + 1 : newIndex);
+              _draftOrder,
+              _draftHidden,
+              oldIndex,
+              newIndex > oldIndex ? newIndex + 1 : newIndex,
+            );
           }),
           proxyDecorator: (child, index, animation) => Material(
             color: Colors.transparent,
@@ -298,12 +320,11 @@ class _HomeScreenState extends State<HomeScreen> {
             large: true,
             actionLabel: 'Manage',
             actionIcon: Icons.chevron_right_rounded,
-            onAction: () => Navigator.of(context).push(
-              AppPageRoute(builder: (_) => const BudgetsScreen()),
-            ),
+            onAction: () => Navigator.of(context)
+                .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
           ),
           const _BudgetCard(),
-          const SizedBox(height: AppSpacing.xxxl),
+          const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.categories:
         final totals = <String, int>{};
@@ -311,12 +332,9 @@ class _HomeScreenState extends State<HomeScreen> {
           totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
         }
         return [
-          const SectionHeader(
-            title: 'Spending by category',
-            large: true,
-          ),
+          const SectionHeader(title: 'Spending by category', large: true),
           CategoryRail(totalsMinor: totals),
-          const SizedBox(height: AppSpacing.xxxl),
+          const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.weekly:
         return [
@@ -325,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
             key: const Key('daily-spend-card'),
             expenses: trackedExpenses,
           ),
-          const SizedBox(height: AppSpacing.xxxl),
+          const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.recent:
         return [
@@ -352,6 +370,13 @@ class _HomeScreenState extends State<HomeScreen> {
     TransactionProvider provider,
     List<TransactionModel> trackedTransactions,
   ) {
+    final historyEnabled =
+        context.watch<ThemeProvider?>()?.includeHistory ?? false;
+    // A genuinely empty ledger and a ledger with hidden older rows must not say
+    // the same thing. The former is "nothing found"; the latter is "nothing
+    // this cycle" plus a way to reveal history.
+    final ledgerEmpty = provider.trackedTransactions.isEmpty;
+
     return [
       // A ledger that failed closed must never look like a successfully loaded
       // empty ledger — this branch is what makes the two states
@@ -381,11 +406,21 @@ class _HomeScreenState extends State<HomeScreen> {
       else if (trackedTransactions.isEmpty)
         AppEmptyState(
           icon: Icons.receipt_long_rounded,
-          title: 'Nothing found',
-          message:
-              'No transactions were detected after your selected SMS start date.',
-          actionLabel: 'Sync now',
-          onAction: () => provider.syncFromSms(userInitiated: true),
+          title: historyEnabled || ledgerEmpty
+              ? 'Nothing found'
+              : 'Nothing this cycle',
+          message: historyEnabled || ledgerEmpty
+              ? 'No transactions were detected after your selected SMS start '
+                  'date.'
+              : 'No transactions in your current salary cycle. Earlier '
+                  'transactions are hidden by the Home history setting.',
+          actionLabel:
+              historyEnabled || ledgerEmpty ? 'Sync now' : 'Show history',
+          onAction: historyEnabled || ledgerEmpty
+              ? () => provider.syncFromSms(userInitiated: true)
+              : () {
+                  context.read<ThemeProvider?>()?.setIncludeHistory(true);
+                },
         )
       else
         PageEntrance(
@@ -481,9 +516,9 @@ class _HeaderSection extends StatelessWidget {
       bottom: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.page,
-          AppSpacing.md,
-          AppSpacing.page,
+          AppSpacing.homePage,
+          AppSpacing.sm,
+          AppSpacing.homePage,
           0,
         ),
         child: Column(
@@ -557,10 +592,7 @@ class _HeaderSection extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.brandBright,
-                        AppColors.lime,
-                      ],
+                      colors: [AppColors.brandBright, AppColors.lime],
                     ),
                   ),
                   child: ProfileAvatar(
@@ -586,10 +618,8 @@ class _HeaderSection extends StatelessWidget {
                   'Welcome back',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.overline(context).copyWith(
-                    fontSize: 9,
-                    letterSpacing: 1.1,
-                  ),
+                  style: AppText.overline(context)
+                      .copyWith(fontSize: 9, letterSpacing: 1.1),
                 ),
                 Text(
                   today,
@@ -598,7 +628,7 @@ class _HeaderSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             const _SyncStatusStrip(),
             _CycleSection(
               provider: provider,
@@ -643,9 +673,8 @@ class _CycleSection extends StatelessWidget {
           visible: visible,
           onToggleVisibility: onToggleVisibility,
           ledgerError: provider.hasLedgerInitError,
-          onSetBudget: () => Navigator.of(context).push(
-            AppPageRoute(builder: (_) => const BudgetsScreen()),
-          ),
+          onSetBudget: () => Navigator.of(context)
+              .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
         );
       },
     );
@@ -699,9 +728,8 @@ class _SyncStatusStrip extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: AppText.bodySmall(context).copyWith(
-                      color: AppColors.textPrimary(context),
-                    ),
+                    style: AppText.bodySmall(context)
+                        .copyWith(color: AppColors.textPrimary(context)),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -875,10 +903,8 @@ class _QuickActions extends StatelessWidget {
           icon: Icons.sync_rounded,
           // First run only: the start date is a one-time question. Once it is
           // stored, this action is a plain sync and never re-prompts.
-          onTap: () => _SyncButton._onTap(
-            context,
-            context.read<TransactionProvider>(),
-          ),
+          onTap: () =>
+              _SyncButton._onTap(context, context.read<TransactionProvider>()),
         ),
         QuickAction(
           label: 'Activity',
@@ -976,8 +1002,10 @@ class _DailySpendCardState extends State<_DailySpendCard> {
 
     final selectedIndex = _selected.clamp(0, days.length - 1);
     final selected = days[selectedIndex];
-    final maxAmount =
-        days.fold<double>(0, (m, d) => d.amount > m ? d.amount : m);
+    final maxAmount = days.fold<double>(
+      0,
+      (m, d) => d.amount > m ? d.amount : m,
+    );
     final barMax = maxAmount <= 0 ? 100.0 : maxAmount * 1.25;
     final hasSpending = maxAmount > 0;
 
@@ -1077,10 +1105,12 @@ class _DailySpendCardState extends State<_DailySpendCard> {
                                             AppColors.brandBright,
                                           ]
                                         : [
-                                            AppColors.brand
-                                                .withValues(alpha: 0.32),
-                                            AppColors.brand
-                                                .withValues(alpha: 0.10),
+                                            AppColors.brand.withValues(
+                                              alpha: 0.32,
+                                            ),
+                                            AppColors.brand.withValues(
+                                              alpha: 0.10,
+                                            ),
                                           ],
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,

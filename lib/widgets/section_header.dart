@@ -34,10 +34,7 @@ class SectionHeader extends StatelessWidget {
         (actionLabel != null || actionIcon != null) && onAction != null;
 
     return Padding(
-      padding: EdgeInsets.only(
-        top: large ? AppSpacing.sm : AppSpacing.xs,
-        bottom: large ? AppSpacing.md : AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.xs, bottom: AppSpacing.sm),
       child: Row(
         children: [
           Expanded(
@@ -56,8 +53,10 @@ class SectionHeader extends StatelessWidget {
               child: Pressable(
                 onTap: onAction,
                 child: ConstrainedBox(
-                  constraints:
-                      const BoxConstraints(minHeight: 48, minWidth: 48),
+                  constraints: const BoxConstraints(
+                    minHeight: 48,
+                    minWidth: 48,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,

@@ -139,7 +139,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6), width: 2),
+                        color: Colors.white.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
                     ),
                     child: ClipOval(
                       child: ProfileAvatar(
@@ -154,16 +156,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(auth.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.onGradient(
-                                size: 18, weight: FontWeight.w700)),
+                        Text(
+                          auth.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.onGradient(
+                            size: 18,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(auth.email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.onGradient(size: 12, opacity: 0.88)),
+                        Text(
+                          auth.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.onGradient(size: 12, opacity: 0.88),
+                        ),
                       ],
                     ),
                   ),
@@ -302,6 +310,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Salary day',
                     subtitle: 'Cycle starts on day ${period.salaryDay}',
                     onTap: () => SalaryDayPrompt.show(context),
+                  ),
+                ),
+                _divider(context),
+                Material(
+                  type: MaterialType.transparency,
+                  child: SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
+                    secondary: Icon(
+                      Icons.history_rounded,
+                      color: AppColors.azure,
+                    ),
+                    title: Text(
+                      'Include transaction history',
+                      style: AppText.bodyStrong(context),
+                    ),
+                    subtitle: Text(
+                      theme.includeHistory
+                          ? 'Home shows earlier transactions outside this cycle'
+                          : 'Home shows only the current salary cycle',
+                      style: AppText.bodySmall(context),
+                    ),
+                    value: theme.includeHistory,
+                    onChanged: theme.setIncludeHistory,
                   ),
                 ),
                 _divider(context),
@@ -524,11 +557,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     };
   }
 
-  Widget _divider(BuildContext context) => Divider(
-        height: 1,
-        indent: 60,
-        color: AppColors.border(context),
-      );
+  Widget _divider(BuildContext context) =>
+      Divider(height: 1, indent: 60, color: AppColors.border(context));
 
   Future<void> _editName(BuildContext context, AuthProvider auth) async {
     final controller = TextEditingController(text: auth.greetingName);
@@ -584,8 +614,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('Sign out', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Sign out',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -595,7 +627,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _editBudget(
-      BuildContext context, TransactionProvider provider) async {
+    BuildContext context,
+    TransactionProvider provider,
+  ) async {
     // Validated inside the dialog, against the field, so a bad entry keeps the
     // dialog open with the typed text intact.
     final savedMinor = await showAmountDialog(
@@ -614,7 +648,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportBackup(
-      BuildContext context, TransactionProvider provider) async {
+    BuildContext context,
+    TransactionProvider provider,
+  ) async {
     final includeSensitive = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -651,18 +687,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .toIso8601String()
           .replaceAll(RegExp(r'[:.]'), '-')
           .replaceAll('Z', '');
-      final file = File(path.join(
-        directory.path,
-        'spendsense-backup-$stamp.json',
-      ));
+      final file = File(
+        path.join(directory.path, 'spendsense-backup-$stamp.json'),
+      );
       await file.writeAsString(jsonStr, flush: true);
       if (!context.mounted) return;
       SoundScope.play(context, SoundEventType.actionSucceeded);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(includeSensitive
-              ? 'Sensitive backup saved in app storage.'
-              : 'Safe backup saved in app storage.'),
+          content: Text(
+            includeSensitive
+                ? 'Sensitive backup saved in app storage.'
+                : 'Safe backup saved in app storage.',
+          ),
         ),
       );
     } catch (_) {
@@ -696,9 +733,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(n == 0
-                      ? 'No skipped messages to recheck.'
-                      : 'Rechecked $n skipped messages.'),
+                  content: Text(
+                    n == 0
+                        ? 'No skipped messages to recheck.'
+                        : 'Rechecked $n skipped messages.',
+                  ),
                 ),
               );
             },
@@ -748,8 +787,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SoundScope.play(context, SoundEventType.actionSucceeded);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content:
-                          Text('Successfully imported $count transactions!')),
+                    content: Text('Successfully imported $count transactions!'),
+                  ),
                 );
               } catch (e) {
                 // A rejected backup must fail loudly, say why, and leave the
@@ -763,9 +802,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : ' The backup JSON could not be read.';
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content:
-                        Text('Import failed. Your existing transactions are '
-                            'unchanged.$reason'),
+                    content: Text(
+                      'Import failed. Your existing transactions are '
+                      'unchanged.$reason',
+                    ),
                   ),
                 );
               }
@@ -797,9 +837,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await context.read<TransactionProvider>().clearAll();
               if (!context.mounted) return;
               SoundScope.play(context, SoundEventType.actionSucceeded);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Database cleared')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Database cleared')));
             },
             child: const Text('Clear', style: TextStyle(color: Colors.white)),
           ),
@@ -826,10 +866,7 @@ class _SettingsCard extends StatelessWidget {
   final List<Widget> children;
   final int entranceIndex;
 
-  const _SettingsCard({
-    required this.children,
-    this.entranceIndex = 0,
-  });
+  const _SettingsCard({required this.children, this.entranceIndex = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -894,7 +931,9 @@ class _SettingsTile extends StatelessWidget {
         sound: null,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           child: Row(
             children: [
               Container(
@@ -911,23 +950,30 @@ class _SettingsTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.bodyStrong(context)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.bodyStrong(context),
+                    ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
-                      Text(subtitle!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.bodySmall(context)),
+                      Text(
+                        subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.bodySmall(context),
+                      ),
                     ],
                   ],
                 ),
               ),
               if (showArrow && onTap != null)
-                Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textTertiary(context), size: 20),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textTertiary(context),
+                  size: 20,
+                ),
             ],
           ),
         ),

@@ -112,7 +112,7 @@ class CycleHero extends StatelessWidget {
         // Cap the dial so it never becomes a dinner plate on a tablet; on a
         // normal phone it uses the page width.
         final ringSize =
-            width < 240 ? width : (width - 16).clamp(200.0, 252.0).toDouble();
+            width < 240 ? width : (width - 16).clamp(196.0, 228.0).toDouble();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -122,7 +122,7 @@ class CycleHero extends StatelessWidget {
               visible: visible,
               onToggleVisibility: onToggleVisibility,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             if (compact)
               _compactBody(context, tone)
             else ...[
@@ -145,19 +145,20 @@ class CycleHero extends StatelessWidget {
                       endColor: ringEnd,
                       headColor: head,
                       child: Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: ringSize * 0.1),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ringSize * 0.1,
+                        ),
                         child: _center(context),
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 10),
               _stats(context, compact: false),
             ],
             if (!_hasBudget && !ledgerError) ...[
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               Center(child: _setBudgetButton(context)),
             ],
           ],
@@ -175,18 +176,24 @@ class CycleHero extends StatelessWidget {
           'be read.';
     }
     if (!_hasBudget) {
-      return _withDelta('Spent ${Formatters.currency.format(spentMinor)} this '
-          'cycle. No budget set.');
+      return _withDelta(
+        'Spent ${Formatters.currency.format(spentMinor)} this '
+        'cycle. No budget set.',
+      );
     }
     final left = budgetMinor - spentMinor;
     if (left < 0) {
-      return _withDelta('Spent ${Formatters.currency.format(spentMinor)} this '
-          'cycle, ${Formatters.currency.format(-left)} over the '
-          '${Formatters.currency.format(budgetMinor)} budget.');
+      return _withDelta(
+        'Spent ${Formatters.currency.format(spentMinor)} this '
+        'cycle, ${Formatters.currency.format(-left)} over the '
+        '${Formatters.currency.format(budgetMinor)} budget.',
+      );
     }
-    return _withDelta('Spent ${Formatters.currency.format(spentMinor)} this '
-        'cycle of a ${Formatters.currency.format(budgetMinor)} budget. '
-        '${Formatters.currency.format(left)} left.');
+    return _withDelta(
+      'Spent ${Formatters.currency.format(spentMinor)} this '
+      'cycle of a ${Formatters.currency.format(budgetMinor)} budget. '
+      '${Formatters.currency.format(left)} left.',
+    );
   }
 
   /// Adds the cycle-over-cycle sentence to the dial's spoken label. The pill
@@ -224,10 +231,8 @@ class CycleHero extends StatelessWidget {
           'Total spent this cycle',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppText.overline(context).copyWith(
-            fontSize: 9.5,
-            letterSpacing: 1.1,
-          ),
+          style: AppText.overline(context)
+              .copyWith(fontSize: 9.5, letterSpacing: 1.1),
         ),
         const SizedBox(height: 6),
         FittedBox(
@@ -238,10 +243,7 @@ class CycleHero extends StatelessWidget {
                   format: (v) => Formatters.currency.format(v),
                   style: amount,
                 )
-              : Text(
-                  '••••••',
-                  style: amount.copyWith(letterSpacing: 1.5),
-                ),
+              : Text('••••••', style: amount.copyWith(letterSpacing: 1.5)),
         ),
         const SizedBox(height: 2),
         Text(
@@ -284,12 +286,14 @@ class CycleHero extends StatelessWidget {
           AnimatedProgressBar(
             fraction: _fraction,
             height: 9,
-            gradient: LinearGradient(colors: [
-              tone,
-              AppColors.isDark(context)
-                  ? AppColors.lime
-                  : AppColors.brandBright,
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                tone,
+                AppColors.isDark(context)
+                    ? AppColors.lime
+                    : AppColors.brandBright,
+              ],
+            ),
             trackColor: AppColors.border(context),
             semanticLabel: 'Budget used',
           ),
@@ -345,26 +349,29 @@ class CycleHero extends StatelessWidget {
         final left = budgetMinor - spentMinor;
         final days = _daysLeft;
         entries
-          ..add(_HeroStat(
-            left >= 0 || !visible ? 'Left' : 'Over',
-            visible
-                ? Formatters.currency.format(left >= 0 ? left : -left)
-                : '••••',
-          ))
-          ..add(_HeroStat(
-            'Per day',
-            visible
-                ? Formatters.currency.format(left > 0 ? left ~/ days : 0)
-                : '••••',
-          ))
+          ..add(
+            _HeroStat(
+              left >= 0 || !visible ? 'Left' : 'Over',
+              visible
+                  ? Formatters.currency.format(left >= 0 ? left : -left)
+                  : '••••',
+            ),
+          )
+          ..add(
+            _HeroStat(
+              'Per day',
+              visible
+                  ? Formatters.currency.format(left > 0 ? left ~/ days : 0)
+                  : '••••',
+            ),
+          )
           ..add(_HeroStat('Days left', '$days'));
       } else {
         entries
           ..add(_HeroStat('Activity', '$transactionCount'))
-          ..add(_HeroStat(
-            'Top category',
-            topCategory.isEmpty ? '—' : topCategory,
-          ))
+          ..add(
+            _HeroStat('Top category', topCategory.isEmpty ? '—' : topCategory),
+          )
           ..add(_HeroStat('Days left', '$_daysLeft'));
       }
     }
@@ -400,7 +407,7 @@ class CycleHero extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? AppSpacing.md : AppSpacing.sm,
-        vertical: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
@@ -426,10 +433,7 @@ class CycleHero extends StatelessWidget {
                 children: [
                   for (var i = 0; i < entries.length; i++) ...[
                     if (i > 0)
-                      Container(
-                        width: 1,
-                        color: AppColors.border(context),
-                      ),
+                      Container(width: 1, color: AppColors.border(context)),
                     Expanded(child: _StatCell(stat: entries[i])),
                   ],
                 ],
@@ -591,10 +595,7 @@ class _DeltaPill extends StatelessWidget {
   final int currentMinor;
   final int previousMinor;
 
-  const _DeltaPill({
-    required this.currentMinor,
-    required this.previousMinor,
-  });
+  const _DeltaPill({required this.currentMinor, required this.previousMinor});
 
   @override
   Widget build(BuildContext context) {

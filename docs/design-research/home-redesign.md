@@ -65,7 +65,7 @@ Observed across the App Store set (near-black `#1E1919` surfaces, coral
 
 | Reference move | SpendSense translation |
 |---|---|
-| GO Club's single hero metric | Salary-cycle spending is the one number. Ring is 252dp, amount is 40sp, budget caption and cycle delta sit inside it. |
+| GO Club's single hero metric | Salary-cycle spending is the one number. Ring is 228dp, amount is 40sp, budget caption and cycle delta sit inside it. |
 | GO Club's three-stat strip | `Left` / `Per day` / `Days left`, or `Activity` / `Top category` / `Days left` when no budget exists. |
 | GO Club's floating action dock | One glass command dock with four real actions; 2 × 2 at large text. |
 | Suno's near-black canvas | Keeps the existing AMOLED dark mode; the redesign stops tinting the hero card and lets the canvas be the stage. |
@@ -86,7 +86,7 @@ Top to bottom, in the order a new user reads it:
    icon beside it for dashboard editing. A meta row carries sync state
    ("Synced 2h ago"), "Welcome back" and the date. No eyebrow above the
    headline.
-2. **Cycle hero** — a 252dp ring on the canvas (no card behind it):
+2. **Cycle hero** — a 228dp ring on the canvas (no card behind it):
    - track: theme border, 78% of the arc width; arc: brand → brandBright,
      returning to its start colour at 100% so the seam is invisible;
    - lit head dot with a radial halo at the current position;
@@ -99,6 +99,11 @@ Top to bottom, in the order a new user reads it:
    - privacy: the eye masks the amount, the budget caption, the cycle delta and
      both money stats; only "Days left" (and, without a budget, activity and top
      category) stay legible. The spoken label becomes "Balance hidden.".
+    - history: **off by default**. Category totals and the recent feed are
+      filtered to the active cycle, so moving the cycle forward hides earlier
+      rows. Settings → Preferences → **Include transaction history** turns the
+      filter off. Nothing is deleted; Activity, export and the encrypted ledger
+      still hold every transaction.
 3. **Command dock** — Add expense (filled primary), Add income, Sync SMS,
    Activity. One surface, dividers, 44dp+ targets.
 4. **Editable sections** — Monthly budget (`BudgetSummary` preserved), Spending
@@ -115,6 +120,19 @@ amount, same caption, a linear budget bar, and the stat strip becomes rows. This
 keeps the figure legible at 2× instead of shrinking it inside a circle. The
 action dock becomes 2 × 2, the category rail's static threshold stays at two
 cards, and the recent feed rows grow naturally.
+
+### Home rhythm
+
+The OTA review asked for a tighter dashboard. Home now uses its own rhythm:
+16dp side gutters (vs 20 on pushed routes), 20dp between sections (vs 24–32),
+a 228dp dial, 10dp from dial to stat strip, a 60dp action slot and 8dp header
+breathing room. On a 390 × 844 phone the budget title now sits at ~608dp from
+the top instead of below the fold, so the first screen shows header, ring,
+stats, actions and the start of the budget card.
+
+The dock columns now stretch to their slot and centre the icon over the label;
+a layout test pins the icon/label/slot centre lines so the OTA review regression
+cannot come back.
 
 ### Motion
 
@@ -200,7 +218,7 @@ themes across all 19 screens.
 ## Verification
 
 - `flutter analyze` (project command) — no issues, including `tool/`.
-- `flutter test --no-pub` — 923 passing, 0 failing. The one previously failing
+- `flutter test --no-pub` — 960 passing, 0 failing. The one previously failing
   test (`update_config_test`, an uncaught service exception stranding `_busy`)
   exposed a real provider bug and is fixed in this change.
 - Widget coverage of this screen includes: empty ledger, ledger read failure,

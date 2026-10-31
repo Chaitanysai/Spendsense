@@ -15,6 +15,13 @@ class AppSpacing {
   /// Standard horizontal page padding for the Galaxy-S24 class width.
   static const double page = 20;
 
+  /// Home runs a tighter rhythm than the rest of the app: the dashboard is a
+  /// single scannable surface, so an extra 4dp gutter and 12dp between sections
+  /// is wasted vertical space. Pushed routes keep [page]/[xxl].
+  static const double homePage = 16;
+  static const double homeSectionGap = 20;
+  static const double homeHeaderGap = 10;
+
   /// Quick-action tiles: shared metrics so every tile is identical.
   static const double tileGap = sm;
   static const double tileMinHeight = 88;

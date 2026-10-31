@@ -33,7 +33,7 @@ class HomeActionDock extends StatelessWidget {
     final dark = AppColors.isDark(context);
 
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
         gradient: LinearGradient(
@@ -47,10 +47,7 @@ class HomeActionDock extends StatelessWidget {
                   ),
                   AppColors.surfaceColor(context),
                 ]
-              : [
-                  Colors.white,
-                  AppColors.surfaceColor(context),
-                ],
+              : [Colors.white, AppColors.surfaceColor(context)],
         ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: AppColors.border(context)),
@@ -122,42 +119,50 @@ class _DockSlot extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         sound: SoundEventType.buttonTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 68),
+          constraints: const BoxConstraints(minHeight: 60),
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.xs,
-              vertical: AppSpacing.sm,
+              vertical: 6,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
+              // Stretch makes the label fill the slot; the icon is centred
+              // inside that width. Without this the Column shrink-wrapped to
+              // the label and the whole stack sat at the slot's left edge.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: primary ? AppColors.actionGradient : null,
-                    color: primary
-                        ? null
-                        : AppColors.brand.withValues(alpha: dark ? 0.20 : 0.11),
-                    border: primary
-                        ? Border.all(
-                            color: Colors.white.withValues(alpha: 0.22),
-                          )
-                        : null,
+                Center(
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: primary ? AppColors.actionGradient : null,
+                      color: primary
+                          ? null
+                          : AppColors.brand.withValues(
+                              alpha: dark ? 0.20 : 0.11,
+                            ),
+                      border: primary
+                          ? Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            )
+                          : null,
+                    ),
+                    child: Icon(action.icon, size: 17, color: iconColor),
                   ),
-                  child: Icon(action.icon, size: 18, color: iconColor),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Text(
                   action.label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: AppText.label(context).copyWith(
-                    fontSize: 10.5,
-                    height: 1.15,
+                    fontSize: 10,
+                    height: 1.1,
                     fontWeight: primary ? FontWeight.w700 : FontWeight.w600,
                     color: primary
                         ? AppColors.textPrimary(context)

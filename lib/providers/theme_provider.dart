@@ -19,6 +19,7 @@ class ThemeProvider with ChangeNotifier {
   static const _fontScaleKey = 'font_scale';
   static const _hiddenSectionsKey = 'dashboard_hidden_sections';
   static const _sectionOrderKey = 'dashboard_section_order';
+  static const _includeHistoryKey = 'include_transaction_history';
 
   bool _isDarkMode = false;
   bool _isLoaded = false;
@@ -28,6 +29,15 @@ class ThemeProvider with ChangeNotifier {
   double _fontScale = FontScale.standard;
   Set<String> _hiddenSections = const {};
   List<String> _sectionOrder = DashboardSection.ids;
+
+  /// Whether Home may show transactions older than the active salary cycle.
+  ///
+  /// Default is off: Home is a current-cycle dashboard, so moving the cycle
+  /// forward immediately hides earlier rows and category totals. The encrypted
+  /// ledger is never touched; Activity still exposes the full history.
+  bool _includeHistory = false;
+
+  bool get includeHistory => _includeHistory;
 
   bool get isDarkMode => _isDarkMode;
   bool get isLoaded => _isLoaded;
@@ -108,6 +118,7 @@ class ThemeProvider with ChangeNotifier {
     _hiddenSections = (prefs.getStringList(_hiddenSectionsKey) ?? const [])
         .where(DashboardSection.ids.contains)
         .toSet();
+    _includeHistory = prefs.getBool(_includeHistoryKey) ?? false;
     // A malformed value (wrong type) throws from getStringList; treat it as
     // "nothing saved" rather than failing startup.
     Object? storedOrder;
@@ -202,14 +213,24 @@ class ThemeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Restores Emerald and the light appearance.
+  Future<void> setIncludeHistory(bool value) async {
+    if (_includeHistory == value) return;
+    _includeHistory = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_includeHistoryKey, value);
+    notifyListeners();
+  }
+
+  /// Restores Premium Blue and the light appearance.
   Future<void> resetToDefaults() async {
     AppColors.applyPalette(AppPalette.defaultPalette);
     _palette = AppPalette.defaultPalette;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_paletteKey);
+    await prefs.remove(_includeHistoryKey);
     await prefs.setString(_themeModeKey, ThemeMode.light.name);
     await prefs.setBool(_darkModeKey, false);
+    _includeHistory = false;
     _themeMode = ThemeMode.light;
     _isDarkMode = false;
     notifyListeners();
