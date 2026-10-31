@@ -22,6 +22,10 @@ derived from the palette's navy or plum).
 
 - **Canvases and surfaces**: light background, light surface/muted, borders,
   dark canvas, dark card, raised dark surface, dialog/sheet overlay.
+- **Tinted dark cards**: every palette's dark card and raised surface are
+  blended from its brand + accent at read time (16–24%), so even the legacy
+  AMOLED palettes never render flat black-on-black tiles. The canvas can stay
+  pure black; the cards carry the palette's glance.
 - **Brand ramp and every gradient**: primary fill, hero/balance ramp, selected
   nav chip, action gradients, ring arc, FAB, logo glow.
 - **Glass**: the premium palettes set `glass: true`, so cards are translucent

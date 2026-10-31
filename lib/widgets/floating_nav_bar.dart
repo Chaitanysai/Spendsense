@@ -94,8 +94,10 @@ class FloatingNavBar extends StatelessWidget {
                               ]
                             : dark
                                 ? [
-                                    Colors.black.withValues(alpha: 0.62),
-                                    Colors.black.withValues(alpha: 0.38),
+                                    AppColors.darkSurfaceAlt
+                                        .withValues(alpha: 0.88),
+                                    AppColors.darkSurface
+                                        .withValues(alpha: 0.78),
                                   ]
                                 : [
                                     Colors.white.withValues(alpha: 0.80),

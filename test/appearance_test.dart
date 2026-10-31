@@ -193,7 +193,14 @@ void main() {
       expect(AppColors.brandBright, AppPalette.rose.bright);
       expect(AppColors.navyDeep, AppPalette.rose.deep);
       expect(AppColors.background, AppPalette.rose.background);
-      expect(AppColors.darkSurface, AppPalette.rose.darkSurface);
+      // The rose canvas comes from the palette; the dark card is the same
+      // surface tinted toward rose rather than the neutral shipped token.
+      expect(AppColors.darkBackground, AppPalette.rose.darkBackground);
+      expect(AppColors.darkSurface, isNot(AppPalette.rose.darkSurface));
+      expect(
+        HSLColor.fromColor(AppColors.darkSurface).hue,
+        closeTo(HSLColor.fromColor(AppPalette.rose.brand).hue, 60),
+      );
       expect(AppColors.palette, same(AppPalette.rose));
     });
 
@@ -244,7 +251,15 @@ void main() {
       AppColors.applyPalette(AppPalette.rose);
       expect(AppColors.darkBackground, const Color(0xFF000000));
       expect(AppColors.brand, AppPalette.rose.brand);
-      expect(AppColors.brandInkFor(true), AppPalette.rose.bright);
+      final roseInk = AppColors.brandInkFor(true);
+      expect(
+        _contrast(roseInk, AppColors.darkSurfaceAlt),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        HSLColor.fromColor(roseInk).hue,
+        closeTo(HSLColor.fromColor(AppPalette.rose.bright).hue, 12),
+      );
 
       AppColors.applyPalette(AppPalette.royalPurple);
       expect(AppColors.darkBackground, const Color(0xFF000000));
@@ -277,18 +292,30 @@ void main() {
       expect(_contrast(primary, black), greaterThanOrEqualTo(15));
       expect(_contrast(secondary, black), greaterThanOrEqualTo(7));
       expect(_contrast(tertiary, black), greaterThanOrEqualTo(4.5));
-      for (final c in [primary, secondary, tertiary, border]) {
+      for (final c in [primary, secondary, tertiary]) {
         expect((c.r - c.g).abs() < 0.01 && (c.g - c.b).abs() < 0.01, isTrue,
             reason: '$c must be neutral');
       }
-      // Glass fill is the near-black surface, not a white or accent wash.
-      expect(fill.computeLuminance(), lessThan(0.02));
+      // The card is a dark surface with the palette tint, not a white wash.
+      expect(fill.computeLuminance(), lessThan(0.12));
+      expect(HSLColor.fromColor(border).saturation, greaterThan(0.08));
     });
 
-    test('glass fill and border stay neutral in dark mode', () {
-      // Glass tokens read the theme, so check the source tokens they use.
-      expect(AppColors.darkSurface, AppPalette.amoledSurface);
-      expect(AppColors.borderDark, AppPalette.amoledBorder);
+    test('dark cards carry the active palette tint, never flat black', () {
+      for (final p in AppPalette.all) {
+        AppColors.applyPalette(p);
+        final surface = HSLColor.fromColor(AppColors.darkSurface);
+        final raised = HSLColor.fromColor(AppColors.darkSurfaceAlt);
+        expect(surface.saturation, greaterThan(0.08), reason: p.label);
+        expect(raised.saturation, greaterThan(0.10), reason: p.label);
+        expect(AppColors.darkSurface.computeLuminance(), lessThan(0.20));
+        expect(AppColors.darkSurfaceAlt.computeLuminance(), lessThan(0.25));
+        expect(
+          HSLColor.fromColor(AppColors.borderDark).saturation,
+          greaterThan(0.10),
+          reason: p.label,
+        );
+      }
     });
   });
 

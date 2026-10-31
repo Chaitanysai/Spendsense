@@ -17,6 +17,10 @@ Reference screens and pattern notes for the SpendSense home redesign.
   light and dark.
 - [launch-screen.png](./launch-screen.png): the release launch moment.
   Regenerate with `flutter test --no-pub tool/launch_preview_test.dart`.
+- [app-icon.md](./app-icon.md): the new launcher mark, its adaptive assets and
+  the deterministic generator in `tool/generate_app_icon.py`.
+- [app-icon-preview.png](./app-icon-preview.png): the master mark at 512 px plus
+  launcher-size previews.
 
 Appllama skills used: `appllama-usage` and `appllama-app-design-skill` from
 <https://github.com/Appllama/appllama-skills>. The Appllama MCP

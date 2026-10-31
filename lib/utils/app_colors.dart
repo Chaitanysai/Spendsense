@@ -43,9 +43,16 @@ class AppColors {
     borderLight = next.borderLight;
 
     darkBackground = next.darkBackground;
-    darkSurface = next.darkSurface;
-    darkSurfaceAlt = next.darkSurfaceAlt;
-    borderDark = next.borderDark;
+    // Cards carry the palette's glance instead of sitting black-on-black. The
+    // legacy AMOLED palettes ship neutral card tokens, so they are tinted here;
+    // the premium palettes are already tinted and simply gain a little more
+    // separation. The canvas itself stays as the palette defines it.
+    darkSurface = _tintDarkSurface(next, next.darkSurface, raised: false);
+    darkSurfaceAlt = _tintDarkSurface(next, next.darkSurfaceAlt, raised: true);
+    borderDark = Color.alphaBlend(
+      next.brand.withValues(alpha: 0.32),
+      next.borderDark,
+    );
 
     brandGradient = next.brandGradient;
     heroGradient = next.heroGradient;
@@ -66,6 +73,26 @@ class AppColors {
     final limeAccent = next.limeAccent;
     _limeInk =
         _contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black);
+  }
+
+  /// A dark card tinted with the palette's own brand and accent. The raised
+  /// surface gets more tint so a card is distinguishable from the canvas even
+  /// on a pure-black AMOLED background.
+  static Color _tintDarkSurface(
+    AppPalette palette,
+    Color base, {
+    required bool raised,
+  }) {
+    final brandAmount = raised ? 0.24 : 0.16;
+    final accentAmount = raised ? 0.07 : 0.05;
+    final branded = Color.alphaBlend(
+      palette.brand.withValues(alpha: brandAmount),
+      base,
+    );
+    return Color.alphaBlend(
+      palette.accent.withValues(alpha: accentAmount),
+      branded,
+    );
   }
 
   static Color _limeInk = AppPalette.emerald.deep;

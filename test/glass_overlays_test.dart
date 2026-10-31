@@ -260,10 +260,12 @@ void main() {
       });
     }
 
-    test('palettes already above 4.5:1 keep their bright stop unchanged', () {
+    test('bright ink stays raw when it clears the tinted dialog surface', () {
       for (final palette in AppPalette.all) {
         AppColors.applyPalette(palette);
-        if (contrast(palette.bright, palette.darkSurfaceAlt) >= 4.5) {
+        // The dialog surface is the palette-tinted card, not the neutral
+        // source token.
+        if (contrast(palette.bright, AppColors.darkSurfaceAlt) >= 4.5) {
           expect(AppColors.brandInkFor(true), palette.bright,
               reason: palette.label);
         }

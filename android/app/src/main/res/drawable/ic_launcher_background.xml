@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive launcher background: the SpendSense brand ramp
-     (brand -> brandBright -> navyDeep), matching AppColors.brandGradient. -->
+<!-- Adaptive launcher background: the Premium Blue launch canvas
+     (#021024 -> #052659 -> #0A3468), matching the icon artwork. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <gradient
         android:angle="315"
-        android:startColor="#1B44C8"
-        android:centerColor="#2F6BFF"
-        android:endColor="#071638"
+        android:startColor="#021024"
+        android:centerColor="#052659"
+        android:endColor="#0A3468"
         android:type="linear" />
 </shape>
