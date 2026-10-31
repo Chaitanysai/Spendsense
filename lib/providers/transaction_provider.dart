@@ -160,7 +160,9 @@ class TransactionProvider with ChangeNotifier {
   final SmsService? _smsServiceOverride;
 
   /// Completes when the initial cache/budget load has finished.
-  @visibleForTesting
+  ///
+  /// The release launch gate awaits this before showing Home, so the first
+  /// frame is the saved ledger rather than an empty ₹0 shell.
   Future<void> get ready => _initialization;
 
   /// Test seam: injects failures into the ledger's persisted writes. Debug

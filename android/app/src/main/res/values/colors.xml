@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Premium Blue canvas: the same colour the Flutter launch screen paints,
+         so the hand-off from the native window has no white flash. -->
+    <color name="launch_background">#021024</color>
+</resources>

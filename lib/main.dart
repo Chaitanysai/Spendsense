@@ -18,6 +18,7 @@ import 'services/sound_service.dart';
 
 import 'screens/auth/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/launch_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/add_transaction_screen.dart';
@@ -148,7 +149,9 @@ class SpendSenseApp extends StatelessWidget {
           // popped back to. Without this observer the page state survives but
           // has no way to know it is visible again.
           navigatorObservers: [PageEntryRouteObserver.instance],
-          home: const AuthGate(),
+          // Release-only branded hold until the local ledger is readable, so
+          // the first paint of Home is the saved balance — never ₹0.
+          home: const AppLaunchGate(child: AuthGate()),
         );
       },
     );

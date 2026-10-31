@@ -25,7 +25,10 @@ TransactionModel _tx(String id, int rupees, String merchant, DateTime date) =>
       isExcluded: false,
     );
 
-Future<ThemeProvider> _pumpHome(WidgetTester tester) async {
+Future<ThemeProvider> _pumpHome(
+  WidgetTester tester, {
+  bool includeHistory = false,
+}) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -33,6 +36,7 @@ Future<ThemeProvider> _pumpHome(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({
     'sms_scan_start_date': DateTime(2026, 9, 1).toIso8601String(),
     'name': 'Asha',
+    'include_transaction_history': includeHistory,
   });
 
   final transactions = TransactionProvider();
@@ -80,8 +84,17 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  testWidgets('history is off by default and hides earlier cycles',
+  testWidgets('history on shows the saved ledger, including earlier cycles',
       (tester) async {
+    final theme = await _pumpHome(tester, includeHistory: true);
+    expect(theme.includeHistory, isTrue);
+
+    await _showRecent(tester);
+    expect(find.text('Current Cafe'), findsOneWidget);
+    expect(find.text('Old Bazaar'), findsOneWidget);
+  });
+
+  testWidgets('history off hides earlier cycles', (tester) async {
     final theme = await _pumpHome(tester);
     expect(theme.includeHistory, isFalse);
 
@@ -111,10 +124,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final theme = ThemeProvider();
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    await theme.setIncludeHistory(true);
+    await theme.setIncludeHistory(false);
 
     final restored = ThemeProvider();
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(restored.includeHistory, isTrue);
+    expect(restored.includeHistory, isFalse);
   });
 }

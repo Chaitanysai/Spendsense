@@ -32,10 +32,11 @@ class ThemeProvider with ChangeNotifier {
 
   /// Whether Home may show transactions older than the active salary cycle.
   ///
-  /// Default is off: Home is a current-cycle dashboard, so moving the cycle
-  /// forward immediately hides earlier rows and category totals. The encrypted
-  /// ledger is never touched; Activity still exposes the full history.
-  bool _includeHistory = false;
+  /// Default is on so a cold start always shows the saved ledger; turning it
+  /// off makes Home a strict current-cycle dashboard and hides earlier rows
+  /// and category totals without touching the encrypted ledger. Activity still
+  /// exposes the full history.
+  bool _includeHistory = true;
 
   bool get includeHistory => _includeHistory;
 
@@ -118,7 +119,7 @@ class ThemeProvider with ChangeNotifier {
     _hiddenSections = (prefs.getStringList(_hiddenSectionsKey) ?? const [])
         .where(DashboardSection.ids.contains)
         .toSet();
-    _includeHistory = prefs.getBool(_includeHistoryKey) ?? false;
+    _includeHistory = prefs.getBool(_includeHistoryKey) ?? true;
     // A malformed value (wrong type) throws from getStringList; treat it as
     // "nothing saved" rather than failing startup.
     Object? storedOrder;
@@ -230,7 +231,7 @@ class ThemeProvider with ChangeNotifier {
     await prefs.remove(_includeHistoryKey);
     await prefs.setString(_themeModeKey, ThemeMode.light.name);
     await prefs.setBool(_darkModeKey, false);
-    _includeHistory = false;
+    _includeHistory = true;
     _themeMode = ThemeMode.light;
     _isDarkMode = false;
     notifyListeners();

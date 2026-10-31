@@ -2,7 +2,7 @@
 
 Status: implemented on this branch, verified with `dart analyze` and the Flutter
 widget suite. Preview renders: [home-dark.png](./home-dark.png) ·
-[home-light.png](./home-light.png).
+[home-light.png](./home-light.png) · [launch-screen.png](./launch-screen.png).
 
 ## Brief and method
 
@@ -99,11 +99,12 @@ Top to bottom, in the order a new user reads it:
    - privacy: the eye masks the amount, the budget caption, the cycle delta and
      both money stats; only "Days left" (and, without a budget, activity and top
      category) stay legible. The spoken label becomes "Balance hidden.".
-    - history: **off by default**. Category totals and the recent feed are
-      filtered to the active cycle, so moving the cycle forward hides earlier
-      rows. Settings → Preferences → **Include transaction history** turns the
-      filter off. Nothing is deleted; Activity, export and the encrypted ledger
-      still hold every transaction.
+    - history: **on by default**, so a cold launch always shows the saved
+      ledger instead of ₹0. Turning Settings → Preferences → **Include
+      transaction history** off filters category totals and the recent feed to
+      the active cycle; moving the cycle forward then hides earlier rows.
+      Nothing is deleted; Activity, export and the encrypted ledger still hold
+      every transaction.
 3. **Command dock** — Add expense (filled primary), Add income, Sync SMS,
    Activity. One surface, dividers, 44dp+ targets.
 4. **Editable sections** — Monthly budget (`BudgetSummary` preserved), Spending
@@ -134,6 +135,17 @@ The dock columns now stretch to their slot and centre the icon over the label;
 a layout test pins the icon/label/slot centre lines so the OTA review regression
 cannot come back.
 
+### Launch screen
+
+Release builds no longer open on a half-built Home. The Android window is
+painted Premium Blue (`#021024`) from the native launch theme, then a Flutter
+launch screen draws the app mark inside a slowly rotating brand ring, with the
+wordmark and "SMART MONEY COPILOT". It holds for at least **1.4s** and until
+`TransactionProvider.ready` resolves (8s fail-safe), then cross-fades into the
+app. That guarantees the first Home frame reads the encrypted ledger rather than
+showing ₹0. Debug widget tests bypass the gate, so they still test their screen
+directly; the screen and the bypass have their own tests.
+
 ### Motion
 
 - Ring fills once from zero on first build (900ms, `emphasized`), then tracks
@@ -162,7 +174,9 @@ cannot come back.
 | `lib/widgets/category_rail.dart` | Static row for ≤2 categories, peeking rail for 3+, empty state. |
 | `lib/widgets/section_header.dart` | Added `large` variant used only by Home. |
 | `lib/widgets/transaction_tile.dart` | Added `flat` variant for the grouped recent feed. |
-| `lib/screens/home_screen.dart` | Greeting, hero wiring, dock, sections, grouped feed, edit mode. |
+| `lib/screens/home_screen.dart` | Greeting, hero wiring, dock, sections, grouped feed, edit mode, history filter. |
+| `lib/screens/launch_screen.dart` | Release launch gate + animated brand screen; waits for the ledger, 1.4s minimum. |
+| `android/.../res/values*/styles.xml`, `launch_background.xml` | Premium Blue native window so there is no white flash before Flutter. |
 | `tool/home_preview_test.dart` | Deterministic 390 × 844 dark/light preview renderer. |
 | `tool/preview_app.dart` | On-device whole-app preview entry point with an in-memory demo ledger; separate app id. |
 
@@ -218,7 +232,7 @@ themes across all 19 screens.
 ## Verification
 
 - `flutter analyze` (project command) — no issues, including `tool/`.
-- `flutter test --no-pub` — 960 passing, 0 failing. The one previously failing
+- `flutter test --no-pub` — 964 passing, 0 failing. The one previously failing
   test (`update_config_test`, an uncaught service exception stranding `_busy`)
   exposed a real provider bug and is fixed in this change.
 - Widget coverage of this screen includes: empty ledger, ledger read failure,

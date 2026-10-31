@@ -15,6 +15,8 @@ Reference screens and pattern notes for the SpendSense home redesign.
   token mapping, invariants, and the 19-screen × 4-palette × 2-theme sweep.
 - `palette-gallery/`: contact sheets of every screen in every premium palette,
   light and dark.
+- [launch-screen.png](./launch-screen.png): the release launch moment.
+  Regenerate with `flutter test --no-pub tool/launch_preview_test.dart`.
 
 Appllama skills used: `appllama-usage` and `appllama-app-design-skill` from
 <https://github.com/Appllama/appllama-skills>. The Appllama MCP
