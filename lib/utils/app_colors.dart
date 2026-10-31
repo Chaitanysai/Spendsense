@@ -71,8 +71,10 @@ class AppColors {
     // through blush to ice blue. The ink has to follow the palette's deep stop
     // instead of staying green, or the cycle pill clashes with the world.
     final limeAccent = next.limeAccent;
-    _limeInk =
-        _contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black);
+    // A palette may pin its highlight ink (saturated highlights need white);
+    // otherwise keep the contrast-aware deep-stop choice.
+    _limeInk = next.onLimeInk ??
+        (_contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black));
   }
 
   /// A dark card tinted with the palette's own brand and accent. The raised

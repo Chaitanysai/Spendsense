@@ -32,9 +32,9 @@ void main() {
   tearDown(() => AppTypography.debugSkipFontLoading = false);
 
   group('font presets', () {
-    test('four presets, unique ids, all open-licensed', () {
-      expect(FontPreset.all, hasLength(4));
-      expect({for (final p in FontPreset.all) p.id}, hasLength(4));
+    test('five presets, unique ids, all open-licensed', () {
+      expect(FontPreset.all, hasLength(5));
+      expect({for (final p in FontPreset.all) p.id}, hasLength(5));
       for (final p in FontPreset.all) {
         expect(p.licence, contains('Open Font License'));
         expect(p.label, isNotEmpty);

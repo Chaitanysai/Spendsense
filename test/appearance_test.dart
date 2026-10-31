@@ -22,12 +22,13 @@ void main() {
 
   group('AppPalette', () {
     test('ships the 2026 premium set first and keeps the legacy palettes', () {
-      expect(AppPalette.all, hasLength(12));
+      expect(AppPalette.all, hasLength(13));
       expect(AppPalette.all.first, same(AppPalette.premiumBlue));
       expect(
         AppPalette.all.map((p) => p.label),
         containsAll([
           'Premium Blue',
+        'Paper',
           'Deep Navy',
           'Soft Pastel Teal',
           'Plum & Blush',
@@ -356,6 +357,18 @@ void main() {
         );
         expect(contrast, greaterThanOrEqualTo(4.5), reason: p.label);
       }
+    });
+
+    // Paper's highlight is a saturated ultramarine, not a pastel: the default
+    // "deep stop, else black" rule gave 2.7:1 there. This pins the explicit
+    // white override so the bug cannot come back silently.
+    test('Paper uses white ink on its saturated highlight', () {
+      AppColors.applyPalette(AppPalette.paper);
+      expect(AppColors.onLimeInk, Colors.white);
+      expect(
+        _contrast(AppColors.onLimeInk, AppPalette.paper.limeAccent),
+        greaterThanOrEqualTo(4.5),
+      );
     });
 
     test('neutral text tiers keep AA on every light surface', () {

@@ -164,6 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ).map(
                             (widget) => PageEntrance(
                               index: sectionIndex + 1,
+                              // Paper settles in with a slight scale as well as
+                              // the rise; the entrance itself is shared.
+                              fromScale: 0.985,
                               child: widget,
                             ),
                           ),

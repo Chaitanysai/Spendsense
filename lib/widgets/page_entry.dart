@@ -181,6 +181,11 @@ class PageEntrance extends StatefulWidget {
   /// Explicit delay override. Takes precedence over [index].
   final Duration? delay;
 
+  /// Optional settle-in scale for the Paper look: the child grows from
+  /// [fromScale] to 1 as it rises. Null keeps the original fade+slide only, so
+  /// every existing caller is unchanged.
+  final double? fromScale;
+
   const PageEntrance({
     super.key,
     required this.child,
@@ -189,6 +194,7 @@ class PageEntrance extends StatefulWidget {
     this.curve = AppMotion.emphasized,
     this.index,
     this.delay,
+    this.fromScale,
   });
 
   @override
@@ -291,6 +297,14 @@ class _PageEntranceState extends State<PageEntrance>
     // the app (and keeping the settled page on the cheap direct-paint path).
     if (_reduced) return widget.child;
 
+    final scale = widget.fromScale;
+    final child = scale == null
+        ? widget.child
+        : ScaleTransition(
+            scale: Tween<double>(begin: scale, end: 1).animate(_curved),
+            child: widget.child,
+          );
+
     return FadeTransition(
       opacity: _curved,
       child: SlideTransition(
@@ -298,7 +312,7 @@ class _PageEntranceState extends State<PageEntrance>
           begin: Offset(0, widget.offset),
           end: Offset.zero,
         ).animate(_curved),
-        child: widget.child,
+        child: child,
       ),
     );
   }
