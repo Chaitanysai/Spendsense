@@ -165,7 +165,11 @@ class CacheService {
 
   Future<void> clearTransactions() async {
     final prefs = await SharedPreferences.getInstance();
+    // Remove the current format and the migration marker too; clearing only
+    // the legacy key left the v2 cache and its unit marker behind.
     await prefs.remove(_txKey);
+    await prefs.remove(_txKeyV2);
+    await prefs.remove(_legacyUnitKey);
   }
 
   // ─── PARSED SMS ID TRACKING ───────────────────────────────────────────────

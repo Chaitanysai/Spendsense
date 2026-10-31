@@ -102,9 +102,12 @@ void main() {
     expect(provider.transactions, isEmpty);
     expect(provider.isLoadingCache, isFalse);
 
-    // Mutations are no-ops while the ledger is unavailable: nothing can be
-    // half-written into a store that failed to open.
-    await provider.addTransaction(_tx('blocked'));
+    // A save into an unavailable ledger must fail loudly. Returning normally
+    // made the Add form announce "Expense added" and then discard the entry.
+    await expectLater(
+      provider.addTransaction(_tx('blocked')),
+      throwsA(isA<LedgerUnavailableException>()),
+    );
     expect(provider.transactions, isEmpty);
     await provider.syncFromSms();
     expect(provider.hasLedgerInitError, isTrue);

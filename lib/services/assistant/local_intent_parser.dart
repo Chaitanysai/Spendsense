@@ -31,12 +31,14 @@ class MerchantTransactionsIntent extends LocalIntent {
 
 class ExcludeBrandsIntent extends LocalIntent {
   final List<MerchantBrand> brands;
-  const ExcludeBrandsIntent(this.brands);
+  final AssistantDateWindow? window;
+  const ExcludeBrandsIntent(this.brands, {this.window});
 }
 
 class DeleteBrandsIntent extends LocalIntent {
   final List<MerchantBrand> brands;
-  const DeleteBrandsIntent(this.brands);
+  final AssistantDateWindow? window;
+  const DeleteBrandsIntent(this.brands, {this.window});
 }
 
 class AmbiguousBrandRemovalIntent extends LocalIntent {
@@ -156,9 +158,9 @@ class LocalIntentParser {
         'reports',
         'spend',
       ]);
-      if (asksDelete) return DeleteBrandsIntent(brands);
+      if (asksDelete) return DeleteBrandsIntent(brands, window: window);
       if (asksExclude || (removal && spendingScope)) {
-        return ExcludeBrandsIntent(brands);
+        return ExcludeBrandsIntent(brands, window: window);
       }
       if (removal) return AmbiguousBrandRemovalIntent(brands);
       if (hasAny(const [

@@ -108,20 +108,20 @@ void main() {
       );
     }
 
-    test('invalid base64 key value fails closed and preserves records', () {
-      expectKeyFailurePreservesRecords(
+    test('invalid base64 key value fails closed and preserves records', () async {
+      await expectKeyFailurePreservesRecords(
         _FakeKeyStore(value: 'not-valid-base64!!!'),
       );
     });
 
-    test('wrong-length key fails closed and preserves records', () {
-      expectKeyFailurePreservesRecords(
+    test('wrong-length key fails closed and preserves records', () async {
+      await expectKeyFailurePreservesRecords(
         _FakeKeyStore(value: base64UrlEncode(List<int>.filled(31, 0x55))),
       );
     });
 
-    test('empty key value fails closed and preserves records', () {
-      expectKeyFailurePreservesRecords(_FakeKeyStore(value: ''));
+    test('empty key value fails closed and preserves records', () async {
+      await expectKeyFailurePreservesRecords(_FakeKeyStore(value: ''));
     });
 
     test('createKeyIfMissing does not overwrite an existing key', () async {

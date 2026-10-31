@@ -166,8 +166,9 @@ prompt injection, consent/offline/rate/model errors, and 2x-text layout.
    path. Firebase ID-token auth is additive and does not remove App Check.
 3. Rate limits are per function instance; horizontal scaling needs a shared
    limiter (Firestore/Redis) for a true global cap.
-4. No per-user quota is applied yet; the verified UID is available for that
-   future control.
+4. Per-UID and global daily quotas are enforced, but they are per function
+   instance, not shared across instances. Use a shared store for a hard
+   cross-instance cap.
 5. Gemini streaming is not used; responses arrive after the tool loop and are
    rendered with loading/typing states.
 6. Month comparisons use calendar months (the dashboard uses salary cycles);

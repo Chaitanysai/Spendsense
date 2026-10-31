@@ -341,7 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SectionHeader(title: 'Last 7 days', large: true),
           _DailySpendCard(
             key: const Key('daily-spend-card'),
-            expenses: trackedExpenses,
+            // The header says "Last 7 days", so pass the unfiltered history —
+            // the cycle-filtered list would drop older days from the chart.
+            expenses: provider.trackedExpenses.toList(growable: false),
           ),
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];

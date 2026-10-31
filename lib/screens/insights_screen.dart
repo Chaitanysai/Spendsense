@@ -83,7 +83,7 @@ class InsightsScreen extends StatelessWidget {
                         // misleading "0.0% up".
                         value: metrics.hasPreviousMonth
                             ? '${metrics.percentChange.toStringAsFixed(1)}%'
-                            : 'â€”',
+                            : '—',
                         subtitle: !metrics.hasPreviousMonth
                             ? 'No prior month data'
                             : metrics.percentChange > 0
