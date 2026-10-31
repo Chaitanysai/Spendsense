@@ -17,6 +17,13 @@ on:
   push:
     branches:
       - 'release/**'
+  # Also run on pull requests targeting a release branch. Without this the
+  # required `security`/`build`/`ci-guard` contexts could only ever be reported
+  # after a merge, so the first PR that introduces them could never satisfy its
+  # own branch protection (a bootstrap deadlock).
+  pull_request:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 permissions:
