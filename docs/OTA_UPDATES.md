@@ -1,9 +1,17 @@
 # SpendSense OTA updates
 
-Status: **implemented locally, not deployed.** The app, manifest validation,
-download verification, native installer bridge, tests, CI artifact generation,
-and hosting configuration are in place. Publishing requires a hosting project
-and explicit authorization; see [Remaining manual steps](#15-remaining-manual-steps).
+Status: **deployed.** Live manifest:
+<https://spendsense-ota-2026.web.app/manifest.json> (2.0.12+33, published
+2026-10-31). The app, manifest validation, download verification, native
+installer bridge, tests, CI artifact generation, and Firebase Hosting are in
+place. Publishing is the `OTA Publish` workflow with `confirm=deploy`.
+
+**Bootstrap caveat:** builds older than the OTA client (the installed 2.0.4+25
+at the time of writing) have no compiled manifest URL, so they cannot discover
+an OTA. Install the first OTA-enabled release once over them with
+`adb install -r`; the signing certificate is unchanged, so Android preserves
+the app's data. Every later build can then update through Settings → Software
+update.
 
 SpendSense does not use Shorebird, Firebase Remote Config, Firestore, or any
 Firebase SDK. Updates are a static HTTPS manifest plus a signed APK, verified
