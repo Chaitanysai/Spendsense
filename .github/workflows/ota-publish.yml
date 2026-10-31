@@ -178,13 +178,23 @@ jobs:
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          GMAIL_SERVER_CLIENT_ID: ${{ vars.GMAIL_SERVER_CLIENT_ID }}
         run: |
           if [ -z "${OTA_BASE_URL:-}" ]; then
             echo "::error::OTA_BASE_URL repository variable is not set"
             exit 1
           fi
+          # Gmail OAuth is optional: an empty client ID leaves email import
+          # disabled at runtime rather than failing the release.
+          DEFINES=()
+          if [ -n "${GMAIL_SERVER_CLIENT_ID:-}" ]; then
+            DEFINES+=(--dart-define=GMAIL_SERVER_CLIENT_ID="$GMAIL_SERVER_CLIENT_ID")
+          fi
+          # Unquoted expansion is deliberate: with an empty array this passes
+          # no extra argument (a quoted "${DEFINES[@]}" would pass one empty).
           flutter build apk --release \
-            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
+            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json" \
+            ${DEFINES[@]+"${DEFINES[@]}"}
 
       - name: Verify the built APK is signed with the pinned certificate
         # Checking the keystore proves the pin matches the key we hold. It says

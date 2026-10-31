@@ -17,6 +17,9 @@ that screen before enabling it.
   classifies debits and credits, and extracts amount, merchant, bank and
   category. Messages stay on the device unless cloud SMS parsing is explicitly
   enabled as described above.
+- **Email import (Gmail)** — opt-in, on-device reading of bank alert emails
+  with read-only Gmail access, for banks that alert by email instead of SMS.
+  See [docs/email-import.md](docs/email-import.md).
 - **Manual entries** — add income or expense records without SMS.
 - **Encrypted ledger** — records are stored in an on-device encrypted store
   protected with AES-256-GCM; the key lives in platform secure storage.
