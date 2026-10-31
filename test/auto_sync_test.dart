@@ -147,16 +147,25 @@ void main() {
     });
 
     test('a ledger that failed to load is never scanned into', () async {
-      // A provider whose cache cannot initialise must not run a scan: there is
-      // no safe place to write the results.
+      // Seed a tampered index so cache init fails closed, then prove the guard
+      // actually stops the scan. The previous version asserted a *healthy*
+      // provider, so it never reached the failure branch.
+      SharedPreferences.setMockInitialValues({
+        'tx_cache_ids_v2': 'not-a-valid-encrypted-index',
+      });
+      var fetches = 0;
       final provider = TransactionProvider(
-        resyncFetcher: () async => [_sms('sms-1')],
+        resyncFetcher: () async {
+          fetches += 1;
+          return [_sms('sms-1')];
+        },
       );
       await provider.ready;
-      // Healthy providers are the control; the guard itself is the
-      // `_ledgerInitError != null` early return, exercised by the
-      // no-start-date case above sharing the same gate.
-      expect(provider.hasLedgerInitError, isFalse);
+      expect(provider.hasLedgerInitError, isTrue);
+
+      final scanned = await provider.ensureAutoSync();
+      expect(scanned, isFalse);
+      expect(fetches, 0, reason: 'a failed ledger must not be scanned into');
       provider.dispose();
     });
   });

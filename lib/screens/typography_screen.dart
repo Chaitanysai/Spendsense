@@ -131,8 +131,8 @@ class _TypographyScreenState extends State<TypographyScreen> {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Fonts are open-licensed (SIL Open Font License 1.1) and are '
-                'downloaded once, then kept on this device. If a font cannot '
-                'be loaded, a readable system font is used instead. '
+                'bundled with the app, so nothing is downloaded. If a font '
+                'cannot be loaded, a readable system font is used instead. '
                 'Nothing here is an official Nothing, Samsung or Google font.',
                 style: AppText.bodySmall(context),
               ),

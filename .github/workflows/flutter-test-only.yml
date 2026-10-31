@@ -7,14 +7,12 @@ on:
   pull_request:
     paths:
       - '.github/workflows/flutter-test-only.yml'
-      - 'lib/main.dart'
-      - 'lib/services/app_check/**'
-      - 'lib/services/assistant/assistant_auth.dart'
-      - 'test/app_check/**'
+      # Whole-app source validation: providers, screens, widgets, models and
+      # utils change spending behaviour just as much as services do.
+      - 'lib/**'
+      - 'test/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
-      - 'lib/services/**'
-      - 'test/**'
   workflow_dispatch:
 
 # Least privilege: the job reads the repository and nothing else. No secrets

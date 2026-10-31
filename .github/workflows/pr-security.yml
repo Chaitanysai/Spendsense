@@ -1,0 +1,152 @@
+name: Pull Request Security Scan
+
+# Satisfies the required `security` context on pull requests without reusing
+# android-release.yml. That workflow's `build` job can reach release-signing
+# secrets and upload an APK, so it must never run against untrusted PR code.
+# This runs the same rules with no secrets, no artifacts, and read-only access.
+#
+# The job id is `security-scan` and the check name is `security`: branch
+# protection matches the reported check name, not the job id.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/pr-security.yml'
+      - '.github/workflows/**'
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-scan:
+    name: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      # Repository-wide, not per-job: semgrep-core was OOM-killed (exit -11)
+      # scanning with default parallelism on a 4 GB runner.
+      SEMGREP_SEND_METRICS: 'off'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Record checked-out commit
+        run: |
+          {
+            echo "### Security scan commit"
+            echo '```'
+            echo "event:      ${GITHUB_SHA}"
+            echo "git HEAD:   $(git rev-parse HEAD)"
+            echo "ref:        ${GITHUB_REF}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          # Pinned, not '3.x': the release gate last ran on Python 3.12.15 and
+          # succeeded. '3.x' now resolves to 3.15.1, where semgrep-core
+          # segfaults (exit -11) immediately. Pinning keeps this check stable
+          # instead of tracking a runtime semgrep does not support yet.
+          python-version: '3.12'
+
+      - name: Install Semgrep
+        # Same version android-release.yml pins for reproducible results.
+        run: |
+          python -m pip install --upgrade 'semgrep==1.181.0'
+
+      - name: Semgrep - secrets
+        # Secret detection is pure regex, so it is cheap to run separately and
+        # cannot be masked by a memory failure in the analysis pass below.
+        # -o writes machine-readable JSON, which is what proves coverage; the
+        # human-readable output is kept for the log.
+        #
+        # pipefail is set explicitly: the default runner shell is `bash -e {0}`,
+        # and with a pipe into tee the step would otherwise report tee's status
+        # (0) even when semgrep exits 1 (findings) or 2 (crash).
+        shell: bash
+        run: |
+          set -o pipefail
+          semgrep \
+            --config p/secrets \
+            --metrics=off \
+            --error \
+            --jobs 1 \
+            --json \
+            --output semgrep-secrets.json \
+            lib android .github 2>&1 | tee semgrep-secrets.log
+
+      - name: Verify every workflow file was actually scanned
+        # A passing scan proves nothing if the files were never analysed. The
+        # JSON result lists the paths Semgrep evaluated, so assert against that
+        # list instead of inferring coverage from a file count.
+        run: |
+          node -e '
+            const fs = require("fs");
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync("semgrep-secrets.json", "utf8"));
+            } catch (e) {
+              // A missing or truncated report means the scan did not complete.
+              console.error(`::error::semgrep-secrets.json is missing or unparseable (${e.message}); the scan did not produce a result`);
+              process.exit(1);
+            }
+            if (!report.paths || !Array.isArray(report.paths.scanned)) {
+              // Fail closed: without the scanned list, coverage cannot be proven.
+              console.error("::error::semgrep report has no paths.scanned array; refusing to claim coverage");
+              process.exit(1);
+            }
+            const scanned = new Set((report.paths.scanned ?? []).map((p) => p.replace(/^\.\//, "")));
+            const skipped = (report.paths?.skipped ?? []).map((p) => (p.path ?? p).replace(/^\.\//, ""));
+            const targets = fs
+              .readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f)).map((f) => `.github/workflows/${f}`)
+              .concat(
+                fs.existsSync(".github/actions")
+                  ? fs.readdirSync(".github/actions").flatMap((d) =>
+                      fs.readdirSync(`.github/actions/${d}`).filter((f) => /\.ya?ml$/.test(f))
+                        .map((f) => `.github/actions/${d}/${f}`))
+                  : []
+              );
+
+            console.log(`Semgrep scanned ${scanned.size} path(s); asserting ${targets.length} workflow/action file(s):`);
+            let missing = 0;
+            for (const t of targets) {
+              const ok = scanned.has(t);
+              console.log(`  ${ok ? "scanned" : "MISSING"}  ${t}`);
+              if (!ok) missing++;
+            }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              `### Workflow files scanned by Semgrep\n\n${targets.map((t) => `- ${scanned.has(t) ? "ok" : "MISSING"} \`${t}\``).join("\n")}\n`);
+
+            if (missing > 0) {
+              console.error(`::error::${missing} workflow file(s) were not analysed by Semgrep: ${skipped.join(", ") || "not reported"}`);
+              process.exit(1);
+            }
+            console.log("OK: every workflow and action file under .github was analysed");
+          '
+
+      - name: Semgrep - security audit
+        # Same rule set as the release gate, bounded so the 4 GB runner cannot
+        # OOM-kill semgrep-core. A crash fails the check rather than passing it.
+        run: |
+          semgrep \
+            --config p/security-audit \
+            --metrics=off \
+            --error \
+            --jobs 1 \
+            --timeout 300 \
+            lib android .github

@@ -80,6 +80,16 @@ class _FakeTransport implements ManifestTransport {
   Future<String> get(Uri uri, {required Duration timeout}) => _body();
 }
 
+class _RecordingTransport implements ManifestTransport {
+  int calls = 0;
+
+  @override
+  Future<String> get(Uri uri, {required Duration timeout}) async {
+    calls += 1;
+    return _manifestBody();
+  }
+}
+
 class _BytesClient extends http.BaseClient {
   final List<int> bytes;
   final int statusCode;
@@ -230,14 +240,16 @@ void main() {
         pinnedCertSha256: _cert,
         approvedHosts: const <String>{},
       );
-      var fetched = false;
+      // A transport that counts calls: asserting only a local flag could never
+      // fail because nothing set it.
+      final transport = _RecordingTransport();
       final result = await UpdateService(
         config: unconfigured,
-        transport: _FakeTransport(_manifestBody()),
+        transport: transport,
       ).checkForUpdates(
         installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
       );
-      expect(fetched, isFalse);
+      expect(transport.calls, 0);
       expect(result.status, UpdateCheckStatus.notConfigured);
     });
   });

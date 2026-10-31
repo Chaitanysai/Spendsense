@@ -58,6 +58,27 @@ void main() {
       const sms = 'Rs 250 debited via UPI to ABC STORE';
       expect(service.sanitizeSms(sms), sms);
     });
+
+    test('preserves currency-prefixed amounts of any length', () {
+      expect(
+        service.sanitizeSms('Rs 2500 debited at ABC STORE'),
+        'Rs 2500 debited at ABC STORE',
+      );
+      expect(
+        service.sanitizeSms('Rs 1234567 debited at ABC STORE'),
+        'Rs 1234567 debited at ABC STORE',
+      );
+      expect(
+        service.sanitizeSms('INR 12,500.50 debited at ABC STORE'),
+        'INR 12,500.50 debited at ABC STORE',
+      );
+      // The amount survives, but a bare account number in the same message
+      // is still redacted.
+      expect(
+        service.sanitizeSms('Rs 2500 debited from A/C 1234567890123456'),
+        'Rs 2500 debited from A/C ****3456',
+      );
+    });
   });
 
   group('AI SMS consent', () {

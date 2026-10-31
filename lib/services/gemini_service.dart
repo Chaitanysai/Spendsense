@@ -77,6 +77,22 @@ class GeminiService {
   String sanitizeSms(String sms) {
     var sanitized = sms;
 
+    // Currency amounts are the signal the model is asked to read, so keep
+    // them. Park them behind placeholders while the digit rules run, then put
+    // them back; otherwise "Rs 2500" and "Rs 1234567" would be redacted as an
+    // OTP/account and the provider would get no amount at all.
+    final amounts = <String>[];
+    sanitized = sanitized.replaceAllMapped(
+      RegExp(
+        r'(?:\u20B9|\bRs\.?|\bINR\.?)\s*\d[\d,]*(?:\.\d{1,2})?',
+        caseSensitive: false,
+      ),
+      (m) {
+        amounts.add(m.group(0)!);
+        return '\u0000${amounts.length - 1}\u0000';
+      },
+    );
+
     // CVV/PIN first, so their short digits are not consumed by the OTP rule.
     sanitized = sanitized.replaceAll(
       RegExp(r'(?:cvv|pin)\s*[:=]?\s*\d{3,4}', caseSensitive: false),
@@ -124,6 +140,11 @@ class GeminiService {
       ),
       (m) => '${m.group(1)} ***',
     );
+
+    // Restore the currency amounts parked above.
+    for (var i = 0; i < amounts.length; i++) {
+      sanitized = sanitized.replaceAll('\u0000$i\u0000', amounts[i]);
+    }
 
     return sanitized;
   }

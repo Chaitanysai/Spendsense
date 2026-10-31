@@ -27,10 +27,12 @@ class AssistantComposer {
       WhyHigherIntent() => _whyHigher(intent),
       DeleteDuplicatesIntent() => _deleteDuplicates(intent),
       MerchantTransactionsIntent() => _merchantTransactions(intent),
-      ExcludeBrandsIntent() =>
-        _brandChange(intent.brands, AssistantChangeType.exclusion),
-      DeleteBrandsIntent() =>
-        _brandChange(intent.brands, AssistantChangeType.deletion),
+      ExcludeBrandsIntent() => _brandChange(
+          intent.brands, AssistantChangeType.exclusion,
+          window: intent.window),
+      DeleteBrandsIntent() => _brandChange(
+          intent.brands, AssistantChangeType.deletion,
+          window: intent.window),
       AmbiguousBrandRemovalIntent() => _ambiguousRemoval(intent),
       CategorySpendIntent() => _categorySpend(intent),
       TopExpensesIntent() => _topExpenses(intent),
@@ -167,9 +169,10 @@ class AssistantComposer {
 
   AssistantReply _brandChange(
     List<MerchantBrand> brands,
-    AssistantChangeType type,
-  ) {
-    final result = _collectBrandTransactions(brands);
+    AssistantChangeType type, {
+    AssistantDateWindow? window,
+  }) {
+    final result = _collectBrandTransactions(brands, window: window);
     if (result.totalMatched > FinanceToolEngine.maxPreviewRecords) {
       return AssistantReply(
         text:
@@ -877,7 +880,10 @@ class AssistantComposer {
     ];
   }
 
-  _Collected _collectBrandTransactions(List<MerchantBrand> brands) {
+  _Collected _collectBrandTransactions(
+    List<MerchantBrand> brands, {
+    AssistantDateWindow? window,
+  }) {
     final all = <TransactionModel>[];
     final seen = <String>{};
     var totalMatched = 0;
@@ -893,13 +899,25 @@ class AssistantComposer {
           'limit': FinanceToolEngine.maxSearchLimit,
           'offset': offset,
           'sort': 'date_desc',
+          // A request like "delete my Groww transactions last month" must never
+          // widen to all time: the window is part of the intent.
+          if (window != null && !window.isAllTime) ...{
+            'startDate': window.startIso,
+            'endDate': window.endIso,
+          },
         });
         final data = result.data;
         final raw = (data['transactions'] as List).cast<Map<String, dynamic>>();
         final byId = {for (final tx in engine.transactions) tx.id: tx};
         for (final item in raw) {
           final tx = byId[item['id']];
-          if (tx != null && seen.add(tx.id)) all.add(tx);
+          // Defence in depth: the tool window may be ignored by a future
+          // implementation, so re-check the dates here as well.
+          if (tx != null &&
+              (window == null || window.isAllTime || window.contains(tx.date)) &&
+              seen.add(tx.id)) {
+            all.add(tx);
+          }
         }
         brandMatched = data['matchedCount'] as int;
         offset += raw.length;

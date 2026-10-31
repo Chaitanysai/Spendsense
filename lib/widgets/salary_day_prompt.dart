@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_sheet.dart';
 import 'package:provider/provider.dart';
 import '../providers/period_provider.dart';
+import '../providers/transaction_provider.dart';
 import '../services/sound_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
@@ -86,10 +87,12 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // Day picker — chip grid
-          SizedBox(
-            height: 400,
+          // Day picker — chip grid. It is the only flexible row so all seven
+          // days can use the space available without pushing the confirm
+          // button off-screen on short devices.
+          Flexible(
             child: GridView.builder(
+              shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 5,
@@ -157,7 +160,11 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
             label: 'Set salary day',
             icon: Icons.check_rounded,
             onPressed: () async {
+              final transactions = context.read<TransactionProvider>();
               await context.read<PeriodProvider>().setSalaryDay(_selected);
+              // Budget alerts read the provider's cached cycle; keep it in
+              // step with the dashboard instead of waiting for a restart.
+              await transactions.reloadSalaryDay();
               if (context.mounted) Navigator.pop(context);
             },
           ),

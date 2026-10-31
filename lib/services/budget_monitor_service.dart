@@ -64,7 +64,10 @@ class BudgetMonitorService {
       if (crossed == null) return;
       final spentLabel = Formatters.currency.format(spent);
       final budgetLabel = Formatters.currency.format(budget);
-      if (crossed >= 100) {
+      // Over budget is a fact about spent vs budget, not about which threshold
+      // was configured. Checking only `crossed` printed "money left" whenever
+      // the 100% threshold was disabled.
+      if (spent >= budget) {
         await _showNotification('Budget Exceeded!',
             'You have spent $spentLabel out of $budgetLabel. Consider reducing expenses.');
       } else {

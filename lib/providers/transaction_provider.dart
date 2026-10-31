@@ -16,6 +16,15 @@ import '../services/ledger_tombstone_store.dart';
 import '../services/budget_monitor_service.dart';
 import '../services/email/gmail_email_source.dart';
 
+/// Thrown when the encrypted ledger could not be opened, so a save cannot be
+/// performed at all. Callers must treat this as a failed save, never success.
+class LedgerUnavailableException implements Exception {
+  const LedgerUnavailableException();
+
+  @override
+  String toString() => 'LedgerUnavailableException';
+}
+
 class TransactionProvider with ChangeNotifier {
   static const _smsScanStartKey = 'sms_scan_start_date';
 
@@ -780,20 +789,25 @@ class TransactionProvider with ChangeNotifier {
         debugPrint('↩️ Resync parsed nothing — ledger left unchanged');
         return false;
       }
-      final manual = _transactions
-          .where((t) => t.source == 'Manual')
-          .toList(growable: false);
-      final finalSet = [...manual, ...staged];
-      final unique = <String, TransactionModel>{
-        for (final t in finalSet) t.id: t,
-      };
-      final ledger = unique.values.toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
-
-      await _locked(() => _cache.replaceAllWithIds(
-            ledger,
-            expectedIds: {for (final t in ledger) t.id},
-          ));
+      // Build and activate the replacement ledger inside the shared lock, so a
+      // concurrent save cannot be read as "old" state and then dropped by the
+      // replacement. Manual entries AND email imports cannot be recreated from
+      // SMS, so both are carried over.
+      late List<TransactionModel> ledger;
+      await _locked(() async {
+        final preserved = _transactions
+            .where((t) => t.source == 'Manual' || t.source == 'Email-Gmail')
+            .toList(growable: false);
+        final unique = <String, TransactionModel>{
+          for (final t in [...preserved, ...staged]) t.id: t,
+        };
+        ledger = unique.values.toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+        await _cache.replaceAllWithIds(
+          ledger,
+          expectedIds: {for (final t in ledger) t.id},
+        );
+      });
 
       _transactions = ledger;
       _lastSynced = DateTime.now();
@@ -813,6 +827,17 @@ class TransactionProvider with ChangeNotifier {
     await resyncFromSms();
   }
 
+  /// Updates one record copy-on-write.
+  ///
+  /// Screens cache their filtered list keyed on the ledger's identity. Mutating
+  /// the existing list in place kept that identity, so Activity could serve a
+  /// stale copy after an edit. Always replace the list instead.
+  void _replaceAt(int index, TransactionModel updated) {
+    final next = List<TransactionModel>.of(_transactions);
+    next[index] = updated;
+    _transactions = next;
+  }
+
   Future<void> toggleExclude(String id) async {
     await _initialization;
     if (_ledgerInitError != null) return;
@@ -821,8 +846,10 @@ class TransactionProvider with ChangeNotifier {
       final updated = _stampSyncMeta(_transactions[index].copyWith(
         isExcluded: !_transactions[index].isExcluded,
       ));
-      _transactions[index] = updated;
-      await _cache.put(updated);
+      // Persist inside the shared lock before touching memory, so a concurrent
+      // SMS/email activation cannot be dropped by this single-record write.
+      await _locked(() => _cache.put(updated));
+      _replaceAt(index, updated);
       _notifyIfAlive();
     }
   }
@@ -880,7 +907,8 @@ class TransactionProvider with ChangeNotifier {
       // Best-effort: a failed tombstone write must not prevent local deletion.
       await _recordTombstones(removed);
       final removedIds = {for (final tx in removed) tx.id};
-      _transactions.removeWhere((tx) => removedIds.contains(tx.id));
+      _transactions =
+          _transactions.where((tx) => !removedIds.contains(tx.id)).toList();
       _notifyIfAlive();
       return removed;
     });
@@ -942,8 +970,8 @@ class TransactionProvider with ChangeNotifier {
         category: newCategory,
         needsReview: false,
       ));
-      _transactions[index] = updated;
-      await _cache.put(updated);
+      await _locked(() => _cache.put(updated));
+      _replaceAt(index, updated);
       _notifyIfAlive();
     }
   }
@@ -962,7 +990,7 @@ class TransactionProvider with ChangeNotifier {
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index == -1) return;
 
-    _transactions[index] = _stampSyncMeta(_transactions[index].copyWith(
+    final updated = _stampSyncMeta(_transactions[index].copyWith(
       amountMinor: amount,
       merchant: merchant,
       category: category,
@@ -973,7 +1001,8 @@ class TransactionProvider with ChangeNotifier {
       // wins; omitting it preserves whatever was already stored.
       bank: bank,
     ));
-    await _cache.put(_transactions[index]);
+    await _locked(() => _cache.put(updated));
+    _replaceAt(index, updated);
     _notifyIfAlive();
   }
 
@@ -983,62 +1012,110 @@ class TransactionProvider with ChangeNotifier {
   /// committed in one journalled write, matching the SMS scan. Raw email text
   /// is never stored: the record keeps only the same derived fields as SMS and
   /// a `Email-Gmail` source marker; the Gmail message id is the dedupe key.
+  ///
+  /// The Gmail cursor is advanced only after that write succeeds, and only to
+  /// the newest message that was actually committed. A failed or interrupted
+  /// import therefore re-reads the same messages next time instead of silently
+  /// skipping them.
   Future<int> importFromGmail({GmailEmailSource? source}) async {
     await _initialization;
     if (_ledgerInitError != null) return 0;
-    final gmailSource = source ?? GmailEmailSource();
-    final alerts = await gmailSource.fetchBankAlerts(
-      seenIds: _cache.cachedIds,
-      since: await gmailSource.lastSyncAt(),
-    );
-    if (alerts.isEmpty) return 0;
-
-    final parser = SmartParser();
-    final accepted = <TransactionModel>[];
-    final rejected = <String, String>{};
-    for (final alert in alerts) {
-      final id = 'gmail:${alert.id}';
-      final parsed = await parser.parse(alert.text, id, alert.date);
-      if (parsed == null) {
-        rejected[id] = 'EMAIL_NOT_A_DEBIT';
-        continue;
-      }
-      accepted.add(parsed.copyWith(
-        source: 'Email-Gmail',
-        originalSms: '',
-        paymentMethod:
-            parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
-      ));
-    }
-
-    if (accepted.isNotEmpty) {
-      final byId = <String, TransactionModel>{
-        for (final tx in accepted) tx.id: _stampSyncMeta(tx),
-      };
-      await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
-      _transactions = [
-        ...byId.values,
-        for (final tx in _transactions)
-          if (!byId.containsKey(tx.id)) tx,
-      ]..sort((a, b) => b.date.compareTo(a.date));
-      _newThisSync = byId.length;
-    }
-    if (rejected.isNotEmpty) {
-      await _cache.markRejectedAll(rejected);
-    }
-    await _cache.updateSyncMeta();
-    _lastSynced = DateTime.now();
+    if (_isSyncing) throw const EmailImportBusyException();
+    _isSyncing = true;
+    _newThisSync = 0;
     _notifyIfAlive();
-    return accepted.length;
+    final gmailSource = source ?? GmailEmailSource();
+    try {
+      final alerts = await gmailSource.fetchBankAlerts(
+        seenIds: _cache.cachedIds,
+        since: await gmailSource.lastSyncAt(),
+      );
+      if (alerts.isEmpty) {
+        _syncFailure = null;
+        _lastSynced = DateTime.now();
+        return 0;
+      }
+
+      final parser = SmartParser();
+      final accepted = <TransactionModel>[];
+      final rejected = <String, String>{};
+      for (final alert in alerts) {
+        final id = 'gmail:${alert.id}';
+        final parsed = await parser.parse(alert.text, id, alert.date);
+        if (parsed == null) {
+          rejected[id] = 'EMAIL_NOT_A_DEBIT';
+          continue;
+        }
+        accepted.add(parsed.copyWith(
+          source: 'Email-Gmail',
+          originalSms: '',
+          paymentMethod:
+              parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
+        ));
+      }
+
+      if (accepted.isNotEmpty) {
+        final byId = <String, TransactionModel>{
+          for (final tx in accepted) tx.id: _stampSyncMeta(tx),
+        };
+        await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
+        _transactions = [
+          ...byId.values,
+          for (final tx in _transactions)
+            if (!byId.containsKey(tx.id)) tx,
+        ]..sort((a, b) => b.date.compareTo(a.date));
+        _newThisSync = byId.length;
+      }
+      if (rejected.isNotEmpty) {
+        await _cache.markRejectedAll(rejected);
+      }
+      await _cache.updateSyncMeta();
+
+      // Commit succeeded: only now is it safe to move the cursor. Advance to the
+      // newest listed alert only when every alert was committed; a partial
+      // failure keeps the old cursor so the unparsed mail is retried.
+      final allCommitted = accepted.length + rejected.length >= alerts.length;
+      if (allCommitted) {
+        final newestSeen = alerts
+            .map((a) => a.date)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+        await gmailSource.markImported(newestSeen);
+      }
+
+      _lastSynced = DateTime.now();
+      _syncFailure = null;
+      return accepted.length;
+    } catch (e) {
+      debugPrint('❌ Email import error: ${e.runtimeType}');
+      _syncFailure = SyncFailure.scanFailed;
+      try {
+        await _locked(() => _loadFromCache());
+      } catch (reloadError) {
+        debugPrint('⚠️ Reload after failed email import failed '
+            '(${reloadError.runtimeType})');
+      }
+      rethrow;
+    } finally {
+      _isSyncing = false;
+      _notifyIfAlive();
+    }
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
     await _initialization;
-    if (_ledgerInitError != null) return;
+    // A failed ledger is not a silent no-op: the Add form treats a normal
+    // return as success, so it must see this failure and keep the entry.
+    if (_ledgerInitError != null) {
+      throw const LedgerUnavailableException();
+    }
     final stamped = _stampSyncMeta(transaction);
-    _transactions.add(stamped);
-    _transactions.sort((a, b) => b.date.compareTo(a.date));
-    await _cache.put(stamped);
+    // Serialize with every other cache activation. Two activations that both
+    // read the old id index and then write would otherwise let the later
+    // writer drop the earlier record from the persistent index.
+    await _locked(() => _cache.put(stamped));
+    // Copy-on-write: screens cache filtered views keyed on list identity.
+    _transactions = [..._transactions, stamped]
+      ..sort((a, b) => b.date.compareTo(a.date));
     _notifyIfAlive();
   }
 
@@ -1083,6 +1160,19 @@ class TransactionProvider with ChangeNotifier {
 
   int _salaryDay = 1;
 
+  /// Re-reads the salary day after the settings prompt changes it.
+  ///
+  /// The budget monitor computes alerts from [currentSalaryCycle], so without
+  /// this the dashboard would show the new cycle while alerts kept using the
+  /// value cached at startup.
+  Future<void> reloadSalaryDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    final next = prefs.getInt('salary_day') ?? 1;
+    if (next == _salaryDay) return;
+    _salaryDay = next;
+    _notifyIfAlive();
+  }
+
   /// How many SMS the scanner has skipped as "not a debit it understands".
   /// Only ids are kept for these messages, never their text.
   int get skippedMessageCount => _cache.rejectedCount;
@@ -1101,7 +1191,7 @@ class TransactionProvider with ChangeNotifier {
 
   Future<void> clearAll() async {
     await _initialization;
-    _transactions.clear();
+    _transactions = <TransactionModel>[];
     _lastSynced = null;
     _newThisSync = 0;
     await _cache.clearAll();

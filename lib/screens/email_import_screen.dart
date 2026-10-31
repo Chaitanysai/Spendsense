@@ -158,6 +158,10 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
           ),
         ),
       );
+    } on EmailImportBusyException {
+      if (mounted) {
+        setState(() => _error = 'Another sync is running. Try again shortly.');
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Email sync failed. Try again later.');
@@ -259,7 +263,7 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
                                 Text(
                                   _connectedEmail ??
                                       (_consent
-                                          ? 'Reconnect to refresh access'
+                                          ? 'Read-only Gmail access'
                                           : 'No email access'),
                                   style: AppText.bodySmall(context),
                                 ),

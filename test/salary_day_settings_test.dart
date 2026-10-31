@@ -93,13 +93,37 @@ void main() {
 
     test('a persisted salary day drives currentPeriod, not just the field',
         () async {
-      SharedPreferences.setMockInitialValues({'salary_day': 25});
       final p = PeriodProvider.fixedForTest(
         salaryDay: 25,
         now: DateTime.parse('2026-10-24T12:00:00'),
       );
       await p.init();
       expect(_r(p.currentPeriod), '2026-09-25|2026-10-24');
+    });
+
+    // Budget alerts read TransactionProvider.currentSalaryCycle, which used to
+    // cache the day loaded at startup. Changing it in Settings left alerts on
+    // the old period until the app restarted.
+    test('TransactionProvider picks up a changed salary day', () async {
+      SharedPreferences.setMockInitialValues({'salary_day': 1});
+      final period = PeriodProvider();
+      await period.init();
+      final transactions = TransactionProvider();
+      await transactions.ready;
+      expect(
+        PeriodMath.dateOnly(transactions.currentSalaryCycle.start).day,
+        1,
+      );
+
+      await period.setSalaryDay(25);
+      await transactions.reloadSalaryDay();
+
+      expect(
+        PeriodMath.dateOnly(transactions.currentSalaryCycle.start).day,
+        25,
+        reason: 'budget alerts must use the newly chosen cycle',
+      );
+      transactions.dispose();
     });
 
     test('setSalaryDay resets custom mode so the cycle rule applies again',

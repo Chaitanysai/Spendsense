@@ -135,7 +135,9 @@ void main() {
         'tx_cache_ids_v2': index,
         'txe_key-protected': payload,
       });
-      expect(
+      // Must await: a bare expect() on a Future only checks that a matcher
+      // object was created, so the fail-closed assertion never ran.
+      await expectLater(
         TransactionCacheService(
           encryption: LedgerEncryptionService(keyStore: store),
         ).init(),

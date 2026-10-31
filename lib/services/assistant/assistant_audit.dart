@@ -146,7 +146,9 @@ class EncryptedAssistantAuditRepository implements AssistantAuditRepository {
   Future<List<AssistantAuditEntry>> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(prefsKey);
-    if (raw == null || raw.isEmpty) return const [];
+    // Must be growable: append() calls entries.add on the result, and a
+    // const [] would throw on the first append to an empty store.
+    if (raw == null || raw.isEmpty) return <AssistantAuditEntry>[];
     try {
       final clear = await _encryption.decryptText(
         raw,

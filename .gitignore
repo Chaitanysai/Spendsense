@@ -71,3 +71,6 @@ key.properties
 .firebase/
 *.before-upgrade
 *.patch
+
+# CI-only tooling installed with --no-save (tool/validate_yaml.js); never commit it.
+node_modules/

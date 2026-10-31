@@ -43,8 +43,6 @@ for banks that send transaction alerts by email instead of SMS.
    - Package name: `com.example.spendsense`
    - SHA-1 of the **release** signing certificate:
      `f065b50f45c47da34adda47f9bab6d5b002bcb52`
-     (DN: `CN=chaitanya.sai, OU=me, O=Mine, L=Hyderabad, ST=Telangana, C=IN`;
-     SHA-256: `42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367`)
    - Also add the debug keystore SHA-1 if you want to test locally.
 5. The **Android** OAuth client does not expose a client secret. On a real
    Android phone, Google Play services matches this client by package name and
@@ -54,14 +52,15 @@ for banks that send transaction alerts by email instead of SMS.
    `GMAIL_SERVER_CLIENT_ID` to the client ID of a **Web application** OAuth
    client in the same project. Create that client, then set the repository
    variable of the same name; the OTA workflow passes it as `--dart-define`.
-7. Nothing is required in the OTA workflow for the normal Android path: if the
-   variable is unset, the build simply leaves email import configured off and
-   the Android Play-services path is used when the person connects.
+7. The OTA workflow passes `GMAIL_SERVER_CLIENT_ID` only when the repository
+   variable is set. Leave it unset for the normal Android path; email import
+   still works through Google Play services.
 
 ## Testing
 
 1. Connect Gmail in **Settings → Email import**.
-2. Confirm the consent dialog lists the read-only scope and the sender domains.
+2. Confirm the consent dialog lists the read-only scope and that the sender
+   allowlist beneath it is the one you expect.
 3. Send yourself a test email from an allowlisted sender with a debit subject
    (or use a Gmail filter to copy a sample bank alert).
 4. Tap **Sync now**; the transaction should appear with source `Email-Gmail`.

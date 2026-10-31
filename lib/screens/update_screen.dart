@@ -260,7 +260,9 @@ class _StatusBody extends StatelessWidget {
       case UpdateUiState.idle:
         return _MessageCard(
           icon: Icons.cloud_off_outlined,
-          title: 'No update channel configured',
+          title: provider.isConfigured
+              ? 'Check for updates'
+              : 'No update channel configured',
           body: provider.isConfigured
               ? 'Tap below to check for a new version.'
               : 'This build was compiled without an update manifest URL, so '
