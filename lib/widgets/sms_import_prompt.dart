@@ -13,21 +13,51 @@ import 'pressable.dart';
 import 'sound_scope.dart';
 
 class SmsImportPrompt {
-  static Future<void> show(BuildContext context) {
-    return showAppSheet(
+  static Future<void> show(BuildContext context) async {
+    final provider = context.read<TransactionProvider>();
+    final now = DateTime.now();
+    // Re-opening from Settings shows the stored date, not a fresh guess.
+    final initialDate =
+        provider.smsScanStartDate ?? DateTime(now.year, now.month, 1);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
+    final saved = await showAppSheet<bool>(
       context: context,
       // The prompt is a helpful first-run setup, not a navigation lock. Users
       // must still be able to reach Activity and configure the date later.
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _SmsImportPromptSheet(),
+      builder: (_) => _SmsImportPromptSheet(initialDate: initialDate),
+    );
+    if (saved == true) return;
+    if (provider.hasSmsScanStartDate) return;
+
+    // Dismissed while no date exists: the question is still one-time, so the
+    // date the sheet was showing becomes the stored window. Scanning always
+    // has a start and the user can change it in Settings.
+    try {
+      await provider.setSmsScanStartDate(initialDate, resync: false);
+    } catch (error) {
+      debugPrint('SmsImportPrompt: could not save default date — $error');
+      return;
+    }
+    if (messenger == null || !messenger.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'SMS start date set to ${DateFormat('d MMM yyyy').format(initialDate)}. '
+          'Change it in Settings.',
+        ),
+      ),
     );
   }
 }
 
 class _SmsImportPromptSheet extends StatefulWidget {
-  const _SmsImportPromptSheet();
+  const _SmsImportPromptSheet({required this.initialDate});
+
+  final DateTime initialDate;
 
   @override
   State<_SmsImportPromptSheet> createState() => _SmsImportPromptSheetState();
@@ -40,8 +70,7 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _selectedDate = DateTime(now.year, now.month, 1);
+    _selectedDate = widget.initialDate;
   }
 
   @override
@@ -200,6 +229,8 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
     }
     SoundScope.playOn(sound, SoundEventType.actionSucceeded);
     if (!mounted) return;
-    Navigator.of(context).pop();
+    // `true` tells [SmsImportPrompt.show] the date was committed, so dismissal
+    // handling must not overwrite it.
+    Navigator.of(context).pop(true);
   }
 }

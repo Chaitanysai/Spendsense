@@ -198,11 +198,11 @@ class SpendSenseApp extends StatelessWidget {
       secondary: AppColors.brandBright,
       onSecondary: Colors.white,
       tertiary: AppColors.lime,
-      onTertiary: const Color(0xFF0B3B2C),
+      onTertiary: AppColors.navyDeep,
       error: AppColors.danger,
       onError: Colors.white,
       surface: isDark ? AppColors.darkSurface : Colors.white,
-      onSurface: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A1A14),
+      onSurface: AppColors.textPrimaryFor(isDark),
       outlineVariant: AppColors.borderDarkOrLight(isDark),
     );
 
@@ -262,12 +262,8 @@ class SpendSenseApp extends StatelessWidget {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? AppColors.darkSurfaceAlt : Colors.white,
-        hintStyle: TextStyle(
-          color: isDark ? const Color(0xFF8A8A8A) : const Color(0xFF6B7A72),
-        ),
-        labelStyle: TextStyle(
-          color: isDark ? const Color(0xFFB3B3B3) : const Color(0xFF4A5A53),
-        ),
+        hintStyle: TextStyle(color: AppColors.textTertiaryFor(isDark)),
+        labelStyle: TextStyle(color: AppColors.textSecondaryFor(isDark)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.lg,
@@ -314,7 +310,7 @@ class SpendSenseApp extends StatelessWidget {
         selectedColor: AppColors.brand.withValues(alpha: 0.16),
         side: BorderSide(color: AppColors.borderDarkOrLight(isDark)),
         labelStyle: TextStyle(
-          color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A1A14),
+          color: AppColors.textPrimaryFor(isDark),
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -395,8 +391,7 @@ class SpendSenseApp extends StatelessWidget {
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor:
-            isDark ? AppColors.darkSurfaceAlt : const Color(0xFF0B3B2C),
+        backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.navyDeep,
         contentTextStyle: const TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

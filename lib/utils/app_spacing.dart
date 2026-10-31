@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// Spacing, radius, elevation and motion tokens (4-pt base grid).
+/// Spacing, radius, elevation and motion tokens (2-pt base grid).
+///
+/// The scale is deliberately compact: sections, cards and tiles sit closer
+/// than on the old 4-pt scale so a phone screen shows more content without
+/// shrinking any control below its touch target.
 class AppSpacing {
   AppSpacing._();
 
   static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 20;
-  static const double xxl = 24;
-  static const double xxxl = 32;
+  static const double sm = 6;
+  static const double md = 10;
+  static const double lg = 12;
+  static const double xl = 16;
+  static const double xxl = 18;
+  static const double xxxl = 24;
 
   /// Standard horizontal page padding for the Galaxy-S24 class width.
-  static const double page = 20;
+  static const double page = 16;
 
   /// Quick-action tiles: shared metrics so every tile is identical.
   static const double tileGap = sm;

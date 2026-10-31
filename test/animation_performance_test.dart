@@ -353,9 +353,9 @@ void main() {
     });
 
     testWidgets(
-        'a dismissed start-date prompt comes back on return to Home, '
-        'but never opens twice at once', (tester) async {
-      await pumpShell(tester, withStartDate: false);
+        'a dismissed start-date prompt stores the date and never comes back',
+        (tester) async {
+      final provider = await pumpShell(tester, withStartDate: false);
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Check SMS from when?'), findsOneWidget);
 
@@ -364,16 +364,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Check SMS from when?'), findsNothing);
+      expect(provider.hasSmsScanStartDate, isTrue,
+          reason: 'a dismissal keeps the date the sheet was showing');
 
       // Staying on Home must not re-open it.
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Check SMS from when?'), findsNothing);
 
+      // Let the confirmation snackbar clear so it cannot intercept taps.
+      await tester.pump(const Duration(seconds: 5));
+
       await goTo(tester, 'INSIGHTS');
       await goTo(tester, 'HOME');
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Check SMS from when?'), findsOneWidget,
-          reason: 'same as before: an unset date is asked again on return');
+      expect(find.text('Check SMS from when?'), findsNothing,
+          reason: 'the question is asked once; the stored date answers it');
     });
 
     testWidgets('Home does not ask when a start date already exists',

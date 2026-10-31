@@ -202,7 +202,7 @@ class ThemeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Restores Emerald and the light appearance.
+  /// Restores Azure and the light appearance.
   Future<void> resetToDefaults() async {
     AppColors.applyPalette(AppPalette.defaultPalette);
     _palette = AppPalette.defaultPalette;

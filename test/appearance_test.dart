@@ -9,8 +9,8 @@ import 'package:spendsense/utils/app_palette.dart';
 /// Appearance is backed by mutable global tokens in [AppColors], so every test
 /// restores the default palette to stay order-independent.
 void main() {
-  setUp(() => AppColors.applyPalette(AppPalette.emerald));
-  tearDown(() => AppColors.applyPalette(AppPalette.emerald));
+  setUp(() => AppColors.applyPalette(AppPalette.defaultPalette));
+  tearDown(() => AppColors.applyPalette(AppPalette.defaultPalette));
 
   Future<ThemeProvider> loaded(Map<String, Object> prefs) async {
     SharedPreferences.setMockInitialValues(prefs);
@@ -21,12 +21,20 @@ void main() {
   }
 
   group('AppPalette', () {
-    test('ships the curated palettes with Midnight first', () {
-      expect(AppPalette.all, hasLength(8));
-      expect(AppPalette.all.first, same(AppPalette.midnight));
+    test('ships the curated palettes with Azure first', () {
+      expect(AppPalette.all, hasLength(12));
+      expect(AppPalette.all.first, same(AppPalette.azure));
+      expect(
+        AppPalette.all.take(4).map((p) => p.id),
+        ['azure', 'slate', 'plum', 'blush'],
+      );
       expect(
         AppPalette.all.map((p) => p.label),
         containsAll([
+          'Azure',
+          'Slate',
+          'Plum',
+          'Blush',
           'Emerald',
           'Ocean Blue',
           'Warm Amber',
@@ -43,11 +51,12 @@ void main() {
       expect(ids, hasLength(AppPalette.all.length));
     });
 
-    test('byId resolves known ids and falls back to Midnight', () {
+    test('byId resolves known ids and falls back to Azure', () {
       expect(AppPalette.byId('forest_green'), same(AppPalette.forestGreen));
       expect(AppPalette.byId('emerald'), same(AppPalette.emerald));
-      expect(AppPalette.byId('does_not_exist'), same(AppPalette.midnight));
-      expect(AppPalette.byId(null), same(AppPalette.midnight));
+      expect(AppPalette.byId('azure'), same(AppPalette.azure));
+      expect(AppPalette.byId('does_not_exist'), same(AppPalette.azure));
+      expect(AppPalette.byId(null), same(AppPalette.azure));
     });
 
     test('money semantics are identical in every palette', () {
@@ -70,15 +79,30 @@ void main() {
     test('Emerald dark mode is a true-black AMOLED canvas', () {
       expect(AppPalette.emerald.darkBackground, const Color(0xFF000000));
       expect(AppPalette.emerald.isAmoled, isTrue);
-      // Every palette, Midnight included, has a pitch-black dark canvas.
-      for (final p in AppPalette.all) {
+    });
+
+    test('the legacy palettes keep the AMOLED foundation', () {
+      const referenceIds = {'azure', 'slate', 'plum', 'blush'};
+      final legacy = AppPalette.all.where((p) => !referenceIds.contains(p.id));
+      for (final p in legacy) {
         expect(p.darkBackground, const Color(0xFF000000), reason: p.label);
         expect(p.isAmoled, isTrue, reason: p.label);
       }
-      // Only Midnight layers navy glass cards on that black canvas.
+      // Only Midnight layers glass cards on that black canvas.
       expect(AppPalette.midnight.glass, isTrue);
-      for (final p in AppPalette.all.where((p) => p != AppPalette.midnight)) {
+      for (final p in legacy.where((p) => p != AppPalette.midnight)) {
         expect(p.glass, isFalse, reason: p.label);
+      }
+    });
+
+    test('the reference palettes use tinted canvases and glass cards', () {
+      const referenceIds = {'azure', 'slate', 'plum', 'blush'};
+      for (final p
+          in AppPalette.all.where((p) => referenceIds.contains(p.id))) {
+        expect(p.isAmoled, isFalse, reason: p.label);
+        expect(p.darkBackground, isNot(const Color(0xFF000000)),
+            reason: p.label);
+        expect(p.glass, isTrue, reason: p.label);
       }
     });
 
@@ -174,8 +198,13 @@ void main() {
   });
 
   group('AMOLED dark foundation', () {
-    test('every palette shares neutral black surfaces, borders and text', () {
-      for (final p in AppPalette.all.where((p) => p != AppPalette.midnight)) {
+    test('every legacy palette shares neutral black surfaces, borders and text',
+        () {
+      const referenceIds = {'azure', 'slate', 'plum', 'blush'};
+      final legacy = AppPalette.all.where(
+        (p) => !referenceIds.contains(p.id) && p != AppPalette.midnight,
+      );
+      for (final p in legacy) {
         expect(p.darkBackground, const Color(0xFF000000), reason: p.label);
         for (final c in [p.darkSurface, p.darkSurfaceAlt, p.borderDark]) {
           final r = (c.r * 255).round();
@@ -211,6 +240,7 @@ void main() {
 
     testWidgets('dark text tiers are neutral and readable on black',
         (tester) async {
+      AppColors.applyPalette(AppPalette.emerald);
       late Color primary, secondary, tertiary, fill, border;
       await tester.pumpWidget(MaterialApp(
         theme: ThemeData(brightness: Brightness.dark),
@@ -236,6 +266,7 @@ void main() {
     });
 
     test('glass fill and border stay neutral in dark mode', () {
+      AppColors.applyPalette(AppPalette.emerald);
       // Glass tokens read the theme, so check the source tokens they use.
       expect(AppColors.darkSurface, AppPalette.amoledSurface);
       expect(AppColors.borderDark, AppPalette.amoledBorder);
@@ -273,7 +304,7 @@ void main() {
     test('lime ink stays legible on the lime highlight', () {
       AppColors.applyPalette(AppPalette.emerald);
       final contrast = _contrast(
-        const Color(0xFF0B3B2C),
+        AppPalette.emerald.deep,
         AppPalette.emerald.limeAccent,
       );
       expect(contrast, greaterThanOrEqualTo(7));
@@ -281,9 +312,9 @@ void main() {
   });
 
   group('ThemeProvider', () {
-    test('defaults to Midnight in light mode', () async {
+    test('defaults to Azure in light mode', () async {
       final provider = await loaded({});
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.azure));
       expect(provider.themeMode, ThemeMode.light);
     });
 
@@ -309,9 +340,9 @@ void main() {
       expect(second.palette, same(AppPalette.forestGreen));
     });
 
-    test('an unknown persisted id falls back to Midnight', () async {
+    test('an unknown persisted id falls back to Azure', () async {
       final provider = await loaded({'palette_id': 'chartreuse'});
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.azure));
     });
 
     test('setThemeMode persists light, dark and system', () async {
@@ -329,16 +360,16 @@ void main() {
       expect(provider.themeMode, ThemeMode.dark);
     });
 
-    test('resetToDefaults restores Midnight and light mode', () async {
+    test('resetToDefaults restores Azure and light mode', () async {
       final provider = await loaded({});
       await provider.setPalette(AppPalette.royalPurple);
       await provider.setThemeMode(ThemeMode.dark);
 
       await provider.resetToDefaults();
 
-      expect(provider.palette, same(AppPalette.midnight));
+      expect(provider.palette, same(AppPalette.azure));
       expect(provider.themeMode, ThemeMode.light);
-      expect(AppColors.brand, AppPalette.midnight.brand);
+      expect(AppColors.brand, AppPalette.azure.brand);
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('palette_id'), isNull);

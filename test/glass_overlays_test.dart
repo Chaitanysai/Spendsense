@@ -114,9 +114,10 @@ void main() {
       return box.decoration as BoxDecoration;
     }
 
-    testWidgets('dark AppBackground is #000000 with no glow for every palette',
+    testWidgets(
+        'dark AppBackground is #000000 with no glow for AMOLED palettes',
         (tester) async {
-      for (final palette in AppPalette.all) {
+      for (final palette in AppPalette.all.where((p) => p.isAmoled)) {
         AppColors.applyPalette(palette);
         await tester.pumpWidget(
           _app(const AppBackground(child: SizedBox.expand()), dark: true),

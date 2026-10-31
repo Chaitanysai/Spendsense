@@ -40,10 +40,10 @@ class AppPalette {
   /// broad glows and tinted washes so the canvas stays genuinely black.
   bool get isAmoled => darkBackground == amoledBackground;
 
-  // ── Shared neutral AMOLED foundation ──────────────────────────────────────
-  // Every palette shares one neutral black dark canvas. Palettes only supply
-  // accents; they never tint backgrounds or surfaces (the old per-palette
-  // maroon/navy/brown canvases are gone).
+  // ── Dark foundation ───────────────────────────────────────────────────────
+  // The legacy palettes share one neutral black AMOLED canvas. The four
+  // reference palettes (Azure, Slate, Plum, Blush) instead paint their own deep
+  // shades and keep translucent glass cards on them.
   static const Color amoledBackground = Color(0xFF000000);
   static const Color amoledSurface = Color(0xFF121212);
   static const Color amoledSurfaceAlt = Color(0xFF1A1A1A);
@@ -100,10 +100,14 @@ class AppPalette {
   final Color darkSurfaceAlt;
   final Color borderDark;
 
-  /// Dark-mode cards are translucent navy glass with blue-lit hero cards. The
-  /// canvas behind them is still [darkBackground], which must stay pure black;
+  /// Dark-mode cards are translucent glass over the palette's own deep canvas;
   /// this flag changes only how cards, heroes, borders and overlays look.
   final bool glass;
+
+  /// Optional chart ramp for palettes whose brand stops are too pale to show on
+  /// a white card. When omitted, the categorical ramp is derived from the brand
+  /// stops as before.
+  final List<Color>? chart;
 
   const AppPalette({
     required this.id,
@@ -124,6 +128,7 @@ class AppPalette {
     required this.darkSurfaceAlt,
     required this.borderDark,
     this.glass = false,
+    this.chart,
   });
 
   // ── Gradients derived from the ramp ─────────────────────────────────────────
@@ -195,8 +200,11 @@ class AppPalette {
 
   /// Categorical palette for charts and bubbles. Hues are spaced around the
   /// wheel rather than staying in the brand ramp so adjacent slices stay
-  /// separable for colour-blind viewers.
-  List<Color> get chartPalette => [
+  /// separable for colour-blind viewers. Palettes whose brand stops are too
+  /// pale for a white card supply their own [chart] ramp.
+  List<Color> get chartPalette =>
+      chart ??
+      [
         bright,
         accent,
         mid,
@@ -381,12 +389,145 @@ class AppPalette {
     glass: true,
   );
 
-  /// Palette used when nothing valid is stored (new installs, reset).
-  static const AppPalette defaultPalette = midnight;
+  /// Azure blue reference: deep navy canvas, steel-blue cards and an ice-blue
+  /// highlight, with a blush pill and mauve salary cue borrowed from the same
+  /// four-board family.
+  static const azure = AppPalette(
+    id: 'azure',
+    label: 'Azure',
+    deep: Color(0xFF021024),
+    brand: Color(0xFF052659),
+    bright: Color(0xFF7DA0CA),
+    mid: Color(0xFF5483B3),
+    accent: Color(0xFFC1E8FF),
+    lime: Color(0xFFF7CBCA),
+    warm: Color(0xFF854F6C),
+    background: Color(0xFFF2F8FD),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE4F0FA),
+    borderLight: Color(0xFFC1E8FF),
+    darkBackground: Color(0xFF021024),
+    darkSurface: Color(0xFF052659),
+    darkSurfaceAlt: Color(0xFF0A3A6E),
+    borderDark: Color(0xFF2A5A8A),
+    glass: true,
+    chart: [
+      Color(0xFF021024),
+      Color(0xFF5483B3),
+      Color(0xFF3A6A96),
+      Color(0xFF854F6C),
+      incomeGreen,
+      expenseRed,
+      Color(0xFF4C7FA8),
+    ],
+  );
 
-  /// Shown in Settings → Appearance, in this order. Midnight is first and is
-  /// the default / reset target.
+  /// Slate navy reference: a cold blue-grey ramp with a silver highlight.
+  static const slate = AppPalette(
+    id: 'slate',
+    label: 'Slate',
+    deep: Color(0xFF06141B),
+    brand: Color(0xFF253745),
+    bright: Color(0xFF9BA8AB),
+    mid: Color(0xFF4A5C6A),
+    accent: Color(0xFFCCD0CF),
+    lime: Color(0xFFF7CBCA),
+    warm: Color(0xFF854F6C),
+    background: Color(0xFFF4F7F8),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFE1E8EA),
+    borderLight: Color(0xFFCCD0CF),
+    darkBackground: Color(0xFF06141B),
+    darkSurface: Color(0xFF11212D),
+    darkSurfaceAlt: Color(0xFF253745),
+    borderDark: Color(0xFF4A5C6A),
+    glass: true,
+    chart: [
+      Color(0xFF06141B),
+      Color(0xFF253745),
+      Color(0xFF4A5C6A),
+      Color(0xFF854F6C),
+      incomeGreen,
+      expenseRed,
+      Color(0xFF3E5262),
+    ],
+  );
+
+  /// Plum reference: deep aubergine through mauve to cream, on a plum canvas.
+  static const plum = AppPalette(
+    id: 'plum',
+    label: 'Plum',
+    deep: Color(0xFF190019),
+    brand: Color(0xFF522B5B),
+    bright: Color(0xFFDFB6B2),
+    mid: Color(0xFF854F6C),
+    accent: Color(0xFFFBE4D8),
+    lime: Color(0xFFFBE4D8),
+    warm: Color(0xFF854F6C),
+    background: Color(0xFFFDF4EE),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFF6E3D9),
+    borderLight: Color(0xFFDFB6B2),
+    darkBackground: Color(0xFF190019),
+    darkSurface: Color(0xFF2B124C),
+    darkSurfaceAlt: Color(0xFF522B5B),
+    borderDark: Color(0xFF854F6C),
+    glass: true,
+    chart: [
+      Color(0xFF190019),
+      Color(0xFF522B5B),
+      Color(0xFF854F6C),
+      Color(0xFFA15F73),
+      incomeGreen,
+      expenseRed,
+      Color(0xFF6E3F52),
+    ],
+  );
+
+  /// Blush reference: mint and pink neutrals over a dark teal-grey ink. The
+  /// board has no dark stop, so the canvas and brand depth are derived from
+  /// its #5D6B6B ink while every light shade is used at full strength.
+  static const blush = AppPalette(
+    id: 'blush',
+    label: 'Blush',
+    deep: Color(0xFF2F3B3A),
+    brand: Color(0xFF5D6B6B),
+    bright: Color(0xFFD5E5E5),
+    mid: Color(0xFFB0D7D8),
+    accent: Color(0xFFF7CBCA),
+    lime: Color(0xFFB0D7D8),
+    warm: Color(0xFF854F6C),
+    background: Color(0xFFF1F7F7),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFD5E5E5),
+    borderLight: Color(0xFFDDD3D3),
+    darkBackground: Color(0xFF101616),
+    darkSurface: Color(0xFF1A2222),
+    darkSurfaceAlt: Color(0xFF263130),
+    borderDark: Color(0xFF3B4A49),
+    glass: true,
+    chart: [
+      Color(0xFF2F3B3A),
+      Color(0xFF5D6B6B),
+      Color(0xFF619596),
+      Color(0xFFB5767D),
+      incomeGreen,
+      expenseRed,
+      Color(0xFF854F6C),
+    ],
+  );
+
+  /// Palette used when nothing valid is stored (new installs, reset).
+  static const AppPalette defaultPalette = azure;
+
+  /// Shown in Settings → Appearance, in this order. Azure leads and is the
+  /// default / reset target; the four reference boards sit before the legacy
+  /// set so the new identity is the first thing a user sees.
   static const List<AppPalette> all = [
+    azure,
+    slate,
+    plum,
+    blush,
     midnight,
     emerald,
     oceanBlue,

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'app_palette.dart';
 
-/// SpendSense design tokens — a premium green fintech identity (primary green,
-/// deep green canopy, one lime highlight) by default, and user-selectable beyond
+/// SpendSense design tokens — a premium blue fintech identity (deep navy,
+/// steel-blue canopy, ice highlight) by default, and user-selectable beyond
 /// that.
 ///
 /// This class is the single read point for every colour in the app. The values
@@ -13,15 +13,15 @@ import 'app_palette.dart';
 /// [applyPalette] rewrites these fields and the widget tree then rebuilds.
 ///
 /// The brand ramp is deliberately calm at the base so the balance card reads as
-/// "premium finance", with the lime accent reserved for selective highlights
-/// (the cycle-change pill, the selected marker). A single warm accent is kept
-/// for money/salary cues, because an all-green palette gives the eye nothing to
+/// "premium finance", with a single highlight reserved for selective accents
+/// (the cycle-change pill, the selected marker). A warm accent is kept for
+/// money/salary cues, because an all-blue palette gives the eye nothing to
 /// prioritise against.
 class AppColors {
   AppColors._();
 
   // ── Active palette ───────────────────────────────────────────────────────────
-  static AppPalette _palette = AppPalette.emerald;
+  static AppPalette _palette = AppPalette.azure;
 
   static AppPalette get palette => _palette;
 
@@ -72,18 +72,18 @@ class AppColors {
   static bool get isGlassPalette => _palette.glass;
 
   // ── Brand ramp ─────────────────────────────────────────────────────────────
-  static Color navyDeep = AppPalette.emerald.deep; // deepest stop
-  static Color brand = AppPalette.emerald.brand; // primary
-  static Color brandBright = AppPalette.emerald.bright; // highlight
-  static Color azure = AppPalette.emerald.mid; // CTA / mid stop
-  static Color cyan = AppPalette.emerald.accent; // selective highlight
+  static Color navyDeep = AppPalette.azure.deep; // deepest stop
+  static Color brand = AppPalette.azure.brand; // primary
+  static Color brandBright = AppPalette.azure.bright; // highlight
+  static Color azure = AppPalette.azure.mid; // CTA / mid stop
+  static Color cyan = AppPalette.azure.accent; // selective highlight
 
   /// The single loud highlight. Used sparingly — never as a surface fill.
-  static Color lime = AppPalette.emerald.limeAccent;
+  static Color lime = AppPalette.azure.limeAccent;
 
   /// Warm accent for salary, wallet and budget cues. Kept intentionally outside
-  /// the green ramp so it reads as a highlight, not a second brand colour.
-  static Color amber = AppPalette.emerald.warm;
+  /// the blue ramp so it reads as a highlight, not a second brand colour.
+  static Color amber = AppPalette.azure.warm;
 
   // ── Semantic ───────────────────────────────────────────────────────────────
   // Fixed across every palette: red must always mean money out.
@@ -93,32 +93,32 @@ class AppColors {
 
   // ── Gradients ────────────────────────────────────────────────────────────────
   /// Rich gradient used on balance cards, CTAs and the app logo.
-  static LinearGradient brandGradient = AppPalette.emerald.brandGradient;
+  static LinearGradient brandGradient = AppPalette.azure.brandGradient;
 
   /// Alias with an explicit, semantic name for the hero treatment.
-  static LinearGradient heroGradient = AppPalette.emerald.heroGradient;
+  static LinearGradient heroGradient = AppPalette.azure.heroGradient;
 
-  /// The balance-card treatment: primary green into the deep green canopy with a
+  /// The balance-card treatment: primary brand into the deep canopy with a
   /// controlled diagonal. Dark mode confines it to the hero card only.
-  static LinearGradient balanceGradient = AppPalette.emerald.balanceGradient;
+  static LinearGradient balanceGradient = AppPalette.azure.balanceGradient;
 
   /// Primary action fill. Ends deep so a white label stays legible.
-  static LinearGradient actionGradient = AppPalette.emerald.actionGradient;
+  static LinearGradient actionGradient = AppPalette.azure.actionGradient;
 
   /// Secondary gradient for small highlights and chips.
-  static LinearGradient electricGradient = AppPalette.emerald.electricGradient;
+  static LinearGradient electricGradient = AppPalette.azure.electricGradient;
 
   /// Amber accent gradient for small highlights.
-  static LinearGradient amberGradient = AppPalette.emerald.amberGradient;
+  static LinearGradient amberGradient = AppPalette.azure.amberGradient;
 
-  static Color filledBrand = AppPalette.emerald.filledBrand;
+  static Color filledBrand = AppPalette.azure.filledBrand;
 
   /// Positive / money-in gradient. Uses the palette's measured income ramp
   /// rather than a bright mint, so a white label keeps its contrast.
   static LinearGradient successGradient = AppPalette.incomeGradient;
 
   /// Budget gauge arc.
-  static LinearGradient gaugeGradient = AppPalette.emerald.gaugeGradient;
+  static LinearGradient gaugeGradient = AppPalette.azure.gaugeGradient;
 
   /// Diagonal white sheen overlay for frosted glass highlights.
   static const LinearGradient glassSheen = LinearGradient(
@@ -130,19 +130,18 @@ class AppColors {
   /// Categorical palette for charts and bubbles. Hues are spaced around the
   /// wheel rather than staying in the brand ramp so adjacent slices stay
   /// separable for colour-blind viewers.
-  static List<Color> chartPalette = AppPalette.emerald.chartPalette;
+  static List<Color> chartPalette = AppPalette.azure.chartPalette;
 
   // ── Theme surfaces ────────────────────────────────────────────────────────────
-  static Color background = AppPalette.emerald.background; // airy off-white
-  static Color surface = AppPalette.emerald.surface;
-  static Color surfaceMuted = AppPalette.emerald.surfaceMuted;
-  static Color borderLight = AppPalette.emerald.borderLight;
+  static Color background = AppPalette.azure.background; // airy off-white
+  static Color surface = AppPalette.azure.surface;
+  static Color surfaceMuted = AppPalette.azure.surfaceMuted;
+  static Color borderLight = AppPalette.azure.borderLight;
 
-  static Color darkBackground =
-      AppPalette.emerald.darkBackground; // true AMOLED black
-  static Color darkSurface = AppPalette.emerald.darkSurface;
-  static Color darkSurfaceAlt = AppPalette.emerald.darkSurfaceAlt;
-  static Color borderDark = AppPalette.emerald.borderDark;
+  static Color darkBackground = AppPalette.azure.darkBackground;
+  static Color darkSurface = AppPalette.azure.darkSurface;
+  static Color darkSurfaceAlt = AppPalette.azure.darkSurfaceAlt;
+  static Color borderDark = AppPalette.azure.borderDark;
 
   // ── Context-aware helpers ─────────────────────────────────────────────────────
   static bool isDark(BuildContext context) =>
@@ -160,14 +159,26 @@ class AppColors {
   static Color panel(BuildContext context) =>
       isDark(context) ? darkSurfaceAlt : surfaceMuted;
 
+  /// Text tiers are deliberately neutral rather than palette-tinted: blue,
+  /// plum and pink canvases all need the same ink, and a green-grey would read
+  /// as a spill from the old identity.
+  static Color textPrimaryFor(bool isDark) =>
+      isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0F1720);
+
+  static Color textSecondaryFor(bool isDark) =>
+      isDark ? const Color(0xFFB3B3B3) : const Color(0xFF46525E);
+
+  static Color textTertiaryFor(bool isDark) =>
+      isDark ? const Color(0xFF8A8A8A) : const Color(0xFF5C6773);
+
   static Color textPrimary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFF5F5F5) : const Color(0xFF0A1A14);
+      textPrimaryFor(isDark(context));
 
   static Color textSecondary(BuildContext context) =>
-      isDark(context) ? const Color(0xFFB3B3B3) : const Color(0xFF4A5A53);
+      textSecondaryFor(isDark(context));
 
   static Color textTertiary(BuildContext context) =>
-      isDark(context) ? const Color(0xFF8A8A8A) : const Color(0xFF6B7A72);
+      textTertiaryFor(isDark(context));
 
   static Color border(BuildContext context) =>
       isDark(context) ? borderDark : borderLight;
@@ -178,14 +189,14 @@ class AppColors {
 
   static Color shadow(BuildContext context) => isDark(context)
       ? Colors.black.withValues(alpha: 0.6)
-      : const Color(0xFF0B3B2C).withValues(alpha: 0.08);
+      : navyDeep.withValues(alpha: 0.08);
 
   /// Brand colour that is safe as *text or icon ink* on the current canvas.
   ///
-  /// The primary green measures ~3.4:1 on white — fine for a filled button, too
-  /// weak for a 12px link. Light mode therefore deepens the brand toward the
-  /// palette's deep stop (≥5.5:1), while dark mode steps up to the bright stop
-  /// (≥8:1 on black). Filled surfaces keep using [brand] directly.
+  /// The primary stop is too weak as small text on white in several palettes —
+  /// fine for a filled button, too weak for a 12px link. Light mode therefore
+  /// deepens the brand toward the palette's deep stop, while dark mode steps up
+  /// to the bright stop. Filled surfaces keep using [brand] directly.
   static Color brandInk(BuildContext context) => brandInkFor(isDark(context));
 
   /// Context-free form of [brandInk], for building [ThemeData] where no
@@ -218,9 +229,9 @@ class AppColors {
   /// [brandInk]: the small 9px label needs the deeper green in light mode.
   static Color navSelected(BuildContext context) => brandInk(context);
 
-  /// Ink used *on* a lime highlight (the cycle-change pill). Lime is a light
-  /// accent in every palette, so this stays a near-black green: ~13:1.
-  static Color onLime(BuildContext context) => const Color(0xFF0B3B2C);
+  /// Ink used *on* the highlight pill. Every palette's highlight is a light
+  /// stop, so its own deep colour gives at least 4.5:1.
+  static Color onLime(BuildContext context) => navyDeep;
 
   /// A green fill that white text can sit on. The primary green is only ~3.4:1
   /// against white, so filled text surfaces (chat bubbles, badges) use this
@@ -291,8 +302,8 @@ class AppColors {
   /// near-black wash so cards read as surfaces, never as green panels.
   static Color glassFill(BuildContext context) {
     if (!isDark(context)) return Colors.white.withValues(alpha: 0.90);
-    // The canvas is pure black for every palette. Glass palettes (Midnight)
-    // keep translucent navy cards on it; the others keep their opaque ones.
+    // AMOLED palettes keep a pure black canvas; the tinted reference palettes
+    // paint their own deep canvas and keep translucent glass cards on it.
     return isGlassPalette
         ? darkSurfaceAlt.withValues(alpha: 0.62)
         : darkSurface.withValues(alpha: 0.94);

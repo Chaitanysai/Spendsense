@@ -46,6 +46,7 @@ Future<TransactionProvider> _pumpShell(
   WidgetTester tester, {
   Size size = const Size(1080, 2340),
   bool dark = false,
+  String? paletteId,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 3.0;
@@ -55,6 +56,7 @@ Future<TransactionProvider> _pumpShell(
     'sms_scan_start_date': DateTime.now().toIso8601String(),
     'theme_mode': dark ? 'dark' : 'light',
     'name': 'Asha',
+    if (paletteId != null) 'palette_id': paletteId,
   });
 
   final transactions = TransactionProvider();
@@ -297,7 +299,7 @@ void main() {
     testWidgets(
         'AMOLED dark mode resolves a dark theme on a pitch-black canvas',
         (tester) async {
-      await _pumpShell(tester, dark: true);
+      await _pumpShell(tester, dark: true, paletteId: 'midnight');
       await tester.pump(const Duration(milliseconds: 500));
 
       final theme = Theme.of(tester.element(find.byType(HomeScreen)));

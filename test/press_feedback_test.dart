@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:spendsense/utils/app_colors.dart';
+import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/widgets/app_button.dart';
 import 'package:spendsense/widgets/floating_nav_bar.dart';
 import 'package:spendsense/widgets/glass_card.dart';
@@ -573,8 +574,11 @@ void main() {
       );
       expect(
         tester.getSize(find.byType(GlassCard)),
-        // 100x40 child + 20px padding each side + the 1px border each side.
-        const Size(142, 82),
+        // 100x40 child + the token's padding each side + the 1px border.
+        Size(
+          100 + AppSpacing.xl * 2 + 2,
+          40 + AppSpacing.xl * 2 + 2,
+        ),
         reason: 'padding must still be part of the card box',
       );
     });
@@ -587,7 +591,13 @@ void main() {
       )));
       await tester.pumpAndSettle();
 
-      expect(tester.getSize(find.byType(GlassCard)), const Size(142, 82));
+      expect(
+        tester.getSize(find.byType(GlassCard)),
+        Size(
+          100 + AppSpacing.xl * 2 + 2,
+          40 + AppSpacing.xl * 2 + 2,
+        ),
+      );
 
       await tester.tap(find.byType(GlassCard));
       await tester.pumpAndSettle();
