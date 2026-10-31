@@ -1,7 +1,7 @@
 # SpendSense OTA updates
 
 Status: **deployed.** Live manifest:
-<https://spendsense-ota-2026.web.app/manifest.json> (2.0.13+35, published
+<https://spendsense-ota-2026.web.app/manifest.json> (2.0.13+36, published
 2026-10-31). The app, manifest validation, download verification, native
 installer bridge, tests, CI artifact generation, and Firebase Hosting are in
 place. Publishing is the `OTA Publish` workflow with `confirm=deploy`.
