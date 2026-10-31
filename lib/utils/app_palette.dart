@@ -105,6 +105,13 @@ class AppPalette {
   /// this flag changes only how cards, heroes, borders and overlays look.
   final bool glass;
 
+  /// Explicit ink for text/icons drawn on [limeAccent].
+  ///
+  /// Most palettes have a *light* highlight, so dark ink is correct. A palette
+  /// with a saturated highlight (Paper's ultramarine) needs white instead. When
+  /// null the contrast-aware resolver picks the deep stop or black.
+  final Color? onLimeInk;
+
   const AppPalette({
     required this.id,
     required this.label,
@@ -124,6 +131,7 @@ class AppPalette {
     required this.darkSurfaceAlt,
     required this.borderDark,
     this.glass = false,
+    this.onLimeInk,
   });
 
   // ── Gradients derived from the ramp ─────────────────────────────────────────
@@ -475,14 +483,41 @@ class AppPalette {
     glass: true,
   );
 
+  /// Paper: warm paper-white tiles, black ink and a single ultramarine accent.
+  ///
+  /// Flat by design — no gradients, no glass, minimal shadow — so numerals and
+  /// rules do the work instead of colour. Money semantics stay unchanged.
+  static const paper = AppPalette(
+    id: 'paper',
+    label: 'Paper',
+    deep: Color(0xFF141416),
+    brand: Color(0xFF2B36FF),
+    bright: Color(0xFF5A63FF),
+    mid: Color(0xFF2B36FF),
+    accent: Color(0xFF2B36FF),
+    warm: Color(0xFFB4531E),
+    background: Color(0xFFE7E5E0),
+    surface: Color(0xFFF8F7F4),
+    surfaceMuted: Color(0xFFEFEDE8),
+    borderLight: Color(0xFFDDD9D1),
+    darkBackground: Color(0xFF121215),
+    darkSurface: Color(0xFF1B1B1F),
+    darkSurfaceAlt: Color(0xFF252529),
+    borderDark: Color(0xFF313137),
+    glass: false,
+    // Ultramarine is a saturated highlight: white ink is the only readable
+    // choice (6.8:1), and dark ink would fail AA.
+    onLimeInk: Colors.white,
+  );
+
   /// Palette used when nothing valid is stored (new installs, reset).
   /// Premium Blue is the 2026 default identity.
   static const AppPalette defaultPalette = premiumBlue;
-
   /// Shown in Settings → Appearance, in this order. The 2026 premium set is
   /// first and Premium Blue is the default / reset target.
   static const List<AppPalette> all = [
     premiumBlue,
+    paper,
     deepNavy,
     softPastelTeal,
     plumBlush,

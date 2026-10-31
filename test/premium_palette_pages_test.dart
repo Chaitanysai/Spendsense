@@ -169,6 +169,9 @@ void main() {
     AppPalette.deepNavy,
     AppPalette.softPastelTeal,
     AppPalette.plumBlush,
+    // Paper is flat (no glass or gradients) with its own highlight ink, so it
+    // must render every screen rather than being assumed similar.
+    AppPalette.paper,
   ];
 
   for (final palette in palettes) {

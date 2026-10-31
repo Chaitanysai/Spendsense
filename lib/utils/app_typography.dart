@@ -24,6 +24,10 @@ class FontPreset {
   final String displayFamily;
   final String bodyFamily;
 
+  /// Optional monospaced face for captions, times and day letters. Null keeps
+  /// the previous behaviour (the body family) so other presets are unaffected.
+  final String? monoFamily;
+
   /// Licence of the families in this preset.
   final String licence;
 
@@ -33,6 +37,7 @@ class FontPreset {
     required this.description,
     required this.displayFamily,
     required this.bodyFamily,
+    this.monoFamily,
     this.licence = 'SIL Open Font License 1.1',
   });
 
@@ -73,11 +78,23 @@ class FontPreset {
     bodyFamily: 'Outfit',
   );
 
+  /// Paper: thin Geist display numerals over Geist text, with Geist Mono for
+  /// captions and times.
+  static const FontPreset geist = FontPreset(
+    id: 'geist',
+    label: 'Geist (Paper)',
+    description: 'Thin Geist numerals over Geist text, Geist Mono captions.',
+    displayFamily: 'Geist',
+    bodyFamily: 'Geist',
+    monoFamily: 'Geist Mono',
+  );
+
   static const List<FontPreset> all = [
     standard,
     dotMatrix,
     cleanSans,
     modernSans,
+    geist,
   ];
 
   /// Unknown or missing ids resolve to [standard], never to an error.
