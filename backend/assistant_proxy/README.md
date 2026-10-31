@@ -41,7 +41,8 @@ There is no unauthenticated path.
 - Request caps for body size, history turns, tool rounds, calls per round,
   question length and output length.
 - Separate limits per client address, per function instance and per verified
-  account. The in-memory limiter is per instance; use a shared store if a true
+  account, plus per-account and process-wide daily cost circuit breakers. The
+  in-memory limiters are per instance; use a shared store if a true
   cross-instance cap is required.
 - The socket peer is used when it is public. Behind a managed proxy, the last
   forwarded hop is used instead; a spoofed leading header cannot reset the

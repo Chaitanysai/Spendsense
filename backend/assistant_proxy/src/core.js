@@ -90,6 +90,47 @@ class SlidingWindowRateLimiter {
   }
 }
 
+/**
+ * Coarse daily budget on top of the per-minute windows.
+ *
+ * The per-minute limiter protects availability. It does not stop a patient
+ * caller from spending a large model bill over a day, or many accounts from
+ * doing the same. Cloud Run instances do not share memory, so this is a cost
+ * circuit breaker per instance, not a precise global quota; a shared store is
+ * still required for a hard cross-instance cap.
+ */
+class DailyQuota {
+  constructor({
+    limit = Number.MAX_SAFE_INTEGER,
+    now = Date.now,
+    windowMs = 86_400_000,
+  } = {}) {
+    this.limit = limit;
+    this.now = now;
+    this.windowMs = windowMs;
+    this.entries = new Map();
+  }
+
+  check(key) {
+    const current = this.now();
+    const day = Math.floor(current / this.windowMs);
+    const existing = this.entries.get(key);
+    const entry =
+      existing && existing.day === day ? existing : {day, count: 0};
+    if (entry.count >= this.limit) {
+      this.entries.set(key, entry);
+      const retryAfter = Math.max(
+        1,
+        Math.ceil(((day + 1) * this.windowMs - current) / 1000),
+      );
+      return {allowed: false, retryAfter};
+    }
+    entry.count += 1;
+    this.entries.set(key, entry);
+    return {allowed: true, retryAfter: 0};
+  }
+}
+
 function headerValue(headers, name) {
   if (!headers || typeof headers !== 'object') return undefined;
   const lower = name.toLowerCase();
@@ -343,6 +384,8 @@ function createAssistantHandler({
   logger = console,
   rateLimiter = new SlidingWindowRateLimiter({now}),
   identityRateLimiter = rateLimiter,
+  dailyQuota = new DailyQuota({now}),
+  globalDailyQuota = new DailyQuota({now}),
   verifyAppCheck,
   verifyIdToken,
   timeoutMs = 20_000,
@@ -449,8 +492,36 @@ function createAssistantHandler({
       if (!userRate.allowed) {
         return finish(
           429,
-          {error: 'rate_limited', message: 'Too many requests. Try again shortly.'},
+          {
+            error: 'rate_limited',
+            message: 'Too many requests. Try again shortly.',
+          },
           {'Retry-After': String(userRate.retryAfter)},
+        );
+      }
+
+      // Cost circuit breaker. The per-minute windows stop bursts; this stops
+      // one account (or many accounts) from quietly spending all day.
+      const userDay = dailyQuota.check(`uid:${verifiedUid}`);
+      if (!userDay.allowed) {
+        return finish(
+          429,
+          {
+            error: 'daily_quota_reached',
+            message: 'The daily assistant limit was reached. Try again tomorrow.',
+          },
+          {'Retry-After': String(userDay.retryAfter)},
+        );
+      }
+      const globalDay = globalDailyQuota.check('global');
+      if (!globalDay.allowed) {
+        return finish(
+          429,
+          {
+            error: 'daily_quota_reached',
+            message: 'The assistant is at capacity for today. Try again tomorrow.',
+          },
+          {'Retry-After': String(globalDay.retryAfter)},
         );
       }
     }
@@ -606,6 +677,7 @@ function createAssistantHandler({
 
 module.exports = {
   SlidingWindowRateLimiter,
+  DailyQuota,
   createAssistantHandler,
   validateRequest,
   buildContents,

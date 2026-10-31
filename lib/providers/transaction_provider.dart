@@ -14,6 +14,7 @@ import '../services/transaction_cache_service.dart';
 import '../services/ledger_encryption_service.dart';
 import '../services/ledger_tombstone_store.dart';
 import '../services/budget_monitor_service.dart';
+import '../services/email/gmail_email_source.dart';
 
 class TransactionProvider with ChangeNotifier {
   static const _smsScanStartKey = 'sms_scan_start_date';
@@ -974,6 +975,61 @@ class TransactionProvider with ChangeNotifier {
     ));
     await _cache.put(_transactions[index]);
     _notifyIfAlive();
+  }
+
+  /// Imports bank alert emails from Gmail.
+  ///
+  /// Returns the number of new records. The whole batch is parsed first and
+  /// committed in one journalled write, matching the SMS scan. Raw email text
+  /// is never stored: the record keeps only the same derived fields as SMS and
+  /// a `Email-Gmail` source marker; the Gmail message id is the dedupe key.
+  Future<int> importFromGmail({GmailEmailSource? source}) async {
+    await _initialization;
+    if (_ledgerInitError != null) return 0;
+    final gmailSource = source ?? GmailEmailSource();
+    final alerts = await gmailSource.fetchBankAlerts(
+      seenIds: _cache.cachedIds,
+      since: await gmailSource.lastSyncAt(),
+    );
+    if (alerts.isEmpty) return 0;
+
+    final parser = SmartParser();
+    final accepted = <TransactionModel>[];
+    final rejected = <String, String>{};
+    for (final alert in alerts) {
+      final id = 'gmail:${alert.id}';
+      final parsed = await parser.parse(alert.text, id, alert.date);
+      if (parsed == null) {
+        rejected[id] = 'EMAIL_NOT_A_DEBIT';
+        continue;
+      }
+      accepted.add(parsed.copyWith(
+        source: 'Email-Gmail',
+        originalSms: '',
+        paymentMethod:
+            parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
+      ));
+    }
+
+    if (accepted.isNotEmpty) {
+      final byId = <String, TransactionModel>{
+        for (final tx in accepted) tx.id: _stampSyncMeta(tx),
+      };
+      await _locked(() => _cache.putAll(byId.values.toList(growable: false)));
+      _transactions = [
+        ...byId.values,
+        for (final tx in _transactions)
+          if (!byId.containsKey(tx.id)) tx,
+      ]..sort((a, b) => b.date.compareTo(a.date));
+      _newThisSync = byId.length;
+    }
+    if (rejected.isNotEmpty) {
+      await _cache.markRejectedAll(rejected);
+    }
+    await _cache.updateSyncMeta();
+    _lastSynced = DateTime.now();
+    _notifyIfAlive();
+    return accepted.length;
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {

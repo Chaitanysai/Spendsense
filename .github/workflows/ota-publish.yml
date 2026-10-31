@@ -45,6 +45,11 @@ jobs:
     name: Build manifest and validate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Signing secrets are only available to protected refs. The release
+    # environment adds the repository's protected-branch policy; the explicit
+    # guard keeps the intent readable and fails closed if that policy changes.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
+    environment: release
     permissions:
       contents: read
     outputs:
@@ -62,13 +67,17 @@ jobs:
 
       - name: Decide intent
         id: intent
+        env:
+          # Pass the dispatch input through the environment, never interpolate
+          # it directly into a shell script.
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          if [ "${{ inputs.confirm }}" = "deploy" ]; then
+          if [ "$CONFIRM" = "deploy" ]; then
             echo "deploy_intent=true" >> "$GITHUB_OUTPUT"
             echo "Intent: DEPLOY (will publish to Firebase Hosting)"
           else
             echo "deploy_intent=false" >> "$GITHUB_OUTPUT"
-            echo "Intent: VALIDATE ONLY (input was '${{ inputs.confirm }}')"
+            echo "Intent: VALIDATE ONLY"
           fi
 
       - name: Setup Java
@@ -169,13 +178,23 @@ jobs:
           KEY_PATH: upload-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          GMAIL_SERVER_CLIENT_ID: ${{ vars.GMAIL_SERVER_CLIENT_ID }}
         run: |
           if [ -z "${OTA_BASE_URL:-}" ]; then
             echo "::error::OTA_BASE_URL repository variable is not set"
             exit 1
           fi
+          # Gmail OAuth is optional: an empty client ID leaves email import
+          # disabled at runtime rather than failing the release.
+          DEFINES=()
+          if [ -n "${GMAIL_SERVER_CLIENT_ID:-}" ]; then
+            DEFINES+=(--dart-define=GMAIL_SERVER_CLIENT_ID="$GMAIL_SERVER_CLIENT_ID")
+          fi
+          # Unquoted expansion is deliberate: with an empty array this passes
+          # no extra argument (a quoted "${DEFINES[@]}" would pass one empty).
           flutter build apk --release \
-            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json"
+            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json" \
+            ${DEFINES[@]+"${DEFINES[@]}"}
 
       - name: Verify the built APK is signed with the pinned certificate
         # Checking the keystore proves the pin matches the key we hold. It says
@@ -310,7 +329,8 @@ jobs:
   deploy:
     name: Publish to Firebase Hosting
     needs: validate
-    if: needs.validate.outputs.deploy_intent == 'true'
+    if: needs.validate.outputs.deploy_intent == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -382,7 +402,7 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npx --yes firebase-tools@13 deploy \
+          npx --yes firebase-tools@13.35.1 deploy \
             --only hosting \
             --project spendsense-ota-2026 \
             --token "$FIREBASE_TOKEN" \

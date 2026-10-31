@@ -7,6 +7,7 @@ const {getAppCheck} = require('firebase-admin/app-check');
 const {getAuth} = require('firebase-admin/auth');
 const {
   SlidingWindowRateLimiter,
+  DailyQuota,
   createAssistantHandler,
   positiveInt,
 } = require('./core');
@@ -60,6 +61,17 @@ const identityRateLimiter = new SlidingWindowRateLimiter({
   globalPerMinute: Number.MAX_SAFE_INTEGER,
 });
 
+// Daily cost circuit breakers. These are per instance, because Cloud Run
+// instances do not share memory; use a shared store if a hard cross-instance
+// quota is required. They cap the damage a patient account or many accounts can
+// do in a day.
+const dailyQuota = new DailyQuota({
+  limit: positiveInt(process.env.RATE_LIMIT_DAILY_PER_USER, 100, {max: 5000}),
+});
+const globalDailyQuota = new DailyQuota({
+  limit: positiveInt(process.env.RATE_LIMIT_DAILY_GLOBAL, 2000, {max: 100000}),
+});
+
 function appCheckService() {
   if (getApps().length === 0) initializeApp();
   return getAppCheck();
@@ -87,6 +99,8 @@ const handler = createAssistantHandler({
   env: process.env,
   rateLimiter,
   identityRateLimiter,
+  dailyQuota,
+  globalDailyQuota,
   verifyAppCheck,
   verifyIdToken: verifyUserToken,
   // NaN would make setTimeout fire immediately; clamp to a safe window that

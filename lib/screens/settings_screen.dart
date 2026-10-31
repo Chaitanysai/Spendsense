@@ -36,6 +36,7 @@ import 'appearance_screen.dart';
 import 'assistant_privacy_screen.dart';
 import 'assistant_screen.dart';
 import 'budgets_screen.dart';
+import 'email_import_screen.dart';
 import 'recurring_screen.dart';
 import 'sound_settings_screen.dart';
 import 'summary_screen.dart';
@@ -282,6 +283,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       name: AssistantScreen.routeName,
                       builder: (_) => const AssistantScreen(),
+                    );
+                  },
+                ),
+                _divider(context),
+                _SettingsTile(
+                  icon: Icons.mark_email_read_rounded,
+                  iconColor: AppColors.azure,
+                  title: 'Email import',
+                  subtitle: 'Connect Gmail to read bank alert emails on-device',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute(builder: (_) => const EmailImportScreen()),
                     );
                   },
                 ),

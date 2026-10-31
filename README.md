@@ -6,15 +6,22 @@ them into a searchable ledger with budgets, bills, recurring plans and spending
 insights.
 
 The ledger is encrypted and stored on the device. The standard Android build
-uses an account for sign-in; SMS contents are never uploaded.
+uses an account for sign-in. SMS text stays on the device by default. If you
+explicitly enable **AI Provider Settings → Send ambiguous SMS to AI providers**,
+redacted low-confidence messages are sent to the provider you configured; read
+that screen before enabling it.
 
 ## What it does
 
 - **Local SMS import** — scans the Android inbox for transaction messages,
   classifies debits and credits, and extracts amount, merchant, bank and
-  category. Messages stay on the device.
+  category. Messages stay on the device unless cloud SMS parsing is explicitly
+  enabled as described above.
+- **Email import (Gmail)** — opt-in, on-device reading of bank alert emails
+  with read-only Gmail access, for banks that alert by email instead of SMS.
+  See [docs/email-import.md](docs/email-import.md).
 - **Manual entries** — add income or expense records without SMS.
-- **Encrypted ledger** — records are stored in an on-device SQLite database
+- **Encrypted ledger** — records are stored in an on-device encrypted store
   protected with AES-256-GCM; the key lives in platform secure storage.
 - **Budgets and alerts** — monthly cycle budget, category budgets and warning
   thresholds.
