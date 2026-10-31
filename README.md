@@ -6,7 +6,10 @@ them into a searchable ledger with budgets, bills, recurring plans and spending
 insights.
 
 The ledger is encrypted and stored on the device. The standard Android build
-uses an account for sign-in; SMS contents are never uploaded.
+uses an account for sign-in. SMS text stays on the device by default. If you
+explicitly enable **AI Provider Settings → Send ambiguous SMS to AI providers**,
+redacted low-confidence messages are sent to the provider you configured; read
+that screen before enabling it.
 
 ## What it does
 

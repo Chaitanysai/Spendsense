@@ -45,6 +45,11 @@ jobs:
     name: Build manifest and validate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Signing secrets are only available to protected refs. The release
+    # environment adds the repository's protected-branch policy; the explicit
+    # guard keeps the intent readable and fails closed if that policy changes.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
+    environment: release
     permissions:
       contents: read
     outputs:
@@ -62,13 +67,17 @@ jobs:
 
       - name: Decide intent
         id: intent
+        env:
+          # Pass the dispatch input through the environment, never interpolate
+          # it directly into a shell script.
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          if [ "${{ inputs.confirm }}" = "deploy" ]; then
+          if [ "$CONFIRM" = "deploy" ]; then
             echo "deploy_intent=true" >> "$GITHUB_OUTPUT"
             echo "Intent: DEPLOY (will publish to Firebase Hosting)"
           else
             echo "deploy_intent=false" >> "$GITHUB_OUTPUT"
-            echo "Intent: VALIDATE ONLY (input was '${{ inputs.confirm }}')"
+            echo "Intent: VALIDATE ONLY"
           fi
 
       - name: Setup Java
@@ -310,7 +319,8 @@ jobs:
   deploy:
     name: Publish to Firebase Hosting
     needs: validate
-    if: needs.validate.outputs.deploy_intent == 'true'
+    if: needs.validate.outputs.deploy_intent == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -382,7 +392,7 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npx --yes firebase-tools@13 deploy \
+          npx --yes firebase-tools@13.35.1 deploy \
             --only hosting \
             --project spendsense-ota-2026 \
             --token "$FIREBASE_TOKEN" \

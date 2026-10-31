@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/ai_sms_consent.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
@@ -16,6 +17,7 @@ class AISettingsScreen extends StatefulWidget {
 
 class _AISettingsScreenState extends State<AISettingsScreen> {
   final _storage = SecureStorageService();
+  final _consentStore = const AiSmsConsentStore();
 
   // Controllers for each provider
   final _groqController = TextEditingController();
@@ -30,6 +32,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
   bool _openRouterConfigured = false;
 
   bool _loading = true;
+  bool _cloudSmsConsent = false;
 
   @override
   void initState() {
@@ -53,6 +56,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     final cerebras = await _storage.getCerebrasKey();
     final gemini = await _storage.getGeminiKey();
     final openRouter = await _storage.getOpenRouterKey();
+    final cloudSmsConsent = await _consentStore.hasConsent();
 
     if (!mounted) return;
 
@@ -61,6 +65,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       _cerebrasConfigured = cerebras != null && cerebras.isNotEmpty;
       _geminiConfigured = gemini != null && gemini.isNotEmpty;
       _openRouterConfigured = openRouter != null && openRouter.isNotEmpty;
+      _cloudSmsConsent = cloudSmsConsent;
       _loading = false;
     });
   }
@@ -178,12 +183,46 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
-                            'Configure API keys for AI-powered transaction parsing. '
-                            'Keys are stored securely on your device and never leave your control.',
+                            'API keys are stored in encrypted storage on this '
+                            'device. They are sent only to the provider they '
+                            'belong to. SMS text is not sent anywhere unless '
+                            'you enable cloud SMS parsing below.',
                             style: AppText.body(context).copyWith(height: 1.5),
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceColor(context),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.border(context)),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: SwitchListTile.adaptive(
+                        value: _cloudSmsConsent,
+                        onChanged: (value) async {
+                          await _consentStore.setConsent(value);
+                          if (mounted) {
+                            setState(() => _cloudSmsConsent = value);
+                          }
+                        },
+                        title: Text(
+                          'Send ambiguous SMS to AI providers',
+                          style: AppText.title(context),
+                        ),
+                        subtitle: Text(
+                          'Off by default. When on, messages the local parser '
+                          'cannot confidently read are redacted and sent to the '
+                          'first configured provider below. Merchant, amount, '
+                          'date and bank context are still shared; account, '
+                          'card, UPI, IFSC, OTP and reference tokens are masked.',
+                          style: AppText.bodySmall(context),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -309,8 +348,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(description,
-              style: AppText.bodySmall(context)),
+          Text(description, style: AppText.bodySmall(context)),
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: controller,

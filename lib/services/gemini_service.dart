@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import 'ai_sms_consent.dart';
 import 'sms_content_policy.dart';
 import '../utils/money_parser.dart';
 import '../models/transaction_model.dart';
@@ -28,6 +29,11 @@ class _ParseProvider {
 }
 
 class GeminiService {
+  final AiSmsConsentStore _consentStore;
+
+  GeminiService({AiSmsConsentStore? consentStore})
+      : _consentStore = consentStore ?? const AiSmsConsentStore();
+
   static Future<List<_ParseProvider>> _getProviders() async {
     final groqKey = await AppConfig.getGroqKey();
     final cerebrasKey = await AppConfig.getCerebrasKey();
@@ -63,21 +69,62 @@ class GeminiService {
     ];
   }
 
-  /// Sanitizes SMS text by stripping sensitive data (OTP, PIN, CVV, full card/account numbers)
-  /// before sending to cloud LLM providers (SpendSense 2.0 Privacy Mandate).
+  /// Redacts identifiers before SMS text leaves the device for a provider.
+  ///
+  /// This is defence in depth, not a claim that the remaining text is
+  /// anonymous: merchant, amount, date and bank context still go to the
+  /// provider. Cloud parsing only runs when the user explicitly enables it.
   String sanitizeSms(String sms) {
-    String sanitized = sms;
-    // Mask potential 4-6 digit OTPs
-    sanitized = sanitized.replaceAll(RegExp(r'\b\d{4,6}\b'), '***');
-    // Mask potential CVV/PIN
+    var sanitized = sms;
+
+    // CVV/PIN first, so their short digits are not consumed by the OTP rule.
     sanitized = sanitized.replaceAll(
-        RegExp(r'(?:cvv|pin)\s*[:=]?\s*\d{3,4}', caseSensitive: false),
-        'cvv: ***');
-    // Mask long card/account numbers leaving last 4 digits
-    sanitized = sanitized.replaceAllMapped(RegExp(r'\b\d{10,16}\b'), (m) {
-      final s = m.group(0)!;
-      return '****${s.substring(s.length - 4)}';
-    });
+      RegExp(r'(?:cvv|pin)\s*[:=]?\s*\d{3,4}', caseSensitive: false),
+      'cvv: ***',
+    );
+
+    // Card/account numbers with optional spaces or hyphens, 7-19 digits.
+    sanitized = sanitized.replaceAllMapped(
+      RegExp(r'\b\d(?:[ -]?\d){6,18}\b'),
+      (m) {
+        final raw = m.group(0)!;
+        final digits = raw.replaceAll(RegExp(r'\D'), '');
+        if (digits.length >= 10) {
+          return '****${digits.substring(digits.length - 4)}';
+        }
+        return '***';
+      },
+    );
+
+    // Remaining 4-8 digit tokens: OTPs, short references, PINs. A digit run
+    // immediately after '*' is the last four of a masked card/account and must
+    // not be masked again.
+    sanitized = sanitized.replaceAll(
+      RegExp(r'(?<![*\w])\b\d{4,8}\b'),
+      '***',
+    );
+
+    // UPI IDs / email-like payment addresses.
+    sanitized = sanitized.replaceAll(
+      RegExp(r'\b[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}\b'),
+      '***@***',
+    );
+
+    // IFSC codes.
+    sanitized = sanitized.replaceAll(
+      RegExp(r'\b[A-Z]{4}0[A-Z0-9]{6}\b'),
+      'IFSC ***',
+    );
+
+    // Explicit reference fields, including alphanumeric UTRs.
+    sanitized = sanitized.replaceAllMapped(
+      RegExp(
+        r'\b(ref|reference|utr|txn|transaction\s*id)\b\s*[:#-]?\s*[A-Za-z0-9-]{4,}',
+        caseSensitive: false,
+      ),
+      (m) => '${m.group(1)} ***',
+    );
+
     return sanitized;
   }
 
@@ -89,6 +136,7 @@ class GeminiService {
     DateTime smsDate,
   ) async {
     if (!SmartParser.isDebitExpenseSms(sms)) return null;
+    if (!await _consentStore.hasConsent()) return null;
     final localParser = SmartParser();
     final local = await localParser.parse(sms, id, smsDate);
     if (local == null) return null;

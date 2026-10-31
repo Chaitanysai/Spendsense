@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   SlidingWindowRateLimiter,
+  DailyQuota,
   createAssistantHandler,
   clientIp,
   positiveInt,
@@ -733,6 +734,27 @@ test('GET and OPTIONS behave correctly', async () => {
     body: '',
   });
   assert.equal(options.status, 204);
+});
+
+test('DailyQuota caps one key for a day and resets on the next day', () => {
+  let now = 1_000_000;
+  const quota = new DailyQuota({limit: 2, now: () => now});
+  assert.equal(quota.check('uid:a').allowed, true);
+  assert.equal(quota.check('uid:a').allowed, true);
+  const blocked = quota.check('uid:a');
+  assert.equal(blocked.allowed, false);
+  assert.ok(blocked.retryAfter > 0);
+  assert.equal(quota.check('uid:b').allowed, true);
+
+  now += 86_400_000;
+  assert.equal(quota.check('uid:a').allowed, true);
+});
+
+test('DailyQuota keeps the global key separate from per-user keys', () => {
+  const quota = new DailyQuota({limit: 1, now: () => 1_000_000});
+  assert.equal(quota.check('global').allowed, true);
+  assert.equal(quota.check('global').allowed, false);
+  assert.equal(quota.check('uid:a').allowed, true);
 });
 
 function createHandlerForTest() {
