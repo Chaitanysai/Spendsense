@@ -77,9 +77,13 @@ class AppColors {
         (_contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black));
   }
 
-  /// A dark card tinted with the palette's own brand and accent. The raised
-  /// surface gets more tint so a card is distinguishable from the canvas even
-  /// on a pure-black AMOLED background.
+  /// A dark card tinted with the palette's own brand and accent.
+  ///
+  /// The raised surface gets more tint so a card is distinguishable from the
+  /// canvas even on a pure-black AMOLED background. A light lift toward white is
+  /// added on top: without it dark tiles collapsed into the canvas and read as
+  /// flat black blocks rather than lit glass (the "light shade of the colour on
+  /// the tiles" the UI pass asked for).
   static Color _tintDarkSurface(
     AppPalette palette,
     Color base, {
@@ -91,9 +95,15 @@ class AppColors {
       palette.brand.withValues(alpha: brandAmount),
       base,
     );
-    return Color.alphaBlend(
+    final accented = Color.alphaBlend(
       palette.accent.withValues(alpha: accentAmount),
       branded,
+    );
+    // AMOLED canvases must stay genuinely black, so only lift tinted ones.
+    if (palette.isAmoled) return accented;
+    return Color.alphaBlend(
+      Colors.white.withValues(alpha: raised ? 0.06 : 0.035),
+      accented,
     );
   }
 
@@ -248,6 +258,51 @@ class AppColors {
   /// [BuildContext] exists yet.
   static Color brandInkFor(bool isDark) =>
       isDark ? _darkBrandInk() : Color.lerp(brand, navyDeep, 0.45) ?? brand;
+
+  /// Alpha of the brand-tinted capsule that sits behind small icons in the
+  /// action dock and settings rows.
+  static double brandWellAlpha(bool isDark) => isDark ? 0.20 : 0.11;
+
+  /// Ink for an icon drawn on a brand-tinted capsule (see [brandWellAlpha]).
+  ///
+  /// [brandInk] is computed against the *canvas*, but a capsule is the brand
+  /// colour blended over the surface, so it collapses the hue distance: in dark
+  /// mode cyan-on-navy measured 3.6:1 and ultramarine-on-indigo 3.1:1 — icons
+  /// effectively disappeared. This returns the highest-contrast choice against
+  /// the actual blended capsule, preferring an on-brand tint when it clears AA
+  /// and falling back to white.
+  static Color brandWellInk(BuildContext context) {
+    final isDarkMode = isDark(context);
+    final capsule = Color.alphaBlend(
+      brand.withValues(alpha: brandWellAlpha(isDarkMode)),
+      isDarkMode ? darkSurface : surface,
+    );
+    final onBrand = isDarkMode ? _darkBrandInk() : brandInkFor(false);
+    if (_contrast(onBrand, capsule) >= 4.5) return onBrand;
+    // White is the readable fallback for both saturated and mid-tone brands.
+    if (_contrast(Colors.white, capsule) >= 4.5) return Colors.white;
+    return _contrast(Colors.black, capsule) > _contrast(Colors.white, capsule)
+        ? Colors.black
+        : Colors.white;
+  }
+
+  /// Ink for a glyph drawn on a translucent tint of [tint] over [base].
+  ///
+  /// A well painted in 12% of the icon's own colour leaves little contrast for
+  /// an icon of that same colour (~2-3:1). This returns [tint] when it clears
+  /// AA on the real blended well, otherwise a lightened copy, otherwise white
+  /// or black — whichever reads best.
+  static Color inkOn(Color tint, Color tinted, Color base) {
+    final well = Color.alphaBlend(tinted, base);
+    if (_contrast(tint, well) >= 4.5) return tint;
+    for (var t = 0.1; t < 1.0; t += 0.1) {
+      final candidate = Color.lerp(tint, Colors.white, t) ?? tint;
+      if (_contrast(candidate, well) >= 4.5) return candidate;
+    }
+    final white = _contrast(Colors.white, well);
+    final black = _contrast(Colors.black, well);
+    return black > white ? Colors.black : Colors.white;
+  }
 
   /// [brandBright], lightened toward white only when it falls under 4.5:1 on
   /// the raised dark surface that dialogs and sheets use. Palettes whose bright

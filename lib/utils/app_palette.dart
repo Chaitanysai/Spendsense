@@ -504,7 +504,10 @@ class AppPalette {
     darkSurface: Color(0xFF1B1B1F),
     darkSurfaceAlt: Color(0xFF252529),
     borderDark: Color(0xFF313137),
-    glass: false,
+    // Light mode stays flat, but the dark state is glass like the other
+    // palettes: without this the dark canvas rendered as flat opaque blocks,
+    // which is the "no glassmorphism in dark mode" the UI pass was about.
+    glass: true,
     // Ultramarine is a saturated highlight: white ink is the only readable
     // choice (6.8:1), and dark ink would fail AA.
     onLimeInk: Colors.white,

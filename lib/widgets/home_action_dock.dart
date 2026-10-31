@@ -108,7 +108,11 @@ class _DockSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
-    final iconColor = primary ? Colors.white : AppColors.brandInk(context);
+    // Non-primary icons sit on a brand-tinted capsule, not on the canvas, so
+    // they need ink measured against that capsule: brandInk measured against
+    // the canvas made three of the four icons vanish in dark mode.
+    final iconColor =
+        primary ? Colors.white : AppColors.brandWellInk(context);
 
     return Semantics(
       button: true,
@@ -143,7 +147,7 @@ class _DockSlot extends StatelessWidget {
                       color: primary
                           ? null
                           : AppColors.brand.withValues(
-                              alpha: dark ? 0.20 : 0.11,
+                              alpha: AppColors.brandWellAlpha(dark),
                             ),
                       border: primary
                           ? Border.all(
