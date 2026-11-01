@@ -20,26 +20,18 @@
 <link rel="apple-touch-icon" href="/legal/favicon.png">
 <link rel="preload" href="/legal/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/legal/fonts/instrument-sans-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/legal/fonts/fonts.css?v=20261102001">
-<link rel="stylesheet" href="/landing.css?v=20261102001">
+<link rel="stylesheet" href="/legal/fonts/fonts.css?v=20261102010812">
+<link rel="stylesheet" href="/landing.css?v=20261102010812">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
 <main id="main" class="wall">
 
-  <!-- identity and navigation: one column, stacked at their own heights -->
-  <div class="col-left">
-    <div class="masthead pane">
-      <img src="/legal/favicon.png" alt="" width="34" height="34">
-      <span>SpendSense</span>
-    </div>
-    <nav class="nav-pane pane-clear" aria-label="Sections">
-      <a href="#proof">What it does <span class="tick" aria-hidden="true">→</span></a>
-      <a href="#refuses">What it refuses <span class="tick" aria-hidden="true">→</span></a>
-      <a href="#install">Install <span class="tick" aria-hidden="true">→</span></a>
-      <a href="/legal/">Legal &amp; privacy <span class="tick" aria-hidden="true">→</span></a>
-    </nav>
+  <!-- identity -->
+  <div class="masthead pane">
+    <img src="/legal/favicon.png" alt="" width="34" height="34">
+    <span>SpendSense</span>
   </div>
 
   <!-- the dominant pane -->
@@ -55,33 +47,44 @@
     </div>
   </section>
 
+  <!-- navigation set as panes -->
+  <nav class="nav-pane pane-clear" aria-label="Sections">
+    <a href="#proof">What it does <span class="tick" aria-hidden="true">→</span></a>
+    <a href="#refuses">What it refuses <span class="tick" aria-hidden="true">→</span></a>
+    <a href="#install">Install <span class="tick" aria-hidden="true">→</span></a>
+    <a href="/legal/">Legal &amp; privacy <span class="tick" aria-hidden="true">→</span></a>
+  </nav>
+
   <!-- the wall's one saturated note -->
   <div class="note" aria-hidden="true"><span>Offline first · Android</span></div>
 
-  <!-- readout and install: the right column, stacked at their own heights -->
-  <div class="col-right">
-    <aside class="readout pane pane-lo" aria-labelledby="readout-label">
-      <div>
-        <div class="readout-label" id="readout-label">SMS sent to a server</div>
-        <div class="readout-figure" id="readout" aria-live="polite">0</div>
-      </div>
-      <p class="readout-note">
-        Counted on this page. Parsing runs on the phone; nothing is uploaded unless
-        you switch on a cloud feature yourself.
-      </p>
-    </aside>
+  <!-- live readout -->
+  <aside class="readout pane pane-lo" aria-labelledby="readout-label">
+    <div>
+      <div class="readout-label" id="readout-label">SMS sent to a server</div>
+      <div class="readout-figure" id="readout" aria-live="polite">0</div>
+    </div>
+    <p class="readout-note">
+      Counted on this page. Parsing runs on the phone; nothing is uploaded unless
+      you switch on a cloud feature yourself.
+    </p>
+    <div class="readout-scale" aria-hidden="true">
+      <b>0 · ceiling</b>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+  </aside>
 
-    <section class="install pane pane-hi" id="install" aria-labelledby="install-title">
-      <h2 id="install-title" class="install-heading">Install</h2>
-      <ol>
-        <li>Open the latest release on GitHub.</li>
-        <li>Download the <code class="apk">.apk</code> file.</li>
-        <li>Allow installs from your browser or file manager when Android asks.</li>
-        <li>Install. Updating over an existing build with the same key keeps your data.</li>
-      </ol>
-      <p class="install-note">Requires Android 7.0 or newer. Side-loaded, not from Google Play.</p>
-    </section>
-  </div>
+  <!-- install -->
+  <section class="install pane pane-hi" id="install" aria-labelledby="install-title">
+    <h2 id="install-title" class="install-heading">Install</h2>
+    <ol>
+      <li>Open the latest release on GitHub.</li>
+      <li>Download the <code class="apk">.apk</code> file.</li>
+      <li>Allow installs from your browser or file manager when Android asks.</li>
+      <li>Install. Updating over an existing build with the same key keeps your data.</li>
+    </ol>
+    <p class="install-note">Requires Android 7.0 or newer. Side-loaded, not from Google Play.</p>
+  </section>
 
   <!-- the action -->
   <section class="action-pane pane" aria-labelledby="get-title">

@@ -53,14 +53,51 @@ Row 2: the action pane (3–9), immediately beneath the claim.
 Mobile: one column, rows in reading order — masthead, claim, readout, action,
 install, proofs, nav, refusal, footer.
 
-## 4. The one live element
+## 4. Pane sizing
+
+A pane is a frame for its content, not a container to be filled. Every pane sizes
+to what it holds; the grid pins each to its own row so no pane floats above black.
+
+- **No pane may float above an unfilled row.** Side-by-side panes of different
+  heights used to leave black wells under the short one. Side columns now fill
+  their rows; the readout fills the claim's row and its lower half carries a
+  drawn scale so it reads as an instrument face, not as empty glass.
+- **`min-height` on a pane is a smell.** The claim carried one and grew longer than
+  its own copy. A pane's floor comes from its padding and type.
+- **The note is the one exception.** It runs the height of the first two rows
+  because it is a vertical accent, and its label is set along that height.
+- **Verify by measurement, not by eye.** Compare `getBoundingClientRect().height`
+  against the sum of children plus gaps plus padding. A difference above ~20px needs
+  a reason; a drawn element, or an authored accent, is a reason.
+
+## 5. Glass
+
+The wall is a light cage over a colour-field. Panes are frosted glass laid over it.
+Without something behind it there is nothing to refract, which is why a flat black
+ground reads as matte card rather than glass.
+
+- **Field.** Three large soft radial fields in cobalt, amber and oxblood, held far
+  out of register behind the wall, over the bar colour. They are the only
+  light the glass picks up.
+- **Pane.** A translucent milky fill, `backdrop-filter: blur(18px) saturate(1.25)`,
+  a 1px lit top edge, a 1px dark bottom edge, and one soft low-offset shadow.
+- **Refused.** No glow, no gradient borders, no purple, no neon. Saturated panes
+  are tinted glass (a gradient fill plus their own backdrop-filter), not painted
+  slabs. Frosting denser than the field is how an unprovable claim is expressed;
+  the Cloud Backup pane blurs harder and desaturates.
+- **Fallback.** `@supports not (backdrop-filter)` returns every pane to its opaque
+  colour, so the page never degrades to washed-out text.
+- **Contrast is checked on the composite,** not on the declared colour: fill over
+  field, then text over fill. Every text run measures 4.78:1 or better.
+
+## 6. The one live element
 
 The readout pane shows a figure counted **on the page** (SMS sent to a server: 0)
 and states beside it what it measures. It settles once on load, then stops. It
 honours `prefers-reduced-motion` by rendering the final value with no count.
 It is the page's only motion moment; there is no other entrance animation.
 
-## 5. Honesty rules
+## 7. Honesty rules
 
 - A claim we cannot prove is **frosted**, never omitted: the Cloud Backup pane is
   visibly unavailable and says why. Dropping it silently would read as a hidden gap.
@@ -69,7 +106,7 @@ It is the page's only motion moment; there is no other entrance animation.
 - The refusal band is load-bearing content, not decoration: it lists what the app
   will not do, checked against the app's permissions.
 
-## 6. Non-negotiables
+## 8. Non-negotiables
 
 - Contrast ≥ 4.5:1 body, ≥ 3:1 large text, verified on the rendered page.
 - Visible focus ring on every interactive element; a skip link to `#main`.
@@ -79,7 +116,7 @@ It is the page's only motion moment; there is no other entrance animation.
   work may touch them. The catch-all rewrite to `/404.html` is safe because those
   paths exist as real files.
 
-## 7. Static asset cache-busting
+## 9. Static asset cache-busting
 
 Firebase Hosting serves `landing.css` with default caching, and browsers hold it.
 `index.html` appends `?v=<timestamp>` to the stylesheet URL. **Bump it on every

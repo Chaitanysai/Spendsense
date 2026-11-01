@@ -76,11 +76,12 @@ a { color: inherit; }
 
 /* ─────────────────────────────────────────── the wall ── */
 
+/* The wall is a light cage. Behind it sit three large colour-fields; the panes
+   are frosted glass laid over them. Without something behind the glass there is
+   nothing to refract, which is why a flat black ground cannot be glassmorphic. */
 .wall {
-  /* Bars are the page's structural line. Every pane sits inside them.
-     Rows are explicit so auto-placement can never push the action below the
-     install card: row 1 is the first viewport, row 2 the action, then the
-     proofs, the refusal band and the footer course. */
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: var(--bar-w);
@@ -88,50 +89,83 @@ a { color: inherit; }
   padding: var(--bar-w);
   border: var(--bar-w) solid var(--bar);
 }
-
-/* The two side columns are single grid items that stack their own panes, so
-   each pane is exactly as tall as its content and no row is stretched to match
-   its tallest neighbour. */
-.col-left,
-.col-right {
-  display: flex;
-  flex-direction: column;
-  gap: var(--bar-w);
-  min-width: 0;
-  align-self: start;
+.wall::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Three fields, each the hue of one saturated pane, held far out of register
+     so the glass has colour to pick up without any of them reading as a hero. */
+  background:
+    radial-gradient(60% 55% at 18% 12%, rgba(27, 63, 160, 0.55) 0%, transparent 70%),
+    radial-gradient(52% 48% at 84% 26%, rgba(192, 138, 46, 0.30) 0%, transparent 72%),
+    radial-gradient(58% 60% at 62% 88%, rgba(94, 27, 34, 0.42) 0%, transparent 70%),
+    radial-gradient(46% 40% at 6% 76%, rgba(27, 63, 160, 0.30) 0%, transparent 72%),
+    var(--bar);
 }
-.col-left { grid-column: 1 / span 2; grid-row: 1; }
-.col-right { grid-column: 10 / span 3; grid-row: 1; }
-.col-left > *,
-.col-right > * { grid-row: auto; }
 
-/* First viewport: the claim and the note sit in row 1 beside the two columns.
-   The action takes row 2 across the middle. */
-.claim,
-.note { grid-row: 1; }
-
-.action-pane { grid-row: 2; grid-column: 3 / span 6; align-self: start; }
+/* Columns, not scattered tiles. Each column is a stack of glass panes with cage
+   bars between; the columns are equal height because the tallest pane in each
+   sets it, so no pane floats above a field of black. */
+.masthead { grid-column: 1 / span 2; grid-row: 1; align-self: start; }
+.nav-pane { grid-column: 1 / span 2; grid-row: 2; }
+.claim { grid-column: 3 / span 6; grid-row: 1; }
+.note { grid-column: 9 / span 1; grid-row: 1 / span 2; }
+.readout { grid-column: 10 / span 3; grid-row: 1; }
+.install { grid-column: 10 / span 3; grid-row: 2; }
+.action-pane { grid-column: 3 / span 6; grid-row: 2; }
 .proofs { grid-row: 3; }
 .refusal { grid-row: 4; }
 .foot { grid-row: 5; }
 
 .pane {
   position: relative;
-  background: var(--paper);
-  /* The seeded-glass grain: a fine two-tone speckle, no image request. */
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px),
-    radial-gradient(circle at 70% 65%, rgba(255, 255, 255, 0.4) 0 1px, transparent 1px),
-    radial-gradient(circle at 45% 85%, rgba(180, 172, 155, 0.16) 0 1.5px, transparent 1.5px);
-  background-size: 7px 7px, 11px 11px, 17px 17px;
+  /* Frosted glass over the colour-field behind the wall. The three layers are
+     a translucent milky fill, a saturation lift that keeps the field's hue
+     visible, and a backdrop blur that pulls its light through. No glow, no
+     gradient border: the only glass cues are a lit top edge and a soft shadow. */
+  background: rgba(247, 245, 239, 0.80);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 0 rgba(17, 20, 23, 0.10),
+    0 10px 26px -14px rgba(0, 0, 0, 0.55);
   padding: clamp(18px, 2.2vw, 30px);
   min-width: 0;
-  overflow: hidden;
+  /* No overflow clipping: clipping kills the backdrop-filter on some engines
+     and would crop the specular edge. */
 }
 
-.pane-hi { background-color: var(--paper-hi); }
-.pane-lo { background-color: var(--paper-lo); }
-.pane-clear { background-color: var(--paper-hi); background-image: none; }
+/* The seeded-glass grain, as a texture layer rather than a background image so
+   it survives the translucent fill above. */
+.pane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.5) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 65%, rgba(255, 255, 255, 0.35) 0 1px, transparent 1px),
+    radial-gradient(circle at 45% 85%, rgba(150, 142, 125, 0.14) 0 1.5px, transparent 1.5px);
+  background-size: 7px 7px, 11px 11px, 17px 17px;
+}
+.pane > * { position: relative; }
+
+.pane-hi { background: rgba(251, 250, 246, 0.88); }
+.pane-lo { background: rgba(233, 229, 219, 0.80); }
+.pane-clear { background: rgba(251, 250, 246, 0.55); }
+
+/* Browsers without backdrop-filter (and reduced-transparency settings) get the
+   opaque pane instead of a washed-out one. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pane { background: var(--paper); }
+  .pane-hi { background: var(--paper-hi); }
+  .pane-lo { background: var(--paper-lo); }
+  .pane-clear { background: var(--paper-hi); }
+}
 
 /* Glass states: rest is daylight, hover backlights, a proven claim holds. */
 .pane-proven::after {
@@ -153,7 +187,6 @@ a { color: inherit; }
   align-items: center;
   gap: 12px;
   padding: 14px 18px;
-  background-color: var(--paper-hi);
 }
 .masthead img { display: block; width: 34px; height: 34px; border-radius: 9px; }
 .masthead span {
@@ -167,7 +200,12 @@ a { color: inherit; }
 .nav-pane {
   display: flex;
   flex-direction: column;
-  background: var(--bar);
+  justify-content: flex-start;
+  /* The nav is a column of glass slats with cage bars between them. The bars
+     are the pane's own background, so the stack never floats over black. */
+  background: rgba(17, 20, 23, 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
   padding: 0;
   gap: 1px;
 }
@@ -176,12 +214,16 @@ a { color: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 52px;
-  padding: 0 18px;
-  background: var(--paper);
+  flex: 1 1 0;
+  min-height: 46px;
+  padding: 0 16px;
+  background: rgba(251, 250, 246, 0.82);
   color: var(--ink);
   text-decoration: none;
-  font: 700 12.5px/1 var(--display);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
   letter-spacing: 0.13em;
   text-transform: uppercase;
   transition: background-color 220ms var(--ease), color 220ms var(--ease);
@@ -195,22 +237,21 @@ a { color: inherit; }
 /* ── the dominant pane ── */
 
 .claim {
-  grid-column: 3 / span 6;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: clamp(16px, 2vw, 28px);
-  /* Sizes to its own text. A min-height here made the pane taller than its
-     copy and pushed the action below a band of empty pane. */
-  align-self: start;
+  /* Sizes to its own text with a floor, so it fills the first viewport
+     without becoming taller than what it says. */
+  min-height: 0;
   padding: clamp(20px, 2.2vw, 32px);
 }
 .claim h1 {
   margin: 0;
   font-family: var(--display);
   font-weight: 800;
-  font-size: clamp(2.1rem, 4.4vw, 3.9rem);
-  line-height: 0.95;
+  font-size: clamp(1.9rem, 3.6vw, 3.3rem);
+  line-height: 0.94;
   letter-spacing: -0.03em;
   text-transform: uppercase;
   text-wrap: balance;
@@ -223,7 +264,7 @@ a { color: inherit; }
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 28px;
+  margin-top: 0;
   padding-top: 18px;
   border-top: 2px solid var(--bar);
 }
@@ -237,15 +278,20 @@ a { color: inherit; }
 /* ── the saturated note ── */
 
 .note {
-  grid-column: 9 / span 1;
-  background-color: var(--cobalt);
-  background-image: none;
+  /* Tinted glass, not a painted slab: the cobalt is a colour laid into the
+     glass so the field behind still shows through it. */
+  background: linear-gradient(
+    180deg,
+    rgba(27, 63, 160, 0.92) 0%,
+    rgba(27, 63, 160, 0.74) 55%,
+    rgba(20, 46, 120, 0.88) 100%
+  );
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0 0 18px;
-  /* A narrow vertical accent beside the claim, never a tower of empty blue. */
-  align-self: stretch;
 }
 .note span {
   writing-mode: vertical-rl;
@@ -259,10 +305,9 @@ a { color: inherit; }
 /* ── the live pane ── */
 
 .readout {
-  /* Sizes to its two items. */
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 14px;
 }
 .readout-label {
@@ -288,6 +333,44 @@ a { color: inherit; }
   line-height: 1.5;
   color: var(--ink-2);
 }
+/* The scale below the note fills the pane's lower half with a measurement
+   rather than blank glass: a zero-anchored bar with its ticks, drawn in CSS. */
+.readout-scale {
+  position: relative;
+  height: 74px;
+  margin-top: 6px;
+  border-left: 1px solid rgba(17, 20, 23, 0.28);
+  border-bottom: 1px solid rgba(17, 20, 23, 0.28);
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 0 0 0 9px;
+}
+.readout-scale i {
+  display: block;
+  width: 100%;
+  height: 8px;
+  background: rgba(17, 20, 23, 0.13);
+}
+.readout-scale i:first-child {
+  height: 16px;
+  background: var(--cobalt);
+}
+/* Far ticks are marked, so the bar reads as a scale and not as a progress bar
+   counting up to something. */
+.readout-scale i:nth-child(5),
+.readout-scale i:last-child { height: 12px; background: rgba(17, 20, 23, 0.20); }
+.readout-scale b {
+  position: absolute;
+  left: 9px;
+  top: 0;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
 
 /* ── the action ── */
 
@@ -301,16 +384,14 @@ a { color: inherit; }
 }
 
 .action-pane {
-  grid-column: 3 / span 7;
-  align-self: start;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: space-between;
   justify-content: space-between;
   gap: 18px;
   padding: clamp(16px, 1.6vw, 22px);
 }
-
 .download {
   display: inline-flex;
   align-items: center;
@@ -341,12 +422,12 @@ a { color: inherit; }
 .proofs {
   grid-column: 1 / span 12;
   display: grid;
-  /* Seven tiles: four across, then three across the last row. Fixed 3-column
-     spans left a single orphan tile and made every row as tall as the roundest
-     tile, which is where the empty space came from. */
+  /* Seven tiles: four across, then three across the last row. The grid has no
+     background of its own, so the colour-field behind the wall shows through
+     the bars between the tiles. */
   grid-template-columns: repeat(12, 1fr);
   gap: var(--bar-w);
-  background: var(--bar);
+  background: transparent;
   padding: 0;
   align-items: stretch;
 }
@@ -376,8 +457,11 @@ a { color: inherit; }
 /* The frosted pane: a claim we cannot prove is visibly unavailable, never
    silently dropped. */
 .proof.is-frosted {
-  background-image: none;
-  background-color: var(--frost);
+  /* Frosted twice over: the glass is denser and less transparent, which reads as
+     a pane that has gone opaque because its claim cannot be proved. */
+  background: rgba(221, 216, 203, 0.92);
+  -webkit-backdrop-filter: blur(26px) saturate(0.7);
+  backdrop-filter: blur(26px) saturate(0.7);
 }
 .proof.is-frosted h2,
 .proof.is-frosted p { color: var(--ink-3); }
@@ -398,13 +482,27 @@ a { color: inherit; }
 .proof { grid-column: span 3; }
 .proof:nth-child(6) { grid-column: span 3; }
 .proof:nth-child(7) { grid-column: span 6; }
-.p-cobalt { background-color: var(--cobalt); background-image: none; }
+.p-cobalt {
+  background: linear-gradient(160deg, rgba(36, 73, 180, 0.90) 0%, rgba(27, 63, 160, 0.80) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
 .p-cobalt h2, .p-cobalt p { color: #fff; }
 .p-cobalt .mark { color: #fff; }
-.p-amber { grid-column: span 3; background-color: var(--amber); background-image: none; }
+.p-amber {
+  grid-column: span 3;
+  background: linear-gradient(160deg, rgba(206, 152, 54, 0.93) 0%, rgba(183, 128, 38, 0.85) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
 .p-amber h2, .p-amber p { color: #1b1206; }
 .p-amber .mark { color: #1b1206; }
-.p-oxblood { grid-column: span 3; background-color: var(--oxblood); background-image: none; }
+.p-oxblood {
+  grid-column: span 3;
+  background: linear-gradient(160deg, rgba(108, 34, 42, 0.92) 0%, rgba(84, 22, 29, 0.86) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
 .p-oxblood h2, .p-oxblood p { color: #f7e9e4; }
 .p-oxblood .mark { color: #f7e9e4; }
 .p-wide { grid-column: span 3; }
@@ -413,8 +511,10 @@ a { color: inherit; }
 
 .refusal {
   grid-column: 1 / span 12;
-  background: var(--bar);
-  background-image: none;
+  /* Smoke glass: the dark pane, still translucent so the field tints it. */
+  background: rgba(17, 20, 23, 0.80);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
   color: var(--on-dark);
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -426,7 +526,7 @@ a { color: inherit; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1px;
-  background: #2a3037;
+  background: rgba(42, 48, 55, 0.85);
 }
 .refusal h2 {
   margin: 0 0 10px;
@@ -438,7 +538,10 @@ a { color: inherit; }
   letter-spacing: -0.01em;
   color: var(--on-dark);
 }
-.refusal .cell { background: var(--bar); padding: clamp(18px, 1.8vw, 26px); }
+.refusal .cell {
+  background: rgba(17, 20, 23, 0.55);
+  padding: clamp(18px, 1.8vw, 26px);
+}
 .refusal p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--on-dark-2); }
 .refusal .lede { grid-column: 1 / -1; }
 .refusal .cell { min-width: 0; }
@@ -450,8 +553,9 @@ a { color: inherit; }
 .install {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: clamp(16px, 1.6vw, 22px);
+  justify-content: flex-start;
+  gap: 6px;
+  padding: clamp(14px, 1.3vw, 18px);
 }
 .install ol {
   margin: 0;
@@ -462,11 +566,11 @@ a { color: inherit; }
 .install li {
   counter-increment: step;
   display: block;
-  padding: 7px 0 7px 26px;
+  padding: 6px 0 6px 24px;
   position: relative;
   border-bottom: 1px solid rgba(17, 20, 23, 0.14);
-  font-size: 13.5px;
-  line-height: 1.42;
+  font-size: 13px;
+  line-height: 1.38;
 }
 .install li::before {
   position: absolute;
@@ -498,8 +602,8 @@ a { color: inherit; }
 }
 .install-note {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--ink-3);
 }
 
@@ -513,7 +617,7 @@ a { color: inherit; }
   justify-content: space-between;
   gap: 14px;
   padding: 16px clamp(18px, 2vw, 26px);
-  background-color: var(--paper-lo);
+  background: rgba(232, 227, 216, 0.78);
 }
 .foot nav { display: flex; flex-wrap: wrap; gap: 4px 22px; }
 .foot a {
@@ -553,13 +657,13 @@ a { color: inherit; }
 @media (max-width: 1080px) {
   .masthead { grid-column: 1 / span 12; grid-row: 1; }
   .claim { grid-column: 1 / span 12; grid-row: 2; }
-  .nav-pane { grid-column: 1 / span 12; grid-row: 7; flex-direction: row; flex-wrap: wrap; }
-  .nav-pane a { flex: 1 1 160px; }
-  .note { display: none; }
   .readout { grid-column: 1 / span 12; grid-row: 3; }
   .action-pane { grid-column: 1 / span 12; grid-row: 4; }
   .install { grid-column: 1 / span 12; grid-row: 5; }
   .proofs { grid-row: 6; }
+  .nav-pane { grid-column: 1 / span 12; grid-row: 7; flex-direction: row; flex-wrap: wrap; }
+  .nav-pane a { flex: 1 1 160px; }
+  .note { display: none; }
   .refusal { grid-row: 8; }
   .foot { grid-row: 9; }
   .proof,
