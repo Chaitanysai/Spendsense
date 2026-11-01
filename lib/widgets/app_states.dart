@@ -1,9 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'glass_card.dart';
 import 'pressable.dart';
 
 /// Illustrated empty state with an optional call-to-action.
@@ -121,6 +124,11 @@ class AppErrorState extends StatelessWidget {
 }
 
 /// A single shimmering placeholder block.
+///
+/// The sheen travels across the block while the base colour breathes very
+/// slightly, so a stack of placeholders reads as one loading surface rather than
+/// a set of grey rectangles. Both stop when the platform requests reduced
+/// motion — the placeholder then renders as a flat, stable surface.
 class SkeletonBox extends StatefulWidget {
   final double height;
   final double? width;
@@ -141,7 +149,7 @@ class _SkeletonBoxState extends State<SkeletonBox>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: AppMotion.shimmer,
   );
 
   @override
@@ -151,7 +159,7 @@ class _SkeletonBoxState extends State<SkeletonBox>
       _c.stop();
       _c.value = 0;
     } else if (!_c.isAnimating) {
-      _c.repeat(reverse: true);
+      _c.repeat();
     }
   }
 
@@ -163,16 +171,29 @@ class _SkeletonBoxState extends State<SkeletonBox>
 
   @override
   Widget build(BuildContext context) {
-    final base = AppColors.surfaceAlt(context);
-    final highlight = AppColors.border(context);
+    final base = AppColors.skeletonBase(context);
+    final highlight = AppColors.skeletonHighlight(context);
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
+        final t = _c.value;
+        // A slow breath on the base so the block is alive between sheen passes,
+        // and a bright band that sweeps left to right.
+        final breathe = 0.06 + 0.06 * (1 - (2 * t - 1).abs());
         return Container(
           height: widget.height,
           width: widget.width,
           decoration: BoxDecoration(
-            color: Color.lerp(base, highlight, _c.value),
+            color: Color.lerp(base, highlight, breathe),
+            gradient: LinearGradient(
+              begin: Alignment(-1.8 + 3.6 * t, 0),
+              end: Alignment(-0.8 + 3.6 * t, 0),
+              colors: [
+                Colors.transparent,
+                highlight.withValues(alpha: 0.55),
+                Colors.transparent,
+              ],
+            ),
             borderRadius: BorderRadius.circular(widget.radius),
           ),
         );
@@ -221,6 +242,184 @@ class SkeletonList extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+/// Contextual placeholder that mirrors the "Last 7 days" card.
+///
+/// Same block structure as the real card — header pair, plot, seven day marks —
+/// so the content swap does not move anything on the page.
+class SpendingWeekSkeleton extends StatelessWidget {
+  const SpendingWeekSkeleton({super.key});
+
+  static const List<double> _heights = [34, 52, 22, 66, 40, 58, 30];
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SkeletonBox(height: 10, width: 64),
+                    SizedBox(height: AppSpacing.sm),
+                    SkeletonBox(height: 26, width: 132, radius: AppRadius.sm),
+                  ],
+                ),
+              ),
+              SkeletonBox(height: 10, width: 54),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 122,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < _heights.length; i++)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: SkeletonBox(
+                          height: _heights[i],
+                          width: 18,
+                          radius: 9,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              for (var i = 0; i < 7; i++)
+                const Expanded(
+                  child: Center(
+                    child: SkeletonBox(height: 16, width: 16, radius: 8),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Contextual placeholder that mirrors the category breakdown card.
+class CategoryBreakdownSkeleton extends StatelessWidget {
+  const CategoryBreakdownSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              SkeletonBox(height: 22, width: 118, radius: AppRadius.sm),
+              Spacer(),
+              SkeletonBox(height: 20, width: 72, radius: AppRadius.pill),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const SkeletonBox(height: 10, radius: AppRadius.pill),
+          const SizedBox(height: AppSpacing.lg),
+          for (var i = 0; i < 4; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Row(
+                children: [
+                  const SkeletonBox(height: 26, width: 26, radius: 13),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Expanded(child: SkeletonBox(height: 12, width: 96)),
+                  const SizedBox(width: AppSpacing.sm),
+                  const SkeletonBox(height: 12, width: 54),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reveals freshly loaded content after its skeleton is removed.
+///
+/// A hard swap from placeholder to data is the one moment a dashboard can feel
+/// like it flickered. This fades the real content in while a small blur resolves,
+/// over the same duration as the skeleton's own 300 ms exit, and does nothing at
+/// all when the platform asks for reduced motion.
+class ContentReveal extends StatefulWidget {
+  final Widget child;
+
+  const ContentReveal({super.key, required this.child});
+
+  @override
+  State<ContentReveal> createState() => _ContentRevealState();
+}
+
+class _ContentRevealState extends State<ContentReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: AppMotion.base,
+  );
+
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (MediaQuery.maybeDisableAnimationsOf(context) == true) {
+      _c.value = 1;
+    } else {
+      _c.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) == true) {
+      return widget.child;
+    }
+    final curved = CurvedAnimation(parent: _c, curve: AppMotion.emphasized);
+    return AnimatedBuilder(
+      animation: curved,
+      builder: (context, child) {
+        final t = curved.value;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: (1 - t) * 4,
+              sigmaY: (1 - t) * 4,
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }

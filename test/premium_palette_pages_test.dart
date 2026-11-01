@@ -116,6 +116,9 @@ Future<void> _loadFonts() async {
       'Poppins-SemiBold.ttf',
       'Poppins-Bold.ttf',
     ],
+    // The shipped default face. Loading it keeps text metrics in this render
+    // sweep close to the real app instead of the Ahem test fallback.
+    'Inter': ['Inter-Variable.ttf'],
   };
   for (final entry in families.entries) {
     final loader = FontLoader(entry.key);

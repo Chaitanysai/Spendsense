@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
@@ -88,10 +87,14 @@ void main() {
     expect(_inCard(find.text('Today')), findsOneWidget);
     expect(_inCard(find.text('₹250')), findsOneWidget);
 
-    // Tap the sixth of seven equal slots: yesterday's column.
-    final chart = tester.getRect(find.byType(BarChart));
+    // Tap the sixth of seven day columns: yesterday's slice of the plot.
+    final chart =
+        tester.getRect(_inCard(find.byKey(const Key('spending-week-chart'))));
     await tester
         .tapAt(Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy));
+    // The first pump starts the newly created controllers; the second advances
+    // them, which is what the real device does 16 ms later.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(_inCard(find.text(DateFormat('EEEE').format(yesterday))),
@@ -108,7 +111,8 @@ void main() {
     expect(
         _inCard(find.text('No spending in the last 7 days')), findsOneWidget);
     expect(_inCard(find.text('Today')), findsOneWidget);
-    expect(_inCard(find.text('₹0')), findsOneWidget);
+    // The card shows the selected day's total and the 7-day total; both are ₹0.
+    expect(_inCard(find.text('₹0')), findsWidgets);
 
     // A ledger that loads after first paint must still grow the chart instead
     // of leaving the empty message on screen.

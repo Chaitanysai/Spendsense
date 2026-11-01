@@ -641,7 +641,7 @@ void main() {
       final context = tester.element(find.byType(FloatingNavBar));
       expect(
         tester.widget<Icon>(find.byIcon(Icons.home_rounded)).color,
-        AppColors.navSelected(context),
+        AppColors.onNavPill(context),
       );
       expect(
         tester.widget<Icon>(find.byIcon(Icons.settings_rounded)).color,
