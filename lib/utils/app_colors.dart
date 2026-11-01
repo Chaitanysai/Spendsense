@@ -45,8 +45,8 @@ class AppColors {
     darkBackground = next.darkBackground;
     // Cards carry the palette's glance instead of sitting black-on-black. The
     // legacy AMOLED palettes ship neutral card tokens, so they are tinted here;
-    // the premium palettes are already tinted and simply gain a little more
-    // separation. The canvas itself stays as the palette defines it.
+    // the premium (glass) palettes ship surfaces designed for that role and are
+    // used exactly as authored — see [_tintDarkSurface].
     darkSurface = _tintDarkSurface(next, next.darkSurface, raised: false);
     darkSurfaceAlt = _tintDarkSurface(next, next.darkSurfaceAlt, raised: true);
     borderDark = Color.alphaBlend(
@@ -84,11 +84,23 @@ class AppColors {
   /// added on top: without it dark tiles collapsed into the canvas and read as
   /// flat black blocks rather than lit glass (the "light shade of the colour on
   /// the tiles" the UI pass asked for).
+  /// Blend the palette's own hue into a dark surface — but only when the
+  /// palette does not already ship a designed one.
+  ///
+  /// The legacy AMOLED palettes ship neutral (near-black, desaturated) card
+  /// tokens, so they need a tint to gain identity. The premium "glass" set
+  /// already ships tinted surfaces, and tinting those a second time was
+  /// compounding saturation instead of adding depth: `premium_blue` defines
+  /// `#052659` and rendered `#224574`, `plum_blush` defines `#2B124C` and
+  /// rendered `#4a2d5e`. Every card became a saturated mid-blue slab and
+  /// stacked cards could no longer be told apart from the canvas. A designed
+  /// surface must be used as authored.
   static Color _tintDarkSurface(
     AppPalette palette,
     Color base, {
     required bool raised,
   }) {
+    if (palette.glass) return base;
     final brandAmount = raised ? 0.24 : 0.16;
     final accentAmount = raised ? 0.07 : 0.05;
     final branded = Color.alphaBlend(

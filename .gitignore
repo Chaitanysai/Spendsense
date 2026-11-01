@@ -1,4 +1,4 @@
-﻿# Miscellaneous
+# Miscellaneous
 *.class
 *.log
 *.pyc
@@ -64,6 +64,13 @@ key.properties
 /ota/public/manifest.json
 /ota/public/releases/*
 !/ota/public/releases/.gitkeep
+#
+# Everything else under /ota/public IS tracked on purpose. `firebase deploy`
+# replaces the whole Hosting release, so whatever sits in this directory is the
+# entire published site. The landing and legal pages must therefore live here
+# and be committed: when they were untracked, a CI deploy shipped a payload of
+# just `.gitkeep` and silently deleted the live manifest.json — which broke the
+# update check for every installed build.
 
 # Local agent/tooling state, caches and pre-upgrade snapshots (never publish)
 .perch/
@@ -74,3 +81,10 @@ key.properties
 
 # CI-only tooling installed with --no-save (tool/validate_yaml.js); never commit it.
 node_modules/
+
+# Local agent tooling, session handoffs and visual-review captures (not shipped)
+/.agents/
+/HANDOFF.md
+/UI_HANDOFF.md
+/screenshots/
+/screenshots2/

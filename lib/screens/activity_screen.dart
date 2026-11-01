@@ -251,6 +251,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     // Sort / filter chips
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
+                      // The row is wider than the viewport by design. Clipping
+                      // it at the page inset made the trailing "Newest" chip
+                      // look cut off; releasing the clip lets it bleed to the
+                      // screen edge, which reads as scrollable.
+                      clipBehavior: Clip.none,
                       child: Row(
                         children: [
                           _chip(

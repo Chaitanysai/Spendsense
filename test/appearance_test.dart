@@ -128,7 +128,10 @@ void main() {
 
       expect(AppPalette.plumBlush.brand, const Color(0xFF854F6C));
       expect(AppPalette.plumBlush.limeAccent, const Color(0xFFDFB6B2));
-      expect(AppPalette.plumBlush.darkBackground, const Color(0xFF190019));
+      // Retuned dark canvas: the maroon-black #190019 fought the violet card,
+      // so the plum family now sits on a calmer plum-grey canvas (see
+      // dark_surface_tones_test.dart for the measured chroma/ΔL* band).
+      expect(AppPalette.plumBlush.darkBackground, const Color(0xFF1C1020));
     });
 
     test('a palette without an explicit lime falls back to its accent', () {
@@ -303,19 +306,34 @@ void main() {
     });
 
     test('dark cards carry the active palette tint, never flat black', () {
+      // Measured in chroma (max-minus-min channel), not HSV saturation: near
+      // black, saturation reads ~70% for any dark navy while a barely-tinted
+      // grey reads ~0%, so it told us nothing. The band below matches the
+      // dark-surface correction the palettes shipped with — tinted enough to
+      // carry the palette's identity, far from paint (see
+      // dark_surface_tones_test.dart, which pins the same band with ΔL*).
+      double chroma(Color c) {
+        final r = (c.r * 255).round();
+        final g = (c.g * 255).round();
+        final b = (c.b * 255).round();
+        final hi = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        final lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+        return (hi - lo) / 255;
+      }
+
       for (final p in AppPalette.all) {
         AppColors.applyPalette(p);
-        final surface = HSLColor.fromColor(AppColors.darkSurface);
-        final raised = HSLColor.fromColor(AppColors.darkSurfaceAlt);
-        expect(surface.saturation, greaterThan(0.08), reason: p.label);
-        expect(raised.saturation, greaterThan(0.10), reason: p.label);
+        expect(chroma(AppColors.darkSurface), greaterThan(0.02), reason: p.label);
+        expect(chroma(AppColors.darkSurfaceAlt), greaterThan(0.02), reason: p.label);
         expect(AppColors.darkSurface.computeLuminance(), lessThan(0.20));
         expect(AppColors.darkSurfaceAlt.computeLuminance(), lessThan(0.25));
         expect(
-          HSLColor.fromColor(AppColors.borderDark).saturation,
-          greaterThan(0.10),
+          chroma(AppColors.borderDark),
+          greaterThan(0.02),
           reason: p.label,
         );
+        // Never paint: the correction capped dark-card chroma at 22%.
+        expect(chroma(AppColors.darkSurface), lessThan(0.22), reason: p.label);
       }
     });
   });

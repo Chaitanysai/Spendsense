@@ -12,20 +12,33 @@ class AppSpacing {
   static const double xxl = 24;
   static const double xxxl = 32;
 
-  /// Standard horizontal page padding for the Galaxy-S24 class width.
+  /// The single horizontal page inset. Every screen — the dashboard included —
+  /// starts and ends here. Home used to run a 16dp gutter of its own, which put
+  /// the dock 4dp inside the section headers below it and read as a
+  /// misalignment rather than as a tighter rhythm.
   static const double page = 20;
 
-  /// Home runs a tighter rhythm than the rest of the app: the dashboard is a
-  /// single scannable surface, so an extra 4dp gutter and 12dp between sections
-  /// is wasted vertical space. Pushed routes keep [page]/[xxl].
-  static const double homePage = 16;
+  /// Kept as an alias so existing call sites resolve to the one inset. Do not
+  /// introduce a second value; a screen that wants more space nests a [lg].
+  static const double homePage = page;
   static const double homeSectionGap = 20;
   static const double homeHeaderGap = 10;
+
+  /// Icon wells: one well, one glyph, one touch target, everywhere.
+  ///
+  /// The well is the tinted plate a glyph sits on; the glyph is the icon inside
+  /// it. [wellTouchTarget] is the *interactive* size around a well — a 40dp
+  /// plate is smaller than the 48dp minimum, so any tappable row must reserve
+  /// at least this much height. Plates can sit closer than 8dp because the
+  /// separation rule applies to the targets, not the artwork.
+  static const double wellSize = 40;
+  static const double wellGlyph = 20;
+  static const double wellTouchTarget = 48;
 
   /// Quick-action tiles: shared metrics so every tile is identical.
   static const double tileGap = sm;
   static const double tileMinHeight = 88;
-  static const double tileIconBox = 38;
+  static const double tileIconBox = wellSize;
   static const double tileMinWidth = 72;
 
   /// Bottom gutter that clears the floating navigation bar.

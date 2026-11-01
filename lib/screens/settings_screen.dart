@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -10,6 +11,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/auth/auth_service.dart';
 import '../providers/period_provider.dart';
 import '../providers/sound_provider.dart';
 import '../providers/theme_provider.dart';
@@ -25,10 +27,12 @@ import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/app_page_route.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/gradient_hero_card.dart';
 import '../widgets/page_entry.dart';
 import '../widgets/sound_scope.dart';
 import '../widgets/pressable.dart';
+import '../widgets/icon_well.dart';
 import '../utils/formatters.dart';
 import '../utils/money_parser.dart';
 import 'ai_settings_screen.dart';
@@ -44,6 +48,23 @@ import 'update_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  /// Every palette role a `_SettingsTile` paints its glyph in.
+  ///
+  /// Each lands on a 12%/22% tint of itself, so each must resolve through
+  /// [AppColors.inkOn]. These are the roles used *today* — the test asserts the
+  /// list matches the file exactly, so a new `iconColor: AppColors.x` fails the
+  /// build until it is audited here. Keys whose raw-on-tint ratio is below
+  /// 4.5:1 are recorded in `test/settings_icon_contrast_test.dart`.
+  static const List<String> tileRoles = [
+    'brand',
+    'azure',
+    'brandBright',
+    'danger',
+    'warning',
+    'incomeGreen',
+    'textTertiary',
+  ];
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -114,6 +135,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? 'Not set'
         : DateFormat('dd MMM yyyy').format(scanStart);
 
+    // ── Icon colour semantics ────────────────────────────────────────────────
+    // Colour answers exactly one question: which part of the app is this row
+    // about? One colour per section, stated once so it can be extended:
+    //
+    //   Personalisation    brand        — who the app greets and how it looks
+    //   Spending & budgets incomeGreen  — money in, money out, money plans
+    //   Data sources       azure        — where entries come from (SMS,
+    //                                   email, AI keys) and the connection
+    //                                   they travel over
+    //   Assistant          brandBright  — the Gemini features
+    //   Backup             warning      — file operations that deserve care
+    //
+    // Two global exceptions override any section colour: destructive rows are
+    // always `danger` (Sign out, Clear transaction database) and read-only
+    // rows are always `textTertiary` (Signed in as, App version). Glyphs are
+    // uniformly the outlined weight of the rounded family — switching weight
+    // row by row read as unfinished — and every glyph rides IconWell →
+    // AppColors.inkOn; the audited set lives in SettingsScreen.tileRoles.
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -166,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             weight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           auth.email,
                           maxLines: 1,
@@ -180,353 +220,387 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: AppSpacing.xxl),
-            _sectionLabel('Personalisation'),
-            const SizedBox(height: AppSpacing.sm),
-            _SettingsCard(
-              entranceIndex: 1,
-              children: [
-                _SettingsTile(
-                  icon: Icons.person_outline_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Your name',
-                  subtitle: auth.greetingName.isEmpty
-                      ? 'Not set — used in your Home greeting'
-                      : 'Greeting you as ${auth.name}',
-                  onTap: () => _editName(context, auth),
+            // Identity and look: the rows that change how SpendSense talks to
+            // you. Previously five of these lived in a 13-row "Preferences"
+            // dumping ground and "Personalisation" held one tile.
+            _section(context, 'Personalisation', 1, [
+              _SettingsTile(
+                icon: Icons.person_outlined,
+                iconColor: AppColors.brand,
+                title: 'Your name',
+                subtitle: auth.greetingName.isEmpty
+                    ? 'Used in your Home greeting'
+                    : 'Greeting you as ${auth.name}',
+                onTap: () => _editName(context, auth),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.photo_camera_back_outlined,
+                iconColor: AppColors.brand,
+                title: 'Profile photo',
+                subtitle: auth.hasProfileImage
+                    ? 'Change your profile photo'
+                    : 'Add your profile photo',
+                onTap: () => _pickProfilePhoto(context),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.palette_outlined,
+                iconColor: AppColors.brand,
+                title: 'Appearance',
+                subtitle:
+                    '${theme.palette.label} · ${AppearanceScreen.modeLabel(theme.themeMode)}',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const AppearanceScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.graphic_eq_outlined,
+                iconColor: AppColors.brand,
+                title: 'Sound effects',
+                subtitle: _soundSummary(sound),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const SoundSettingsScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              Material(
+                type: MaterialType.transparency,
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  // Same plate and lifted ink as every _SettingsTile row:
+                  // a bare 24dp glyph in the raw palette role was the one
+                  // icon in this card that read as a different weight.
+                  secondary: IconWell(
+                    icon: Icons.history_outlined,
+                    color: AppColors.brand,
+                  ),
+                  title: Text(
+                    'Include transaction history',
+                    style: AppText.bodyStrong(context),
+                  ),
+                  subtitle: Text(
+                    theme.includeHistory
+                        ? 'Home also shows earlier cycles'
+                        : 'Home shows the current cycle',
+                    style: AppText.bodySmall(context),
+                  ),
+                  value: theme.includeHistory,
+                  onChanged: theme.setIncludeHistory,
                 ),
-              ],
-            ),
+              ),
+            ]),
+
+            // Everything that produces a number the ledger depends on: the
+            // cycle boundary, the gauge, per-category budgets and repeat
+            // payments. One colour says these rows all move money.
+            _section(context, 'Spending & budgets', 2, [
+              // Salary day drives every "per cycle" figure (Home total, the
+              // budget gauge, Insights' cycle range). It is edited here and
+              // only here, so this tile is the single entry point.
+              Consumer<PeriodProvider>(
+                builder: (context, period, _) => _SettingsTile(
+                  icon: Icons.event_repeat_outlined,
+                  iconColor: AppColors.incomeGreen,
+                  title: 'Salary day',
+                  subtitle: 'Cycle starts on day ${period.salaryDay}',
+                  onTap: () => SalaryDayPrompt.show(context),
+                ),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.savings_outlined,
+                iconColor: AppColors.incomeGreen,
+                title: 'Monthly budget',
+                subtitle: transactions.monthlyBudget > 0
+                    ? '${Formatters.currency.format(transactions.monthlyBudget)} per cycle'
+                    : 'Needed by the Home gauge',
+                onTap: () => _editBudget(context, transactions),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.donut_small_outlined,
+                iconColor: AppColors.incomeGreen,
+                title: 'Budgets & alerts',
+                subtitle: 'Per-category limits and alerts',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const BudgetsScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.repeat_outlined,
+                iconColor: AppColors.incomeGreen,
+                title: 'Recurring expenses',
+                subtitle: 'Repeat payments from your SMS',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const RecurringScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.summarize_outlined,
+                iconColor: AppColors.incomeGreen,
+                title: 'Financial summary',
+                subtitle: 'Income, spending and cash flow',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const SummaryScreen()),
+                  );
+                },
+              ),
+            ]),
+
+            // Where entries come from and the pipe they travel through: the
+            // connection, bank SMS, bank alert email and the optional keys
+            // that parse them.
+            _section(context, 'Data sources', 3, [
+              _SettingsTile(
+                icon: _isConnected ? Icons.wifi_outlined : Icons.wifi_off_outlined,
+                iconColor: AppColors.azure,
+                title: 'Internet connection',
+                subtitle: _isConnected
+                    ? 'Connected via $_connectionType'
+                    : 'No internet connection',
+                onTap: _checkConnectivity,
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.sms_outlined,
+                iconColor: AppColors.azure,
+                title: 'SMS start date',
+                subtitle: scanStart == null ? 'Not set' : 'From $scanLabel',
+                onTap: () => SmsImportPrompt.show(context),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.mail_outlined,
+                iconColor: AppColors.azure,
+                title: 'Email import',
+                subtitle: 'Read bank alert emails',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const EmailImportScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.key_outlined,
+                iconColor: AppColors.azure,
+                title: 'SMS parsing AI keys',
+                subtitle: 'Optional keys for SMS parsing',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(builder: (_) => const AISettingsScreen()),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.manage_search_outlined,
+                iconColor: AppColors.azure,
+                title: 'Recheck skipped messages',
+                subtitle: transactions.skippedMessageCount == 0
+                    ? 'No messages are being skipped'
+                    : 'Scan ${transactions.skippedMessageCount} skipped '
+                        'messages again',
+                onTap: transactions.skippedMessageCount == 0
+                    ? null
+                    : () => _recheckSkipped(context, transactions),
+              ),
+            ]),
+
+            // The Gemini feature and its one governing screen.
+            _section(context, 'Assistant', 4, [
+              _SettingsTile(
+                icon: Icons.auto_awesome_outlined,
+                iconColor: AppColors.brandBright,
+                title: 'SpendSense Assistant',
+                subtitle: 'Your private money assistant',
+                onTap: () {
+                  AppPageRoute.pushOnce(
+                    context,
+                    name: AssistantScreen.routeName,
+                    builder: (_) => const AssistantScreen(),
+                  );
+                },
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.shield_outlined,
+                iconColor: AppColors.brandBright,
+                title: 'Assistant privacy & Gemini',
+                subtitle: 'What may be sent to Gemini',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    AppPageRoute(
+                      builder: (_) => const AssistantPrivacyScreen(),
+                    ),
+                  );
+                },
+              ),
+            ]),
+
+            // File-level operations on the ledger itself. The destructive row
+            // keeps its danger ink wherever it sits — the one exception that
+            // overrides a section colour.
+            _section(context, 'Backup', 5, [
+              _SettingsTile(
+                icon: Icons.upload_file_outlined,
+                iconColor: AppColors.warning,
+                title: 'Export JSON backup',
+                subtitle: 'Save a JSON backup file',
+                onTap: () => _exportBackup(context, transactions),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.download_outlined,
+                iconColor: AppColors.warning,
+                title: 'Import JSON backup',
+                subtitle: 'Restore a JSON backup file',
+                onTap: () => _importBackup(context, transactions),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.delete_sweep_outlined,
+                iconColor: AppColors.danger,
+                title: 'Clear transaction database',
+                subtitle: 'Deletes all stored transactions',
+                onTap: () => _showClearCacheDialog(context),
+              ),
+            ]),
 
             // Account identity only makes sense once Firebase auth is wired
             // and the user is actually signed in; hiding it otherwise keeps
             // the local-only experience unchanged.
-            if (auth.isFirebaseAvailable && auth.isSignedIn) ...[
-              const SizedBox(height: AppSpacing.xxl),
-              _sectionLabel('Account'),
-              const SizedBox(height: AppSpacing.sm),
-              _SettingsCard(
-                entranceIndex: 2,
-                children: [
-                  // Read-only: the email is managed by Firebase, so the tile
-                  // has no onTap and no arrow.
-                  _SettingsTile(
-                    icon: Icons.mail_outline_rounded,
-                    iconColor: AppColors.azure,
-                    title: 'Signed in as',
-                    subtitle: auth.email,
-                    onTap: null,
-                    showArrow: false,
-                  ),
-                  _divider(context),
-                  // No SnackBar on success: AuthGate in main.dart swaps to
-                  // the auth screen the moment isSignedIn flips to false.
-                  _SettingsTile(
-                    icon: Icons.logout_rounded,
-                    iconColor: AppColors.danger,
-                    title: 'Sign out',
-                    subtitle: 'End this session on this device',
-                    // Disabled while a sign-in/out is already in flight so
-                    // the destructive action cannot be double-submitted.
-                    onTap: auth.isBusy ? null : () => _confirmSignOut(context),
-                  ),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.xxl),
-            _sectionLabel('Preferences'),
-            const SizedBox(height: AppSpacing.sm),
-            _SettingsCard(
-              entranceIndex: 2,
-              children: [
+            if (auth.isFirebaseAvailable && auth.isSignedIn)
+              _section(context, 'Account', 6, [
+                // Read-only: the email is managed by Firebase, so the tile
+                // has no onTap and no arrow.
                 _SettingsTile(
-                  icon: Icons.photo_camera_back_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Profile photo',
-                  subtitle: auth.hasProfileImage
-                      ? 'Change your profile image'
-                      : 'Add your profile image',
-                  onTap: () => _pickProfilePhoto(context),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.sms_rounded,
-                  iconColor: AppColors.brandBright,
-                  title: 'SMS start date',
-                  subtitle: 'Checking messages from $scanLabel',
-                  onTap: () => SmsImportPrompt.show(context),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.palette_outlined,
-                  iconColor: AppColors.azure,
-                  title: 'Appearance',
-                  subtitle:
-                      '${theme.palette.label} · ${AppearanceScreen.modeLabel(theme.themeMode)}',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const AppearanceScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'SpendSense Assistant',
-                  subtitle:
-                      'Ask questions, preview exclusions and undo changes',
-                  onTap: () {
-                    AppPageRoute.pushOnce(
-                      context,
-                      name: AssistantScreen.routeName,
-                      builder: (_) => const AssistantScreen(),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.mark_email_read_rounded,
-                  iconColor: AppColors.azure,
-                  title: 'Email import',
-                  subtitle: 'Connect Gmail to read bank alert emails on-device',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const EmailImportScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.key_rounded,
-                  iconColor: AppColors.warning,
-                  title: 'SMS parsing AI keys',
-                  subtitle: 'Optional legacy keys for SMS parsing only; the '
-                      'assistant never uses a key from this device',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const AISettingsScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                // Salary day drives every "per cycle" figure (Home total, the
-                // budget gauge, Insights' cycle range). It is edited here and
-                // only here, so this tile is the single entry point.
-                Consumer<PeriodProvider>(
-                  builder: (context, period, _) => _SettingsTile(
-                    icon: Icons.event_repeat_rounded,
-                    iconColor: AppColors.brand,
-                    title: 'Salary day',
-                    subtitle: 'Cycle starts on day ${period.salaryDay}',
-                    onTap: () => SalaryDayPrompt.show(context),
-                  ),
-                ),
-                _divider(context),
-                Material(
-                  type: MaterialType.transparency,
-                  child: SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                    ),
-                    secondary: Icon(
-                      Icons.history_rounded,
-                      color: AppColors.azure,
-                    ),
-                    title: Text(
-                      'Include transaction history',
-                      style: AppText.bodyStrong(context),
-                    ),
-                    subtitle: Text(
-                      theme.includeHistory
-                          ? 'Home shows earlier transactions outside this cycle'
-                          : 'Home shows only the current salary cycle',
-                      style: AppText.bodySmall(context),
-                    ),
-                    value: theme.includeHistory,
-                    onChanged: theme.setIncludeHistory,
-                  ),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.savings_rounded,
-                  iconColor: AppColors.incomeGreen,
-                  title: 'Monthly budget',
-                  subtitle: transactions.monthlyBudget > 0
-                      ? '${Formatters.currency.format(transactions.monthlyBudget)} per cycle'
-                      : 'Not set — the dashboard gauge needs one',
-                  onTap: () => _editBudget(context, transactions),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.donut_small_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Budgets & alerts',
-                  subtitle: 'Category budgets and warning levels',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const BudgetsScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.summarize_rounded,
-                  iconColor: AppColors.azure,
-                  title: 'Financial summary',
-                  subtitle: 'Income, spending and net cash flow',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const SummaryScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.graphic_eq_rounded,
-                  iconColor: AppColors.brandBright,
-                  title: 'Sound effects',
-                  subtitle: _soundSummary(sound),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const SoundSettingsScreen()),
-                    );
-                  },
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.repeat_rounded,
-                  iconColor: AppColors.brandBright,
-                  title: 'Recurring expenses',
-                  subtitle: 'Review repeat payments detected from your SMS',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(builder: (_) => const RecurringScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-            _sectionLabel('Network'),
-            const SizedBox(height: AppSpacing.sm),
-            _SettingsCard(
-              entranceIndex: 3,
-              children: [
-                _SettingsTile(
-                  icon: _isConnected ? Icons.wifi : Icons.wifi_off,
-                  iconColor:
-                      _isConnected ? AppColors.incomeGreen : AppColors.danger,
-                  title: 'Internet connection',
-                  subtitle: _isConnected
-                      ? 'Connected via $_connectionType'
-                      : 'No internet connection',
-                  onTap: _checkConnectivity,
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.shield_outlined,
-                  iconColor: AppColors.incomeGreen,
-                  title: 'Assistant privacy & Gemini',
-                  subtitle: 'Review exactly what cloud assistance may send',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      AppPageRoute(
-                        builder: (_) => const AssistantPrivacyScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-            _sectionLabel('Data & backup'),
-            const SizedBox(height: AppSpacing.sm),
-            _SettingsCard(
-              entranceIndex: 4,
-              children: [
-                _SettingsTile(
-                  icon: Icons.upload_file_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Export JSON backup',
-                  subtitle: 'Save all transactions to backup JSON',
-                  onTap: () => _exportBackup(context, transactions),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.download_rounded,
-                  iconColor: AppColors.incomeGreen,
-                  title: 'Import JSON backup',
-                  subtitle: 'Restore transactions from backup JSON',
-                  onTap: () => _importBackup(context, transactions),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.manage_search_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Recheck skipped messages',
-                  subtitle: transactions.skippedMessageCount == 0
-                      ? 'No messages are being skipped'
-                      : '${transactions.skippedMessageCount} messages were '
-                          'skipped. Scan them again.',
-                  onTap: transactions.skippedMessageCount == 0
-                      ? null
-                      : () => _recheckSkipped(context, transactions),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.delete_sweep_outlined,
-                  iconColor: AppColors.danger,
-                  title: 'Clear transaction database',
-                  subtitle: 'Remove locally stored transaction data',
-                  onTap: () => _showClearCacheDialog(context),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-            _sectionLabel('About'),
-            const SizedBox(height: AppSpacing.sm),
-            _SettingsCard(
-              entranceIndex: 5,
-              children: [
-                _SettingsTile(
-                  icon: Icons.system_update_alt_rounded,
-                  iconColor: AppColors.brand,
-                  title: 'Software update',
-                  subtitle: _updateSummary(update),
-                  onTap: update == null
-                      ? null
-                      : () => Navigator.of(context).push(
-                            AppPageRoute(builder: (_) => const UpdateScreen()),
-                          ),
-                ),
-                _divider(context),
-                _SettingsTile(
-                  icon: Icons.info_outline_rounded,
+                  icon: Icons.mail_outlined,
                   iconColor: AppColors.textTertiary(context),
-                  title: 'App version',
-                  subtitle: _installedVersionLabel(update),
+                  title: 'Signed in as',
+                  subtitle: auth.email,
                   onTap: null,
                   showArrow: false,
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xxl),
+                _divider(context),
+                // No SnackBar on success: AuthGate in main.dart swaps to
+                // the auth screen the moment isSignedIn flips to false.
+                _SettingsTile(
+                  icon: Icons.logout_outlined,
+                  iconColor: AppColors.danger,
+                  title: 'Sign out',
+                  subtitle: 'End this session on this device',
+                  // Disabled while a sign-in/out is already in flight so
+                  // the destructive action cannot be double-submitted.
+                  onTap: auth.isBusy ? null : () => _confirmSignOut(context),
+                ),
+                _divider(context),
+                // Required by Google Play for any app with accounts, and the
+                // privacy policy already promises this flow.
+                _SettingsTile(
+                  icon: Icons.delete_forever_outlined,
+                  iconColor: AppColors.danger,
+                  title: 'Delete account',
+                  subtitle: 'Permanently deletes your account and data',
+                  onTap: auth.isBusy
+                      ? null
+                      : () => _confirmDeleteAccount(context, auth),
+                ),
+              ]),
+
+            _section(context, 'About', 7, [
+              _SettingsTile(
+                icon: Icons.system_update_alt_outlined,
+                iconColor: AppColors.textTertiary(context),
+                title: 'Software update',
+                subtitle: _updateSummary(update),
+                onTap: update == null
+                    ? null
+                    : () => Navigator.of(context).push(
+                          AppPageRoute(builder: (_) => const UpdateScreen()),
+                        ),
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.info_outlined,
+                iconColor: AppColors.textTertiary(context),
+                title: 'App version',
+                subtitle: _installedVersionLabel(update),
+                onTap: null,
+                showArrow: false,
+              ),
+              _divider(context),
+              // The only route to a human. Before this there was none: the
+              // About section ended at "App version", so a user with a bug had
+              // no way to tell anyone. Tapping copies the address rather than
+              // launching a mail app, because a device with no mail client
+              // configured would otherwise do nothing at all with no feedback.
+              _SettingsTile(
+                icon: Icons.support_agent_outlined,
+                iconColor: AppColors.textTertiary(context),
+                title: 'Contact support',
+                subtitle: _supportEmail,
+                onTap: () => _copySupportEmail(context),
+                showArrow: false,
+              ),
+              _divider(context),
+              _SettingsTile(
+                icon: Icons.gavel_outlined,
+                iconColor: AppColors.textTertiary(context),
+                title: 'Privacy & terms',
+                subtitle: 'What we store, and what leaves this device',
+                onTap: () => _copyLegalUrl(context),
+              ),
+            ]),
           ],
         ),
       ),
+    );
+  }
+
+  /// A labelled card of rows. Every section here groups related rows so no
+  /// card ever holds a single orphan tile or becomes an unlabelled basket —
+  /// both were the sloppiness this rewrite replaced.
+  Widget _section(
+    BuildContext context,
+    String label,
+    int entranceIndex,
+    List<Widget> children,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.xxl),
+        _sectionLabel(label),
+        const SizedBox(height: AppSpacing.sm),
+        _SettingsCard(
+          entranceIndex: entranceIndex,
+          children: children,
+        ),
+      ],
     );
   }
 
@@ -547,6 +621,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 'On · ${parts.join(' & ')}';
   }
 
+  /// The public contact address. One constant so the Settings row, the Play
+  /// Store listing and (later) the legal pages cannot drift apart.
+  static const _supportEmail = 'chaitanyasaikandula@gmail.com';
+
+  /// The published legal page. Kept as one constant next to [_supportEmail] so
+  /// the in-app link, the Play Store listing and the GitHub release text cannot
+  /// drift apart.
+  static const _legalUrl = 'https://spendsense-ota-2026.web.app/legal/';
+
+  /// Copies the address instead of launching a mail app. A device with no mail
+  /// client would otherwise appear to do nothing, and the user still needs the
+  /// address to write from wherever they do have mail.
+  Future<void> _copySupportEmail(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(const ClipboardData(text: _supportEmail));
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Support email copied: $_supportEmail'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Copies the policy URL for the same reason: no url_launcher dependency, no
+  /// silent no-op on a device without a browser, and the URL is the part a user
+  /// needs in order to hand it to whatever they do have.
+  Future<void> _copyLegalUrl(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(const ClipboardData(text: _legalUrl));
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Privacy & terms link copied: $_legalUrl'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   String _installedVersionLabel(UpdateProvider? update) {
     final installed = update?.installed;
     if (installed == null) return 'SpendSense for Android';
@@ -558,7 +669,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return switch (update.state) {
       UpdateUiState.available =>
         'Version ${update.manifest?.latest.versionName ?? ''} is available',
-      UpdateUiState.readyToInstall => 'Update verified — ready to install',
+      UpdateUiState.readyToInstall => 'Verified — ready to install',
       UpdateUiState.downloading => 'Downloading update…',
       UpdateUiState.installing => 'Opening the installer…',
       UpdateUiState.checking => 'Checking for updates…',
@@ -567,12 +678,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       UpdateUiState.error => 'Last check failed — tap to retry',
       UpdateUiState.idle => update.isConfigured
           ? 'Check for the latest release'
-          : 'Update channel not configured in this build',
+          : 'Release channel not configured',
     };
   }
 
-  Widget _divider(BuildContext context) =>
-      Divider(height: 1, indent: 60, color: AppColors.border(context));
+  /// The divider aligns with the text column: tile padding, one well, one gap.
+  Widget _divider(BuildContext context) => Divider(
+        height: 1,
+        indent:
+            AppSpacing.lg + AppSpacing.wellSize + AppSpacing.md,
+        color: AppColors.border(context),
+      );
 
   Future<void> _editName(BuildContext context, AuthProvider auth) async {
     final controller = TextEditingController(text: auth.greetingName);
@@ -638,6 +754,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !context.mounted) return;
     await auth.signOut();
+  }
+
+  /// Confirms account deletion, then collects the password if Firebase wants a
+  /// recent sign-in, and finally wipes the account and every local trace.
+  ///
+  /// The password step is not paranoia: Firebase refuses `delete()` on an older
+  /// session, and re-prompting inside a destructive flow is friendlier than
+  /// making someone sign out and back in to find the row again.
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    AuthProvider auth,
+  ) async {
+    final transactions = context.read<TransactionProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete account?', style: AppText.title(ctx)),
+        content: const Text(
+          'This permanently deletes your SpendSense account, your sign-in, and '
+          'every transaction stored on this device. It cannot be undone.\n\n'
+          'Your expenses are not backed up anywhere, so they cannot be '
+          'restored afterwards.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete everything',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    Future<void> run({String? password}) async {
+      await auth.deleteAccount(
+        password: password,
+        clearLocalLedger: transactions.clearAll,
+      );
+    }
+
+    try {
+      await run();
+    } on ReauthenticationRequiredException {
+      if (!context.mounted) return;
+      final password = await _promptPassword(context);
+      if (password == null || password.isEmpty || !context.mounted) return;
+      try {
+        await run(password: password);
+      } catch (_) {
+        if (!context.mounted) return;
+        _showDeleteFailed(context);
+      }
+      return;
+    } catch (_) {
+      if (!context.mounted) return;
+      _showDeleteFailed(context);
+      return;
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Your account and data were deleted.')),
+    );
+  }
+
+  Future<String?> _promptPassword(BuildContext context) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Confirm your password', style: AppText.title(ctx)),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Password'),
+          onSubmitted: (value) => Navigator.pop(ctx, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  void _showDeleteFailed(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Your account could not be deleted. Please try again.'),
+      ),
+    );
   }
 
   Future<void> _editBudget(
@@ -886,20 +1108,8 @@ class _SettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageEntrance(
       index: entranceIndex,
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor(context),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppColors.border(context)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow(context),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
         child: Column(children: children),
       ),
     );
@@ -950,33 +1160,7 @@ class _SettingsTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(
-                    alpha: AppColors.isDark(context) ? 0.22 : 0.12,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                // The well is a 12% tint of the icon's own colour, so painting
-                // the glyph in that colour measured ~2-3:1 and some icons all
-                // but vanished (worst in dark mode). Lift the glyph until it
-                // clears AA against the well it actually sits on.
-                child: Icon(
-                  icon,
-                  size: 19,
-                  color: AppColors.inkOn(
-                    iconColor,
-                    iconColor.withValues(
-                      alpha: AppColors.isDark(context) ? 0.22 : 0.12,
-                    ),
-                    AppColors.isDark(context)
-                        ? AppColors.surface
-                        : AppColors.surfaceColor(context),
-                  ),
-                ),
-              ),
+              IconWell(icon: icon, color: iconColor),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(

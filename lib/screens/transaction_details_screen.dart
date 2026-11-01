@@ -5,14 +5,18 @@ import '../models/transaction_model.dart';
 import '../services/sms_content_policy.dart';
 import '../providers/transaction_provider.dart';
 import '../services/sound_service.dart';
-import '../utils/formatters.dart';
-import '../utils/money_parser.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import '../utils/category_style.dart';
+import '../utils/formatters.dart';
+import '../utils/money_parser.dart';
 import '../widgets/app_background.dart';
 import '../widgets/app_button.dart';
-import '../widgets/gradient_hero_card.dart';
+import '../widgets/amount_hero_field.dart';
+import '../widgets/category_chip_picker.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/icon_well.dart';
 import '../widgets/sound_scope.dart';
 import '../widgets/transaction_type_toggle.dart';
 
@@ -35,18 +39,11 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   late bool _isExcluded;
   bool _saving = false;
 
-  static const _categories = [
-    'Shopping',
-    'Food',
-    'Entertainment',
-    'Travel',
-    'Bills',
-    'Transfer',
-    'Fuel',
-    'Health',
-    'Investment',
-    'Other',
-  ];
+  /// Inline validation message for the amount field, or null when it is valid.
+  String? _amountError;
+
+  /// The expense category to restore when the type flips back from income.
+  String? _stashedCategory;
 
   @override
   void initState() {
@@ -59,11 +56,21 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     _bankController = TextEditingController(
       text: widget.transaction.bank?.trim() ?? '',
     );
-    _category = _normalizedCategory(widget.transaction.category);
     _type = widget.transaction.type;
+    // Income entries have no category taxonomy in this app; the parser labels
+    // them 'Income', so an income transaction edits as Income.
+    _category = _type == TransactionType.income
+        ? 'Income'
+        : _normalizedCategory(widget.transaction.category);
     _isExcluded = widget.transaction.isExcluded;
-    _amountController.addListener(() => setState(() {}));
-    _merchantController.addListener(() => setState(() {}));
+    _amountController.addListener(() {
+      // The save rule and the formatted preview both track this text, and
+      // editing it clears a stale error so the message never sits against
+      // text the user has already corrected.
+      setState(() {
+        if (_amountError != null) _amountError = null;
+      });
+    });
   }
 
   @override
@@ -98,7 +105,22 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _headerCard(context),
+                      // Two visible segments instead of a dropdown: a binary
+                      // choice should not open a full-width overlay. The toggle
+                      // plays the selection cue itself.
+                      TransactionTypeToggle(
+                        isIncome: _type == TransactionType.income,
+                        onSelect: _setType,
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      // The hero is the amount input itself — the same focal
+                      // surface Add uses — so the figure is never written in
+                      // two places.
+                      AmountHeroField(
+                        controller: _amountController,
+                        isIncome: _type == TransactionType.income,
+                        errorText: _amountError,
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                       TextField(
                         controller: _merchantController,
@@ -108,51 +130,21 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           prefixIcon: Icon(Icons.storefront_outlined),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      TextField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: const [
-                          AmountInputFormatter(),
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'Amount',
-                          prefixIcon: Icon(Icons.currency_rupee_rounded),
+                      if (_type == TransactionType.expense) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        Text('Category', style: AppText.title(context)),
+                        const SizedBox(height: AppSpacing.md),
+                        // The same chip picker Add uses, so one data set wears
+                        // one control across the whole flow.
+                        CategoryChipPicker(
+                          selected: _category,
+                          onSelect: (c) {
+                            if (_category == c) return;
+                            setState(() => _category = c);
+                          },
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      // Two visible segments instead of a dropdown: a binary
-                      // choice should not open a full-width overlay. The toggle
-                      // plays the selection cue itself.
-                      TransactionTypeToggle(
-                        isIncome: _type == TransactionType.income,
-                        onSelect: (value) {
-                          if (value != _type) setState(() => _type = value);
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      DropdownButtonFormField<String>(
-                        initialValue: _category,
-                        borderRadius: AppRadius.mdAll,
-                        dropdownColor: AppColors.surfaceColor(context),
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
-                          prefixIcon: Icon(Icons.category_outlined),
-                        ),
-                        items: _categories
-                            .map((item) => DropdownMenuItem(
-                                value: item, child: Text(item)))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null && value != _category) {
-                            SoundScope.play(
-                                context, SoundEventType.selectionChanged);
-                            setState(() => _category = value);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
+                      ],
+                      const SizedBox(height: AppSpacing.xl),
                       TextField(
                         controller: _bankController,
                         textCapitalization: TextCapitalization.words,
@@ -162,62 +154,10 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                           helperText: 'Leave blank if unknown',
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.xl),
+                      _metadataCard(context),
                       const SizedBox(height: AppSpacing.lg),
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceColor(context),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(color: AppColors.border(context)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _metaLabel('Date & time'),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${Formatters.date(widget.transaction.date)} • ${widget.transaction.time}',
-                              style:
-                                  AppText.bodyStrong(context),
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            _metaLabel('Payment method'),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.transaction.paymentMethod,
-                              style:
-                                  AppText.bodyStrong(context),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceColor(context),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(color: AppColors.border(context)),
-                        ),
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: SwitchListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md),
-                            title: Text('Exclude from Insights',
-                                style: AppText.title(context)
-                                    .copyWith(fontSize: 14)),
-                            subtitle: Text("Don't count this in totals",
-                                style: AppText.body(context)
-                                    .copyWith(fontSize: 12)),
-                            value: _isExcluded,
-                            onChanged: (value) {
-                              SoundScope.play(
-                                  context, SoundEventType.selectionChanged);
-                              setState(() => _isExcluded = value);
-                            },
-                          ),
-                        ),
-                      ),
+                      _excludeCard(context),
                       const SizedBox(height: AppSpacing.xl),
                       Text('Original SMS', style: AppText.title(context)),
                       const SizedBox(height: AppSpacing.md),
@@ -262,7 +202,12 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   loading: _saving,
                   // The saved cue is this button's real feedback.
                   sound: null,
-                  onPressed: _saving ? null : _save,
+                  // Same rule as Add: the amount must be present before the
+                  // action lights up.
+                  onPressed:
+                      _amountController.text.trim().isEmpty || _saving
+                          ? null
+                          : _save,
                 ),
               ),
             ],
@@ -272,98 +217,107 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     );
   }
 
+  void _setType(TransactionType next) {
+    if (_type == next) return;
+    setState(() {
+      // Income has no category taxonomy here; it edits as Income and the
+      // previous expense category is stashed so flipping back restores it.
+      if (next == TransactionType.income) {
+        _stashedCategory = _category;
+        _category = 'Income';
+      } else {
+        _category = _stashedCategory ?? 'Food';
+      }
+      _type = next;
+    });
+  }
+
+  String _normalizedCategory(String category) {
+    // SMS entries can carry any stored category. Keep the ones the picker
+    // lists, fold 'Others' into its canonical form, and let anything unknown
+    // fall back to Other.
+    if (CategoryStyle.pickerCategories.contains(category)) return category;
+    if (category == 'Others') return 'Other';
+    return 'Other';
+  }
+
   Widget _metaLabel(String text) => Text(
         text.toUpperCase(),
         style: AppText.overline(context),
       );
 
-  Widget _headerCard(BuildContext context) {
-    final isExpense = _type == TransactionType.expense;
-    return GradientHeroCard(
+  Widget _metadataCard(BuildContext context) {
+    // 'time' is empty on manually added entries, so the bullet only exists
+    // when there is a time on the other side of it.
+    final savedTime = widget.transaction.time.trim();
+    final dateTimeLine = savedTime.isEmpty
+        ? Formatters.date(widget.transaction.date)
+        : '${Formatters.date(widget.transaction.date)} • $savedTime';
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Text(
-                  isExpense ? 'Expense' : 'Income',
-                  style: AppText.onGradient(size: 11, weight: FontWeight.w700),
-                ),
-              ),
-              const Spacer(),
-              if (widget.transaction.needsReview)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Text('Needs review',
-                      style: AppText.onGradient(
-                          size: 11, weight: FontWeight.w700)),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _safeHeaderAmount(),
-              style: AppText.onGradient(size: 38, weight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 6),
+          _metaLabel('Date & time'),
+          const SizedBox(height: AppSpacing.xs),
+          Text(dateTimeLine, style: AppText.bodyStrong(context)),
+          const SizedBox(height: AppSpacing.lg),
+          _metaLabel('Payment method'),
+          const SizedBox(height: AppSpacing.xs),
           Text(
-            _merchantController.text.isEmpty
-                ? 'Unknown merchant'
-                : _merchantController.text,
-            style: AppText.onGradient(size: 14, opacity: 0.9),
+            widget.transaction.paymentMethod,
+            style: AppText.bodyStrong(context),
           ),
         ],
       ),
     );
   }
 
-  String _safeHeaderAmount() {
-    final raw = _amountController.text.trim();
-    if (raw.isEmpty) return '₹ 0';
-    try {
-      final minor = parseRupeesToPaise(raw);
-      return Formatters.currency.format(minor);
-    } on MoneyParseException {
-      return '₹ 0';
-    }
-  }
-
-  String _normalizedCategory(String category) {
-    if (_categories.contains(category)) return category;
-    if (category == 'Others') return 'Other';
-    return 'Other';
+  Widget _excludeCard(BuildContext context) {
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      child: Material(
+        type: MaterialType.transparency,
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          secondary: IconWell(
+            icon: Icons.visibility_off_outlined,
+            color: AppColors.textTertiary(context),
+          ),
+          title: Text('Exclude from Insights', style: AppText.bodyStrong(context)),
+          subtitle: Text(
+            "Don't count this in totals",
+            style: AppText.bodySmall(context),
+          ),
+          value: _isExcluded,
+          onChanged: (value) {
+            SoundScope.play(context, SoundEventType.selectionChanged);
+            setState(() => _isExcluded = value);
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final int amountMinor;
     try {
       amountMinor = parseRupeesToPaise(_amountController.text.trim());
     } on MoneyParseException {
+      setState(() => _amountError = 'Enter a valid amount.');
       SoundScope.play(context, SoundEventType.actionFailed);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid merchant and amount')),
-      );
       return;
     }
-    final merchant = _merchantController.text.trim();
+    if (amountMinor <= 0) {
+      setState(() => _amountError = 'Enter an amount greater than zero.');
+      SoundScope.play(context, SoundEventType.actionFailed);
+      return;
+    }
+    if (_amountError != null) setState(() => _amountError = null);
 
-    if (amountMinor <= 0 || merchant.isEmpty) {
+    final merchant = _merchantController.text.trim();
+    if (merchant.isEmpty) {
       // Validation failed: the user is told, and the matching cue confirms the
       // negative outcome. No success cue is reachable from here.
       SoundScope.play(context, SoundEventType.actionFailed);

@@ -59,7 +59,14 @@ class InsightsScreen extends StatelessWidget {
                 height: 168,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.zero,
+                  // Escape the page inset so a card bleeding off-screen reads
+                  // as "there is more to scroll" instead of looking cropped.
+                  // The trailing end padding restores it, so the last card
+                  // still lands on the same edge as every card below.
+                  clipBehavior: Clip.none,
+                  padding: const EdgeInsetsDirectional.only(
+                    end: AppSpacing.page,
+                  ),
                   children: [
                     FadeSlideIn(
                       index: 0,

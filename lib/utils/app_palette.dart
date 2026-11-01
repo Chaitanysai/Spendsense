@@ -429,10 +429,18 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFE1F0FF),
     borderLight: Color(0xFFC1E8FF),
-    darkBackground: Color(0xFF021024),
-    darkSurface: Color(0xFF052659),
-    darkSurfaceAlt: Color(0xFF0A3468),
-    borderDark: Color(0xFF1E4A85),
+    darkBackground: Color(0xFF0B1220),
+    // A card is a surface, not a colour field.
+    //
+    // The original #052659 carried 27% chroma: every card read as a blue slab
+    // and stacked cards merged into one field of blue, with no step to the
+    // raised surface. Chroma (how colourful the tone looks) is the measure that
+    // matters near black — HSV saturation stays ~70% for any dark navy and told
+    // us nothing. This holds the navy identity at ~11% chroma: dark glass, not
+    // paint, while keeping a real step up to the raised surface.
+    darkSurface: Color(0xFF141E30),
+    darkSurfaceAlt: Color(0xFF1C2A42),
+    borderDark: Color(0xFF2B3D59),
     glass: true,
   );
 
@@ -451,10 +459,13 @@ class AppPalette {
     surface: Colors.white,
     surfaceMuted: Color(0xFFF6E7E1),
     borderLight: Color(0xFFE8CFC8),
-    darkBackground: Color(0xFF190019),
-    darkSurface: Color(0xFF2B124C),
-    darkSurfaceAlt: Color(0xFF522B5B),
-    borderDark: Color(0xFF854F6C),
+    darkBackground: Color(0xFF1C1020),
+    // The card sat at #2B124C: an ultramarine-violet surface on a maroon-black
+    // canvas, so the two hues fought and the card read as a purple slab. Keep
+    // the plum family, drop the clash and the chroma.
+    darkSurface: Color(0xFF2A1E30),
+    darkSurfaceAlt: Color(0xFF382A41),
+    borderDark: Color(0xFF4C3A57),
     glass: true,
   );
 
@@ -500,10 +511,15 @@ class AppPalette {
     surface: Color(0xFFF8F7F4),
     surfaceMuted: Color(0xFFEFEDE8),
     borderLight: Color(0xFFDDD9D1),
-    darkBackground: Color(0xFF121215),
-    darkSurface: Color(0xFF1B1B1F),
-    darkSurfaceAlt: Color(0xFF252529),
-    borderDark: Color(0xFF313137),
+    darkBackground: Color(0xFF111114),
+    // Paper's dark state is declared glass, so its cards have to actually lift
+    // off the canvas. The previous pair (#121215 canvas / #1B1B1F card) sat at
+    // 1.09:1 — a card you cannot see is not a glass card, and it was the one
+    // palette whose dark mode still read as flat blocks. These hold the same
+    // neutral (hue 240, very low saturation) while separating the layers.
+    darkSurface: Color(0xFF1D1D23),
+    darkSurfaceAlt: Color(0xFF282830),
+    borderDark: Color(0xFF3A3A44),
     // Light mode stays flat, but the dark state is glass like the other
     // palettes: without this the dark canvas rendered as flat opaque blocks,
     // which is the "no glassmorphism in dark mode" the UI pass was about.
