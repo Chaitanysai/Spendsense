@@ -1033,6 +1033,11 @@ class TransactionProvider with ChangeNotifier {
       if (alerts.isEmpty) {
         _syncFailure = null;
         _lastSynced = DateTime.now();
+        // Record the completed run for the screen. Without this the import
+        // cursor — which only advances when mail actually matched — stayed
+        // null forever, so a person whose bank domain was not yet on the
+        // allowlist saw "Last sync: never" after every single sync.
+        await gmailSource.markSyncedAt(DateTime.now());
         return 0;
       }
 
@@ -1074,13 +1079,21 @@ class TransactionProvider with ChangeNotifier {
       // Commit succeeded: only now is it safe to move the cursor. Advance to the
       // newest listed alert only when every alert was committed; a partial
       // failure keeps the old cursor so the unparsed mail is retried.
+      //
+      // `alerts` can legitimately be empty — a sync with no matching bank mail,
+      // which is every sync until the right sender domain is on the allowlist.
+      // `reduce` throws on an empty list, so that case used to fail the whole
+      // sync and report "sync failed" while never recording a last-sync time.
       final allCommitted = accepted.length + rejected.length >= alerts.length;
-      if (allCommitted) {
+      if (allCommitted && alerts.isNotEmpty) {
         final newestSeen = alerts
             .map((a) => a.date)
             .reduce((a, b) => a.isAfter(b) ? a : b);
         await gmailSource.markImported(newestSeen);
       }
+      // A sync that found nothing is still a completed sync, so the screen can
+      // stop claiming it has never run.
+      await gmailSource.markSyncedAt(DateTime.now());
 
       _lastSynced = DateTime.now();
       _syncFailure = null;

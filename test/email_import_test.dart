@@ -160,6 +160,82 @@ void main() {
       expect(await source.senderDomains(), ['hdfcbank.net']);
     });
 
+    test('a pasted sender address contributes its domain, not its mailbox', () {
+      // What people actually copy out of their inbox.
+      expect(
+        GmailEmailSource.normaliseSenderDomain('noreply@red.slice.bank.in'),
+        'red.slice.bank.in',
+      );
+      expect(
+        GmailEmailSource.normaliseSenderDomain('  NoReply@Red.Slice.Bank.IN  '),
+        'red.slice.bank.in',
+      );
+    });
+
+    test('a leading @ handle, a URL or a port still yields the domain', () {
+      expect(
+        GmailEmailSource.normaliseSenderDomain('@red.slice.bank.in'),
+        'red.slice.bank.in',
+      );
+      expect(
+        GmailEmailSource.normaliseSenderDomain('https://red.slice.bank.in/x'),
+        'red.slice.bank.in',
+      );
+      expect(
+        GmailEmailSource.normaliseSenderDomain('red.slice.bank.in:443'),
+        'red.slice.bank.in',
+      );
+    });
+
+    test('garbage is rejected rather than silently dropped', () async {
+      final source = GmailEmailSource();
+      final rejected = await source.setSenderDomains([
+        'not a domain',
+        'red.slice.bank.in',
+        'a@b',
+      ]);
+      // `a@b` has no dot in its domain, so it is not a usable sender domain.
+      expect(rejected, ['not a domain', 'a@b']);
+      expect(await source.senderDomains(), ['red.slice.bank.in']);
+    });
+
+    test('an added Slice address then matches that bank\'s mail', () async {
+      final source = GmailEmailSource();
+      await source.setSenderDomains(['noreply@red.slice.bank.in']);
+      final domains = await source.senderDomains();
+      expect(
+        GmailEmailSource.isAllowedSender(
+          'Slice <noreply@red.slice.bank.in>',
+          domains,
+        ),
+        isTrue,
+      );
+      // Exact-domain matching still refuses a look-alike.
+      expect(
+        GmailEmailSource.isAllowedSender('noreply@evil.slice.bank.in', domains),
+        isFalse,
+      );
+    });
+
+    test('a completed sync is recorded even when nothing matched', () async {
+      final source = GmailEmailSource();
+      expect(await source.lastScanAt(), isNull);
+
+      await source.markSyncedAt(DateTime.utc(2026, 11, 2, 9, 30));
+      expect(await source.lastScanAt(), DateTime.utc(2026, 11, 2, 9, 30));
+      // The import cursor is a separate value and must stay untouched, so the
+      // Gmail query boundary is not moved by a sync that imported nothing.
+      expect(await source.lastSyncAt(), isNull);
+    });
+
+    test('disconnecting clears the recorded sync time too', () async {
+      final source = GmailEmailSource();
+      await source.setConsent(true);
+      await source.markSyncedAt(DateTime.utc(2026, 11, 2));
+      await source.setConsent(false);
+      expect(await source.lastScanAt(), isNull);
+    });
+
     test('no Gmail request is attempted without consent', () async {
       final source = GmailEmailSource();
       await expectLater(
