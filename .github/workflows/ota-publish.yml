@@ -253,7 +253,8 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for f in index.html 404.html legal/index.html legal/style.css; do
+          for f in index.html 404.html landing.css \
+                   legal/index.html legal/style.css legal/fonts/fonts.css; do
             if [ ! -s "ota/public/$f" ]; then
               echo "::error::ota/public/$f is missing or empty; deploying would drop it from the live site"
               missing=1

@@ -88,3 +88,6 @@ node_modules/
 /UI_HANDOFF.md
 /screenshots/
 /screenshots2/
+
+# Impeccable design-skill local state (never shipped)
+/.impeccable/

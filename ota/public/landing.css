@@ -1,0 +1,586 @@
+/*
+ * SpendSense — glazing wall.
+ *
+ * The page is a steel-framed glass partition: matte black bars are the only line
+ * ink, clear and seeded panes are the ground, and cobalt / amber / oxblood are
+ * reserved for the three things a visitor must act on or trust.
+ *
+ * Colour pairs are checked against WCAG 2.1 AA: bar ink and prose are >= 4.5:1 on
+ * every pane they sit on, caps legends are >= 3:1 as large text.
+ */
+
+/* Font faces are linked separately in the document head so they are discovered
+   in the first pass; an @import here would defer them behind this stylesheet. */
+
+:root {
+  /* The wall */
+  --bar: #111417;
+  --bar-w: 10px;
+  --paper: #f4f1ea;
+  --paper-hi: #fbfaf6;
+  --paper-lo: #e8e3d8;
+  --frost: #ddd8cb;
+
+  /* The three coloured panes, and nothing else may borrow them */
+  --cobalt: #1b3fa0;
+  --cobalt-lift: #2449b4;
+  --amber: #c08a2e;
+  --oxblood: #5e1b22;
+
+  /* Ink */
+  --ink: #14181c;
+  --ink-2: #3d454d;
+  --ink-3: #5b656e;
+  --on-dark: #f6f4ee;
+  --on-dark-2: #c9cfd6;
+
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --prose: "Instrument Sans", "Segoe UI", Roboto, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bar);
+  color: var(--ink);
+  font: 400 17px/1.6 var(--prose);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The parts we did not draw still carry the design. */
+::selection { background: var(--cobalt); color: #fff; }
+:focus-visible {
+  outline: 3px solid var(--cobalt);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+a { color: inherit; }
+
+/* ─────────────────────────────────────────── the wall ── */
+
+.wall {
+  /* Bars are the page's structural line. Every pane sits inside them.
+     Rows are explicit so auto-placement can never push the action below the
+     install card: row 1 is the first viewport, row 2 the action, then the
+     proofs, the refusal band and the footer course. */
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--bar-w);
+  background: var(--bar);
+  padding: var(--bar-w);
+  border: var(--bar-w) solid var(--bar);
+}
+
+/* The two side columns are single grid items that stack their own panes, so
+   each pane is exactly as tall as its content and no row is stretched to match
+   its tallest neighbour. */
+.col-left,
+.col-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bar-w);
+  min-width: 0;
+  align-self: start;
+}
+.col-left { grid-column: 1 / span 2; grid-row: 1; }
+.col-right { grid-column: 10 / span 3; grid-row: 1; }
+.col-left > *,
+.col-right > * { grid-row: auto; }
+
+/* First viewport: the claim and the note sit in row 1 beside the two columns.
+   The action takes row 2 across the middle. */
+.claim,
+.note { grid-row: 1; }
+
+.action-pane { grid-row: 2; grid-column: 3 / span 6; align-self: start; }
+.proofs { grid-row: 3; }
+.refusal { grid-row: 4; }
+.foot { grid-row: 5; }
+
+.pane {
+  position: relative;
+  background: var(--paper);
+  /* The seeded-glass grain: a fine two-tone speckle, no image request. */
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 65%, rgba(255, 255, 255, 0.4) 0 1px, transparent 1px),
+    radial-gradient(circle at 45% 85%, rgba(180, 172, 155, 0.16) 0 1.5px, transparent 1.5px);
+  background-size: 7px 7px, 11px 11px, 17px 17px;
+  padding: clamp(18px, 2.2vw, 30px);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pane-hi { background-color: var(--paper-hi); }
+.pane-lo { background-color: var(--paper-lo); }
+.pane-clear { background-color: var(--paper-hi); background-image: none; }
+
+/* Glass states: rest is daylight, hover backlights, a proven claim holds. */
+.pane-proven::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 -3px 0 0 var(--amber);
+  opacity: 0;
+  transition: opacity 320ms var(--ease);
+}
+.pane-proven:hover::after,
+.pane-proven:focus-within::after { opacity: 1; }
+
+/* ── identity ── */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background-color: var(--paper-hi);
+}
+.masthead img { display: block; width: 34px; height: 34px; border-radius: 9px; }
+.masthead span {
+  font: 800 15px/1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── navigation as panes ── */
+
+.nav-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--bar);
+  padding: 0;
+  gap: 1px;
+}
+.nav-pane a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  font: 700 12.5px/1 var(--display);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  transition: background-color 220ms var(--ease), color 220ms var(--ease);
+}
+.nav-pane a .tick { opacity: 0; transition: opacity 220ms var(--ease); }
+.nav-pane a:hover,
+.nav-pane a:focus-visible { background: var(--cobalt); color: #fff; }
+.nav-pane a:hover .tick,
+.nav-pane a:focus-visible .tick { opacity: 1; }
+
+/* ── the dominant pane ── */
+
+.claim {
+  grid-column: 3 / span 6;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: clamp(16px, 2vw, 28px);
+  /* Sizes to its own text. A min-height here made the pane taller than its
+     copy and pushed the action below a band of empty pane. */
+  align-self: start;
+  padding: clamp(20px, 2.2vw, 32px);
+}
+.claim h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.1rem, 4.4vw, 3.9rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.claim h1 em { font-style: normal; color: var(--cobalt); }
+
+.claim-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 2px solid var(--bar);
+}
+.claim-foot p {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+/* ── the saturated note ── */
+
+.note {
+  grid-column: 9 / span 1;
+  background-color: var(--cobalt);
+  background-image: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 18px;
+  /* A narrow vertical accent beside the claim, never a tower of empty blue. */
+  align-self: stretch;
+}
+.note span {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font: 700 12px/1 var(--display);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* ── the live pane ── */
+
+.readout {
+  /* Sizes to its two items. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 14px;
+}
+.readout-label {
+  font: 700 11px/1 var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.readout-figure {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--oxblood);
+  transition: color 260ms var(--ease);
+}
+.readout-figure.tick { color: var(--cobalt); }
+.readout-note {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* ── the action ── */
+
+.action-heading {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.action-pane {
+  grid-column: 3 / span 7;
+  align-self: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: clamp(16px, 1.6vw, 22px);
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 26px;
+  background: var(--cobalt);
+  color: #fff;
+  text-decoration: none;
+  font: 700 13px/1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 2px solid var(--bar);
+  transition: background-color 220ms var(--ease), transform 220ms var(--ease);
+}
+.download:hover { background: var(--cobalt-lift); }
+.download:active { transform: translateY(1px); }
+.download svg { flex: none; }
+
+.action-meta {
+  margin: 0;
+  font: 500 12px/1.5 var(--mono);
+  color: var(--ink-3);
+  max-width: 26ch;
+}
+
+/* ── the proof wall ── */
+
+.proofs {
+  grid-column: 1 / span 12;
+  display: grid;
+  /* Seven tiles: four across, then three across the last row. Fixed 3-column
+     spans left a single orphan tile and made every row as tall as the roundest
+     tile, which is where the empty space came from. */
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--bar-w);
+  background: var(--bar);
+  padding: 0;
+  align-items: stretch;
+}
+
+.proof {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(16px, 1.5vw, 22px);
+}
+.proof h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+.proof p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.proof .mark {
+  width: 28px; height: 28px;
+  color: var(--ink);
+}
+.proof .mark svg { width: 100%; height: 100%; }
+
+/* The frosted pane: a claim we cannot prove is visibly unavailable, never
+   silently dropped. */
+.proof.is-frosted {
+  background-image: none;
+  background-color: var(--frost);
+}
+.proof.is-frosted h2,
+.proof.is-frosted p { color: var(--ink-3); }
+.proof.is-frosted .mark { color: var(--ink-3); }
+.frosted-note {
+  margin: 0;
+  font: 700 10.5px/1.4 var(--display);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Four tiles across. The seventh takes the width it needs on a second row
+   instead of leaving an orphan. */
+.p-cobalt,
+.p-amber,
+.p-oxblood { grid-column: span 3; }
+.proof { grid-column: span 3; }
+.proof:nth-child(6) { grid-column: span 3; }
+.proof:nth-child(7) { grid-column: span 6; }
+.p-cobalt { background-color: var(--cobalt); background-image: none; }
+.p-cobalt h2, .p-cobalt p { color: #fff; }
+.p-cobalt .mark { color: #fff; }
+.p-amber { grid-column: span 3; background-color: var(--amber); background-image: none; }
+.p-amber h2, .p-amber p { color: #1b1206; }
+.p-amber .mark { color: #1b1206; }
+.p-oxblood { grid-column: span 3; background-color: var(--oxblood); background-image: none; }
+.p-oxblood h2, .p-oxblood p { color: #f7e9e4; }
+.p-oxblood .mark { color: #f7e9e4; }
+.p-wide { grid-column: span 3; }
+
+/* ── refusal band ── */
+
+.refusal {
+  grid-column: 1 / span 12;
+  background: var(--bar);
+  background-image: none;
+  color: var(--on-dark);
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0;
+  padding: 0;
+}
+.refusal-inner {
+  grid-column: 1 / span 12;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px;
+  background: #2a3037;
+}
+.refusal h2 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--on-dark);
+}
+.refusal .cell { background: var(--bar); padding: clamp(18px, 1.8vw, 26px); }
+.refusal p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--on-dark-2); }
+.refusal .lede { grid-column: 1 / -1; }
+.refusal .cell { min-width: 0; }
+.refusal p { overflow-wrap: anywhere; }
+.refusal strong { color: var(--on-dark); font-weight: 600; }
+
+/* ── install strip ── */
+
+.install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(16px, 1.6vw, 22px);
+}
+.install ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.install li {
+  counter-increment: step;
+  display: block;
+  padding: 7px 0 7px 26px;
+  position: relative;
+  border-bottom: 1px solid rgba(17, 20, 23, 0.14);
+  font-size: 13.5px;
+  line-height: 1.42;
+}
+.install li::before {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  content: counter(step, decimal-leading-zero);
+  font: 500 11.5px/1 var(--mono);
+  color: var(--ink-3);
+}
+.install li:last-child { border-bottom: 0; }
+.install code {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12.5px;
+  line-height: 1;
+  background: rgba(17, 20, 23, 0.07);
+  border-bottom: 1px solid rgba(17, 20, 23, 0.25);
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+.install-heading {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.install-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* ── footer course ── */
+
+.foot {
+  grid-column: 1 / span 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px clamp(18px, 2vw, 26px);
+  background-color: var(--paper-lo);
+}
+.foot nav { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.foot a {
+  font: 700 11px/1 var(--display);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink-2);
+  padding: 6px 0;
+}
+.foot a:hover { color: var(--cobalt); text-decoration: underline; text-underline-offset: 3px; }
+.foot .who {
+  font: 500 11.5px/1.5 var(--mono);
+  color: var(--ink-3);
+}
+
+/* ── skip link ── */
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 50;
+  background: var(--paper-hi);
+  color: var(--ink);
+  padding: 14px 20px;
+  font: 700 12px/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 2px solid var(--bar);
+}
+.skip:focus { left: 10px; top: 10px; }
+
+/* ─────────────────────────────────────── responsive ── */
+
+/* Bays restack into one column keeping true bar thickness. */
+@media (max-width: 1080px) {
+  .masthead { grid-column: 1 / span 12; grid-row: 1; }
+  .claim { grid-column: 1 / span 12; grid-row: 2; }
+  .nav-pane { grid-column: 1 / span 12; grid-row: 7; flex-direction: row; flex-wrap: wrap; }
+  .nav-pane a { flex: 1 1 160px; }
+  .note { display: none; }
+  .readout { grid-column: 1 / span 12; grid-row: 3; }
+  .action-pane { grid-column: 1 / span 12; grid-row: 4; }
+  .install { grid-column: 1 / span 12; grid-row: 5; }
+  .proofs { grid-row: 6; }
+  .refusal { grid-row: 8; }
+  .foot { grid-row: 9; }
+  .proof,
+  .proof:nth-child(6),
+  .proof:nth-child(7),
+  .p-cobalt, .p-amber, .p-oxblood { grid-column: span 6; }
+}
+
+@media (max-width: 680px) {
+  :root { --bar-w: 7px; }
+  body { font-size: 16px; }
+  .masthead { grid-column: 1 / span 12; }
+  .claim h1 { font-size: clamp(2rem, 10.5vw, 3rem); }
+  .claim-foot { flex-direction: column; align-items: stretch; }
+  .download { justify-content: center; width: 100%; }
+  .action-meta { max-width: none; }
+  .proof,
+  .proof:nth-child(6),
+  .proof:nth-child(7),
+  .p-cobalt, .p-amber, .p-oxblood { grid-column: span 12; }
+  .nav-pane a { flex: 1 1 100%; }
+  .foot { flex-direction: column; align-items: flex-start; }
+  .readout-figure { font-size: 2rem; }
+}
