@@ -60,6 +60,7 @@ class GmailAlert {
 class GmailEmailSource {
   static const prefsConsentKey = 'email_gmail_consent_v1';
   static const prefsLastSyncKey = 'email_gmail_last_sync_v1';
+  static const prefsLastScanKey = 'email_gmail_last_scan_v1';
   static const prefsSendersKey = 'email_gmail_senders_v1';
   static const prefsConnectedEmailKey = 'email_gmail_connected_email_v1';
 
@@ -109,6 +110,7 @@ class GmailEmailSource {
     await prefs.setBool(prefsConsentKey, value);
     if (!value) {
       await prefs.remove(prefsLastSyncKey);
+      await prefs.remove(prefsLastScanKey);
       await prefs.remove(prefsConnectedEmailKey);
     }
   }
@@ -117,6 +119,27 @@ class GmailEmailSource {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(prefsLastSyncKey);
     return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  /// When a sync last *completed*, for display only.
+  ///
+  /// Distinct from [lastSyncAt] on purpose: that value is the Gmail cursor used
+  /// as the query boundary, and it only advances when a message actually
+  /// matched. Reading it as "last sync" meant the screen showed "never" for
+  /// every successful sync that found no new bank mail — including every sync
+  /// made before the right bank domain had been added.
+  Future<DateTime?> lastScanAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(prefsLastScanKey);
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  /// Records that a sync ran to completion, whether or not it imported
+  /// anything. Call only after the run succeeded, so a failure still reads as
+  /// stale.
+  Future<void> markSyncedAt(DateTime when) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefsLastScanKey, when.toUtc().toIso8601String());
   }
 
   /// Records a successful import cursor.
@@ -148,17 +171,57 @@ class GmailEmailSource {
         : stored;
   }
 
-  Future<void> setSenderDomains(List<String> domains) async {
+  /// Normalises one typed allowlist entry to a bare domain, or null if it is
+  /// not a domain at all.
+  ///
+  /// People paste what they see in their inbox — a full address such as
+  /// `noreply@red.slice.bank.in` — and the old regex silently discarded it,
+  /// so the domain never appeared in the list and looked like the field was
+  /// ignoring input. This accepts a full address, a leading-`@` handle, a URL,
+  /// or a bare domain, and the stored value is always the bare domain: sender
+  /// matching stays an exact-domain comparison so a look-alike subdomain cannot
+  /// slip through.
+  @visibleForTesting
+  static String? normaliseSenderDomain(String raw) {
+    var value = raw.trim().toLowerCase();
+    if (value.isEmpty) return null;
+
+    // Strip a scheme and any path, query or fragment.
+    value = value.replaceFirst(RegExp(r'^[a-z][a-z0-9+.-]*://'), '');
+    value = value.split(RegExp(r'[/?#]')).first;
+    // A full mailbox contributes only its domain part.
+    final at = value.lastIndexOf('@');
+    if (at >= 0) value = value.substring(at + 1);
+    // Drop a port, then any stray leading or trailing dot.
+    value = value.split(':').first;
+    while (value.startsWith('.')) {
+      value = value.substring(1);
+    }
+    while (value.endsWith('.')) {
+      value = value.substring(0, value.length - 1);
+    }
+
+    const pattern =
+        r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$';
+    return RegExp(pattern).hasMatch(value) ? value : null;
+  }
+
+  /// Replaces the allowlist, returning the entries that could not be read as a
+  /// domain so the caller can say so instead of dropping them silently.
+  Future<List<String>> setSenderDomains(List<String> domains) async {
     final normalised = <String>{};
-    final domainPattern = RegExp(
-      r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$',
-    );
+    final rejected = <String>[];
     for (final raw in domains) {
-      final domain = raw.trim().toLowerCase();
-      if (domainPattern.hasMatch(domain)) normalised.add(domain);
+      final domain = normaliseSenderDomain(raw);
+      if (domain != null) {
+        normalised.add(domain);
+      } else {
+        rejected.add(raw);
+      }
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(prefsSendersKey, normalised.toList()..sort());
+    return rejected;
   }
 
   Future<void> _initialise() async {

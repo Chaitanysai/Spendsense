@@ -48,7 +48,7 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
   Future<void> _load() async {
     final consent = await _source.hasConsent();
     final email = await _source.connectedEmail();
-    final last = await _source.lastSyncAt();
+    final last = await _source.lastScanAt();
     final domains = await _source.senderDomains();
     if (!mounted) return;
     setState(() {
@@ -146,7 +146,7 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
     });
     try {
       final imported = await transactions.importFromGmail(source: _source);
-      final last = await _source.lastSyncAt();
+      final last = await _source.lastScanAt();
       if (!mounted) return;
       setState(() => _lastSync = last);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,13 +174,25 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
   Future<void> _addSender() async {
     final value = _senderController.text.trim();
     if (value.isEmpty) return;
-    await _source.setSenderDomains([..._domains, value]);
+    final rejected = await _source.setSenderDomains([..._domains, value]);
     final updated = await _source.senderDomains();
     if (!mounted) return;
     setState(() {
       _domains = updated;
-      _senderController.clear();
+      // Only clear the field when the entry was actually accepted, so a typo
+      // stays on screen to be corrected instead of vanishing.
+      if (rejected.isEmpty) _senderController.clear();
     });
+    if (rejected.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '“$value” is not an email domain. Try a domain such as '
+            'red.slice.bank.in, or paste the full sender address.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _removeSender(String domain) async {
