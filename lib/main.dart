@@ -424,6 +424,13 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   /// of the content being read) and returns on scroll up or a tab change.
   bool _fabVisible = true;
 
+  /// Settings opts out of the Add action entirely: a settings screen has no
+  /// quick-add to offer, and the end-floated button sat on top of its rows.
+  /// Every other tab keeps it.
+  static const int _settingsIndex = 4;
+
+  bool get _showAddFab => _fabVisible && _currentIndex != _settingsIndex;
+
   @override
   void initState() {
     super.initState();
@@ -526,17 +533,17 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       floatingActionButton: MediaQuery.maybeDisableAnimationsOf(context) == true
           // Reduced motion: no slide or fade, the button just appears or
           // disappears.
-          ? (_fabVisible
+          ? (_showAddFab
               ? _AddFab(onPressed: _openAddTransaction)
               : const SizedBox.shrink())
           : IgnorePointer(
-              ignoring: !_fabVisible,
+              ignoring: !_showAddFab,
               child: AnimatedSlide(
-                offset: _fabVisible ? Offset.zero : const Offset(0, 1.5),
+                offset: _showAddFab ? Offset.zero : const Offset(0, 1.5),
                 duration: AppMotion.respect(context, AppMotion.base),
                 curve: AppMotion.easeOut,
                 child: AnimatedOpacity(
-                  opacity: _fabVisible ? 1 : 0,
+                  opacity: _showAddFab ? 1 : 0,
                   duration: AppMotion.respect(context, AppMotion.base),
                   child: _AddFab(onPressed: _openAddTransaction),
                 ),

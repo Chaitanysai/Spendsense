@@ -54,20 +54,26 @@ class AppearanceScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               GlassCard(
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Row(
-                  children: [
-                    for (final mode in ThemeMode.values) ...[
-                      Expanded(
-                        child: _ModeChoice(
-                          mode: mode,
-                          selected: theme.themeMode == mode,
-                          onTap: () => theme.setThemeMode(mode),
+                child: IntrinsicHeight(
+                  // Equal widths come from `Expanded`; equal heights need the
+                  // row to measure its tallest child and stretch the rest to it,
+                  // so no pill can be shorter than its neighbour.
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final mode in ThemeMode.values) ...[
+                        Expanded(
+                          child: _ModeChoice(
+                            mode: mode,
+                            selected: theme.themeMode == mode,
+                            onTap: () => theme.setThemeMode(mode),
+                          ),
                         ),
-                      ),
-                      if (mode != ThemeMode.values.last)
-                        const SizedBox(width: AppSpacing.sm),
+                        if (mode != ThemeMode.values.last)
+                          const SizedBox(width: AppSpacing.sm),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -238,44 +244,77 @@ class _ModeChoice extends StatelessWidget {
           onTap();
         },
         sound: null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.brand.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: selected ? AppColors.brand : AppColors.border(context),
-              width: selected ? 1.5 : 1,
-            ),
+        child: ConstrainedBox(
+          // Every pill must be the same box, in both axes.
+          //
+          // Height: without a floor the container shrink-wrapped its content, so
+          // "System" and "Light" (y/g descenders) came out taller than "Dark".
+          // Width: `Expanded` sizes the *slot* equally, but a loose ConstrainedBox
+          // hands the child loose constraints, so the container shrink-wrapped
+          // its label instead and the three pills painted at 91.5 / 79.3 / 67.0.
+          // `stretch` passes the slot's tight width down, and the centred column
+          // keeps the glyph pair centred inside it.
+          constraints: const BoxConstraints(
+            minHeight: AppSpacing.wellTouchTarget + AppSpacing.xl,
+            minWidth: double.infinity,
           ),
-          child: Column(
-            children: [
-              Icon(
-                _icons[mode],
-                size: 20,
-                // Selected sits on a 12%-brand capsule, not the canvas, so the
-                // glyph uses capsule-aware ink; navSelected measured against the
-                // canvas was too dim there.
-                color: selected
-                    ? AppColors.brandWellInk(context)
-                    : AppColors.textSecondary(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.sm,
+              horizontal: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              // Selection must read as *more* present than an unselected pill in
+              // both themes. In light mode a 12% brand wash is darker than the
+              // white card and reads correctly. In dark mode it is not: the card
+              // is already dark, so washing the (also dark) brand over it landed
+              // *below* the unselected pill — measured #1F2E38 selected against
+              // #23313D unselected, i.e. selection looked switched off. Dark mode
+              // lightens instead, and the border carries the brand hue.
+              color: !selected
+                  ? Colors.transparent
+                  : AppColors.isDark(context)
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : AppColors.brand.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                // A constant width keeps the three boxes identical: a 1.5dp
+                // selected border used to change the content box by 0.5dp,
+                // which was enough to shift the label relative to its
+                // neighbours.
+                color: selected ? AppColors.brand : AppColors.border(context),
+                width: 1,
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                AppearanceScreen.modeLabel(mode),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.body(context).copyWith(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _icons[mode],
+                  size: 20,
+                  // Selected sits on a 12%-brand capsule, not the canvas, so the
+                  // glyph uses capsule-aware ink; navSelected measured against
+                  // the canvas was too dim there.
                   color: selected
                       ? AppColors.brandWellInk(context)
                       : AppColors.textSecondary(context),
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  AppearanceScreen.modeLabel(mode),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppText.body(context).copyWith(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? AppColors.brandWellInk(context)
+                        : AppColors.textSecondary(context),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -320,20 +359,29 @@ class _PaletteRow extends StatelessWidget {
               children: [
                 // Swatch shows the palette's own ramp, so the preview never
                 // depends on the currently active tokens.
+                // Swatch shows the palette's own ramp, so the preview never
+                // depends on the currently active tokens. It is always a light
+                // wash, so it needs an edge that reads on a dark glass card as
+                // well as on a light one: the theme border alone disappears on
+                // dark, hence the inset hairline drawn in the swatch's own ink.
                 Container(
                   width: 46,
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                     gradient: palette.brandGradient,
-                    border: Border.all(color: AppColors.border(context)),
+                    border: Border.all(
+                      color: AppColors.isDark(context)
+                          ? Colors.white.withValues(alpha: 0.28)
+                          : AppColors.border(context),
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Row(
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           palette.label,
                           maxLines: 1,
@@ -341,19 +389,32 @@ class _PaletteRow extends StatelessWidget {
                           style: AppText.title(context),
                         ),
                       ),
+                      // The chip is a fixed-size marker, not flexible content:
+                      // as a `Flexible` sibling it competed with the name for
+                      // the same space, so "Premium Blue" ellipsised to
+                      // "Premium Bl…" while the chip still needed its room.
+                      // Letting the name take the remaining width only — and
+                      // the chip keep its intrinsic size — keeps both intact.
                       if (palette.id == AppPalette.defaultPalette.id) ...[
                         const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.brand.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.sm / 2),
                           ),
                           child: Text(
                             'DEFAULT',
+                            maxLines: 1,
+                            softWrap: false,
+                            // 8.5 was below the legibility floor at font scale
+                            // 1.0 and unreadable once the system scales text.
                             style: AppText.label(context).copyWith(
-                              fontSize: 8.5,
+                              fontSize: 11,
                               letterSpacing: 0.5,
                               fontWeight: FontWeight.w800,
                               color: AppColors.brandWellInk(context),

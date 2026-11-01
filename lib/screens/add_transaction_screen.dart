@@ -9,10 +9,9 @@ import '../utils/money_parser.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
-import '../utils/category_style.dart';
-import '../utils/formatters.dart';
+import '../widgets/amount_hero_field.dart';
 import '../widgets/app_button.dart';
-import '../widgets/pressable.dart';
+import '../widgets/category_chip_picker.dart';
 import '../widgets/sound_scope.dart';
 import '../widgets/transaction_type_toggle.dart';
 
@@ -98,8 +97,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  double get _amount => double.tryParse(_amountController.text) ?? 0;
-
   @override
   Widget build(BuildContext context) {
     final content = Column(
@@ -131,9 +128,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ],
                 TransactionTypeToggle(isIncome: _isIncome, onSelect: _setType),
                 const SizedBox(height: AppSpacing.lg),
-                _AmountCard(
-                  amountController: _amountController,
-                  amount: _amount,
+                AmountHeroField(
+                  controller: _amountController,
                   isIncome: _isIncome,
                   errorText: _amountError,
                 ),
@@ -153,7 +149,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   const SizedBox(height: AppSpacing.xl),
                   Text('Category', style: AppText.title(context)),
                   const SizedBox(height: AppSpacing.md),
-                  _CategoryPicker(
+                  CategoryChipPicker(
                     selected: _category,
                     onSelect: (c) {
                       if (_category == c) return;
@@ -166,16 +162,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ),
           ),
         ),
-        // Bottom inset follows the keyboard so the primary action is never
-        // hidden behind it inside the sheet.
+        // The action row sits inside the sheet, whose height already had the
+        // keyboard inset removed, so it needs no `viewInsets` padding of its
+        // own — adding it here is what drew the button back over the Merchant
+        // field once the IME was up.
         Padding(
-          padding: EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             AppSpacing.page,
             0,
             AppSpacing.page,
-            widget.asSheet
-                ? AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom
-                : AppSpacing.lg,
+            AppSpacing.lg,
           ),
           child: AppPrimaryButton(
             label: _isIncome ? 'Add income' : 'Add expense',
@@ -205,19 +201,51 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     // A bounded height is what lets the inner Expanded scroll region and the
     // pinned action row coexist inside a modal sheet.
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.92,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor(context),
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
+    //
+    // The cap alone was not enough. A bottom sheet is positioned by its *bottom*
+    // edge, which on Android sits at the screen bottom — behind the keyboard.
+    // Capping the height therefore shrank the sheet from the top while its
+    // bottom stayed under the IME, so at 1.3 scale the amount field was sliced
+    // in half and Merchant, Category and the submit row were unreachable.
+    // Subtracting [viewInsets] here and anchoring with
+    // `mainAxisAlignment: end` inside a bottom-padded box lifts the whole sheet
+    // above the keys; the sheet then sizes to `min(content, cap)` and the inner
+    // scroll view takes up the slack.
+    //
+    // `useSafeArea` in [showAppSheet] already keeps the sheet below the status
+    // bar, so the top inset is not subtracted a second time.
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final available = MediaQuery.sizeOf(context).height - keyboardInset;
+    final cap = available > 0 ? available * 0.92 : 0.0;
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // `Flexible` is what makes the cap real: the inner content is a Column
+          // (grabber + Expanded scroll view + pinned button), which sizes to its
+          // natural height and would overflow this box rather than shrink into
+          // it. Flexible lets the ConstrainedBox be *given* the capped height
+          // instead of overflowing it.
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: cap),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceColor(context),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppRadius.xl),
+                  ),
+                  border: Border.all(color: AppColors.border(context)),
+                ),
+                // The keyboard inset is already removed from the layout above,
+                // so the sheet's own bottom padding must not add it again.
+                child: SafeArea(top: false, child: content),
+              ),
+            ),
           ),
-          border: Border.all(color: AppColors.border(context)),
-        ),
-        child: SafeArea(top: false, child: content),
+        ],
       ),
     );
   }
@@ -313,196 +341,3 @@ class _SheetGrabber extends StatelessWidget {
   }
 }
 
-/// The live amount surface: a green focal card, with the field inside it so the
-/// entered figure and the formatted preview are never two different numbers.
-class _AmountCard extends StatelessWidget {
-  final TextEditingController amountController;
-  final double amount;
-  final bool isIncome;
-
-  /// Inline validation message, shown under the field on the card itself.
-  final String? errorText;
-
-  static String _safePreview(double amount) {
-    final raw = amount.toString();
-    // Guard against exponential notation and NaN/Infinity from double
-    if (raw.contains('e') || raw.contains('E')) {
-      return Formatters.currency.format(0);
-    }
-    try {
-      return Formatters.currency.format(parseRupeesToPaise(raw));
-    } on MoneyParseException {
-      return Formatters.currency.format(0);
-    }
-  }
-
-  const _AmountCard({
-    required this.amountController,
-    required this.amount,
-    required this.isIncome,
-    this.errorText,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final gradient = isIncome
-        ? AppColors.successGradient
-        : AppColors.heroSurfaceGradient(context);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(gradient: gradient),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isIncome ? 'AMOUNT IN' : 'AMOUNT OUT',
-              style: AppText.onGradient(
-                size: 10.5,
-                weight: FontWeight.w700,
-                opacity: 0.82,
-                letterSpacing: 1.4,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _safePreview(amount),
-                maxLines: 1,
-                style: AppText.onGradient(size: 36, weight: FontWeight.w800),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: amountController,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: const [
-                AmountInputFormatter(),
-              ],
-              style: AppText.onGradient(size: 16, weight: FontWeight.w600),
-              cursorColor: Colors.white,
-              decoration: InputDecoration(
-                hintText: 'Enter amount',
-                hintStyle: AppText.onGradient(size: 15, opacity: 0.8),
-                filled: true,
-                fillColor: Colors.black.withValues(alpha: 0.22),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.md,
-                ),
-                prefixIcon: const Icon(
-                  Icons.currency_rupee_rounded,
-                  color: Colors.white,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.6),
-                  ),
-                ),
-                // The card is a saturated gradient, so the theme's error colour
-                // would not be legible here. A white message with a warning
-                // glyph carries the meaning on this surface.
-                errorStyle: AppText.onGradient(size: 12, weight: FontWeight.w600),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                ),
-                errorText: errorText,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryPicker extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onSelect;
-
-  const _CategoryPicker({required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: CategoryStyle.pickerCategories.map((c) {
-        final isSelected = selected == c;
-        final color = CategoryStyle.color(c);
-        return Semantics(
-          button: true,
-          selected: isSelected,
-          label: c,
-          excludeSemantics: true,
-          child: Pressable(
-            onTap: () => onSelect(c),
-            sound: SoundEventType.selectionChanged,
-            child: AnimatedContainer(
-              duration: AppMotion.respect(context, AppMotion.fast),
-              curve: AppMotion.easeOut,
-              constraints: const BoxConstraints(minHeight: 44),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? color.withValues(alpha: 0.14)
-                    : AppColors.surfaceColor(context),
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(
-                  color: isSelected
-                      ? color.withValues(alpha: 0.55)
-                      : AppColors.border(context),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    CategoryStyle.icon(c),
-                    size: 16,
-                    color:
-                        isSelected ? color : AppColors.textSecondary(context),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    c,
-                    style: AppText.label(context).copyWith(
-                      fontSize: 12,
-                      color:
-                          isSelected ? color : AppColors.textSecondary(context),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
