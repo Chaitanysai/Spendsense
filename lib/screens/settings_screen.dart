@@ -11,6 +11,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/auth/auth_service.dart';
 import '../providers/period_provider.dart';
 import '../providers/sound_provider.dart';
 import '../providers/theme_provider.dart';
@@ -516,6 +517,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // the destructive action cannot be double-submitted.
                   onTap: auth.isBusy ? null : () => _confirmSignOut(context),
                 ),
+                _divider(context),
+                // Required by Google Play for any app with accounts, and the
+                // privacy policy already promises this flow.
+                _SettingsTile(
+                  icon: Icons.delete_forever_outlined,
+                  iconColor: AppColors.danger,
+                  title: 'Delete account',
+                  subtitle: 'Permanently deletes your account and data',
+                  onTap: auth.isBusy
+                      ? null
+                      : () => _confirmDeleteAccount(context, auth),
+                ),
               ]),
 
             _section(context, 'About', 7, [
@@ -741,6 +754,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !context.mounted) return;
     await auth.signOut();
+  }
+
+  /// Confirms account deletion, then collects the password if Firebase wants a
+  /// recent sign-in, and finally wipes the account and every local trace.
+  ///
+  /// The password step is not paranoia: Firebase refuses `delete()` on an older
+  /// session, and re-prompting inside a destructive flow is friendlier than
+  /// making someone sign out and back in to find the row again.
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    AuthProvider auth,
+  ) async {
+    final transactions = context.read<TransactionProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete account?', style: AppText.title(ctx)),
+        content: const Text(
+          'This permanently deletes your SpendSense account, your sign-in, and '
+          'every transaction stored on this device. It cannot be undone.\n\n'
+          'Your expenses are not backed up anywhere, so they cannot be '
+          'restored afterwards.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete everything',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    Future<void> run({String? password}) async {
+      await auth.deleteAccount(
+        password: password,
+        clearLocalLedger: transactions.clearAll,
+      );
+    }
+
+    try {
+      await run();
+    } on ReauthenticationRequiredException {
+      if (!context.mounted) return;
+      final password = await _promptPassword(context);
+      if (password == null || password.isEmpty || !context.mounted) return;
+      try {
+        await run(password: password);
+      } catch (_) {
+        if (!context.mounted) return;
+        _showDeleteFailed(context);
+      }
+      return;
+    } catch (_) {
+      if (!context.mounted) return;
+      _showDeleteFailed(context);
+      return;
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Your account and data were deleted.')),
+    );
+  }
+
+  Future<String?> _promptPassword(BuildContext context) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Confirm your password', style: AppText.title(ctx)),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Password'),
+          onSubmitted: (value) => Navigator.pop(ctx, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  void _showDeleteFailed(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Your account could not be deleted. Please try again.'),
+      ),
+    );
   }
 
   Future<void> _editBudget(

@@ -173,6 +173,52 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Permanently deletes the account and everything of the person's on the
+  /// device.
+  ///
+  /// Order matters: the Firebase account is deleted first, so a network failure
+  /// cannot leave a deleted-account shell that can never be signed into again.
+  /// Only after the account is truly gone does the local ledger and profile get
+  /// cleared — an account deletion that left financial data on the phone would
+  /// be worse than not deleting at all.
+  ///
+  /// Throws [ReauthenticationRequiredException] when Firebase wants a fresh
+  /// sign-in; the caller re-authenticates and calls this again.
+  Future<void> deleteAccount({
+    required Future<void> Function() clearLocalLedger,
+    String? password,
+  }) async {
+    _setBusy(true);
+    _errorMessage = null;
+    try {
+      if (password != null) {
+        await _auth
+            .reauthenticate(email: email, password: password)
+            .timeout(_requestTimeout);
+      }
+      await _auth.deleteAccount().timeout(_requestTimeout);
+
+      // Account is gone; remove every local trace.
+      await clearLocalLedger();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_nameKey);
+      await prefs.remove(_emailKey);
+      await prefs.remove(_imageKey);
+    } on ReauthenticationRequiredException {
+      _errorMessage = 'Enter your password to confirm deletion.';
+      rethrow;
+    } catch (_) {
+      _errorMessage = 'Your account could not be deleted. Try again.';
+      rethrow;
+    } finally {
+      _user = null;
+      _isSignedIn = false;
+      _name = '';
+      _email = '';
+      _setBusy(false);
+    }
+  }
+
   /// Saves the user's preferred display name. An empty value clears it back to
   /// the neutral placeholder; the greeting then drops the name suffix.
   Future<void> updateName(String value) async {

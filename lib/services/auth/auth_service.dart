@@ -69,11 +69,52 @@ class AuthService {
 
   Future<void> signOut() => _auth.signOut();
 
+  /// Permanently deletes the signed-in Firebase account.
+  ///
+  /// Google requires a recent sign-in for this; when Firebase refuses with
+  /// `requires-recent-login` the caller must re-authenticate and retry, so that
+  /// error is surfaced as a distinct exception rather than a generic failure.
+  Future<void> deleteAccount() async {
+    final user = currentUser;
+    if (user == null) throw const AuthUnavailableException();
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'requires-recent-login') {
+        throw const ReauthenticationRequiredException();
+      }
+      rethrow;
+    }
+  }
+
+  /// Re-authenticates with the account's password, satisfying Firebase's
+  /// recent-sign-in requirement before a destructive action.
+  Future<void> reauthenticate({required String email, required String password}) async {
+    final user = currentUser;
+    if (user == null) throw const AuthUnavailableException();
+    final credential = EmailAuthProvider.credential(
+      email: email.trim(),
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+  }
+
   Future<void> updateDisplayName(String displayName) async {
     final user = currentUser;
     if (user == null) return;
     await user.updateDisplayName(displayName.trim());
   }
+}
+
+/// Raised when a destructive action needs the person to sign in again first.
+///
+/// Firebase refuses account deletion unless the session is recent; the UI turns
+/// this into a password prompt and then retries.
+class ReauthenticationRequiredException implements Exception {
+  const ReauthenticationRequiredException();
+
+  @override
+  String toString() => 'ReauthenticationRequiredException';
 }
 
 /// Raised when an auth call is attempted before Firebase is initialized.
