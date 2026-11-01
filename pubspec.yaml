@@ -1,7 +1,7 @@
 name: spendsense
 description: A smart expense tracker
 
-version: 2.0.16+41
+version: 2.0.17+42
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
