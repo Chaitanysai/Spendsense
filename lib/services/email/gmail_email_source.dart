@@ -98,6 +98,15 @@ class GmailEmailSource {
     'purchase',
     'withdrawn',
     'alert',
+    // Money leaving the account is not always announced as a "debit": banks
+    // write "Rs 600 sent to Rahul" or "Transfer successful". Without these the
+    // subject filter dropped outgoing transfers before the parser could read
+    // the body, so they were never recorded as spending.
+    'sent',
+    'transfer',
+    'transferred',
+    'paid',
+    'withdrawal',
   ];
 
   Future<bool> hasConsent() async {

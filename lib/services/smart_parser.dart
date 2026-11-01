@@ -108,7 +108,7 @@ class SmartParser {
     return RegExp(
           r'\b(?:debited|debit|deducted|deduction|spent|paid|purchase|withdrawn|withdrawal|charged)\b|'
           r'\b(?:a/c|account)\s+(?:has\s+been\s+)?debited\b|'
-          r'\b(?:sent\s+(?:to|via\s+upi)|transferred\s+to|transferred)\b',
+          r'\b(?:sent\s+(?:to|from|via|through|using|towards)|transferred\s+to|transferred)\b',
           caseSensitive: false,
         ).hasMatch(lower) ||
         RegExp(r'\bDR\b').hasMatch(text);
@@ -218,7 +218,7 @@ class SmartParser {
           lower.substring(end, (end + 45).clamp(end, transactionEnd));
       final eventBefore = RegExp(
             r'\b(?:debited|debit|deducted|deduction|spent|paid|purchase|withdrawn|withdrawal|charged)\b|'
-            r'\b(?:sent\s+(?:to|via\s+upi)|transferred(?:\s+to)?)\b',
+            r'\b(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
           ).hasMatch(leftContext) ||
           RegExp(r'\bDR\b').hasMatch(sms.substring(
             (start - 100).clamp(0, start),
@@ -226,7 +226,7 @@ class SmartParser {
           ));
       final eventAfter = RegExp(
             r'^\s*(?:has\s+been\s+)?(?:debited|debit|deducted|spent|paid|charged|withdrawn)\b|'
-            r'^\s*(?:sent\s+(?:to|via\s+upi)|transferred(?:\s+to)?)\b',
+            r'^\s*(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
           ).hasMatch(rightContext) ||
           RegExp(r'^\s*DR\b').hasMatch(
               sms.substring(end, (end + 45).clamp(end, transactionEnd)));
