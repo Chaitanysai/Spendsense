@@ -87,6 +87,16 @@ void main() {
       expect(GmailEmailSource.isDebitSubject('Statement is ready'), isFalse);
       expect(GmailEmailSource.isDebitSubject('Festive offers'), isFalse);
     });
+
+    test('accepts outgoing-transfer subjects', () {
+      // Money leaving the account is frequently announced as "sent" or a
+      // transfer rather than a debit; the filter used to drop these before
+      // the body was ever parsed.
+      expect(GmailEmailSource.isDebitSubject('Rs 600 sent to Rahul'), isTrue);
+      expect(GmailEmailSource.isDebitSubject('Transfer successful'), isTrue);
+      expect(GmailEmailSource.isDebitSubject('Transferred to Meera'), isTrue);
+      expect(GmailEmailSource.isDebitSubject('You paid Rs 250'), isTrue);
+    });
   });
 
   group('Gmail HTML extraction', () {

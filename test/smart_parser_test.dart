@@ -102,4 +102,50 @@ void main() {
       expect(result?.amountMinor, 23900);
     });
   });
+
+  group('outgoing transfers', () {
+    // Banks often announce money leaving the account as "sent" rather than
+    // "debited". Those messages were rejected outright, so transfers were
+    // never recorded as spending.
+    test('"sent from your account" is an expense', () async {
+      final result = await parse(
+        'Rs. 600 sent from your account on 01-11-26 to Rahul',
+      );
+      expect(result, isNotNull);
+      expect(result!.type, TransactionType.expense);
+      expect(result.amountMinor, 60000);
+    });
+
+    test('"sent to" is an expense', () async {
+      final result = await parse(
+        'Rs 600 sent to Rahul on 01-11-26 from A/c XX1234',
+      );
+      expect(result, isNotNull);
+      expect(result!.amountMinor, 60000);
+    });
+
+    test('"sent via UPI" is an expense and keeps the payment method', () async {
+      final result = await parse('INR 250 sent via UPI to Swiggy');
+      expect(result, isNotNull);
+      expect(result!.amountMinor, 25000);
+      expect(result.paymentMethod, 'UPI');
+    });
+
+    test('"transferred" is an expense', () async {
+      final result = await parse(
+        'Rs. 1200 transferred from A/c XX1234 to Meera on 01-11-26',
+      );
+      expect(result, isNotNull);
+      expect(result!.amountMinor, 120000);
+    });
+
+    test('money arriving is still rejected — "sent you" is not spending',
+        () async {
+      expect(
+        SmartParser.isDebitExpenseSms('Rahul has sent you Rs 600 on 01-11-26'),
+        isFalse,
+      );
+      expect(await parse('Rahul has sent you Rs 600 on 01-11-26'), isNull);
+    });
+  });
 }

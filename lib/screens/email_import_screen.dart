@@ -331,9 +331,17 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
                     children: [
                       TextField(
                         controller: _senderController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'alerts.bank.example',
-                          suffixIcon: Icon(Icons.add_rounded),
+                          // A bare Icon here looked tappable but had no tap
+                          // handler, so the only way to add a domain was the
+                          // keyboard's submit key — which read as the field
+                          // ignoring input entirely.
+                          suffixIcon: IconButton(
+                            onPressed: _busy ? null : _addSender,
+                            icon: const Icon(Icons.add_rounded),
+                            tooltip: 'Add sender domain',
+                          ),
                         ),
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _addSender(),
