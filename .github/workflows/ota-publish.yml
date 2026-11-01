@@ -243,6 +243,27 @@ jobs:
           fi
           echo "OK: the built APK is signed by the pinned release certificate"
 
+      - name: Assert the static site pages are present in the payload
+        # `firebase deploy` replaces the WHOLE Hosting release, so the published
+        # site is exactly what is in ota/public. When the landing and legal pages
+        # were untracked, CI checked out only their .gitkeep placeholders and the
+        # deploy silently deleted the live manifest.json — breaking the update
+        # check for every installed build. Fail here instead of shipping a site
+        # that replaces a working one.
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in index.html 404.html legal/index.html legal/style.css; do
+            if [ ! -s "ota/public/$f" ]; then
+              echo "::error::ota/public/$f is missing or empty; deploying would drop it from the live site"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "OK: landing + legal pages are in the payload"
+
       - name: Stage APK under ota/public/releases
         id: version
         run: |

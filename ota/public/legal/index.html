@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Legal · SpendSense</title>
+  <meta name="description" content="Privacy Policy, Terms of Service, Refund Policy and Cookie Policy for SpendSense, the offline-first expense tracker for Android.">
+  <link rel="canonical" href="https://spendsense-ota-2026.web.app/legal/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SpendSense">
+  <meta property="og:title" content="Legal · SpendSense">
+  <meta property="og:description" content="Privacy Policy, Terms of Service, Refund Policy and Cookie Policy for SpendSense.">
+  <meta property="og:url" content="https://spendsense-ota-2026.web.app/legal/">
+  <meta property="og:image" content="https://spendsense-ota-2026.web.app/legal/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site">
+    <a class="brand" href="https://github.com/Chaitanysai/Spendsense">
+      <img src="favicon.png" alt="" width="32" height="32">
+      <span>SpendSense</span>
+    </a>
+    <nav aria-label="Legal documents">
+      <a href="#privacy">Privacy</a>
+      <a href="#terms">Terms</a>
+      <a href="#refunds">Refunds</a>
+      <a href="#cookies">Cookies</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <p class="meta">Last updated: 1 November 2026</p>
+
+    <h1>Legal &amp; privacy</h1>
+    <p class="lead">
+      SpendSense is an offline-first expense tracker for Android. This page covers
+      what the app stores, what leaves your device, and the terms you agree to by
+      using it.
+    </p>
+
+    <div class="callout">
+      <strong>The short version.</strong> Your transactions are stored on your
+      phone in an encrypted database. We have no server that holds your ledger.
+      Nothing is sent to an AI provider unless you turn it on yourself.
+    </div>
+
+    <!-- ─────────────────────────────────────────────── PRIVACY ── -->
+    <section id="privacy">
+      <h2>Privacy Policy</h2>
+
+      <h3>Who we are</h3>
+      <p>
+        SpendSense is an independent app published by Chaitanya Sai Kandula,
+        an individual developer based in India. Contact:
+        <a href="mailto:chaitanyasaikandula@gmail.com">chaitanyasaikandula@gmail.com</a>.
+      </p>
+
+      <h3>What stays on your device</h3>
+      <ul>
+        <li><strong>Transactions, budgets, bills, recurring plans and insights.</strong>
+            Stored in a local SQLite database, encrypted with AES-256-GCM. The key
+            lives in the platform's secure storage (Android Keystore), not in the
+            database and not on any server.</li>
+        <li><strong>Your SMS inbox.</strong> SpendSense reads bank and UPI messages
+            only when you grant SMS permission. Parsing happens on the phone.</li>
+        <li><strong>Your profile photo and display name.</strong> Stored locally.</li>
+        <li><strong>App settings and theme.</strong> Stored in Android
+            SharedPreferences.</li>
+      </ul>
+
+      <h3>What leaves your device, and only if you turn it on</h3>
+
+      <h4>1. Account (optional)</h4>
+      <p>
+        Signing in is optional. If you create an account we store your email
+        address and display name with Google Firebase Authentication, and a profile
+        document (display name, email, timestamps) in Google Cloud Firestore.
+        Signing in also enables optional multi-device sync of your transaction
+        rows; those rows are stored per-account in Firestore and readable only by
+        that account.
+      </p>
+      <p>
+        <strong>The financial ledger is not stored in the cloud for backup.</strong>
+        Sync exists so a second device sees the same rows; it is not a backup
+        service and we do not restore from it on your behalf.
+      </p>
+
+      <h4>2. Cloud SMS parsing (off by default)</h4>
+      <p>
+        SpendSense parses SMS on the device by default. If a message is ambiguous
+        and you have enabled <em>Settings → AI Provider Settings → Send ambiguous
+        SMS to AI providers</em>, the message text is redacted and sent to the
+        provider you configured (Groq, Cerebras, Google Gemini, or OpenRouter) to
+        extract amount, merchant and category. That provider processes the text
+        under its own terms. Leave this off and no SMS text leaves the phone.
+      </p>
+
+      <h4>3. SpendSense Assistant (off by default)</h4>
+      <p>
+        The assistant runs locally by default. If you explicitly enable cloud
+        assistance, your question and the minimum relevant spending figures are
+        sent through our Firebase Cloud Function proxy to Google Gemini. The proxy
+        holds the API key; your device never does. You can revoke consent and clear
+        the audit log at any time in <em>Settings → Assistant privacy &amp; Gemini</em>.
+      </p>
+
+      <h4>4. Email import (off by default)</h4>
+      <p>
+        If you enable email import, SpendSense requests read-only Gmail access
+        (<code>gmail.readonly</code>) to find bank alert emails. It reads; it never
+        sends, modifies or deletes mail. You can revoke this at any time from your
+        Google Account permissions page.
+      </p>
+
+      <h4>5. Google Sign-In and profile photo</h4>
+      <p>
+        If you sign in with Google, Google authenticates you and returns your email,
+        name and profile photo to the app.
+      </p>
+
+      <h3>What we do not do</h3>
+      <ul>
+        <li>We do not sell your data. Ever, to anyone.</li>
+        <li>We do not run advertising or advertising SDKs.</li>
+        <li>We do not use third-party analytics or crash-reporting SDKs. There is
+            no Firebase Analytics, no Crashlytics and no equivalent in the app.</li>
+        <li>We do not ask for your bank credentials, card numbers or UPI PIN. The
+            app reads messages your bank already sent you.</li>
+        <li>We do not collect your contacts, photos beyond the one you choose,
+            location, or device advertising ID.</li>
+      </ul>
+
+      <h3>Permissions and why</h3>
+      <ul>
+        <li><strong>Read SMS</strong> — to find bank and UPI transaction messages.</li>
+        <li><strong>Notifications</strong> — budget alerts and update prompts.</li>
+        <li><strong>Internet</strong> — optional sign-in, sync, AI features and app updates.</li>
+        <li><strong>Photos / media</strong> — only the single image you pick for your profile.</li>
+      </ul>
+      <p>Declining any permission leaves the rest of the app working.</p>
+
+      <h3>How long we keep things</h3>
+      <ul>
+        <li><strong>On your device:</strong> until you delete it. Removing a
+            transaction deletes it; clearing the database deletes everything;
+            uninstalling the app removes the local database.</li>
+        <li><strong>Cloud sync rows:</strong> tombstones are retained so a device
+            that was offline cannot resurrect a deleted row, then pruned. Deleting
+            your account deletes your profile document and your synced rows.</li>
+        <li><strong>Assistant audit log:</strong> stored on your device, cleared by you.</li>
+      </ul>
+
+      <h3>Your rights</h3>
+      <p>
+        You can access and correct your data in the app, export everything as JSON
+        (<em>Settings → Export JSON backup</em>), delete individual records, and
+        delete your entire account in the app. To make a request you cannot complete
+        in the app — including a copy of what we hold, its correction, or its
+        erasure — email
+        <a href="mailto:chaitanyasaikandula@gmail.com?subject=Data%20request">chaitanyasaikandula@gmail.com</a>
+        with the subject "Data request". We respond within 30 days.
+      </p>
+      <p>
+        If you are in the EEA or UK you may also lodge a complaint with your local
+        data protection authority. If you are in India, the Digital Personal Data
+        Protection Act 2023 applies.
+      </p>
+
+      <h3>Children</h3>
+      <p>
+        SpendSense is not directed at children under 13 (or under 18 where local law
+        sets that threshold for financial services). We do not knowingly collect data
+        from a child. If you believe a child created an account, email us and we will
+        delete it. An account requires an email address and a password, and no
+        in-app purchase or advertising targets minors.
+      </p>
+
+      <h3>Security</h3>
+      <p>
+        The local database is encrypted at rest. Cloud traffic uses TLS. Our
+        assistant proxy verifies requests with Firebase App Check and enforces
+        per-device and per-account rate limits. No system is perfectly secure; if we
+        discover a breach affecting your data we will notify you and the relevant
+        authority as required by law.
+      </p>
+
+      <h3>International transfers</h3>
+      <p>
+        Firebase (Google) and the AI providers process data in data centres outside
+        India. Where information leaves your country, the transfer relies on the
+        provider's standard contractual clauses. If you do not sign in and do not
+        enable AI features, no data is transferred at all.
+      </p>
+
+      <h3>Changes</h3>
+      <p>
+        If this policy changes materially we will update the date at the top and
+        surface a notice in the app before the change takes effect.
+      </p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── TERMS ── -->
+    <section id="terms">
+      <h2>Terms of Service</h2>
+
+      <h3>1. Agreement</h3>
+      <p>
+        By installing or using SpendSense you agree to these terms. If you do not
+        agree, uninstall the app.
+      </p>
+
+      <h3>2. Licence</h3>
+      <p>
+        We grant you a personal, non-exclusive, non-transferable, revocable licence
+        to use SpendSense on devices you own or control, for personal or internal
+        business expense tracking. You may not resell, sublicense, reverse-engineer
+        (except where that right cannot be excluded by law), or redistribute the app
+        or its assets.
+      </p>
+
+      <h3>3. Price and availability</h3>
+      <p>
+        <strong>SpendSense is currently free.</strong> There is no subscription, no
+        in-app purchase and no advertising. If we introduce paid features in future,
+        they will be optional, priced clearly before you buy, and no existing free
+        function will be taken away or moved behind a paywall without notice.
+      </p>
+
+      <h3>4. What SpendSense is not</h3>
+      <div class="callout warn">
+        <strong>SpendSense is a record-keeping tool, not financial advice.</strong>
+        It is not a bank, not a payment service, and not a financial adviser. It does
+        not move money, and it cannot access your bank account. Category assignment
+        and SMS parsing are automated estimates and can be wrong — check them before
+        relying on the totals.
+      </div>
+
+      <h3>5. Your responsibilities</h3>
+      <ul>
+        <li>Keep your device and your account password secure.</li>
+        <li>Only import messages and emails you are entitled to read.</li>
+        <li>Ensure any AI provider key you enter is one you are authorised to use.</li>
+        <li>Keep your own backups. See the backup section below.</li>
+      </ul>
+
+      <h3>6. Data and backups</h3>
+      <p>
+        <strong>Your data lives on your device.</strong> If you lose, reset or replace
+        your phone, and you have not exported a backup or signed in with sync enabled,
+        the data is gone and we cannot recover it. We are not liable for data loss
+        arising from device failure, uninstallation, operating-system action, or a
+        forgotten password. Use <em>Settings → Export JSON backup</em> and keep the
+        file somewhere safe.
+      </p>
+
+      <h3>7. Third-party services</h3>
+      <p>
+        Optional features rely on Google (Firebase, Gemini, Gmail), Groq, Cerebras
+        and OpenRouter. Their availability, pricing and terms are outside our control
+        and are governed by your agreement with them.
+      </p>
+
+      <h3>8. Acceptable use</h3>
+      <p>
+        Do not use SpendSense to break the law, to process data you have no right to
+        access, or to attempt to disrupt the service or our infrastructure.
+      </p>
+
+      <h3>9. Warranty and liability</h3>
+      <p>
+        SpendSense is provided "as is" and "as available", without warranties of any
+        kind, express or implied, including fitness for a particular purpose. To the
+        maximum extent permitted by law, our total liability arising from your use of
+        the app is limited to the greater of the amount you paid us in the twelve
+        months before the claim (currently zero) or INR 1,000. Nothing in these terms
+        limits liability for fraud, death, personal injury, or any other liability that
+        cannot lawfully be limited.
+      </p>
+
+      <h3>10. Termination</h3>
+      <p>
+        You may stop using SpendSense at any time and delete your account in the app.
+        We may suspend access to cloud features if you breach these terms or if
+        required by law. Deleting the app removes local data.
+      </p>
+
+      <h3>11. Governing law</h3>
+      <p>
+        These terms are governed by the laws of India, and the courts of India have
+        exclusive jurisdiction.
+      </p>
+
+      <h3>12. Contact</h3>
+      <p>
+        Questions about these terms:
+        <a href="mailto:chaitanyasaikandula@gmail.com">chaitanyasaikandula@gmail.com</a>.
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── REFUNDS ── -->
+    <section id="refunds">
+      <h2>Refund Policy</h2>
+      <p>
+        <strong>SpendSense is free and nothing in the app can be purchased.</strong>
+        Because no payment is ever collected by us, there is nothing to refund.
+      </p>
+      <p>
+        If paid features are introduced later, this section will state the price, the
+        billing period, how to cancel, and the refund window before any purchase can
+        be made. Any purchase through Google Play will also be governed by Google
+        Play's refund policy.
+      </p>
+      <p>
+        If you believe you were charged in error for anything related to SpendSense,
+        email
+        <a href="mailto:chaitanyasaikandula@gmail.com?subject=Billing%20query">chaitanyasaikandula@gmail.com</a>
+        and we will investigate.
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── COOKIES ── -->
+    <section id="cookies">
+      <h2>Cookie Policy</h2>
+      <p>
+        <strong>The SpendSense Android app uses no cookies.</strong> It is a native
+        app; it does not run a browser, and it sets no cookies or advertising
+        identifiers.
+      </p>
+      <p>
+        This legal page is a static website. It sets <strong>no cookies</strong>, runs
+        no analytics, loads no advertising, and embeds no third-party fonts, scripts
+        or trackers of any kind. The only network request it makes is for its own
+        files.
+      </p>
+      <p>
+        Because nothing is stored or read on your device, this site needs no cookie
+        consent banner. If we ever add analytics, we will add a consent banner
+        <em>before</em> the code that needs it ships, and record your choice.
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── ACCOUNT ── -->
+    <section id="delete-account">
+      <h2>Delete your account and data</h2>
+
+      <h3>In the app (fastest)</h3>
+      <ol>
+        <li>Open SpendSense and sign in.</li>
+        <li>Go to <strong>Settings → Account → Delete account</strong>.</li>
+        <li>Confirm. Your profile and synced rows are deleted and you are signed out.</li>
+      </ol>
+      <p>
+        Local ledger data stays on your device until you remove it:
+        <strong>Settings → Clear transaction database</strong>, or uninstall the app.
+      </p>
+
+      <h3>By email</h3>
+      <p>
+        If you cannot sign in, email
+        <a href="mailto:chaitanyasaikandula@gmail.com?subject=Delete%20my%20SpendSense%20account">chaitanyasaikandula@gmail.com</a>
+        from the address on the account, with the subject "Delete my SpendSense
+        account". We verify and complete the deletion within 30 days.
+      </p>
+
+      <h3>What is deleted, and what is not</h3>
+      <ul>
+        <li><strong>Deleted:</strong> your Firebase Authentication account, your
+            Firestore profile document, and your synced transaction rows.</li>
+        <li><strong>Not deleted by us:</strong> the encrypted ledger on your phone,
+            which never reached us. Clear it in the app or uninstall.</li>
+        <li><strong>Retained:</strong> records we are legally required to keep, if
+            any. We currently keep none.</li>
+      </ul>
+    </section>
+
+    <!-- ─────────────────────────────────────────── ACCESSIBILITY ── -->
+    <section id="accessibility">
+      <h2>Accessibility</h2>
+      <p>
+        SpendSense targets WCAG 2.1 AA. Every interactive control meets a 48dp
+        minimum touch target, text and icons are checked against WCAG contrast
+        ratios in both light and dark themes, the interface scales with the system
+        font-size setting up to 130% without clipping, and all imagery that carries
+        meaning has a text alternative. If something is unusable for you, email us
+        and describe the screen — accessibility reports get priority.
+      </p>
+    </section>
+
+    <!-- ─────────────────────────────────────────── CONTACT ── -->
+    <section id="contact">
+      <h2>Contact</h2>
+      <dl class="details">
+        <dt>Developer</dt><dd>Chaitanya Sai Kandula (individual)</dd>
+        <dt>Email</dt><dd><a href="mailto:chaitanyasaikandula@gmail.com">chaitanyasaikandula@gmail.com</a></dd>
+        <dt>Source code</dt><dd><a href="https://github.com/Chaitanysai/Spendsense">github.com/Chaitanysai/Spendsense</a></dd>
+        <dt>Country</dt><dd>India</dd>
+      </dl>
+      <p class="small">
+        We aim to reply within two working days. For privacy and deletion requests,
+        we act within 30 days.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 SpendSense · <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a> · <a href="#refunds">Refunds</a> · <a href="#cookies">Cookies</a></p>
+  </footer>
+</body>
+</html>
