@@ -85,6 +85,16 @@ class GmailEmailSource {
     'pnb.co.in',
     'canarabank.com',
     'unionbankofindia.co.in',
+    // Newer banks and wallets. Slice alerts come from noreply@slice.bank.in;
+    // the domain, not the mailbox, is what the allowlist compares.
+    'slice.bank.in',
+    'sliceit.com',
+    'jupiter.money',
+    'fi.money',
+    'navi.com',
+    'paytm.com',
+    'phonepe.com',
+    'cred.club',
   ];
 
   /// A Gmail message is only eligible when the From domain is in the allowlist
