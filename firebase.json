@@ -4,6 +4,13 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/releases/latest.apk",
+        "function": {
+          "functionId": "downloadApk",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/404.html"
       }
@@ -39,10 +46,18 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "functions": {
-    "source": "backend/assistant_proxy",
-    "runtime": "nodejs22"
-  },
+  "functions": [
+    {
+      "codebase": "assistant",
+      "source": "backend/assistant_proxy",
+      "runtime": "nodejs22"
+    },
+    {
+      "codebase": "download",
+      "source": "backend/download_redirect",
+      "runtime": "nodejs22"
+    }
+  ],
   "flutter": {
     "platforms": {
       "android": {

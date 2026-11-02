@@ -23,7 +23,8 @@ export function FinalCTA() {
           <div className="cta__actions">
             <a
               className="btn btn--primary btn--lg"
-              href="https://github.com/Chaitanysai/Spendsense/releases/latest"
+              href="/releases/latest.apk"
+              download="spendsense.apk"
             >
               Download APK
               <svg viewBox="0 0 16 16" aria-hidden="true" width="15" height="15">
@@ -97,7 +98,7 @@ export function Footer() {
         <nav className="foot__col" aria-label="Source">
           <h3>Source</h3>
           <a href="https://github.com/Chaitanysai/Spendsense">GitHub</a>
-          <a href="https://github.com/Chaitanysai/Spendsense/releases">Releases</a>
+          <a href="https://github.com/Chaitanysai/Spendsense/releases">Release notes</a>
           <a href="/legal/#contact">Contact</a>
         </nav>
       </div>
