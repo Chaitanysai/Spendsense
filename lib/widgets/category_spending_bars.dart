@@ -154,9 +154,8 @@ class _CategorySpendingBarsState extends State<CategorySpendingBars>
                     ),
                     child: Text(
                       'Show all',
-                      style: AppText.label(context).copyWith(
+                      style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                         fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
                         color: AppColors.brandInk(context),
                       ),
                     ),

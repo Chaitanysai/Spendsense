@@ -104,9 +104,8 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
                 ),
                 child: Text(
                   count == 1 ? '1 category' : '$count categories',
-                  style: AppText.label(context).copyWith(
+                  style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                     fontSize: 10,
-                    fontWeight: FontWeight.w700,
                     color: AppColors.textSecondary(context),
                   ),
                 ),
@@ -142,9 +141,8 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
                 ),
                 child: Text(
                   'Show less',
-                  style: AppText.label(context).copyWith(
+                  style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
                     color: AppColors.brandInk(context),
                   ),
                 ),

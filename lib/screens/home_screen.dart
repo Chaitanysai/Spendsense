@@ -553,9 +553,8 @@ class _HeaderSection extends StatelessWidget {
                         '$greeting,',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.h2(context).copyWith(
+                        style: AppText.weight(AppText.h2(context), FontWeight.w600).copyWith(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary(context),
                           height: 1.2,
                         ),
@@ -564,9 +563,8 @@ class _HeaderSection extends StatelessWidget {
                         name.isEmpty ? 'there.' : '$name.',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.display(context).copyWith(
+                        style: AppText.weight(AppText.display(context), FontWeight.w800).copyWith(
                           fontSize: 34,
-                          fontWeight: FontWeight.w800,
                           letterSpacing: -1.1,
                           height: 1.05,
                         ),
@@ -769,8 +767,7 @@ class _SyncStatusStrip extends StatelessWidget {
                     ),
                     child: Text(
                       denied ? 'Fix' : 'Retry',
-                      style: AppText.label(context).copyWith(
-                        fontWeight: FontWeight.w700,
+                      style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                         color: AppColors.brandInk(context),
                       ),
                     ),
@@ -859,9 +856,8 @@ class _SyncButton extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.caption(context).copyWith(
+                      style: AppText.weight(AppText.caption(context), FontWeight.w600).copyWith(
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
                     ),

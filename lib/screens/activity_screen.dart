@@ -206,9 +206,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                     BorderRadius.circular(AppRadius.pill),
                               ),
                               child: Text('Clear',
-                                  style: AppText.label(context).copyWith(
-                                      color: AppColors.brandInk(context),
-                                      fontWeight: FontWeight.w700)),
+                                  style: AppText.weight(
+                                          AppText.label(context),
+                                          FontWeight.w700)
+                                      .copyWith(
+                                          color: AppColors.brandInk(context))),
                             ),
                           ),
                       ],
@@ -532,12 +534,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: AppText.label(context).copyWith(
+              style: AppText.weight(AppText.label(context), FontWeight.w700)
+                  .copyWith(
                 fontSize: 12,
                 color: active
                     ? AppColors.brandInk(context)
                     : AppColors.textSecondary(context),
-                fontWeight: FontWeight.w700,
               ),
             ),
             if (trailing != null) ...[

@@ -225,9 +225,8 @@ class _SpendingWeekCardState extends State<SpendingWeekCard>
                           isToday
                               ? 'Today'
                               : DateFormat('EEEE').format(selected.day),
-                          style: AppText.label(context).copyWith(
+                          style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.4,
                             color: AppColors.textTertiary(context),
                           ),
@@ -565,9 +564,8 @@ class _DeltaLine extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.label(context).copyWith(
+                style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                   fontSize: 10,
-                  fontWeight: FontWeight.w700,
                   color: ink,
                 ),
               ),

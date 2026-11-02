@@ -131,10 +131,9 @@ class _Metric extends StatelessWidget {
                 Text(value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppText.title(context).copyWith(
+                    style: AppText.weight(AppText.title(context), FontWeight.w700).copyWith(
                       fontSize: 13,
                       color: color,
-                      fontWeight: FontWeight.w700,
                     )),
                 Text(detail,
                     maxLines: 1,
@@ -384,9 +383,8 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppText.label(context).copyWith(
+        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
           fontSize: 9.5,
-          fontWeight: FontWeight.w700,
           color: color,
         ),
       ),
@@ -484,10 +482,9 @@ class AssistantComparisonCard extends StatelessWidget {
                     '${up ? 'Up' : 'Down'} '
                     '${Formatters.currency.format(comparison.deltaMinor.abs())} '
                     '(${comparison.percentChange.abs().toStringAsFixed(1)}%)',
-                    style: AppText.label(context).copyWith(
+                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                       fontSize: 11.5,
                       color: deltaColor,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -569,10 +566,9 @@ class _DriverRow extends StatelessWidget {
           ),
           Text(
             '${positive ? '+' : '−'}${Formatters.currency.format(driver.deltaMinor.abs())}',
-            style: AppText.label(context).copyWith(
+            style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
               fontSize: 10.5,
               color: color,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -720,10 +716,9 @@ class AssistantPendingActionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text('NOT APPLIED',
-                    style: AppText.label(context).copyWith(
-                        fontSize: 9,
-                        color: accent,
-                        fontWeight: FontWeight.w800)),
+                    style: AppText.weight(
+                            AppText.label(context), FontWeight.w800)
+                        .copyWith(fontSize: 9, color: accent)),
               ),
             ],
           ),
@@ -756,9 +751,8 @@ class AssistantPendingActionCard extends StatelessWidget {
                     '${Formatters.currency.format(action.spendingBeforeMinor)} → '
                     '${Formatters.currency.format(action.spendingAfterMinor)}',
                     textAlign: TextAlign.right,
-                    style: AppText.label(context).copyWith(
+                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -934,9 +928,8 @@ class _SheetRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: AppText.label(context).copyWith(
+              style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                 fontSize: 11.5,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ),

@@ -165,10 +165,7 @@ class AppGhostButton extends StatelessWidget {
                   ],
                   Text(
                     label,
-                    style: AppText.label(context).copyWith(
-                      color: AppColors.brandInk(context),
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(color: AppColors.brandInk(context),),
                   ),
                 ],
               ),

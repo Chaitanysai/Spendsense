@@ -144,6 +144,12 @@ class AppTypography {
     'Outfit',
   };
 
+  /// True when [family]'s rendered weight comes from a variable axis rather
+  /// than a separate static font file. Callers that change a weight after the
+  /// style was built must update the variation too — see `AppText.weight`.
+  static bool isVariable(String? family) =>
+      family != null && variableFamilies.contains(family);
+
   /// Retained for existing tests. Fonts are bundled now, so nothing needs to be
   /// skipped for determinism; the flag no longer changes the result.
   @visibleForTesting

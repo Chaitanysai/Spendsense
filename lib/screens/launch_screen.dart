@@ -203,10 +203,9 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
                         const SizedBox(height: AppSpacing.xl),
                         Text(
                           'SpendSense',
-                          style: AppText.display(context).copyWith(
+                          style: AppText.weight(AppText.display(context), FontWeight.w800).copyWith(
                             color: Colors.white,
                             fontSize: 30,
-                            fontWeight: FontWeight.w800,
                             letterSpacing: -0.8,
                           ),
                         ),
