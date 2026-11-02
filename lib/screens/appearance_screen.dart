@@ -273,9 +273,7 @@ class _ModeChoice extends StatelessWidget {
               // lightens instead, and the border carries the brand hue.
               color: !selected
                   ? Colors.transparent
-                  : AppColors.isDark(context)
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : AppColors.brand.withValues(alpha: 0.12),
+                  : AppColors.pillSelectedFillFor(AppColors.isDark(context)),
               borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(
                 // A constant width keeps the three boxes identical: a 1.5dp

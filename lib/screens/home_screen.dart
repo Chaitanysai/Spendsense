@@ -263,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
           proxyDecorator: (child, index, animation) => Material(
             color: Colors.transparent,
             elevation: reduce ? 0 : 6,
-            shadowColor: Colors.black54,
+            shadowColor: AppColors.shadow(context),
             borderRadius: AppRadius.lgAll,
             child: child,
           ),
@@ -478,10 +478,10 @@ class _RecentFeed extends StatelessWidget {
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
+        shadow: false,
       ),
       child: Column(
         children: [

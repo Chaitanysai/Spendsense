@@ -195,10 +195,10 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceColor(context),
+                    decoration: AppColors.panelDecoration(
+                      context,
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.border(context)),
+                      shadow: false,
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -323,17 +323,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
   }) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

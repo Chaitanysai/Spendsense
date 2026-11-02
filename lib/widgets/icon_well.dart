@@ -34,10 +34,36 @@ class IconWell extends StatelessWidget {
   static Color fill(Color color, bool isDark) =>
       color.withValues(alpha: isDark ? 0.22 : 0.12);
 
+  /// Lowest plate-to-card contrast at which a well still reads as a plate.
+  ///
+  /// Light wells are a 12% tint on white and measure about 1.16-1.18:1 in every
+  /// palette, which has always read as a soft plate, so the floor there only
+  /// rejects a well with no plate at all. Dark wells are a 22% tint on a dark
+  /// card; Deep Navy's slate `brand` measured about 1.1:1 and the plate
+  /// disappeared, so the dark floor is stricter.
+  static double minPlateContrast(bool isDark) => isDark ? 1.18 : 1.10;
+
+  /// The colour the well is actually tinted with.
+  ///
+  /// A palette role such as `brand` can be a dark slate (Deep Navy's is
+  /// #253745), and 22% of it over a #11212D card is invisible: the row then
+  /// shows a floating glyph with no plate while its neighbours have one. When
+  /// the requested tint would not separate from the card, the accent takes its
+  /// place so every row in a section keeps the same plate.
+  static Color plateTint(Color color, bool isDark) {
+    final base = AppColors.glassBase(isDark);
+    final plate = Color.alphaBlend(fill(color, isDark), base);
+    if (AppColors.contrastRatio(plate, base) >= minPlateContrast(isDark)) {
+      return color;
+    }
+    return AppColors.navAccentFor(isDark);
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
-    final tinted = fill(color, dark);
+    final tint = plateTint(color, dark);
+    final tinted = fill(tint, dark);
     return Container(
       width: AppSpacing.wellSize,
       height: AppSpacing.wellSize,
@@ -48,12 +74,10 @@ class IconWell extends StatelessWidget {
       child: Icon(
         icon,
         size: AppSpacing.wellGlyph,
-        // Measure against the surface the plate is composited onto.
-        color: AppColors.inkOn(
-          color,
-          tinted,
-          dark ? AppColors.surface : AppColors.surfaceColor(context),
-        ),
+        // Measure against the card the plate is composited onto. Dark mode
+        // used to measure against the LIGHT surface token, so the ink was
+        // chosen for a white card that was never there.
+        color: AppColors.inkOn(tint, tinted, AppColors.glassBase(dark)),
       ),
     );
   }

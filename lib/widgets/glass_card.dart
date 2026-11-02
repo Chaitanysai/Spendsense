@@ -6,6 +6,35 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import 'pressable.dart';
 
+/// The lit top edge of a glass surface: a one-pixel line that fades out toward
+/// both corners. Place it inside a [Stack] that is clipped to the surface's
+/// rounded rectangle. [inset] keeps it off the corner curve.
+class GlassHighlight extends StatelessWidget {
+  final double inset;
+
+  const GlassHighlight({super.key, this.inset = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    final peak = Colors.white.withValues(alpha: AppColors.glassHighlightAlpha);
+    return Positioned(
+      top: 0,
+      left: inset,
+      right: inset,
+      height: 1,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [peak.withValues(alpha: 0), peak, peak.withValues(alpha: 0)],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The shared card surface: a subtle green-grey border, a restrained shadow and
 /// an optional diagonal sheen.
 ///
@@ -28,7 +57,7 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.radius = AppRadius.lg,
-    this.blur = 14,
+    this.blur = AppColors.glassBlurSigma,
     this.onTap,
     this.sheen = false,
     this.tint,
@@ -38,7 +67,6 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
-    final dark = AppColors.isDark(context);
     final glassCanvas = AppColors.isGlassCanvas(context);
     final resolvedPadding = padding ?? const EdgeInsets.all(AppSpacing.xl);
     final fill = tint ?? AppColors.glassFill(context);
@@ -73,15 +101,7 @@ class GlassCard extends StatelessWidget {
               : Colors.transparent,
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: glassCanvas
-                ? Colors.black.withValues(alpha: 0.35)
-                : AppColors.shadow(context),
-            blurRadius: dark ? 18 : 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: AppColors.glassShadows(context),
       ),
       child: onTap == null
           ? Padding(padding: resolvedPadding, child: child)
@@ -95,20 +115,23 @@ class GlassCard extends StatelessWidget {
             ),
     );
 
-    if (sheen) {
+    final lit = glassCanvas && tint == null && gradient == null;
+    if (sheen || lit) {
       content = Stack(
         children: [
           content,
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  gradient: AppColors.glassSheen,
+          if (sheen)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    gradient: AppColors.glassSheen,
+                  ),
                 ),
               ),
             ),
-          ),
+          if (lit) GlassHighlight(inset: radius),
         ],
       );
     }

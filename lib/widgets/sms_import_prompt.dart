@@ -50,16 +50,12 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+        color: AppColors.overlaySurface(context),
         borderRadius:
             const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
-          ),
-        ],
+        border: Border.fromBorderSide(
+          AppColors.overlayEdgeFor(AppColors.isDark(context)),
+        ),
       ),
       child: SafeArea(
         child: SingleChildScrollView(

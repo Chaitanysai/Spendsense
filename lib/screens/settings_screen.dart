@@ -180,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppColors.onHero(context, alpha: 0.6),
                         width: 2,
                       ),
                     ),
@@ -742,12 +742,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Sign out',
-              style: TextStyle(color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.onDanger,
             ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign out'),
           ),
         ],
       ),
@@ -783,12 +783,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete everything',
-              style: TextStyle(color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.onDanger,
             ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete everything'),
           ),
         ],
       ),
@@ -1067,7 +1067,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.onDanger,
+            ),
             onPressed: () async {
               Navigator.pop(ctx);
               await context.read<TransactionProvider>().clearAll();
@@ -1077,7 +1080,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
               ).showSnackBar(const SnackBar(content: Text('Database cleared')));
             },
-            child: const Text('Clear', style: TextStyle(color: Colors.white)),
+            child: const Text('Clear'),
           ),
         ],
       ),

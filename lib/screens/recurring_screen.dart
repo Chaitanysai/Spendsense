@@ -67,7 +67,7 @@ class RecurringScreen extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.subscriptions_rounded,
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: AppColors.onHero(context, alpha: 0.85),
                           size: 20),
                       const SizedBox(width: AppSpacing.sm),
                       Text('Subscription overview',
@@ -149,17 +149,9 @@ class _SubscriptionCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,10 +224,9 @@ class _RecurringCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -363,10 +354,9 @@ class _PlanTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -398,11 +398,16 @@ class AppPalette {
     label: 'Deep Navy',
     deep: Color(0xFF06141B),
     brand: Color(0xFF253745),
-    bright: Color(0xFF9BA8AB),
+    // `bright` drives the dark-mode ink and every lit accent. It used to be a
+    // grey (#9BA8AB), which made the selected nav pill a grey slab. A muted
+    // steel blue keeps the palette restrained but gives selection a hue.
+    bright: Color(0xFF7BA7C7),
     mid: Color(0xFF4A5C6A),
-    accent: Color(0xFFCCD0CF),
+    // Subtle cyan highlight (was grey #CCD0CF). Reads as a cool glint against
+    // the navy rather than as a neutral.
+    accent: Color(0xFF4FB6CC),
     warm: Color(0xFFCCD0CF),
-    lime: Color(0xFFCCD0CF),
+    lime: Color(0xFF8FD3E0),
     background: Color(0xFFF2F5F6),
     surface: Colors.white,
     surfaceMuted: Color(0xFFE4E9EA),
@@ -469,28 +474,33 @@ class AppPalette {
     glass: true,
   );
 
-  /// Deep-navy glass identity: navy hero gradients, translucent navy glass
-  /// cards over a pure-black AMOLED canvas, and a restrained electric-blue
-  /// accent. Money semantics stay unchanged.
+  /// Black-and-charcoal glass with one quiet emerald accent.
+  ///
+  /// The canvas is pure black. Cards are neutral charcoal (chroma of 6-7 units,
+  /// just enough to avoid dead grey) so they read as glass over black, and the
+  /// only colour is a muted emerald ramp. Deliberately quieter than the legacy
+  /// [emerald] identity: no lime, no brand-tinted cards, desaturated stops.
+  /// The id stays `midnight` so stored selections keep working.
   static const midnight = AppPalette(
     id: 'midnight',
     label: 'Midnight',
-    deep: Color(0xFF081A4A),
-    brand: Color(0xFF2A5BE0),
-    bright: Color(0xFF6C97FF),
-    mid: Color(0xFF2F63EA),
-    accent: Color(0xFF38BDF8),
-    lime: Color(0xFF7CC4FF),
+    deep: Color(0xFF05261C),
+    brand: Color(0xFF2B9A74),
+    bright: Color(0xFF6CCBA5),
+    mid: Color(0xFF1D7F5E),
+    accent: Color(0xFF8FDCC0),
+    lime: Color(0xFFA7E3CB),
     warm: Color(0xFFFFB020),
-    background: Color(0xFFF3F6FD),
+    // Light mode drops the old blue wash for neutral off-whites.
+    background: Color(0xFFF4F5F5),
     surface: Colors.white,
-    surfaceMuted: Color(0xFFE9EFFB),
-    borderLight: Color(0xFFDDE6F7),
-    // Pitch-black canvas (AMOLED); only the card surfaces carry navy.
+    surfaceMuted: Color(0xFFEAECEB),
+    borderLight: Color(0xFFDADDDC),
+    // Pitch-black canvas (AMOLED) with neutral charcoal glass on top.
     darkBackground: amoledBackground,
-    darkSurface: Color(0xFF0B1430),
-    darkSurfaceAlt: Color(0xFF111C3D),
-    borderDark: Color(0xFF22305A),
+    darkSurface: Color(0xFF111715),
+    darkSurfaceAlt: Color(0xFF19201D),
+    borderDark: Color(0xFF2A332F),
     glass: true,
   );
 

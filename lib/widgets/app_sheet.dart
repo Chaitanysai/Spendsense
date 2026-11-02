@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 
 /// Barrier behind every modal sheet. One value so no sheet dims more than
-/// another.
-const Color kSheetBarrierColor = Color(0x6B000000); // black at ~42%
+/// another; it is the shared [AppColors.scrim].
+const Color kSheetBarrierColor = AppColors.scrim;
 
 /// Sheet motion: [AppMotion.base] in, [AppMotion.fast] out, both zero when the
 /// platform asks for reduced motion.
