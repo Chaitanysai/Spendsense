@@ -596,8 +596,9 @@ class _AddFab extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow:
-              highContrast ? null : AppColors.glassShadows(context, floating: true),
+          boxShadow: highContrast
+              ? null
+              : AppColors.glassShadows(context, floating: true),
         ),
         child: ClipOval(
           child: BackdropFilter(
