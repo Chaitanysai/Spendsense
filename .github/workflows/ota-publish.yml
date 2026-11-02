@@ -260,10 +260,33 @@ jobs:
               missing=1
             fi
           done
+          # The landing page is a built React app: index.html references hashed
+          # bundles under site/assets/. Those are build output, so CI must check
+          # they are present in the payload — otherwise a release deploys a shell
+          # whose JS and CSS 404, and the catch-all rewrite hides it behind an
+          # HTTP 200. Verify every referenced asset, not just the directory.
+          if [ ! -s "ota/public/index.html" ]; then
+            echo "::error::ota/public/index.html is missing"
+            missing=1
+          else
+            refs=$(grep -oE '(src|href)="/site/assets/[^"]+"' ota/public/index.html \
+                   | sed -E 's/.*="\/(.*)"/\1/' | sort -u)
+            if [ -z "$refs" ]; then
+              echo "::error::ota/public/index.html references no /site/assets/ bundles"
+              missing=1
+            fi
+            for rel in $refs; do
+              if [ ! -s "ota/public/$rel" ]; then
+                echo "::error::ota/public/$rel is referenced by index.html but missing from the payload"
+                missing=1
+              fi
+            done
+          fi
+
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
-          echo "OK: landing + legal pages are in the payload"
+          echo "OK: landing shell, its bundles, and the legal pages are in the payload"
 
       - name: Stage APK under ota/public/releases
         id: version

@@ -1,0 +1,33 @@
+{
+  "name": "spendsense-site",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SpendSense home introduction website. Builds into ota/public/site/ and never touches the OTA manifest or releases.",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/clean.mjs && tsc -b && vite build && node scripts/guard.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.169.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "globals": "^17.14.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}
