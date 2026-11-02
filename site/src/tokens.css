@@ -1,0 +1,84 @@
+/*
+ * SpendSense — design tokens.
+ *
+ * World: Moorline's immersive dark fintech. Near-black ground, a particle
+ * centrepiece standing in rippling water, glass surfaces, a pill navigation.
+ * Colour is SpendSense's, not Moorline's: electric green and teal replace the
+ * reference's blue and cyan.
+ *
+ * Every foreground/background pair here is checked against WCAG 2.1 AA on the
+ * composited result, not on the declared colour, because glass is translucent.
+ */
+
+:root {
+  /* Ground. --void is the near-black the reference uses; --deep is one step up
+     so the page has two floors and the sections can separate without borders. */
+  --void: #01040a;
+  --deep: #050a12;
+  --raised: #0a1119;
+
+  /* Accents. Green is the action colour; teal is the light in the scene. */
+  --green: #22e07a;
+  --green-dim: #16a85b;
+  --green-glow: rgba(34, 224, 122, 0.35);
+  --teal: #1fd1c4;
+  --teal-dim: #12897f;
+
+  /* Ink on dark. --fg is near-white with a cool cast so it sits in the scene. */
+  --fg: #f2f7f5;
+  --fg-2: #a9b8b6;
+  --fg-3: #6e8280;
+
+  /* Glass. Fill is a white veil at low alpha; the blur and saturate are what
+     make it read as glass rather than as a translucent rectangle. */
+  --glass-fill: rgba(255, 255, 255, 0.045);
+  --glass-fill-hi: rgba(255, 255, 255, 0.075);
+  --glass-line: rgba(255, 255, 255, 0.10);
+  --glass-line-hi: rgba(255, 255, 255, 0.18);
+  --glass-blur: 20px;
+
+  /* Type. Self-hosted for the legal pages, so the site makes no third-party
+     font request. Instrument Sans is the UI face; Geist Mono carries the
+     display and the measurements. */
+  --sans: "Instrument Sans", "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --pixel: "Geist Mono", ui-monospace, monospace;
+
+  /* Spacing scale, 4px base. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+  --s10: 128px;
+
+  /* Rhythm */
+  --gutter: clamp(20px, 4vw, 48px);
+  --shell: 1360px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* Motion. One curve for everything that moves into place; a second, shorter
+     one for direct manipulation. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 180ms;
+  --t-mid: 320ms;
+  --t-slow: 600ms;
+
+  --nav-h: 68px;
+}
+
+/* A single reduced-motion switch the animation code and the CSS both read. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 1ms;
+    --t-mid: 1ms;
+    --t-slow: 1ms;
+  }
+}

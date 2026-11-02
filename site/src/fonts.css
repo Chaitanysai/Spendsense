@@ -1,0 +1,61 @@
+/*
+ * Face declarations for the SpendSense site.
+ *
+ * The legal pages use `/legal/fonts/fonts.css`, whose `src` URLs carry a stray
+ * `fonts/` prefix and therefore resolve relative to wherever that sheet is
+ * loaded from. Loading it from the site root breaks every face but one, so the
+ * site declares its own faces against absolute paths instead. Same typefaces,
+ * same files, no third-party request.
+ */
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/legal/fonts/geist-mono-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/legal/fonts/instrument-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/legal/fonts/instrument-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/legal/fonts/instrument-sans-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/legal/fonts/archivo-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/legal/fonts/archivo-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/legal/fonts/archivo-700.woff2") format("woff2");
+}

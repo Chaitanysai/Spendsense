@@ -91,3 +91,7 @@ node_modules/
 
 # Impeccable design-skill local state (never shipped)
 /.impeccable/
+
+# Vite build output for the landing site (source is tracked in site/; the built
+# shell and hashed assets are produced at deploy time).
+site/dist/
