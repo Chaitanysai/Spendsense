@@ -413,10 +413,9 @@ class _PaletteRow extends StatelessWidget {
                             softWrap: false,
                             // 8.5 was below the legibility floor at font scale
                             // 1.0 and unreadable once the system scales text.
-                            style: AppText.label(context).copyWith(
+                            style: AppText.weight(AppText.label(context), FontWeight.w800).copyWith(
                               fontSize: 11,
                               letterSpacing: 0.5,
-                              fontWeight: FontWeight.w800,
                               color: AppColors.brandWellInk(context),
                             ),
                           ),

@@ -279,7 +279,7 @@ void main() {
       NavItem(Icons.receipt_long_rounded, 'Activity'),
     ];
 
-    testWidgets('selected slot is a lit chip with a white glyph on navy glass',
+    testWidgets('selected slot is a lit pill with dark ink on navy glass',
         (tester) async {
       AppColors.applyPalette(AppPalette.midnight);
       await tester.pumpWidget(_app(
@@ -287,10 +287,20 @@ void main() {
         dark: true,
       ));
       await tester.pumpAndSettle();
+      final context = tester.element(find.byType(FloatingNavBar));
       final home = tester.widget<Icon>(find.byIcon(Icons.home_rounded));
       final idle = tester.widget<Icon>(find.byIcon(Icons.receipt_long_rounded));
-      expect(home.color, Colors.white);
-      expect(idle.color, isNot(Colors.white));
+      // The pill is the lit object; the glyph is its dark ink. Asserting both
+      // halves keeps the contrast contract honest (a white glyph on the lit
+      // stop would fail AA on the paler glass palettes).
+      expect(home.color, AppColors.onNavPill(context));
+      expect(home.color, isNot(idle.color));
+      final pill = tester.widget<DecoratedBox>(
+        find.byKey(const Key('nav-selected-pill')),
+      );
+      final gradient =
+          (pill.decoration as BoxDecoration).gradient! as LinearGradient;
+      expect(gradient.colors.first, AppColors.brandBright);
     });
   });
 

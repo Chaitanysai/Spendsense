@@ -403,10 +403,9 @@ class _InstrumentRow extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               '${(share * 100).toStringAsFixed(1)}%',
-              style: AppText.label(context).copyWith(
+              style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                 fontSize: 11,
                 color: color,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ],

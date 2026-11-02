@@ -428,4 +428,73 @@ class AppColors {
     if (!isDark(context)) return borderLight;
     return isGlassPalette ? Colors.white.withValues(alpha: 0.10) : borderDark;
   }
+
+  // ── Analytics tokens ─────────────────────────────────────────────────────────
+  // The two dashboard analytics surfaces ("Last 7 days" and "Spending by
+  // category") share one visual grammar: a hairline grid, one accent line, a
+  // quiet wash, and value ink that never competes with the figure above it.
+
+  /// Hairline horizontal grid inside the weekly chart. Tinted by theme rather
+  /// than by palette: a grid is structure, not identity.
+  static Color chartGrid(BuildContext context) => isDark(context)
+      ? Colors.white.withValues(alpha: 0.07)
+      : Colors.black.withValues(alpha: 0.055);
+
+  /// The weekly chart's line and its unselected data points.
+  static Color chartLine(BuildContext context) =>
+      isDark(context) ? brandBright : brandInk(context);
+
+  /// Vertical wash under the weekly line. Fades to fully transparent at the
+  /// baseline so the card surface (not a grey block) stays the chart's floor.
+  static LinearGradient chartArea(BuildContext context) {
+    final line = chartLine(context);
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        line.withValues(alpha: isDark(context) ? 0.30 : 0.22),
+        line.withValues(alpha: 0.02),
+      ],
+    );
+  }
+
+  /// Track behind a category's proportional bar.
+  static Color categoryTrack(Color color, BuildContext context) =>
+      color.withValues(alpha: isDark(context) ? 0.20 : 0.13);
+
+  /// Skeleton surface and the highlight that travels across it.
+  ///
+  /// The base is the *text* ink at 8% over the local surface rather than a fixed
+  /// grey: it then reads correctly on a white card, a tinted dark card and a
+  /// coloured hero without a second token per surface.
+  static Color skeletonBase(BuildContext context) => Color.alphaBlend(
+        textPrimaryFor(isDark(context)).withValues(alpha: 0.08),
+        surfaceColor(context),
+      );
+
+  static Color skeletonHighlight(BuildContext context) => isDark(context)
+      ? Colors.white.withValues(alpha: 0.10)
+      : Colors.white.withValues(alpha: 0.85);
+
+  // ── Navigation pill ──────────────────────────────────────────────────────────
+  /// Fill of the sliding selected-navigation pill.
+  ///
+  /// Light mode is a solid brand object with white ink ([filledBrand] is derived
+  /// to clear 4.5:1). Dark mode uses the palette's *bright* stop instead: on the
+  /// dark palettes `brand` sits within a few points of the card surface, so a
+  /// brand-coloured pill on a dark bar had almost no edge. The lit stop plus the
+  /// dark ink below makes the pill read as a raised, glowing control in every
+  /// palette — and the selected label stays the contrast-aware [navSelected].
+  static LinearGradient navPillGradient(BuildContext context) {
+    final top = isDark(context) ? brandBright : filledBrand;
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [top, Color.lerp(top, navyDeep, 0.45) ?? navyDeep],
+    );
+  }
+
+  /// Ink on [navPillGradient].
+  static Color onNavPill(BuildContext context) =>
+      isDark(context) ? navyDeep : Colors.white;
 }

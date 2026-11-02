@@ -98,10 +98,9 @@ class QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = AppText.label(context).copyWith(
+    final labelStyle = AppText.weight(AppText.label(context), FontWeight.w600).copyWith(
       fontSize: 11.5,
       height: 1.15,
-      fontWeight: FontWeight.w600,
       color: AppColors.textPrimary(context),
     );
     // Two lines at the effective text scale, rounded up to whole pixels.

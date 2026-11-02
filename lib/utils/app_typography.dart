@@ -44,9 +44,21 @@ class FontPreset {
   /// True when the display face differs from the body face.
   bool get hasDistinctDisplay => displayFamily != bodyFamily;
 
+  /// The shipped face. Inter is a neutral, high-legibility grotesque built for
+  /// small UI text and tabular figures — which is exactly what a ledger is. It
+  /// is bundled (no network fetch) and its weight axis is used explicitly.
   static const FontPreset standard = FontPreset(
     id: 'standard',
     label: 'SpendSense Default',
+    description: 'Inter — precise, neutral and built for financial data.',
+    displayFamily: 'Inter',
+    bodyFamily: 'Inter',
+  );
+
+  /// The original voice, kept as a first-class choice.
+  static const FontPreset poppins = FontPreset(
+    id: 'poppins',
+    label: 'Poppins (classic)',
     description: 'Poppins — the original SpendSense look.',
     displayFamily: 'Poppins',
     bodyFamily: 'Poppins',
@@ -55,19 +67,10 @@ class FontPreset {
   static const FontPreset dotMatrix = FontPreset(
     id: 'dot_matrix',
     label: 'Dot-matrix (technical)',
-    description:
-        'DotGothic16 for headings, Space Grotesk for text. '
+    description: 'DotGothic16 for headings, Space Grotesk for text. '
         'An OFL approximation of the Nothing dot-matrix style.',
     displayFamily: 'DotGothic16',
     bodyFamily: 'Space Grotesk',
-  );
-
-  static const FontPreset cleanSans = FontPreset(
-    id: 'clean_sans',
-    label: 'Clean sans',
-    description: 'Inter — neutral and precise.',
-    displayFamily: 'Inter',
-    bodyFamily: 'Inter',
   );
 
   static const FontPreset modernSans = FontPreset(
@@ -92,8 +95,8 @@ class FontPreset {
   static const List<FontPreset> all = [
     standard,
     dotMatrix,
-    cleanSans,
     modernSans,
+    poppins,
     geist,
   ];
 
@@ -140,6 +143,12 @@ class AppTypography {
     'Inter',
     'Outfit',
   };
+
+  /// True when [family]'s rendered weight comes from a variable axis rather
+  /// than a separate static font file. Callers that change a weight after the
+  /// style was built must update the variation too — see `AppText.weight`.
+  static bool isVariable(String? family) =>
+      family != null && variableFamilies.contains(family);
 
   /// Retained for existing tests. Fonts are bundled now, so nothing needs to be
   /// skipped for determinism; the flag no longer changes the result.

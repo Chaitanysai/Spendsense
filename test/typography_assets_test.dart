@@ -28,7 +28,7 @@ void main() {
 
     test('variable families get a real weight axis', () {
       final style = AppTypography.resolve(
-        preset: FontPreset.cleanSans,
+        preset: FontPreset.standard,
         fontSize: 14,
         fontWeight: FontWeight.w600,
       );
@@ -40,7 +40,7 @@ void main() {
 
     test('a static family carries no weight axis', () {
       final style = AppTypography.resolve(
-        preset: FontPreset.standard,
+        preset: FontPreset.poppins,
         fontSize: 14,
         fontWeight: FontWeight.w600,
       );
@@ -51,7 +51,7 @@ void main() {
     test('the text theme inherits the preset family', () {
       final theme = AppTypography.textTheme(
         ThemeData.light().textTheme,
-        preset: FontPreset.cleanSans,
+        preset: FontPreset.standard,
       );
       expect(theme.bodyMedium?.fontFamily, 'Inter');
       expect(theme.displayLarge?.fontFamily, 'Inter');
@@ -136,7 +136,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a large amount scales down instead of clipping', (tester) async {
+    testWidgets('a large amount scales down instead of clipping',
+        (tester) async {
       tester.view.physicalSize = const Size(320 * 3, 800 * 3);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);

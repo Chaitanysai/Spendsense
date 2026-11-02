@@ -89,7 +89,7 @@ void main() {
 
     testWidgets('weights and tabular figures are preserved for amounts',
         (tester) async {
-      AppTypography.active = FontPreset.cleanSans;
+      AppTypography.active = FontPreset.standard;
       late TextStyle style;
       await tester.pumpWidget(MaterialApp(
         home: Builder(builder: (context) {

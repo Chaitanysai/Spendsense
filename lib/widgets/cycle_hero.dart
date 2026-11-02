@@ -331,10 +331,7 @@ class CycleHero extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               'Set a budget',
-              style: AppText.label(context).copyWith(
-                color: AppColors.brandInk(context),
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(color: AppColors.brandInk(context),),
             ),
           ],
         ),
@@ -632,9 +629,8 @@ class _DeltaPill extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.label(context).copyWith(
+                style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                   fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
                   color: AppColors.onLime(context),
                 ),
               ),

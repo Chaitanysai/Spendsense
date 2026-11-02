@@ -550,9 +550,8 @@ class _StateChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppText.label(context).copyWith(
+        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
           fontSize: 10.5,
-          fontWeight: FontWeight.w700,
           color: tone,
         ),
       ),

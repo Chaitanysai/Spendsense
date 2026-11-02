@@ -99,6 +99,17 @@ class AppMotion {
   static const Duration counter = Duration(milliseconds: 650);
   static const Duration chart = Duration(milliseconds: 600);
 
+  /// One full pass of the skeleton sheen. Slower than a transition on purpose:
+  /// a loading placeholder is ambient, not something the user is waiting to
+  /// watch, so it must not read as a progress bar racing to finish.
+  static const Duration shimmer = Duration(milliseconds: 1500);
+
+  /// Value bubble / chart detail reveal.
+  static const Duration tooltip = Duration(milliseconds: 180);
+
+  /// Longer cross-fade used when the whole app re-themes under the user.
+  static const Duration theme = Duration(milliseconds: 320);
+
   static const Curve easeOut = Curves.easeOutCubic;
   static const Curve emphasized = Cubic(0.16, 1.0, 0.3, 1.0);
 
@@ -107,4 +118,31 @@ class AppMotion {
       MediaQuery.maybeDisableAnimationsOf(context) == true
           ? Duration.zero
           : duration;
+}
+
+/// Spring descriptions for motion that has to feel physical rather than timed.
+///
+/// A spring is specified instead of a duration because the interesting part is
+/// how it *arrives*: the navigation pill overshoots by a couple of pixels and
+/// settles, and a second tap mid-flight inherits the current velocity instead of
+/// restarting a tween. [nav] is tuned to settle in roughly 450 ms from rest while
+/// staying responsive to a tap (no visible lag before the pill starts moving).
+class AppSpring {
+  AppSpring._();
+
+  /// Selected-navigation-pill travel. Slightly under-damped: one small
+  /// overshoot, no wobble.
+  static const SpringDescription nav = SpringDescription(
+    mass: 1,
+    stiffness: 380,
+    damping: 30,
+  );
+
+  /// Theme-switch thumb. Stiffer and more damped so the small control feels
+  /// crisp at its scale.
+  static const SpringDescription thumb = SpringDescription(
+    mass: 1,
+    stiffness: 520,
+    damping: 34,
+  );
 }

@@ -124,12 +124,9 @@ class TransactionTile extends StatelessWidget {
                               ),
                               child: Text(
                                 'REVIEW',
-                                style: AppText.label(context).copyWith(
-                                  fontSize: 8.5,
+                                style: AppText.weight(AppText.label(context), FontWeight.w800).copyWith(fontSize: 8.5,
                                   color: const Color(0xFF8A5A00),
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.4,
-                                ),
+                                  letterSpacing: 0.4),
                               ),
                             ),
                           ],

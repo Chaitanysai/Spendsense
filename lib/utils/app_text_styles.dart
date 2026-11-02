@@ -137,4 +137,17 @@ class AppText {
         height: height,
         color: Colors.white.withValues(alpha: opacity),
       );
-}
+
+  /// Re-weights a style that already came from this class.
+  ///
+  /// `TextStyle.copyWith(fontWeight:)` changes only the *reported* weight. With
+  /// a variable face (Inter, Outfit, Space Grotesk) the rendered weight comes
+  /// from the `wght` variation baked in when the style was built, so copyWith
+  /// left the glyphs at the original weight while claiming the new one — bold
+  /// text silently rendered regular once Inter became the default preset.
+  static TextStyle weight(TextStyle style, FontWeight value) => style.copyWith(
+        fontWeight: value,
+        fontVariations: AppTypography.isVariable(style.fontFamily)
+            ? <FontVariation>[FontVariation('wght', value.value.toDouble())]
+            : null,
+      );}

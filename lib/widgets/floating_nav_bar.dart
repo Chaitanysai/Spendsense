@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
@@ -13,23 +14,32 @@ class NavItem {
   const NavItem(this.icon, this.label);
 }
 
-/// Floating glass navigation pill. The Add-Transaction action deliberately lives
-/// outside this widget as a floating action button, so every slot here maps to
-/// a real tab.
+/// Floating glass navigation bar with one spring-driven selected pill.
 ///
-/// The selected slot is marked four ways — a tinted pill, a solid accent icon, a
-/// bolder label, and a slow pulse on the glow behind the icon — so the state
-/// never depends on colour alone. The pill, glow and label animate between slots;
-/// all three collapse to the end state when the platform requests reduced motion.
+/// The pill is a single object that travels between destinations:
+///
+/// `tap → spring → stretch → slide → contract → settle`
+///
+/// * The spring starts on the same frame as the tap, so there is no perceptible
+///   delay before the pill moves.
+/// * Its width grows with its own velocity, which is what produces the stretch
+///   while it travels and the contraction as it arrives. The amount of stretch
+///   also scales with the distance being covered, so a neighbouring tab nudges
+///   and a cross-bar jump stretches further.
+/// * A second tap mid-flight retargets the same spring from the pill's current
+///   position *and* velocity. There is no animation queue, so rapid taps cannot
+///   overlap, stutter or leave the pill between slots.
+///
+/// Selection is never carried by colour alone: the pill, the glyph weight, the
+/// label weight and the `selected` semantics flag all change together.
 ///
 /// ## Cost model
 ///
-/// [BackdropFilter] only pays for the pixels it covers. The blur is therefore
-/// applied to the pill *body container*, not to the whole [ClipRRect] subtree, so
-/// the FAB and the screen edges outside the pill never get sampled. The blur
-/// sigma is deliberately small (12) and the surface stays translucent enough to
-/// read as glass while keeping icon and label contrast well above AA.
-class FloatingNavBar extends StatelessWidget {
+/// [BackdropFilter] only pays for the pixels it covers, and it is applied to the
+/// pill body rather than the whole subtree. The blur is dropped entirely under
+/// high contrast, where a translucent surface over scrolling content is exactly
+/// the legibility problem that setting exists to remove.
+class FloatingNavBar extends StatefulWidget {
   final List<NavItem> items;
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -42,12 +52,78 @@ class FloatingNavBar extends StatelessWidget {
   });
 
   @override
+  State<FloatingNavBar> createState() => _FloatingNavBarState();
+}
+
+class _FloatingNavBarState extends State<FloatingNavBar>
+    with SingleTickerProviderStateMixin {
+  /// Selected slot centre, measured in slot units (0.5, 1.5, …).
+  ///
+  /// Slot units rather than pixels so a rotation or a width change cannot strand
+  /// the pill between two destinations.
+  late final AnimationController _position = AnimationController.unbounded(
+    vsync: this,
+    value: widget.currentIndex + 0.5,
+  );
+
+  bool _reduceMotion = false;
+
+  /// Distance of the current travel, in slots. Used to size the stretch so a
+  /// one-slot nudge is quieter than a jump across the bar.
+  double _travel = 1;
+
+  /// Pill metrics, in logical pixels.
+  static const double _pillHeight = 32;
+  static const double _iconBoxHeight = 34;
+  static const double _maxStretch = 16;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) == true;
+    if (reduced == _reduceMotion) return;
+    _reduceMotion = reduced;
+    if (reduced) {
+      _position.value = widget.currentIndex + 0.5;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant FloatingNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex == widget.currentIndex) return;
+    _travelTo(widget.currentIndex);
+  }
+
+  void _travelTo(int index) {
+    final target = index + 0.5;
+    if (_reduceMotion) {
+      _position.value = target;
+      return;
+    }
+    _travel = (target - _position.value).abs().clamp(1.0, 4.0);
+    _position.animateWith(
+      SpringSimulation(
+        AppSpring.nav,
+        _position.value,
+        target,
+        // Inherit the in-flight velocity: this is what makes a second tap feel
+        // like a change of mind rather than a restart.
+        _position.velocity,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _position.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
     final borderRadius = BorderRadius.circular(AppRadius.pill);
-    // High contrast: a translucent pill over scrolling content is precisely the
-    // legibility problem that setting exists to fix. Drop the blur, make the
-    // fill near-solid and give the edge a defined border.
     final highContrast = MediaQuery.highContrastOf(context);
 
     return SafeArea(
@@ -59,8 +135,6 @@ class FloatingNavBar extends StatelessWidget {
           AppSpacing.md,
           AppSpacing.sm,
         ),
-        // Outer shape clips the glass body. Nothing else lives inside this clip,
-        // so the blur never samples the FAB sitting above it.
         child: ClipRRect(
           borderRadius: borderRadius,
           child: BackdropFilter(
@@ -69,17 +143,11 @@ class FloatingNavBar extends StatelessWidget {
               sigmaY: highContrast ? 0 : 12,
             ),
             child: Container(
-              // Minimum, not fixed: the pill grows with a large system font
-              // scale instead of clipping the labels it contains.
-              constraints: const BoxConstraints(minHeight: 68),
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.xs,
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                // Near-black translucent near the top of the pill so the blur
-                // reads as depth, easing off at the base so the blur is visible
-                // against content scrolling underneath.
                 gradient: highContrast
                     ? null
                     : LinearGradient(
@@ -108,8 +176,6 @@ class FloatingNavBar extends StatelessWidget {
                     ? (dark ? AppColors.darkSurfaceAlt : Colors.white)
                     : null,
                 borderRadius: borderRadius,
-                // A crisp top highlight plus a faint full outline: two low-cost
-                // Borders instead of a gradient-stroked painter.
                 border: Border.all(
                   color: highContrast
                       ? AppColors.textPrimary(context)
@@ -126,11 +192,71 @@ class FloatingNavBar extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < items.length; i++)
-                    Expanded(child: _navSlot(context, i, items[i])),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final slot = constraints.maxWidth / widget.items.length;
+                  return Stack(
+                    children: [
+                      // Painted first so the glyphs and labels sit on top of it.
+                      AnimatedBuilder(
+                        animation: _position,
+                        builder: (context, _) {
+                          final center = _position.value * slot;
+                          final base = (slot - 12).clamp(40.0, 54.0);
+                          final velocity = _position.isAnimating
+                              ? _position.velocity.abs()
+                              : 0.0;
+                          final stretch = _reduceMotion
+                              ? 0
+                              : (velocity / 10).clamp(0.0, 1.0) *
+                                  (_maxStretch * (0.4 + 0.15 * _travel));
+                          final width = base + stretch;
+                          final left = (center - width / 2)
+                              .clamp(0.0, constraints.maxWidth - width);
+                          return Positioned(
+                            left: left,
+                            top: (_iconBoxHeight - _pillHeight) / 2,
+                            width: width,
+                            height: _pillHeight,
+                            // The pill is decoration: the slot below carries the
+                            // label, the selected flag and the action.
+                            child: ExcludeSemantics(
+                              child: DecoratedBox(
+                                key: const Key('nav-selected-pill'),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.navPillGradient(context),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.pill),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.brand.withValues(
+                                          alpha: dark ? 0.34 : 0.22),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      Row(
+                        children: [
+                          for (var i = 0; i < widget.items.length; i++)
+                            Expanded(
+                              child: _NavSlot(
+                                item: widget.items[i],
+                                selected: i == widget.currentIndex,
+                                onTap: () => widget.onTap(i),
+                                iconBoxHeight: _iconBoxHeight,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -138,13 +264,26 @@ class FloatingNavBar extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _navSlot(BuildContext context, int index, NavItem item) {
-    final selected = index == currentIndex;
-    final dark = AppColors.isDark(context);
+class _NavSlot extends StatelessWidget {
+  final NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+  final double iconBoxHeight;
+
+  const _NavSlot({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+    required this.iconBoxHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final selectedColor = AppColors.navSelected(context);
     final idleColor = AppColors.textTertiary(context);
-    final duration = AppMotion.respect(context, AppMotion.base);
+    final duration = AppMotion.respect(context, AppMotion.fast);
 
     return Semantics(
       button: true,
@@ -152,119 +291,54 @@ class FloatingNavBar extends StatelessWidget {
       label: item.label,
       excludeSemantics: true,
       child: GestureDetector(
-        onTap: () => onTap(index),
+        onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        // The tap stays on the untransformed slot, so press feedback can never
-        // shrink the 48dp target or delay the tab switch.
+        // The tap target stays on the untransformed slot, so press feedback can
+        // never shrink the 48dp minimum or delay the tab switch.
         child: PressFeedback(
           child: ConstrainedBox(
-            // Keeps the effective tap target at/above the 48dp minimum even at
-            // small system font scales.
             constraints: const BoxConstraints(minHeight: 48),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _indicator(context, selected, item.icon, selectedColor,
-                    idleColor, duration, dark),
-                const SizedBox(height: AppSpacing.xs),
-                // Animated + fade rather than clip: long labels ("ACTIVITY",
-                // "SETTINGS") must never be cut mid-glyph at large text scales.
-                AnimatedDefaultTextStyle(
-                  duration: duration,
-                  curve: AppMotion.easeOut,
-                  style: AppText.onGradient(
-                    size: 10,
-                    weight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ).copyWith(
-                    color: selected ? selectedColor : idleColor,
-                    letterSpacing: 0.3,
-                    height: 1.1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: iconBoxHeight,
+                    child: Center(
+                      child: Icon(
+                        item.icon,
+                        size: 21,
+                        color:
+                            selected ? AppColors.onNavPill(context) : idleColor,
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.fade,
+                  const SizedBox(height: 3),
+                  AnimatedDefaultTextStyle(
+                    duration: duration,
+                    curve: AppMotion.easeOut,
+                    style: AppText.onGradient(
+                      size: 10,
+                      weight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ).copyWith(
+                      color: selected ? selectedColor : idleColor,
+                      letterSpacing: 0.3,
+                      height: 1.1,
+                    ),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.fade,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// The icon chip: tinted pill, glyph, and a soft accent glow behind it.
-  ///
-  /// The glow is painted *outside* the chip's clip so it can bleed past the
-  /// pill edge without growing the layout box or the tap target.
-  Widget _indicator(
-    BuildContext context,
-    bool selected,
-    IconData icon,
-    Color selectedColor,
-    Color idleColor,
-    Duration duration,
-    bool dark,
-  ) {
-    // On navy glass the selected slot is a lit electric-blue chip with a white
-    // glyph, matching the primary-action gradient. Other canvases keep the
-    // tinted chip. Either way selection is also shown by weight and border.
-    final lit = selected && AppColors.isGlassCanvas(context);
-    return AnimatedContainer(
-      duration: duration,
-      curve: AppMotion.easeOut,
-      // Fixed padding, not animated. Padding is a layout property: animating it
-      // re-lays-out the chip on every frame of the switch. The chip's size is
-      // constant here, so only colour, gradient, border and shadow animate —
-      // all of which paint without touching layout.
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        gradient: lit
-            ? LinearGradient(
-                // Both stops keep a white glyph above 4.5:1.
-                colors: [AppColors.azure, AppColors.brand],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: lit
-            ? null
-            : selected
-                ? selectedColor.withValues(alpha: dark ? 0.18 : 0.13)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        // A faint hairline keeps the chip legible when the blur behind it picks
-        // up a bright row of content.
-        border: Border.all(
-          color: selected
-              ? selectedColor.withValues(alpha: dark ? 0.34 : 0.24)
-              : Colors.transparent,
-        ),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: (lit ? AppColors.brand : selectedColor)
-                      .withValues(alpha: lit ? 0.45 : (dark ? 0.26 : 0.16)),
-                  blurRadius: 14,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-      child: Icon(
-        icon,
-        size: 22,
-        color: lit
-            ? Colors.white
-            : selected
-                ? selectedColor
-                : idleColor,
       ),
     );
   }

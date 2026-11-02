@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
@@ -19,7 +18,7 @@ import '../utils/period_math.dart';
 import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
 import '../widgets/budget_summary.dart';
-import '../widgets/category_rail.dart';
+import '../widgets/category_breakdown_card.dart';
 import '../widgets/cycle_hero.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/home_action_dock.dart';
@@ -29,6 +28,8 @@ import '../widgets/profile_avatar.dart';
 import '../widgets/quick_action_tile.dart';
 import '../widgets/section_header.dart';
 import '../widgets/sms_import_prompt.dart';
+import '../widgets/spending_week_card.dart';
+import '../widgets/theme_toggle.dart';
 import '../widgets/transaction_tile.dart';
 import 'activity_screen.dart';
 import 'add_transaction_screen.dart';
@@ -334,20 +335,32 @@ class _HomeScreenState extends State<HomeScreen> {
         for (final t in trackedExpenses) {
           totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
         }
+        final loading =
+            provider.isLoadingCache || (provider.isSyncing && totals.isEmpty);
         return [
           const SectionHeader(title: 'Spending by category', large: true),
-          CategoryRail(totalsMinor: totals),
+          if (loading)
+            const CategoryBreakdownSkeleton()
+          else
+            ContentReveal(child: CategoryBreakdownCard(totalsMinor: totals)),
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.weekly:
+        final loading = provider.isLoadingCache ||
+            (provider.isSyncing && trackedExpenses.isEmpty);
         return [
           const SectionHeader(title: 'Last 7 days', large: true),
-          _DailySpendCard(
-            key: const Key('daily-spend-card'),
-            // The header says "Last 7 days", so pass the unfiltered history —
-            // the cycle-filtered list would drop older days from the chart.
-            expenses: provider.trackedExpenses.toList(growable: false),
-          ),
+          if (loading)
+            const SpendingWeekSkeleton()
+          else
+            ContentReveal(
+              child: SpendingWeekCard(
+                key: const Key('daily-spend-card'),
+                // The header says "Last 7 days", so pass the unfiltered
+                // history — the cycle-filtered list would drop older days.
+                expenses: provider.trackedExpenses.toList(growable: false),
+              ),
+            ),
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.recent:
@@ -540,9 +553,8 @@ class _HeaderSection extends StatelessWidget {
                         '$greeting,',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.h2(context).copyWith(
+                        style: AppText.weight(AppText.h2(context), FontWeight.w600).copyWith(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary(context),
                           height: 1.2,
                         ),
@@ -551,9 +563,8 @@ class _HeaderSection extends StatelessWidget {
                         name.isEmpty ? 'there.' : '$name.',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.display(context).copyWith(
+                        style: AppText.weight(AppText.display(context), FontWeight.w800).copyWith(
                           fontSize: 34,
-                          fontWeight: FontWeight.w800,
                           letterSpacing: -1.1,
                           height: 1.05,
                         ),
@@ -562,6 +573,8 @@ class _HeaderSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
+                const ThemeToggle(),
+                const SizedBox(width: 2),
                 if (onEditDashboard != null) ...[
                   Tooltip(
                     message: 'Edit dashboard',
@@ -754,8 +767,7 @@ class _SyncStatusStrip extends StatelessWidget {
                     ),
                     child: Text(
                       denied ? 'Fix' : 'Retry',
-                      style: AppText.label(context).copyWith(
-                        fontWeight: FontWeight.w700,
+                      style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                         color: AppColors.brandInk(context),
                       ),
                     ),
@@ -844,9 +856,8 @@ class _SyncButton extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.caption(context).copyWith(
+                      style: AppText.weight(AppText.caption(context), FontWeight.w600).copyWith(
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -959,278 +970,4 @@ class _BudgetCard extends StatelessWidget {
       ),
     );
   }
-}
-// ── Daily spend ──────────────────────────────────────────────────────────────
-
-class _DailySpendCard extends StatefulWidget {
-  final List<TransactionModel> expenses;
-
-  const _DailySpendCard({super.key, required this.expenses});
-
-  @override
-  State<_DailySpendCard> createState() => _DailySpendCardState();
-}
-
-class _DailySpendCardState extends State<_DailySpendCard> {
-  static const int _todayIndex = 6;
-
-  /// Which bar the header describes. Defaults to today and survives parent
-  /// rebuilds, so a sync landing mid-inspection does not move the answer.
-  int _selected = _todayIndex;
-
-  void _select(int index) {
-    if (index == _selected) return;
-    setState(() => _selected = index);
-  }
-
-  /// Compares calendar days in local time, matching how the provider draws
-  /// period boundaries. A stored offset must not move a row to another bar.
-  bool _isSameDay(DateTime value, DateTime day) {
-    final local = value.toLocal();
-    return local.year == day.year &&
-        local.month == day.month &&
-        local.day == day.day;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final today = PeriodMath.dateOnly(DateTime.now());
-    final days = List.generate(7, (i) {
-      // Calendar arithmetic: stepping back 6..0 days must stay on the same
-      // wall-clock day across a DST change (Duration would shift it).
-      final day = PeriodMath.addDays(today, i - 6);
-      final totalMinor = widget.expenses
-          .where((t) => _isSameDay(t.date, day))
-          .fold<int>(0, (s, t) => s + t.amountMinor);
-      return _DayBar(day: day, amount: totalMinor.toDouble());
-    });
-
-    final selectedIndex = _selected.clamp(0, days.length - 1);
-    final selected = days[selectedIndex];
-    final maxAmount = days.fold<double>(
-      0,
-      (m, d) => d.amount > m ? d.amount : m,
-    );
-    final barMax = maxAmount <= 0 ? 100.0 : maxAmount * 1.25;
-    final hasSpending = maxAmount > 0;
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selectedIndex == _todayIndex
-                        ? 'Today'
-                        : DateFormat('EEEE').format(selected.day),
-                    style: AppText.label(context).copyWith(
-                      fontSize: 11,
-                      letterSpacing: 0.3,
-                      color: AppColors.textTertiary(context),
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    DateFormat('d MMM').format(selected.day),
-                    style: AppText.caption(context).copyWith(fontSize: 10.5),
-                  ),
-                ],
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      Formatters.currency.format(selected.amount),
-                      style: AppText.amount(context, size: 20),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (!hasSpending)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: Center(
-                child: Text(
-                  'No spending in the last 7 days',
-                  style: AppText.bodySmall(context),
-                ),
-              ),
-            )
-          else ...[
-            SizedBox(
-              height: 104,
-              child: TweenAnimationBuilder<double>(
-                // Replays the seven-day bars when the dashboard is entered
-                // again; a normal rebuild keeps the same key and does not
-                // restart a finished chart.
-                key: ValueKey(
-                  'daily-spend-entry-'
-                  '${PageEntryScope.maybeOf(context)?.generation ?? 0}',
-                ),
-                tween: Tween(begin: 0, end: 1),
-                duration: AppMotion.respect(context, AppMotion.chart),
-                curve: AppMotion.emphasized,
-                builder: (context, t, _) => Stack(
-                  children: [
-                    Positioned.fill(
-                      child: BarChart(
-                        BarChartData(
-                          maxY: barMax,
-                          alignment: BarChartAlignment.spaceAround,
-                          gridData: const FlGridData(show: false),
-                          borderData: FlBorderData(show: false),
-                          titlesData: const FlTitlesData(show: false),
-                          // Selection is persistent, so the transient
-                          // fl_chart tooltip would only compete with it.
-                          barTouchData: BarTouchData(enabled: false),
-                          barGroups: days.asMap().entries.map((e) {
-                            final isSelected = e.key == selectedIndex;
-                            return BarChartGroupData(
-                              x: e.key,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: e.value.amount * t,
-                                  width: 16,
-                                  borderRadius: BorderRadius.circular(8),
-                                  gradient: LinearGradient(
-                                    colors: isSelected
-                                        ? [
-                                            AppColors.lime,
-                                            AppColors.brandBright,
-                                          ]
-                                        : [
-                                            AppColors.brand.withValues(
-                                              alpha: 0.32,
-                                            ),
-                                            AppColors.brand.withValues(
-                                              alpha: 0.10,
-                                            ),
-                                          ],
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: Row(
-                        children: [
-                          for (var i = 0; i < days.length; i++)
-                            Expanded(
-                              child: Semantics(
-                                button: true,
-                                selected: i == selectedIndex,
-                                label: _semanticsLabel(days[i]),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => _select(i),
-                                  // A child is required: without one the
-                                  // column collapses to zero height and only
-                                  // its centre line stays tappable.
-                                  child: const SizedBox.expand(),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            ExcludeSemantics(
-              child: Row(
-                children: [
-                  for (var i = 0; i < days.length; i++)
-                    _WeekdayLabel(
-                      label: DateFormat('EEEEE')
-                          .format(days[i].day)
-                          .substring(0, 1),
-                      selected: i == selectedIndex,
-                      onTap: () => _select(i),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _semanticsLabel(_DayBar bar) {
-    final weekday = DateFormat('EEEE').format(bar.day);
-    final date = DateFormat('d MMM').format(bar.day);
-    final amount = Formatters.currency.format(bar.amount);
-    return '$weekday, $date, $amount';
-  }
-}
-
-/// One weekday initial under the chart. Tappable as a second, larger target
-/// for the same selection the chart columns offer.
-class _WeekdayLabel extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _WeekdayLabel({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(top: AppSpacing.sm),
-          child: Center(
-            child: AnimatedContainer(
-              duration: AppMotion.respect(context, AppMotion.fast),
-              curve: AppMotion.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.lime : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-              ),
-              child: Text(
-                label,
-                style: AppText.label(context).copyWith(
-                  fontSize: 10,
-                  color: selected
-                      ? AppColors.onLime(context)
-                      : AppColors.textTertiary(context),
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DayBar {
-  final DateTime day;
-  final double amount;
-  const _DayBar({required this.day, required this.amount});
 }

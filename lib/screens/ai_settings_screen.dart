@@ -228,9 +228,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'Provider Chain Order: Groq → Cerebras → Gemini → OpenRouter',
-                    style: AppText.label(context).copyWith(
+                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                       color: AppColors.brand,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -397,10 +396,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       ),
       child: Text(
         isConfigured ? 'Configured' : 'Not configured',
-        style: AppText.label(context).copyWith(
+        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
           fontSize: 10,
           color: color,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
