@@ -46,10 +46,18 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "functions": {
-    "source": "backend/assistant_proxy",
-    "runtime": "nodejs22"
-  },
+  "functions": [
+    {
+      "codebase": "assistant",
+      "source": "backend/assistant_proxy",
+      "runtime": "nodejs22"
+    },
+    {
+      "codebase": "download",
+      "source": "backend/download_redirect",
+      "runtime": "nodejs22"
+    }
+  ],
   "flutter": {
     "platforms": {
       "android": {
