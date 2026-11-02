@@ -62,8 +62,12 @@ test('redirects to the APK named by the manifest', async () => {
   assert.strictEqual(res.code, 302);
   assert.strictEqual(res.location, GOOD);
   assert.strictEqual(res.headers['Content-Disposition'], 'attachment; filename="spendsense.apk"');
-  // A visitor arriving just after a release must not be pinned to the old build.
-  assert.match(res.headers['Cache-Control'], /max-age=60/);
+  // A visitor arriving just after a release must not be pinned to the old
+  // build. A cached 302 is exactly that: the browser would keep replaying the
+  // redirect it saw first, even after the manifest moved on. The APK it points
+  // at is immutable and cached separately, so the redirect never needs reuse.
+  assert.match(res.headers['Cache-Control'], /no-store/);
+  assert.match(res.headers['Cache-Control'], /max-age=0/);
 });
 
 test('refuses a manifest that points at another host', async () => {
