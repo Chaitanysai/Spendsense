@@ -225,8 +225,16 @@ class SmartParser {
             start,
           ));
       final eventAfter = RegExp(
-            r'^\s*(?:has\s+been\s+)?(?:debited|debit|deducted|spent|paid|charged|withdrawn)\b|'
-            r'^\s*(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
+            // Bank mail writes the passive in many tenses: "Rs 100 debited",
+            // "has been debited", "was debited", "is debited", "got debited".
+            // Requiring just "has been" dropped the most common wording —
+            // Slice's "₹100 was debited from your … account" produced no
+            // amount at all, so the alert never imported.
+            r'^\s*(?:(?:has|have|had|was|were|is|are|been|got|gets)\s+){0,2}'
+            r'(?:debited|debit|deducted|deduction|spent|paid|purchase|charged|'
+            r'withdrawn|withdrawal)\b|'
+            r'^\s*(?:(?:has|have|had|was|were|is|are|been)\s+){0,2}'
+            r'(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
           ).hasMatch(rightContext) ||
           RegExp(r'^\s*DR\b').hasMatch(
               sms.substring(end, (end + 45).clamp(end, transactionEnd)));
@@ -390,11 +398,35 @@ class SmartParser {
       'gpay': 'Google Pay',
       'paytm': 'Paytm',
       'cred': 'CRED',
-      'slice': 'Slice',
+      // 'slice' is deliberately absent: it is the bank that sent the alert, not
+      // the payee. Matching it labelled every Slice debit "Slice" instead of the
+      // person or merchant that was paid.
     };
 
+    // The payee named after the account line, e.g. Slice's
+    // "…account ending in 3317 via UPI. … To K Venkata Ravi Prasad".
+    // Checked before the brand table so a bank brand inside the account
+    // description cannot win over the actual recipient.
+    final payeeMatch = RegExp(
+      r"[.\n]\s*(?:to|paid\s+to)\s+([A-Za-z][A-Za-z0-9&.'\-\s]{2,40}?)\s*(?:[.\n]|$)",
+      caseSensitive: false,
+    ).firstMatch(sms);
+    if (payeeMatch != null) {
+      final payee = payeeMatch.group(1)!.trim();
+      if (payee.length > 2 &&
+          !RegExp(r'^\d').hasMatch(payee) &&
+          !payee.toLowerCase().startsWith('your')) {
+        return _normalizeMerchantName(payee);
+      }
+    }
+
     for (final kv in brands.entries) {
-      if (lower.contains(kv.key)) {
+      // Word-boundary match, not a bare substring. The table holds short keys
+      // such as "vi " for the telecom, which as a substring also matched the
+      // "vi" of "via" — so every "…debited … via UPI" message was categorised
+      // as the Vi brand instead of its actual recipient.
+      final escaped = RegExp.escape(kv.key.trim());
+      if (RegExp('\\b$escaped\\b').hasMatch(lower)) {
         return kv.value;
       }
     }
@@ -643,8 +675,19 @@ class SmartParser {
     return 'Other';
   }
 
-  bool _anyOf(String text, List<String> keywords) =>
-      keywords.any((k) => text.contains(k));
+  /// True when [text] contains any of [keywords] as a whole word.
+  ///
+  /// Substring matching mis-fires on short keywords: the telecom brand "vi"
+  /// matched inside "K Venkata Ravi Prasad" and inside "via UPI", so a person's
+  /// name was classified as a phone bill category. Whole-word matching keeps
+  /// the keyword table honest without renaming entries.
+  bool _anyOf(String text, List<String> keywords) => keywords.any((k) {
+        final trimmed = k.trim();
+        if (trimmed.isEmpty) return false;
+        return RegExp(
+          '(?<![A-Za-z0-9])${RegExp.escape(trimmed)}(?![A-Za-z0-9])',
+        ).hasMatch(text);
+      });
 
   String _capitalize(String s) {
     if (s.isEmpty) return s;
