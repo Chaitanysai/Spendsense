@@ -75,9 +75,13 @@ async function handle(req, res) {
       return;
     }
 
-    // Short cache: someone arriving just after a release must not be pinned to
-    // the previous build, but the origin should not be hit on every tap either.
-    res.set('Cache-Control', 'public, max-age=60');
+    // Never cache the redirect itself. Firebase Hosting's header rules for the
+    // APK path are configurable, but a browser that cached this 302 would keep
+    // sending people to the build that was latest when they first clicked — and
+    // the APK it points at is immutable and cached separately anyway, so there
+    // is nothing to gain by reusing the redirect. `no-store` also covers the
+    // case where a CDN stamps its own long-lived header onto it.
+    res.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     // `download=` makes the browser save the file instead of navigating to it.
     res.set('Content-Disposition', 'attachment; filename="spendsense.apk"');
     res.redirect(302, target.toString());
