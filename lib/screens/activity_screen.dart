@@ -224,10 +224,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     Container(
                       padding:
                           const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceColor(context),
+                      decoration: AppColors.panelDecoration(
+                        context,
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: AppColors.border(context)),
+                        shadow: false,
                       ),
                       child: TextField(
                         controller: _searchController,
@@ -822,7 +822,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           data: Theme.of(context).copyWith(
             colorScheme: base.copyWith(
               primary: AppColors.brand,
-              onPrimary: Colors.white,
+              onPrimary: AppColors.onBrand,
               surface: AppColors.surfaceColor(context),
               onSurface: AppColors.textPrimary(context),
             ),

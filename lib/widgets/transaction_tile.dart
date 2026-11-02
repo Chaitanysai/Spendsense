@@ -76,10 +76,10 @@ class TransactionTile extends StatelessWidget {
             ),
             decoration: flat
                 ? null
-                : BoxDecoration(
-                    color: AppColors.surfaceColor(context),
+                : AppColors.panelDecoration(
+                    context,
                     borderRadius: radius,
-                    border: Border.all(color: AppColors.border(context)),
+                    shadow: false,
                   ),
             child: Row(
               children: [
@@ -88,11 +88,13 @@ class TransactionTile extends StatelessWidget {
                   height: bubble,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: catColor.withValues(alpha: 0.13),
+                    color: AppColors.wash(context, catColor),
                   ),
                   child: Icon(
                     CategoryStyle.icon(transaction.category),
-                    color: catColor,
+                    // A same-hue glyph on its own wash collapses the hue
+                    // distance; the ink is resolved against the real plate.
+                    color: AppColors.inkOnWash(context, catColor),
                     size: bubble * 0.44,
                   ),
                 ),
@@ -124,9 +126,21 @@ class TransactionTile extends StatelessWidget {
                               ),
                               child: Text(
                                 'REVIEW',
-                                style: AppText.weight(AppText.label(context), FontWeight.w800).copyWith(fontSize: 8.5,
-                                  color: const Color(0xFF8A5A00),
-                                  letterSpacing: 0.4),
+                                style: AppText.weight(
+                                  AppText.label(context),
+                                  FontWeight.w800,
+                                ).copyWith(
+                                  fontSize: 8.5,
+                                  // A fixed brown was unreadable on dark cards;
+                                  // the ink is resolved against the badge as
+                                  // it is actually composited.
+                                  color: AppColors.inkOnWash(
+                                    context,
+                                    AppColors.warning,
+                                    alpha: 0.18,
+                                  ),
+                                  letterSpacing: 0.4,
+                                ),
                               ),
                             ),
                           ],

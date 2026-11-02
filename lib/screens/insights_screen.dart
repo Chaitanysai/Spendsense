@@ -100,7 +100,7 @@ class InsightsScreen extends StatelessWidget {
                                     : 'Same as last month',
                         gradient: metrics.hasPreviousMonth &&
                                 metrics.percentChange < 0
-                            ? AppColors.successGradient
+                            ? AppColors.successHeroGradient(context)
                             : AppColors.heroSurfaceGradient(context),
                         glowColor: metrics.hasPreviousMonth &&
                                 metrics.percentChange < 0
@@ -120,7 +120,7 @@ class InsightsScreen extends StatelessWidget {
                         title: 'Top category',
                         value: metrics.topCategory,
                         subtitle: 'Highest spend this month',
-                        gradient: AppColors.heroGradient,
+                        gradient: AppColors.accentHeroGradient(context),
                         glowColor: AppColors.brand,
                         icon: Icons.auto_awesome_rounded,
                       ),
@@ -251,7 +251,9 @@ class InsightsScreen extends StatelessWidget {
                           size: 12, weight: FontWeight.w600, opacity: 0.9)),
                   const Spacer(),
                   Icon(icon,
-                      color: Colors.white.withValues(alpha: 0.9), size: 20),
+                      color:
+                          AppColors.inkOnGradient(gradient).withValues(alpha: 0.9),
+                      size: 20),
                 ],
               ),
               const Spacer(),
@@ -339,17 +341,18 @@ class InsightsScreen extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: AppColors.heroChipFill(context),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.smart_toy_rounded, color: Colors.white),
+                child: Icon(Icons.smart_toy_rounded,
+                    color: AppColors.onHero(context)),
               ),
               const Spacer(),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: AppColors.heroChipFill(context),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text('Tap to open',
@@ -401,10 +404,11 @@ class InsightsScreen extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              gradient: AppColors.brandGradient,
+              gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.lightbulb_rounded, color: Colors.white),
+            child: Icon(Icons.lightbulb_rounded,
+                color: AppColors.onAccentHero(context)),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

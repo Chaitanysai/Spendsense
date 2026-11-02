@@ -645,7 +645,9 @@ void main() {
       );
       expect(
         tester.widget<Icon>(find.byIcon(Icons.settings_rounded)).color,
-        AppColors.textTertiary(context),
+        // Unselected tabs share one neutral ink in every theme; its contrast
+        // on the composited glass bar is asserted in theme_tokens_contrast_test.
+        AppColors.navIdleInk(context),
       );
 
       for (final label in ['HOME', 'SETTINGS']) {

@@ -23,7 +23,7 @@ class HomeActionDock extends StatelessWidget {
   /// [AppColors.surfaceColor], so measuring ink against the plain surface would
   /// pick the wrong glyph colour for the top row.
   static Color dockSurface(BuildContext context) {
-    final surface = AppColors.surfaceColor(context);
+    final surface = AppColors.glassSurface(context);
     if (!AppColors.isDark(context)) return surface;
     return Color.alphaBlend(
       Colors.white.withValues(alpha: 0.05),
@@ -60,32 +60,23 @@ class HomeActionDock extends StatelessWidget {
 
     final dark = AppColors.isDark(context);
 
+    // The dock is a panel like every other card on the page: same tone, same
+    // hairline, same shadow. In dark mode the only addition is the lit top, so
+    // it still reads as the one piece of chrome.
+    final panel = AppColors.panelDecoration(
+      context,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+    );
     return Container(
       padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: panel.copyWith(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: dark
-              ? [
-                  Color.alphaBlend(
-                    Colors.white.withValues(alpha: 0.05),
-                    AppColors.surfaceColor(context),
-                  ),
-                  AppColors.surfaceColor(context),
-                ]
-              : [Colors.white, AppColors.surfaceColor(context)],
+              ? [dockSurface(context), panel.color!]
+              : [Colors.white, panel.color!],
         ),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow(context),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

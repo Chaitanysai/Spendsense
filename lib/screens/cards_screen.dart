@@ -217,7 +217,7 @@ class _HeroSummary extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Container(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.18),
+            color: AppColors.onHero(context, alpha: 0.18),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -250,7 +250,7 @@ class _HeroStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: 6, color: Colors.white.withValues(alpha: 0.7)),
+        Icon(Icons.circle, size: 6, color: AppColors.onHero(context, alpha: 0.7)),
         const SizedBox(width: 6),
         Flexible(
           child: Text(

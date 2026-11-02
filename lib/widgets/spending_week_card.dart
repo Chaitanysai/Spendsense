@@ -512,9 +512,14 @@ class _DeltaLine extends StatelessWidget {
     // The fixed warning amber and income green are designed for badges on dark
     // glass; as 10px text on a 10% tint over a white card they fall under AA.
     // Light mode deepens the ink while keeping the tint recognisable.
-    final ink = AppColors.isDark(context)
-        ? tone
-        : Color.lerp(tone, AppColors.navyDeep, 0.45) ?? tone;
+    final badgeBase = AppColors.glassBase(AppColors.isDark(context));
+    final ink = AppColors.resolveInk(
+      tone,
+      Color.alphaBlend(
+        tone.withValues(alpha: AppColors.isDark(context) ? 0.16 : 0.10),
+        badgeBase,
+      ),
+    );
 
     final String label;
     final String semantics;
@@ -587,12 +592,14 @@ class _ValueBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
+    // Inverted bubble: a tooltip reads as an annotation floating over the card
+    // rather than one more surface to decode. Its ink is measured against the
+    // bubble, so it holds in every palette.
+    final bubble = dark ? Colors.white : AppColors.navyDeep;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        // Inverted ink: a tooltip reads as an annotation floating over the card
-        // rather than one more surface to decode.
-        color: dark ? Colors.white : AppColors.navyDeep,
+        color: bubble,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         boxShadow: [
           BoxShadow(
@@ -608,7 +615,10 @@ class _ValueBubble extends StatelessWidget {
           context,
           size: 11,
           weight: FontWeight.w700,
-          color: dark ? AppColors.navyDeep : Colors.white,
+          color: AppColors.resolveInk(
+            dark ? AppColors.navyDeep : Colors.white,
+            bubble,
+          ),
         ),
       ),
     );

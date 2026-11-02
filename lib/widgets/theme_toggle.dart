@@ -207,7 +207,13 @@ class _ThemeToggleState extends State<ThemeToggle>
                                   ? Icons.dark_mode_rounded
                                   : Icons.light_mode_rounded,
                               size: 12,
-                              color: dark ? AppColors.navyDeep : Colors.white,
+                              // Resolved against the thumb it sits on, not
+                              // assumed from the palette's deep stop.
+                              color: AppColors.resolveInk(
+                                dark ? AppColors.navyDeep : Colors.white,
+                                dark ? Colors.white : AppColors.navyDeep,
+                                minContrast: 3,
+                              ),
                             ),
                           ),
                         ),

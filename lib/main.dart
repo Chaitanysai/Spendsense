@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -197,13 +199,17 @@ class SpendSenseApp extends StatelessWidget {
       brightness: brightness,
     ).copyWith(
       primary: AppColors.brand,
-      onPrimary: Colors.white,
+      // FilledButton draws its label with onPrimary on `filledBrand`, not on
+      // `brand`, so the ink is resolved against the fill the button really has.
+      // (Resolving against `brand` flipped the label to dark ink on a dark
+      // fill for palettes whose brand is bright.)
+      onPrimary: AppColors.resolveInk(Colors.white, AppColors.filledBrand),
       secondary: AppColors.brandBright,
-      onSecondary: Colors.white,
+      onSecondary: AppColors.resolveInk(Colors.white, AppColors.brandBright),
       tertiary: AppColors.lime,
       onTertiary: AppColors.onLimeInk,
       error: AppColors.danger,
-      onError: Colors.white,
+      onError: AppColors.onDanger,
       surface: isDark ? AppColors.darkSurface : AppColors.surface,
       onSurface: AppColors.textPrimaryFor(isDark),
       outlineVariant: AppColors.borderDarkOrLight(isDark),
@@ -214,17 +220,10 @@ class SpendSenseApp extends StatelessWidget {
       borderSide: BorderSide(color: AppColors.borderDarkOrLight(isDark)),
     );
 
-    // Navy palettes lift overlays one step above the canvas; AMOLED and light
-    // keep their existing surfaces.
-    final glassCanvas = isDark && AppColors.isGlassPalette;
-    final overlaySurface = !isDark
-        ? AppColors.surface
-        : glassCanvas
-            ? AppColors.darkSurfaceAlt
-            : AppColors.darkSurface;
-    final overlayEdge = glassCanvas
-        ? BorderSide(color: Colors.white.withValues(alpha: 0.10))
-        : BorderSide.none;
+    // Glass palettes lift overlays one step above the canvas; AMOLED and light
+    // keep their existing surfaces. Both values come from the shared tokens.
+    final overlaySurface = AppColors.overlaySurfaceFor(isDark);
+    final overlayEdge = AppColors.overlayEdgeFor(isDark);
 
     return ThemeData(
       useMaterial3: true,
@@ -328,15 +327,25 @@ class SpendSenseApp extends StatelessWidget {
         ),
         shape: const StadiumBorder(),
       ),
+      // The "on" state is the accent ink on a translucent accent track. The raw
+      // `brand` is a dark slate on Deep Navy, which made an enabled switch
+      // vanish into its card; the ink and track here are the same roles the
+      // navigation uses and are checked against each other for every palette.
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (states) =>
-              states.contains(WidgetState.selected) ? AppColors.brand : null,
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.switchThumbOnFor(isDark)
+              : null,
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? AppColors.brand.withValues(alpha: 0.4)
+              ? AppColors.switchTrackOnFor(isDark)
               : AppColors.borderDarkOrLight(isDark),
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.navAccentFor(isDark).withValues(alpha: 0.55)
+              : null,
         ),
       ),
       // Overlays share one surface, one hairline and one radius scale so a
@@ -344,7 +353,7 @@ class SpendSenseApp extends StatelessWidget {
       dialogTheme: DialogThemeData(
         backgroundColor: overlaySurface,
         surfaceTintColor: Colors.transparent,
-        barrierColor: const Color(0x6B000000),
+        barrierColor: AppColors.scrim,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
           side: overlayEdge,
@@ -399,10 +408,18 @@ class SpendSenseApp extends StatelessWidget {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.navyDeep,
-        contentTextStyle: const TextStyle(color: Colors.white),
+        // Ink is measured against the snackbar it sits on, not assumed white:
+        // a palette's deep stop is not always dark.
+        contentTextStyle: TextStyle(
+          color: AppColors.resolveInk(
+            Colors.white,
+            isDark ? AppColors.darkSurfaceAlt : AppColors.navyDeep,
+          ),
+        ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
+          side: overlayEdge,
         ),
       ),
     );
@@ -559,8 +576,11 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   }
 }
 
-/// The floating Add action. Icon + tooltip carry the meaning, and the green
-/// gradient is the primary action colour rather than a decorative glow.
+/// The floating Add action. Icon + tooltip carry the meaning.
+///
+/// It is the same glass as the navigation bar, tinted with the accent (see
+/// [AppColors.fabFillFor]) and drawn with a resolved accent glyph: no solid
+/// slab and no coloured glow, so it never competes with the bar below it.
 class _AddFab extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -569,48 +589,48 @@ class _AddFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
-    // On black the palette's mid→deep ramp ends in a muddy dark tone, so dark
-    // mode runs brand into a lightly deepened brand instead (white icon stays
-    // legible, the accent stays vivid).
-    final gradient = dark
-        ? LinearGradient(
-            colors: [
-              AppColors.filledBrand,
-              Color.lerp(AppColors.filledBrand, AppColors.navyDeep, 0.4) ??
-                  AppColors.filledBrand,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-        : AppColors.actionGradient;
+    final highContrast = MediaQuery.highContrastOf(context);
     return SizedBox(
-      width: 58,
-      height: 58,
-      child: FloatingActionButton(
-        onPressed: onPressed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        highlightElevation: 0,
-        tooltip: 'Add transaction',
-        child: Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: gradient,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: dark ? 0.18 : 0.30),
-              width: 1.5,
+      width: 56,
+      height: 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow:
+              highContrast ? null : AppColors.glassShadows(context, floating: true),
+        ),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: highContrast ? 0 : AppColors.glassBlurSigma,
+              sigmaY: highContrast ? 0 : AppColors.glassBlurSigma,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.brand.withValues(alpha: 0.36),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+            child: FloatingActionButton(
+              onPressed: onPressed,
+              backgroundColor: highContrast
+                  ? AppColors.overlaySurfaceFor(dark)
+                  : AppColors.fabFillFor(dark),
+              foregroundColor: AppColors.fabInkFor(dark),
+              elevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              highlightElevation: 0,
+              shape: CircleBorder(
+                side: BorderSide(
+                  color: highContrast
+                      ? AppColors.fabInkFor(dark)
+                      : AppColors.navAccentFor(dark)
+                          .withValues(alpha: dark ? 0.34 : 0.26),
+                ),
               ),
-            ],
+              tooltip: 'Add transaction',
+              child: Icon(
+                Icons.add_rounded,
+                color: AppColors.fabInkFor(dark),
+                size: 28,
+              ),
+            ),
           ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
         ),
       ),
     );

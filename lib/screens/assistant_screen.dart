@@ -172,11 +172,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
+                  gradient: AppColors.accentHeroGradient(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.auto_awesome_rounded,
-                    color: Colors.white, size: 20),
+                child: Icon(Icons.auto_awesome_rounded,
+                    color: AppColors.onAccentHero(context), size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -427,7 +427,10 @@ class _MessageBlock extends StatelessWidget {
           child: Text(
             message.text,
             style: AppText.body(context).copyWith(
-              color: Colors.white,
+              // deepFill is a blend of brand and the deep stop, so white is
+              // not guaranteed on it; the ink is measured against the fill.
+              color:
+                  AppColors.resolveInk(Colors.white, AppColors.deepFill(context)),
               fontSize: 13.5,
               height: 1.4,
             ),
@@ -446,11 +449,11 @@ class _MessageBlock extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.auto_awesome_rounded,
-                color: Colors.white, size: 16),
+            child: Icon(Icons.auto_awesome_rounded,
+                color: AppColors.onAccentHero(context), size: 16),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -597,11 +600,11 @@ class _ThinkingBubble extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.auto_awesome_rounded,
-                color: Colors.white, size: 16),
+            child: Icon(Icons.auto_awesome_rounded,
+                color: AppColors.onAccentHero(context), size: 16),
           ),
           const SizedBox(width: AppSpacing.sm),
           Container(
@@ -733,7 +736,8 @@ class _Composer extends StatelessWidget {
                       height: 48,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: canSend ? AppColors.actionGradient : null,
+                          gradient:
+                              canSend ? AppColors.accentHeroGradient(context) : null,
                           color: canSend ? null : AppColors.surfaceAlt(context),
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
@@ -743,7 +747,7 @@ class _Composer extends StatelessWidget {
                           icon: Icon(
                             Icons.arrow_upward_rounded,
                             color: canSend
-                                ? Colors.white
+                                ? AppColors.onAccentHero(context)
                                 : AppColors.textTertiary(context),
                           ),
                         ),

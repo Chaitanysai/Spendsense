@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/category_style.dart';
 
@@ -51,7 +52,13 @@ class CategoryBubble extends StatelessWidget {
           child: Icon(
             CategoryStyle.icon(category),
             size: size * 0.46,
-            color: color,
+            // The ring and wash keep the category hue; the glyph is measured
+            // against the stronger gradient stop it sits on.
+            color: AppColors.inkOnWash(
+              context,
+              color,
+              alpha: highlighted ? 0.32 : 0.20,
+            ),
           ),
         ),
         if (label != null) ...[
@@ -68,7 +75,8 @@ class CategoryBubble extends StatelessWidget {
             percentLabel!,
             style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
               fontSize: 11,
-              color: color,
+              color: AppColors.resolveInk(color, AppColors.glassSurface(context)),
+              fontWeight: FontWeight.w700,
             ),
           ),
       ],

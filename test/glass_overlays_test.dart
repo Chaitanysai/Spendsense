@@ -173,7 +173,7 @@ void main() {
       expect(backgroundDecoration(tester).color, isNot(black));
     });
 
-    testWidgets('Midnight keeps navy glass on the black canvas',
+    testWidgets('Midnight keeps neutral charcoal glass on the black canvas',
         (tester) async {
       AppColors.applyPalette(AppPalette.midnight);
       late Color fill;
@@ -191,12 +191,16 @@ void main() {
         dark: true,
       ));
       expect(canvas, black);
-      // Cards: translucent navy, not black and not opaque.
+      // Cards: translucent charcoal, not black and not opaque. Very low chroma:
+      // Midnight must not read as the old navy or as paint.
       expect(fill.a, lessThan(0.9));
-      expect(fill.b, greaterThan(fill.r), reason: 'navy-tinted card');
+      final spread = [fill.r, fill.g, fill.b].reduce((a, b) => a > b ? a : b) -
+          [fill.r, fill.g, fill.b].reduce((a, b) => a < b ? a : b);
+      expect(spread * 255, lessThan(12), reason: 'neutral charcoal card');
       expect(fill, isNot(black));
-      // Hero: blue-lit gradient, brighter than the surface it sits on.
-      expect(hero.colors.first.b, greaterThan(hero.colors.first.r));
+      // Hero: emerald-lit gradient, brighter than the surface it sits on.
+      expect(hero.colors.first.g, greaterThan(hero.colors.first.r));
+      expect(hero.colors.first.g, greaterThan(hero.colors.first.b));
       expect(hero.colors.first.computeLuminance(),
           greaterThan(AppColors.darkSurface.computeLuminance()));
       // Borders stay a light hairline.
@@ -279,7 +283,45 @@ void main() {
       NavItem(Icons.receipt_long_rounded, 'Activity'),
     ];
 
-    testWidgets('selected slot is a lit pill with dark ink on navy glass',
+    testWidgets('selected slot is a translucent accent container, not a slab',
+        (tester) async {
+      for (final palette in [
+        AppPalette.midnight,
+        AppPalette.deepNavy,
+        AppPalette.plumBlush,
+      ]) {
+        AppColors.applyPalette(palette);
+        await tester.pumpWidget(_app(
+          FloatingNavBar(
+            key: ValueKey(palette.id),
+            items: items,
+            currentIndex: 0,
+            onTap: (_) {},
+          ),
+          dark: true,
+        ));
+        await tester.pumpAndSettle();
+        final context = tester.element(find.byType(FloatingNavBar));
+        final home = tester.widget<Icon>(find.byIcon(Icons.home_rounded));
+        final idle =
+            tester.widget<Icon>(find.byIcon(Icons.receipt_long_rounded));
+        // The glyph is resolved against the container it actually sits on, and
+        // differs from the idle glyph.
+        expect(home.color, AppColors.navSelectedInk(context),
+            reason: palette.label);
+        expect(home.color, isNot(idle.color), reason: palette.label);
+        final pill = tester.widget<DecoratedBox>(
+          find.byKey(const Key('nav-selected-pill')),
+        );
+        final decoration = pill.decoration as BoxDecoration;
+        // No gradient slab: a flat, clearly see-through accent tint.
+        expect(decoration.gradient, isNull, reason: palette.label);
+        expect(decoration.color!.a, lessThan(0.4), reason: palette.label);
+        expect(decoration.color!.a, greaterThan(0.05), reason: palette.label);
+      }
+    });
+
+    testWidgets('the bar itself is see-through over the canvas',
         (tester) async {
       AppColors.applyPalette(AppPalette.midnight);
       await tester.pumpWidget(_app(
@@ -288,19 +330,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
       final context = tester.element(find.byType(FloatingNavBar));
-      final home = tester.widget<Icon>(find.byIcon(Icons.home_rounded));
-      final idle = tester.widget<Icon>(find.byIcon(Icons.receipt_long_rounded));
-      // The pill is the lit object; the glyph is its dark ink. Asserting both
-      // halves keeps the contrast contract honest (a white glyph on the lit
-      // stop would fail AA on the paler glass palettes).
-      expect(home.color, AppColors.onNavPill(context));
-      expect(home.color, isNot(idle.color));
-      final pill = tester.widget<DecoratedBox>(
-        find.byKey(const Key('nav-selected-pill')),
-      );
-      final gradient =
-          (pill.decoration as BoxDecoration).gradient! as LinearGradient;
-      expect(gradient.colors.first, AppColors.brandBright);
+      final fill = AppColors.navFill(context);
+      expect(fill.a, inInclusiveRange(0.45, 0.60));
     });
   });
 

@@ -269,10 +269,10 @@ class CycleHero extends StatelessWidget {
   Widget _compactBody(BuildContext context, Color tone) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.border(context)),
+        shadow: false,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -376,10 +376,10 @@ class CycleHero extends StatelessWidget {
     if (entries.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor(context),
+        decoration: AppColors.panelDecoration(
+          context,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppColors.border(context)),
+          shadow: false,
         ),
         child: Row(
           children: [
@@ -406,10 +406,10 @@ class CycleHero extends StatelessWidget {
         horizontal: compact ? AppSpacing.md : AppSpacing.sm,
         vertical: AppSpacing.sm,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border(context)),
+        shadow: false,
       ),
       child: compact
           ? Column(
@@ -528,10 +528,10 @@ class _PeriodRow extends StatelessWidget {
               horizontal: AppSpacing.md,
               vertical: 6,
             ),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceColor(context),
+            decoration: AppColors.panelDecoration(
+              context,
               borderRadius: BorderRadius.circular(AppRadius.pill),
-              border: Border.all(color: AppColors.border(context)),
+              shadow: false,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

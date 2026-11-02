@@ -56,6 +56,11 @@ class BudgetSummary extends StatelessWidget {
                 ? 'Budget fully used'
                 : '${Formatters.currency.format(progress.remainingMinor)} left';
 
+    // The status text sits on a 14% wash of its own tone. Warning amber and
+    // income green fall under AA there on a light card, so the ink is resolved
+    // against the colour actually behind it.
+    final pillInk = AppColors.inkOnWash(context, tone);
+
     final spentText = 'Spent ${Formatters.currency.format(progress.spentMinor)}'
         '${hasBudget ? ' · ${progress.percentUsed}% used' : ''}';
 
@@ -109,7 +114,7 @@ class BudgetSummary extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.14),
+              color: AppColors.wash(context, tone),
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Padding(
@@ -120,7 +125,7 @@ class BudgetSummary extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 15, color: tone),
+                  Icon(icon, size: 15, color: pillInk),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -128,7 +133,7 @@ class BudgetSummary extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.title(context)
-                          .copyWith(fontSize: 12.5, color: tone),
+                          .copyWith(fontSize: 12.5, color: pillInk),
                     ),
                   ),
                 ],

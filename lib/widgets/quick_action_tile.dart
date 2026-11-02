@@ -124,17 +124,9 @@ class QuickActionTile extends StatelessWidget {
             horizontal: AppSpacing.sm,
             vertical: AppSpacing.md,
           ),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor(context),
+          decoration: AppColors.panelDecoration(
+            context,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border(context)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadow(context),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -144,13 +136,16 @@ class QuickActionTile extends StatelessWidget {
                 width: AppSpacing.tileIconBox,
                 height: AppSpacing.tileIconBox,
                 decoration: BoxDecoration(
-                  color: AppColors.brand.withValues(alpha: 0.11),
+                  color: AppColors.brand.withValues(
+                    alpha: AppColors.brandWellAlpha(AppColors.isDark(context)),
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   action.icon,
                   size: 19,
-                  color: AppColors.brandInk(context),
+                  // Measured against the plate it sits on, like every well.
+                  color: AppColors.brandWellInk(context),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

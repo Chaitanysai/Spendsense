@@ -271,7 +271,7 @@ class AssistantTransactionRow extends StatelessWidget {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: AppColors.wash(context, color),
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(
@@ -279,7 +279,7 @@ class AssistantTransactionRow extends StatelessWidget {
                     ? Icons.trending_up_rounded
                     : CategoryStyle.icon(transaction.category),
                 size: 17,
-                color: color,
+                color: AppColors.inkOnWash(context, color),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -377,7 +377,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: AppColors.wash(context, color),
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
@@ -385,7 +385,7 @@ class _Badge extends StatelessWidget {
         label,
         style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
           fontSize: 9.5,
-          color: color,
+          color: AppColors.inkOnWash(context, color),
         ),
       ),
     );
@@ -465,7 +465,7 @@ class AssistantComparisonCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md, vertical: 8),
             decoration: BoxDecoration(
-              color: deltaColor.withValues(alpha: 0.10),
+              color: AppColors.wash(context, deltaColor),
               borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(color: deltaColor.withValues(alpha: 0.25)),
             ),
@@ -474,7 +474,7 @@ class AssistantComparisonCard extends StatelessWidget {
                 Icon(
                   up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
                   size: 16,
-                  color: deltaColor,
+                  color: AppColors.inkOnWash(context, deltaColor),
                 ),
                 const SizedBox(width: 7),
                 Expanded(
@@ -484,7 +484,7 @@ class AssistantComparisonCard extends StatelessWidget {
                     '(${comparison.percentChange.abs().toStringAsFixed(1)}%)',
                     style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
                       fontSize: 11.5,
-                      color: deltaColor,
+                      color: AppColors.inkOnWash(context, deltaColor),
                     ),
                   ),
                 ),
@@ -616,12 +616,14 @@ class AssistantBillsCard extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: _statusColor(context, bill.status)
-                          .withValues(alpha: 0.12),
+                      color:
+                          AppColors.wash(context, _statusColor(context, bill.status)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.receipt_long_rounded,
-                        size: 16, color: _statusColor(context, bill.status)),
+                        size: 16,
+                        color: AppColors.inkOnWash(
+                            context, _statusColor(context, bill.status))),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
@@ -678,17 +680,13 @@ class AssistantPendingActionCard extends StatelessWidget {
     final accent = danger ? AppColors.danger : AppColors.warning;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor(context),
+      // Same panel as every card; only the border carries the warning/danger
+      // hue, so the confirmation reads as urgent without a coloured halo.
+      decoration: AppColors.panelDecoration(
+        context,
         borderRadius: BorderRadius.circular(AppRadius.lg),
+      ).copyWith(
         border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.4),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.10),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,13 +710,15 @@ class AssistantPendingActionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
+                  color: AppColors.wash(context, accent),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text('NOT APPLIED',
                     style: AppText.weight(
                             AppText.label(context), FontWeight.w800)
-                        .copyWith(fontSize: 9, color: accent)),
+                        .copyWith(
+                            fontSize: 9,
+                            color: AppColors.inkOnWash(context, accent))),
               ),
             ],
           ),

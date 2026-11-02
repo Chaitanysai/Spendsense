@@ -6,6 +6,7 @@ import 'package:flutter/physics.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
+import 'glass_card.dart' show GlassHighlight;
 import 'pressable.dart';
 
 class NavItem {
@@ -126,6 +127,8 @@ class _FloatingNavBarState extends State<FloatingNavBar>
     final borderRadius = BorderRadius.circular(AppRadius.pill);
     final highContrast = MediaQuery.highContrastOf(context);
 
+    // The shadow sits outside the clip so it is not cut off; the blur, fill,
+    // hairline and lit edge all live inside it.
     return SafeArea(
       top: false,
       child: Padding(
@@ -135,64 +138,45 @@ class _FloatingNavBarState extends State<FloatingNavBar>
           AppSpacing.md,
           AppSpacing.sm,
         ),
-        child: ClipRRect(
-          borderRadius: borderRadius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: highContrast ? 0 : 12,
-              sigmaY: highContrast ? 0 : 12,
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs,
-                vertical: AppSpacing.sm,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow:
+                highContrast ? null : AppColors.glassShadows(context, floating: true),
+          ),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: highContrast ? 0 : AppColors.glassBlurSigma,
+                sigmaY: highContrast ? 0 : AppColors.glassBlurSigma,
               ),
-              decoration: BoxDecoration(
-                gradient: highContrast
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: AppColors.isGlassCanvas(context)
-                            ? [
-                                AppColors.darkSurfaceAlt
-                                    .withValues(alpha: 0.78),
-                                AppColors.darkBackground
-                                    .withValues(alpha: 0.62),
-                              ]
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xs,
+                      vertical: AppSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      // High contrast replaces the see-through fill with an
+                      // opaque one: translucency over scrolling content is the
+                      // legibility problem that setting exists to remove.
+                      color: highContrast
+                          ? (dark ? AppColors.darkSurfaceAlt : Colors.white)
+                          : AppColors.navFill(context),
+                      borderRadius: borderRadius,
+                      border: Border.all(
+                        color: highContrast
+                            ? AppColors.textPrimary(context)
                             : dark
-                                ? [
-                                    AppColors.darkSurfaceAlt
-                                        .withValues(alpha: 0.88),
-                                    AppColors.darkSurface
-                                        .withValues(alpha: 0.78),
-                                  ]
-                                : [
-                                    Colors.white.withValues(alpha: 0.80),
-                                    Colors.white.withValues(alpha: 0.62),
-                                  ],
+                                ? Colors.white
+                                    .withValues(alpha: AppColors.glassBorderAlpha)
+                                : Colors.black.withValues(alpha: 0.07),
+                        width: highContrast ? 1.5 : 1,
                       ),
-                color: highContrast
-                    ? (dark ? AppColors.darkSurfaceAlt : Colors.white)
-                    : null,
-                borderRadius: borderRadius,
-                border: Border.all(
-                  color: highContrast
-                      ? AppColors.textPrimary(context)
-                      : dark
-                          ? Colors.white.withValues(alpha: 0.10)
-                          : Colors.black.withValues(alpha: 0.06),
-                  width: highContrast ? 1.5 : 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadow(context),
-                    blurRadius: 28,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: LayoutBuilder(
+                    ),
+                    child: LayoutBuilder(
                 builder: (context, constraints) {
                   final slot = constraints.maxWidth / widget.items.length;
                   return Stack(
@@ -223,18 +207,17 @@ class _FloatingNavBarState extends State<FloatingNavBar>
                             child: ExcludeSemantics(
                               child: DecoratedBox(
                                 key: const Key('nav-selected-pill'),
+                                // A translucent accent container: the bar shows
+                                // through it, so selection reads as a tint on
+                                // the glass rather than a solid slab.
                                 decoration: BoxDecoration(
-                                  gradient: AppColors.navPillGradient(context),
+                                  color: AppColors.navSelectedFill(context),
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.pill),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.brand.withValues(
-                                          alpha: dark ? 0.34 : 0.22),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
+                                  border: Border.all(
+                                    color: AppColors.navAccentFor(dark)
+                                        .withValues(alpha: dark ? 0.28 : 0.20),
+                                  ),
                                 ),
                               ),
                             ),
@@ -257,6 +240,12 @@ class _FloatingNavBarState extends State<FloatingNavBar>
                     ],
                   );
                 },
+                    ),
+                  ),
+                  // Lit top edge, shared with GlassCard.
+                  if (!highContrast)
+                    const GlassHighlight(inset: AppRadius.xl),
+                ],
               ),
             ),
           ),
@@ -281,8 +270,8 @@ class _NavSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedColor = AppColors.navSelected(context);
-    final idleColor = AppColors.textTertiary(context);
+    final selectedColor = AppColors.navSelectedInk(context);
+    final idleColor = AppColors.navIdleInk(context);
     final duration = AppMotion.respect(context, AppMotion.fast);
 
     return Semantics(
@@ -310,8 +299,7 @@ class _NavSlot extends StatelessWidget {
                       child: Icon(
                         item.icon,
                         size: 21,
-                        color:
-                            selected ? AppColors.onNavPill(context) : idleColor,
+                        color: selected ? selectedColor : idleColor,
                       ),
                     ),
                   ),
