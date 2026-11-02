@@ -482,8 +482,11 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
+          # The codebase qualifier is required: with two codebases declared in
+          # firebase.json, "--only functions:downloadApk" matches nothing and the
+          # deploy aborts with "No function matches given --only filters".
           npx --yes firebase-tools@13.35.1 deploy \
-            --only hosting,functions:downloadApk \
+            --only hosting,functions:download:downloadApk \
             --project spendsense-ota-2026 \
             --token "$FIREBASE_TOKEN" \
             --non-interactive
