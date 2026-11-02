@@ -294,7 +294,12 @@ jobs:
         # link, the rewrite or the function's source is missing, the button 404s.
         run: |
           set -euo pipefail
-          if ! grep -q 'href="/releases/latest.apk"' ota/public/site/assets/*.js; then
+          # Check the path, not the attribute syntax. React minifies the button
+          # to href:"/releases/latest.apk" inside the bundle, so grepping for
+          # href="/releases/latest.apk" there can never match and would block
+          # every deploy. The index.html check below is real HTML and keeps the
+          # attribute form.
+          if ! grep -q '/releases/latest\.apk' ota/public/site/assets/*.js; then
             echo "::error::the built landing bundles do not link to /releases/latest.apk (did site/ change without a rebuild?)"
             exit 1
           fi
