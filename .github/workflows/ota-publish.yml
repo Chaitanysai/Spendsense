@@ -288,6 +288,31 @@ jobs:
           fi
           echo "OK: landing shell, its bundles, and the legal pages are in the payload"
 
+      - name: Assert the download button and its redirect are wired
+        # The button points at /releases/latest.apk, which is a Hosting rewrite to
+        # the downloadApk function rather than an uploaded file. If any one of the
+        # link, the rewrite or the function's source is missing, the button 404s.
+        run: |
+          set -euo pipefail
+          if ! grep -q 'href="/releases/latest.apk"' ota/public/site/assets/*.js; then
+            echo "::error::the built landing bundles do not link to /releases/latest.apk (did site/ change without a rebuild?)"
+            exit 1
+          fi
+          if ! grep -q 'href="/releases/latest.apk"' ota/public/index.html; then
+            echo "::error::ota/public/index.html (noscript fallback) no longer links to /releases/latest.apk"
+            exit 1
+          fi
+          if ! grep -q '"/releases/latest.apk"' firebase.json \
+             || ! grep -q '"functionId": *"downloadApk"' firebase.json; then
+            echo "::error::firebase.json has no rewrite from /releases/latest.apk to downloadApk"
+            exit 1
+          fi
+          if [ ! -s backend/download_redirect/index.js ]; then
+            echo "::error::backend/download_redirect/index.js is missing or empty"
+            exit 1
+          fi
+          echo "OK: download button, host rewrite and downloadApk function are all in place"
+
       - name: Stage APK under ota/public/releases
         id: version
         run: |
@@ -431,6 +456,12 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install the download redirect function's dependencies
+        # The function ships its own package.json; without the install the
+        # Functions deploy aborts, so fail here with a readable message.
+        working-directory: backend/download_redirect
+        run: npm install --omit=dev --no-audit --no-fund
+
       - name: Require Firebase credentials
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
@@ -443,15 +474,39 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy hosting only
+      - name: Deploy hosting and the download redirect
+        # `--only hosting` would publish the page while leaving the rewrite's
+        # function absent, so the download button would land on the 404 page.
+        # Nothing else is included: this workflow never touches the app's other
+        # functions or any other Firebase service.
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           npx --yes firebase-tools@13.35.1 deploy \
-            --only hosting \
+            --only hosting,functions:downloadApk \
             --project spendsense-ota-2026 \
             --token "$FIREBASE_TOKEN" \
             --non-interactive
+
+      - name: Verify the live download link serves an APK
+        # The site is public and the check is one request, so prove the button
+        # works instead of assuming the deploy took. Retries cover the window
+        # where Hosting has the rewrite but the function is still rolling out.
+        run: |
+          set -euo pipefail
+          URL="https://spendsense-ota-2026.web.app/releases/latest.apk"
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -I \
+                     --max-time 20 --proto '=https' "$URL" || echo "000")
+            echo "attempt $i: HTTP $CODE"
+            if [ "$CODE" = "302" ] || [ "$CODE" = "200" ]; then
+              echo "OK: $URL resolves to the published APK"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::$URL did not serve an APK after deploy (last HTTP $CODE)"
+          exit 1
 
       - name: Record what was published
         run: |
@@ -459,5 +514,6 @@ jobs:
             echo "### Published to Firebase Hosting"
             echo "- project: \`spendsense-ota-2026\`"
             echo "- version: \`${{ needs.validate.outputs.version }}\`"
-            echo "- channel: production (\`--only hosting\`)"
+            echo "- channel: production (\`hosting\` + \`functions:downloadApk\`)"
+            echo "- download: https://spendsense-ota-2026.web.app/releases/latest.apk"
           } >> "$GITHUB_STEP_SUMMARY"

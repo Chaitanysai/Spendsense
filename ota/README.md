@@ -18,5 +18,19 @@ They are produced by the release workflow, or locally with
 `tool/generate_ota_manifest.dart`, from an APK that has already passed signature
 and SHA-256 verification.
 
+## The landing page's download link
+
+`/releases/latest.apk` is not a file. It is a Hosting rewrite (see
+`firebase.json`) to the `downloadApk` function in `backend/download_redirect/`,
+which reads `manifest.json` and redirects to the APK that manifest names. A new
+version therefore updates the download button with no page edit and no rebuild,
+and the button can never advertise a different build from the one the in-app
+updater installs. The function re-checks the manifest's URL — https, this exact
+host, `.apk` path — before redirecting, and answers 502 rather than guessing.
+
+Because the rewrite needs the function, the publish workflow deploys with
+`--only hosting,functions:downloadApk`. A plain `--only hosting` deploy
+publishes the page while the button falls through to the 404 page.
+
 See [docs/OTA_UPDATES.md](../docs/OTA_UPDATES.md) for the trust model and
 publishing process.

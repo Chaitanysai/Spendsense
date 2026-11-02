@@ -1,0 +1,16 @@
+{
+  "name": "spendsense-download-redirect",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Serves the landing page's stable /releases/latest.apk download link.",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-functions": "^6.6.0"
+  }
+}

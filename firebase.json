@@ -4,6 +4,13 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/releases/latest.apk",
+        "function": {
+          "functionId": "downloadApk",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/404.html"
       }
