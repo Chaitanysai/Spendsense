@@ -11,6 +11,26 @@ import '../screens/transaction_details_screen.dart';
 import 'app_page_route.dart';
 import 'pressable.dart';
 
+/// A mark for transactions that did *not* arrive from the phone's SMS inbox.
+///
+/// SMS is the default channel, so marking it would put a glyph on almost every
+/// row to say nothing new. Email imports and hand-entered rows are the
+/// exceptions worth spotting at a glance — particularly while checking that an
+/// email import actually landed.
+///
+/// Returns null for SMS sources, which is the signal to draw nothing.
+IconData? transactionSourceIcon(String source) {
+  switch (source) {
+    case 'Email-Gmail':
+      return Icons.mail_outline_rounded;
+    case 'Manual':
+      return Icons.edit_rounded;
+    default:
+      // SMS-Parser, SMS-AI, and any future SMS variant stay unmarked.
+      return null;
+  }
+}
+
 /// Compact transaction row: a circular category icon, merchant over its meta
 /// line, and a right-aligned amount.
 ///
@@ -147,14 +167,10 @@ class TransactionTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(context).copyWith(
-                          fontSize: 11.5,
-                          color: AppColors.textTertiary(context),
-                        ),
+                      _MetaLine(
+                        source: transaction.source,
+                        text: meta,
+                        dense: dense,
                       ),
                     ],
                   ),
@@ -186,6 +202,60 @@ class TransactionTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The meta line under the merchant, optionally led by a source glyph.
+///
+/// The glyph sits inside the flexible part of the row and the text keeps its
+/// own ellipsis, so adding a mark never pushes the amount out of alignment and
+/// a narrow screen still truncates the text rather than the icon.
+class _MetaLine extends StatelessWidget {
+  final String source;
+  final String text;
+  final bool dense;
+
+  const _MetaLine({
+    required this.source,
+    required this.text,
+    required this.dense,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppText.body(context).copyWith(
+      fontSize: 11.5,
+      color: AppColors.textTertiary(context),
+    );
+    final icon = transactionSourceIcon(source);
+    if (icon == null) {
+      return Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: dense ? 11 : 12,
+          color: AppColors.textTertiary(context),
+        ),
+        const SizedBox(width: 4),
+        // Flexible, not Expanded: the text keeps the row's own ellipsis and a
+        // short meta line does not stretch the glyph away from it.
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+      ],
     );
   }
 }
