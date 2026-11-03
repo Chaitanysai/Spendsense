@@ -311,20 +311,24 @@ analyses, tests and builds from GitHub alone.
 
 | Item | Value |
 |---|---|
-| Final commit SHA | `5b488b8be4bc37f893686df9ae9796f3e6980be2` |
-| Branch | `feat/spendsense-premium-redesign` |
+| Final commit on `release/2.0.13+38` | `dc540d2999ebc7c12b39feac20d8ed26d52db07f` (squash merge of PR #47) |
+| Feature branch | `feat/spendsense-premium-redesign` at `7972121` |
 | Remote URL | <https://github.com/Chaitanysai/Spendsense> |
-| Remote SHA verified | Yes — `gh api` matches local HEAD |
-| Pull request | [#47](https://github.com/Chaitanysai/Spendsense/pull/47) → `release/2.0.13+38` |
-| Synchronization | Branch pushed and verified; PR open and awaiting review |
+| Remote SHA verified | Yes — `gh api` and `git ls-remote` agree |
+| Pull request | [#47](https://github.com/Chaitanysai/Spendsense/pull/47) — **MERGED** 2026-11-03T16:21:48Z by `Chaitanysai` |
+| Post-merge CI | `Release Branch CI` #18 on `dc540d2`: `ci-guard`, `security`, `build` all pass |
+| Merged content verified | 19 `AppPalette` definitions present, launch `_holdWhite` fix present, final report present |
 | Local-only changes remaining | 31 modified screenshots under `docs/design-review/` (pre-existing, unrelated) |
 | Worktrees preserved | `release-48` and all others untouched |
 
+The merge was a squash, so the two commits from this branch appear on
+`release/2.0.13+38` as the single commit `dc540d2`. The tree was checked after
+the merge rather than assumed from the green PR.
+
 ### Outstanding user action
 
-1. Review and merge PR #47. Both `main` and the release branch require an
-   approving review, so the merge needs a reviewer (the account that opened the
-   PR cannot self-approve).
-2. Optionally supply signing credentials if a release APK is needed.
-3. Run the manual accessibility pass on a device, or sign in on the preview
-   build to complete the visual review of the six themes.
+1. ~~Review and merge PR #47.~~ Done.
+2. Optionally supply signing credentials if a release APK or OTA publish is
+   needed. None was published — that remains a deliberate non-action.
+3. Run the manual accessibility pass on a device, or sign in on a preview build
+   to complete the visual review of the six themes (§3, §7).
