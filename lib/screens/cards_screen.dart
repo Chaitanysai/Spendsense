@@ -35,15 +35,28 @@ class CardsScreen extends StatelessWidget {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.page),
-            child: AppEmptyState(
-              icon: Icons.credit_card_off_rounded,
-              title: 'No instruments yet',
-              message:
-                  'Once SpendSense has parsed some transactions, this screen '
-                  'groups your spending by payment method, bank and account.',
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.lg,
+              AppSpacing.page,
+              AppSpacing.tabBottomInset(context),
             ),
+            children: [
+              Text('Payment instruments', style: AppText.h1(context)),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Spending grouped by payment method, bank and account',
+                style: AppText.body(context),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              AppEmptyState(
+                icon: Icons.credit_card_off_rounded,
+                title: 'No instruments yet',
+                message: 'Once SpendSense has parsed transactions, this screen '
+                    'will group your spending by how you paid.',
+              ),
+            ],
           ),
         ),
       );
@@ -250,7 +263,8 @@ class _HeroStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: 6, color: AppColors.onHero(context, alpha: 0.7)),
+        Icon(Icons.circle,
+            size: 6, color: AppColors.onHero(context, alpha: 0.7)),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -403,7 +417,8 @@ class _InstrumentRow extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               '${(share * 100).toStringAsFixed(1)}%',
-              style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
+              style: AppText.weight(AppText.label(context), FontWeight.w700)
+                  .copyWith(
                 fontSize: 11,
                 color: color,
               ),

@@ -325,10 +325,10 @@ class AppColors {
     double minContrast = 4.5,
   }) {
     if (_contrast(preferred, background) >= minContrast) return preferred;
-    final toward =
-        _contrast(Colors.white, background) >= _contrast(Colors.black, background)
-            ? Colors.white
-            : Colors.black;
+    final toward = _contrast(Colors.white, background) >=
+            _contrast(Colors.black, background)
+        ? Colors.white
+        : Colors.black;
     for (var t = 0.05; t < 1.0; t += 0.05) {
       final candidate = Color.lerp(preferred, toward, t) ?? preferred;
       if (_contrast(candidate, background) >= minContrast) return candidate;
@@ -499,8 +499,7 @@ class AppColors {
   /// page. Dark mode stays a restrained wash so cards read as surfaces; glass
   /// palettes (Midnight and the 2026 premium set) let the tinted canvas show
   /// through their cards.
-  static Color glassFill(BuildContext context) =>
-      glassFillFor(isDark(context));
+  static Color glassFill(BuildContext context) => glassFillFor(isDark(context));
 
   static Color glassBorder(BuildContext context) =>
       glassBorderFor(isDark(context));
@@ -529,8 +528,7 @@ class AppColors {
 
   /// The opaque colour a glass card shows over its canvas, for panels that do
   /// not need their own blur (rows, strips, chips, sheets).
-  static Color glassSurface(BuildContext context) =>
-      glassBase(isDark(context));
+  static Color glassSurface(BuildContext context) => glassBase(isDark(context));
 
   /// The shared panel look for widgets that are not a [GlassCard]: the same
   /// tone, hairline and shadow, with no backdrop blur. Every screen-level
@@ -636,8 +634,9 @@ class AppColors {
   /// Fill of a selected segment/pill inside a card. Dark mode lifts with a
   /// neutral white wash (a brand wash over a dark card lands *below* its
   /// neighbours); light mode lays a brand tint down.
-  static Color pillSelectedFillFor(bool dark) =>
-      dark ? Colors.white.withValues(alpha: 0.10) : brand.withValues(alpha: 0.12);
+  static Color pillSelectedFillFor(bool dark) => dark
+      ? Colors.white.withValues(alpha: 0.10)
+      : brand.withValues(alpha: 0.12);
 
   /// The vivid stat/CTA card gradient that still holds white text.
   ///
@@ -902,7 +901,8 @@ class AppTokens {
     final accent = AppColors.brandInkFor(dark);
     final container =
         AppColors.navAccentFor(dark).withValues(alpha: dark ? 0.22 : 0.14);
-    final containerBase = Color.alphaBlend(container, AppColors.glassBase(dark));
+    final containerBase =
+        Color.alphaBlend(container, AppColors.glassBase(dark));
     final secondary = AppColors.resolveInk(
       dark ? AppColors.cyan : AppColors.azure,
       AppColors.glassBase(dark),
@@ -916,8 +916,8 @@ class AppTokens {
       surfaceElevated: raised,
       surfaceGlass: AppColors.glassFillFor(dark),
       surfaceGlassElevated: dark
-          ? AppColors.darkSurfaceAlt.withValues(
-              alpha: AppColors.isGlassPalette ? 0.74 : 0.96)
+          ? AppColors.darkSurfaceAlt
+              .withValues(alpha: AppColors.isGlassPalette ? 0.74 : 0.96)
           : AppColors.surface.withValues(alpha: 0.96),
       textPrimary: AppColors.textPrimaryFor(dark),
       textSecondary: AppColors.textSecondaryFor(dark),

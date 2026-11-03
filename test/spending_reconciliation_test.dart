@@ -149,7 +149,8 @@ void main() {
 
     test('income never appears in instrument spending', () {
       seedCanonicalFixture();
-      final stats = provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+      final stats =
+          provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
 
       // The 5,000.00 income row is on UPI; UPI must only carry spending.
       expect(stats['UPI']!.spent, 10050);
@@ -159,11 +160,7 @@ void main() {
     test('blank, null and "Others" collapse into one Other bucket', () {
       provider.debugSeed([
         _tx(id: '1', amountMinor: 100, date: DateTime(2026, 10, 2), method: ''),
-        _tx(
-            id: '2',
-            amountMinor: 200,
-            date: DateTime(2026, 10, 3),
-            bank: null),
+        _tx(id: '2', amountMinor: 200, date: DateTime(2026, 10, 3), bank: null),
         _tx(
             id: '3',
             amountMinor: 300,
@@ -190,7 +187,8 @@ void main() {
 
     test('shares are computed from the scoped denominator', () {
       seedCanonicalFixture();
-      final stats = provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+      final stats =
+          provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
       final total = provider.spendingTotalForPeriod(period);
 
       final shares = stats.values.map((s) => s.spent / total);

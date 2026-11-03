@@ -60,7 +60,8 @@ class BudgetMonitorService {
     final stored = prefs.getStringList('budget_alert_thresholds');
     if (stored != null) {
       final crossed = BudgetProgress(spentMinor: spent, budgetMinor: budget)
-          .crossedThreshold(normalizeBudgetThresholds(stored.map(int.tryParse)));
+          .crossedThreshold(
+              normalizeBudgetThresholds(stored.map(int.tryParse)));
       if (crossed == null) return;
       final spentLabel = Formatters.currency.format(spent);
       final budgetLabel = Formatters.currency.format(budget);

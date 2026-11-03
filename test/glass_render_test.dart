@@ -102,7 +102,8 @@ void main() {
             'materialicons-regular.otf');
     if (iconFile != null && iconFile.existsSync()) {
       final icons = FontLoader('MaterialIcons')
-        ..addFont(Future.value(ByteData.sublistView(iconFile.readAsBytesSync())));
+        ..addFont(
+            Future.value(ByteData.sublistView(iconFile.readAsBytesSync())));
       await icons.load();
     }
   });

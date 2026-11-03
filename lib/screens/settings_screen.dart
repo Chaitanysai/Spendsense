@@ -372,7 +372,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // that parse them.
             _section(context, 'Data sources', 3, [
               _SettingsTile(
-                icon: _isConnected ? Icons.wifi_outlined : Icons.wifi_off_outlined,
+                icon: _isConnected
+                    ? Icons.wifi_outlined
+                    : Icons.wifi_off_outlined,
                 iconColor: AppColors.azure,
                 title: 'Internet connection',
                 subtitle: _isConnected
@@ -685,8 +687,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// The divider aligns with the text column: tile padding, one well, one gap.
   Widget _divider(BuildContext context) => Divider(
         height: 1,
-        indent:
-            AppSpacing.lg + AppSpacing.wellSize + AppSpacing.md,
+        indent: AppSpacing.lg + AppSpacing.wellSize + AppSpacing.md,
         color: AppColors.border(context),
       );
 

@@ -23,6 +23,7 @@ Future<int?> showAmountDialog(
   String? helperText,
   String prefixText = '₹ ',
   String saveLabel = 'Save',
+
   /// Upper bound in paise. Values above it are rejected with [rangeError].
   int? maxMinor,
   String rangeError = 'That amount is too large.',

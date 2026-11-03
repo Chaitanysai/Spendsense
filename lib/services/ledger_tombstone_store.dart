@@ -119,8 +119,8 @@ class LedgerTombstoneStore {
   }) async {
     final all = await readAll();
     if (all.isEmpty) return 0;
-    final cutoff =
-        (now ?? DateTime.now()).millisecondsSinceEpoch - retention.inMilliseconds;
+    final cutoff = (now ?? DateTime.now()).millisecondsSinceEpoch -
+        retention.inMilliseconds;
     final kept = [
       for (final t in all)
         if (t.deletedAtMs >= cutoff) t

@@ -65,9 +65,8 @@ class _AuthTextFieldState extends State<AuthTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final passwordManager = widget.autofillHint == null
-        ? null
-        : <String>[widget.autofillHint!];
+    final passwordManager =
+        widget.autofillHint == null ? null : <String>[widget.autofillHint!];
 
     return TextField(
       controller: widget.controller,
@@ -91,8 +90,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
         helperText: widget.helperText,
         errorText: widget.errorText,
         prefixIcon: Icon(widget.icon),
-        suffixIcon:
-            widget.initiallyObscured ? _revealButton(context) : null,
+        suffixIcon: widget.initiallyObscured ? _revealButton(context) : null,
       ),
     );
   }
@@ -108,9 +106,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
       child: IconButton(
         onPressed: () => setState(() => _obscured = revealed),
         icon: Icon(
-          revealed
-              ? Icons.visibility_off_rounded
-              : Icons.visibility_rounded,
+          revealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
         ),
       ),
     );

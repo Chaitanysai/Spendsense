@@ -54,7 +54,8 @@ void main() {
         .widgetList<AnimatedProgressBar>(find.byType(AnimatedProgressBar))
         .map((w) => w.fraction)
         .toList();
-    expect(fractions, [closeTo(0.5, 1e-9), closeTo(0.3, 1e-9), closeTo(0.2, 1e-9)]);
+    expect(fractions,
+        [closeTo(0.5, 1e-9), closeTo(0.3, 1e-9), closeTo(0.2, 1e-9)]);
   });
 
   testWidgets('bar fractions are shares of the category total', (tester) async {
@@ -70,7 +71,8 @@ void main() {
         .map((w) => w.fraction)
         .toList();
 
-    expect(fractions, [closeTo(0.6, 1e-9), closeTo(0.2, 1e-9), closeTo(0.2, 1e-9)]);
+    expect(fractions,
+        [closeTo(0.6, 1e-9), closeTo(0.2, 1e-9), closeTo(0.2, 1e-9)]);
     expect(fractions.fold<double>(0, (a, b) => a + b), closeTo(1.0, 1e-9));
   });
 
@@ -125,9 +127,10 @@ void main() {
     await tester.pumpWidget(_host({'Food': 5000, 'Travel': 5000}));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.bySemanticsLabel('Food, 50 percent of spending'), findsOneWidget);
     expect(
-        find.bySemanticsLabel('Travel, 50 percent of spending'), findsOneWidget);
+        find.bySemanticsLabel('Food, 50 percent of spending'), findsOneWidget);
+    expect(find.bySemanticsLabel('Travel, 50 percent of spending'),
+        findsOneWidget);
     handle.dispose();
   });
 }

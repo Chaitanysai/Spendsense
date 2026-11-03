@@ -22,7 +22,8 @@ class AuthService {
     return FirebaseAuth.instance;
   }
 
-  User? get currentUser => isAvailable ? FirebaseAuth.instance.currentUser : null;
+  User? get currentUser =>
+      isAvailable ? FirebaseAuth.instance.currentUser : null;
 
   /// Emits on sign-in, sign-out and token refresh. Completes when Firebase is
   /// unavailable so callers can await it unconditionally.
@@ -89,7 +90,8 @@ class AuthService {
 
   /// Re-authenticates with the account's password, satisfying Firebase's
   /// recent-sign-in requirement before a destructive action.
-  Future<void> reauthenticate({required String email, required String password}) async {
+  Future<void> reauthenticate(
+      {required String email, required String password}) async {
     final user = currentUser;
     if (user == null) throw const AuthUnavailableException();
     final credential = EmailAuthProvider.credential(

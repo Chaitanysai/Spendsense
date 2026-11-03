@@ -85,7 +85,8 @@ class GmailEmailSource {
   static const prefsSendersKey = 'email_gmail_senders_v1';
   static const prefsConnectedEmailKey = 'email_gmail_connected_email_v1';
 
-  static const _serverClientId = String.fromEnvironment('GMAIL_SERVER_CLIENT_ID');
+  static const _serverClientId =
+      String.fromEnvironment('GMAIL_SERVER_CLIENT_ID');
   static const scope = 'https://www.googleapis.com/auth/gmail.readonly';
 
   /// Bank alert senders. Kept as exact domains (not free-form regexes) so a
@@ -502,8 +503,18 @@ class GmailEmailSource {
     ).firstMatch(cleaned);
     if (match == null) return null;
     const months = {
-      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-      'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'may': 5,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
     };
     final month = months[match.group(2)!.toLowerCase()];
     if (month == null) return null;
@@ -562,8 +573,7 @@ class GmailEmailSource {
   static String htmlToText(String html) {
     return html
         .replaceAll(
-            RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>',
-                caseSensitive: false),
+            RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false),
             ' ')
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
         .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
@@ -578,5 +588,3 @@ class GmailEmailSource {
         .trim();
   }
 }
-
-

@@ -25,8 +25,7 @@ void main() {
     for (final dark in [false, true]) {
       for (final palette in AppPalette.all) {
         AppColors.applyPalette(palette);
-        final Color base =
-            dark ? AppColors.darkSurfaceAlt : AppColors.surface;
+        final Color base = dark ? AppColors.darkSurfaceAlt : AppColors.surface;
         final alpha = dark ? 0.22 : 0.12;
 
         final out = <String>[];

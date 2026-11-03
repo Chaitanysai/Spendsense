@@ -80,7 +80,8 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
       } else {
         // Consume the provider's message here so the screen behind the
         // dialog never flashes the same failure.
-        _error = auth.errorMessage ?? 'Could not send the reset link. Try again.';
+        _error =
+            auth.errorMessage ?? 'Could not send the reset link. Try again.';
       }
     });
     if (ok) SoundScope.play(context, SoundEventType.actionSucceeded);

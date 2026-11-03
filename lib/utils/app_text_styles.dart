@@ -47,26 +47,26 @@ class AppText {
       );
 
   static TextStyle title(BuildContext context) => AppTypography.resolve(
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary(context),
       );
 
   /// Smallest readable supporting text: timestamps, meta lines, dense labels.
   ///
-  /// The scale used to stop at [label] (12), so screens that needed something
+  /// The scale used to stop at [label] (13), so screens that needed something
   /// smaller invented their own size — 11, 10.5, 10, 9.5, 8.5 — and the app
   /// ended up with 22 distinct font sizes. These named steps exist so a caller
   /// picks a role instead of a number.
   static TextStyle caption(BuildContext context) => AppTypography.resolve(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w500,
         color: AppColors.textTertiary(context),
       );
 
   /// Secondary body text: one step down from [body], still comfortably legible.
   static TextStyle bodySmall(BuildContext context) => AppTypography.resolve(
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
         height: 1.4,
         color: AppColors.textSecondary(context),
@@ -74,21 +74,21 @@ class AppText {
 
   /// Emphasised body text, for a value that sits inside a [body] paragraph.
   static TextStyle bodyStrong(BuildContext context) => AppTypography.resolve(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w700,
         height: 1.4,
         color: AppColors.textPrimary(context),
       );
 
   static TextStyle body(BuildContext context) => AppTypography.resolve(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w400,
         height: 1.4,
         color: AppColors.textSecondary(context),
       );
 
   static TextStyle label(BuildContext context) => AppTypography.resolve(
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary(context),
       );
@@ -150,4 +150,5 @@ class AppText {
         fontVariations: AppTypography.isVariable(style.fontFamily)
             ? <FontVariation>[FontVariation('wght', value.value.toDouble())]
             : null,
-      );}
+      );
+}

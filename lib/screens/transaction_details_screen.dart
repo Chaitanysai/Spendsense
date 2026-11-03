@@ -204,10 +204,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                   sound: null,
                   // Same rule as Add: the amount must be present before the
                   // action lights up.
-                  onPressed:
-                      _amountController.text.trim().isEmpty || _saving
-                          ? null
-                          : _save,
+                  onPressed: _amountController.text.trim().isEmpty || _saving
+                      ? null
+                      : _save,
                 ),
               ),
             ],
@@ -284,7 +283,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             icon: Icons.visibility_off_outlined,
             color: AppColors.textTertiary(context),
           ),
-          title: Text('Exclude from Insights', style: AppText.bodyStrong(context)),
+          title:
+              Text('Exclude from Insights', style: AppText.bodyStrong(context)),
           subtitle: Text(
             "Don't count this in totals",
             style: AppText.bodySmall(context),

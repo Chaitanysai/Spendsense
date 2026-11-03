@@ -47,7 +47,8 @@ void main() {
         clearLocalLedger: () async {
           // The account must already be gone when this runs.
           expect(auth.deleteCount, 1,
-              reason: 'local data must not be wiped before the account is deleted');
+              reason:
+                  'local data must not be wiped before the account is deleted');
           ledgerCleared = true;
         },
       );
@@ -75,7 +76,8 @@ void main() {
       );
     });
 
-    test('a stale session surfaces as reauthentication, not deletion', () async {
+    test('a stale session surfaces as reauthentication, not deletion',
+        () async {
       final auth = _FakeAuth(requiresReauth: true);
       final provider = AuthProvider(auth: auth);
       var ledgerCleared = false;

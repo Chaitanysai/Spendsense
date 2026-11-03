@@ -42,17 +42,17 @@ void main() {
               'textSecondary/${bg.key}', t.textSecondary, bg.value, 4.5);
           // Icons: 3:1 non-text minimum.
           expectAtLeast('iconPrimary/${bg.key}', t.iconPrimary, bg.value, 3);
-          expectAtLeast('iconSecondary/${bg.key}', t.iconSecondary, bg.value, 3);
+          expectAtLeast(
+              'iconSecondary/${bg.key}', t.iconSecondary, bg.value, 3);
         }
 
         // Navigation: the bar fill sits over the canvas, the selected container
         // over the bar fill.
         final bar = AppColors.navBackdropFor(dark);
         final selectedBackdrop = AppColors.navSelectedBackdropFor(dark);
-        expectAtLeast(
-            'nav unselected', AppColors.navIdleInkFor(dark), bar, 3);
-        expectAtLeast(
-            'nav selected', AppColors.navSelectedInkFor(dark), selectedBackdrop, 3);
+        expectAtLeast('nav unselected', AppColors.navIdleInkFor(dark), bar, 3);
+        expectAtLeast('nav selected', AppColors.navSelectedInkFor(dark),
+            selectedBackdrop, 3);
         // The selected state must also be distinguishable from the bar itself.
         final lift = _contrast(selectedBackdrop, bar);
         if (lift < 1.08) {
@@ -102,8 +102,8 @@ void main() {
 
           // Resolved inks always reach AA on their fill.
           atLeast('onBrand', _contrast(AppColors.onBrand, palette.brand), 4.5);
-          atLeast('onDanger', _contrast(AppColors.onDanger, AppColors.danger),
-              4.5);
+          atLeast(
+              'onDanger', _contrast(AppColors.onDanger, AppColors.danger), 4.5);
 
           // Icon wells: a plate is visible against the card and its glyph
           // holds AA, for every role Settings paints with.
@@ -176,8 +176,19 @@ void main() {
     // label on it: category hues, status hues and the three money colours.
     final tones = <String, Color>{
       for (final c in const [
-        'Food', 'Shopping', 'Fuel', 'Travel', 'Bills', 'Transfer', 'Cash',
-        'Entertainment', 'Health', 'Investment', 'UPI', 'Other', 'Income',
+        'Food',
+        'Shopping',
+        'Fuel',
+        'Travel',
+        'Bills',
+        'Transfer',
+        'Cash',
+        'Entertainment',
+        'Health',
+        'Investment',
+        'UPI',
+        'Other',
+        'Income',
       ])
         'category/$c': CategoryStyle.color(c),
       'warning': AppColors.warning,
@@ -195,7 +206,8 @@ void main() {
           for (final e in tones.entries) {
             for (final alpha in const [null, 0.18, 0.20, 0.32]) {
               final a = alpha ?? AppColors.washAlphaFor(dark);
-              final plate = Color.alphaBlend(e.value.withValues(alpha: a), base);
+              final plate =
+                  Color.alphaBlend(e.value.withValues(alpha: a), base);
               final ink = AppColors.inkOnWashFor(dark, e.value, alpha: alpha);
               final ratio = _contrast(ink, plate);
               if (ratio < 4.5) {

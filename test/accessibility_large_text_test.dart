@@ -16,7 +16,8 @@ import 'package:spendsense/utils/app_palette.dart';
 /// Gate 2.7 (large text / accessibility): the main dashboard must not produce
 /// layout overflow errors at elevated text scales, with data and empty.
 
-TransactionModel _tx(String id, int amountMinor, DateTime date, String merchant) =>
+TransactionModel _tx(
+        String id, int amountMinor, DateTime date, String merchant) =>
     TransactionModel(
       id: id,
       amountMinor: amountMinor,
@@ -54,7 +55,8 @@ void main() {
   });
 
   Future<TransactionProvider> pumpDashboard(WidgetTester tester,
-      {required double textScale, List<TransactionModel> seed = const []}) async {
+      {required double textScale,
+      List<TransactionModel> seed = const []}) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     tester.platformDispatcher.textScaleFactorTestValue = textScale;

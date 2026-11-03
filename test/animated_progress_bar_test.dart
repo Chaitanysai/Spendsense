@@ -123,7 +123,8 @@ void main() {
 
   testWidgets('a zero target paints nothing and never throws', (tester) async {
     await tester.pumpWidget(_host(
-      const AnimatedProgressBar(fraction: 0, duration: Duration(milliseconds: 200)),
+      const AnimatedProgressBar(
+          fraction: 0, duration: Duration(milliseconds: 200)),
     ));
     await tester.pump(const Duration(milliseconds: 300));
 

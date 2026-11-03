@@ -32,8 +32,8 @@ that screen before enabling it.
 - **Optional assistant** — a local, deterministic finance assistant. Cloud
   assistance is opt-in and proxied through a server that holds the model key.
 - **Offline first** — the app opens and works without a network connection.
-- **Appearance** — four curated premium palettes and additional themes, each in
-  light and dark mode.
+- **Appearance** — nineteen curated palettes, each in light and dark mode, in
+  three groups. See [the theme guide](docs/design-redesign/02-theme-implementation.md).
 - **OTA updates** — released builds can check for and install signed updates
   from Settings → Software update.
 
@@ -121,4 +121,5 @@ before opening a pull request, and keep changes scoped to one concern.
 - [Firebase setup](docs/firebase.md)
 - [Spending semantics](docs/spending-semantics.md)
 - [Typography](docs/typography.md)
+- [Theme system and palettes](docs/design-redesign/02-theme-implementation.md)
 - [Sound credits](assets/sounds/CREDITS.md)

@@ -32,11 +32,11 @@ class AuthProvider with ChangeNotifier {
       _name = user.displayName ?? '';
     }
     _subscription = _auth.authStateChanges().listen(
-          _onAuthStateChanged,
-          onError: (Object _) {
-            // A broken auth channel must not take the local app down with it.
-          },
-        );
+      _onAuthStateChanged,
+      onError: (Object _) {
+        // A broken auth channel must not take the local app down with it.
+      },
+    );
     _restoreLocalProfile();
   }
 

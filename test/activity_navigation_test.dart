@@ -42,8 +42,8 @@ Widget _harness(_CountingProvider provider, {bool reduceMotion = false}) {
     child: MaterialApp(
       home: Builder(
         builder: (context) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(disableAnimations: reduceMotion),
+          data:
+              MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
           child: Scaffold(
             body: Center(
               child: ElevatedButton(

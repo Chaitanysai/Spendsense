@@ -39,7 +39,8 @@ TransactionModel _tx(String id) => TransactionModel(
       isExcluded: false,
     );
 
-Future<void> _pumpApp(WidgetTester tester, {Size size = const Size(1080, 2340)}) async {
+Future<void> _pumpApp(WidgetTester tester,
+    {Size size = const Size(1080, 2340)}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
@@ -132,7 +133,8 @@ void main() {
     expect(provider.isLoadingCache, isFalse);
   });
 
-  testWidgets('an init failure renders the ledger error, never the empty '
+  testWidgets(
+      'an init failure renders the ledger error, never the empty '
       'dashboard', (tester) async {
     SharedPreferences.setMockInitialValues({
       ..._tamperedIndex,

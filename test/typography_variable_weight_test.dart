@@ -29,7 +29,8 @@ void main() {
 
   test('AppText.weight moves the reported weight and the axis together', () {
     final bold = AppText.weight(
-      AppTypography.styleFor('Inter', fontSize: 14, fontWeight: FontWeight.w400),
+      AppTypography.styleFor('Inter',
+          fontSize: 14, fontWeight: FontWeight.w400),
       FontWeight.w700,
     );
     expect(bold.fontWeight, FontWeight.w700);

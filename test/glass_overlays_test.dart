@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsense/models/transaction_model.dart';
@@ -48,16 +46,14 @@ void main() {
       }
     });
 
-    testWidgets('translucent navy glass cards keep a single blur',
+    testWidgets('navy theme cards remain opaque without a blur layer',
         (tester) async {
       AppColors.applyPalette(AppPalette.midnight);
       await tester.pumpWidget(_app(
         const GlassCard(child: Text('card')),
         dark: true,
       ));
-      expect(_blurCount(tester), 1);
-      final filter = tester.widget<BackdropFilter>(find.byType(BackdropFilter));
-      expect(filter.filter, isA<ImageFilter>());
+      expect(_blurCount(tester), 0);
     });
 
     testWidgets('hero cards get a hairline on navy glass and none in light',
@@ -140,7 +136,7 @@ void main() {
       }
     });
 
-    testWidgets('premium canvases use the palette tint and its glows',
+    testWidgets('premium canvases use the palette tint without glows',
         (tester) async {
       for (final palette in AppPalette.all.where((p) => !p.isAmoled)) {
         AppColors.applyPalette(palette);
@@ -160,7 +156,7 @@ void main() {
             w is Container &&
             w.decoration is BoxDecoration &&
             (w.decoration! as BoxDecoration).gradient is RadialGradient);
-        expect(radial, findsWidgets, reason: palette.label);
+        expect(radial, findsNothing, reason: palette.label);
       }
     });
 

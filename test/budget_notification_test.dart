@@ -20,7 +20,8 @@ class _FakeAndroidNotifications extends AndroidFlutterLocalNotificationsPlugin {
     DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
     DidReceiveBackgroundNotificationResponseCallback?
         onDidReceiveBackgroundNotificationResponse,
-  }) async => true;
+  }) async =>
+      true;
 
   @override
   Future<bool?> requestNotificationsPermission() async => true;
@@ -128,7 +129,8 @@ void main() {
   });
 
   group('user-chosen warning thresholds', () {
-    Future<TransactionProvider> seeded(int spent, List<String>? thresholds) async {
+    Future<TransactionProvider> seeded(
+        int spent, List<String>? thresholds) async {
       SharedPreferences.setMockInitialValues({
         'salary_day': 1,
         if (thresholds != null) 'budget_alert_thresholds': thresholds,
@@ -144,7 +146,8 @@ void main() {
     }
 
     test('only the 100% level enabled: 85% stays silent', () async {
-      await BudgetMonitorService().checkBudgetAlert(await seeded(8500, ['100']));
+      await BudgetMonitorService()
+          .checkBudgetAlert(await seeded(8500, ['100']));
       expect(shown, isEmpty);
     });
 

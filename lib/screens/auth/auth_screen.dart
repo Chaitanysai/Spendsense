@@ -60,7 +60,12 @@ class _AuthScreenState extends State<AuthScreen> {
     for (final ctrl in [_nameCtrl, _emailCtrl, _passwordCtrl, _confirmCtrl]) {
       ctrl.dispose();
     }
-    for (final node in [_nameFocus, _emailFocus, _passwordFocus, _confirmFocus]) {
+    for (final node in [
+      _nameFocus,
+      _emailFocus,
+      _passwordFocus,
+      _confirmFocus
+    ]) {
       node.dispose();
     }
     super.dispose();
@@ -221,14 +226,19 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: viewport.maxHeight),
                   child: IntrinsicHeight(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _hero(context),
-                        const SizedBox(height: AppSpacing.xxl),
-                        _card(context, busy: busy, error: error),
-                      ],
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _hero(context),
+                            const SizedBox(height: AppSpacing.xxl),
+                            _card(context, busy: busy, error: error),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

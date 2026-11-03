@@ -1102,9 +1102,8 @@ class TransactionProvider with ChangeNotifier {
       // count, so one parser miss moved the boundary past that message forever
       // and it could never be retried after a parser fix.
       if (alerts.isNotEmpty) {
-        final newest = alerts
-            .map((a) => a.date)
-            .reduce((a, b) => a.isAfter(b) ? a : b);
+        final newest =
+            alerts.map((a) => a.date).reduce((a, b) => a.isAfter(b) ? a : b);
         final retryDates = alerts
             .where((a) => retryable.contains('gmail:${a.id}'))
             .map((a) => a.date)

@@ -87,7 +87,11 @@ class CycleHero extends StatelessWidget {
     // At large text sizes the ring and its label fight for the same pixels.
     // Keeping the ring but shrinking the type would defeat the setting, so the
     // hero changes shape instead: same information, a linear track.
-    final compact = scale > 1.35;
+    // Landscape phones have the same width but far less vertical room. Use the
+    // linear presentation there so the headline and budget progress stay above
+    // the fold instead of letting the dial compete with the navigation bar.
+    final compact = scale > 1.35 ||
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final dark = AppColors.isDark(context);
 
     final tone = _over
@@ -331,7 +335,10 @@ class CycleHero extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               'Set a budget',
-              style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(color: AppColors.brandInk(context),),
+              style: AppText.weight(AppText.label(context), FontWeight.w700)
+                  .copyWith(
+                color: AppColors.brandInk(context),
+              ),
             ),
           ],
         ),
@@ -629,7 +636,8 @@ class _DeltaPill extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
+                style: AppText.weight(AppText.label(context), FontWeight.w700)
+                    .copyWith(
                   fontSize: 10.5,
                   color: AppColors.onLime(context),
                 ),

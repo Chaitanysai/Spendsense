@@ -914,7 +914,9 @@ class AssistantComposer {
           // Defence in depth: the tool window may be ignored by a future
           // implementation, so re-check the dates here as well.
           if (tx != null &&
-              (window == null || window.isAllTime || window.contains(tx.date)) &&
+              (window == null ||
+                  window.isAllTime ||
+                  window.contains(tx.date)) &&
               seen.add(tx.id)) {
             all.add(tx);
           }
