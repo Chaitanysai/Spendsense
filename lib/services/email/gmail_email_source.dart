@@ -46,6 +46,27 @@ class GmailAlert {
   });
 }
 
+/// Outcome of one email import attempt.
+///
+/// [found] counts the allowlisted bank alerts the search returned, [imported]
+/// the ones that became ledger entries, and [skipped] the ones no parser could
+/// turn into a transaction. Keeping the three separate is what lets the screen
+/// report "no bank mail matched" and "mail matched but was not recognised" as
+/// different outcomes instead of one empty result.
+class GmailSyncReport {
+  final int found;
+  final int imported;
+  final int skipped;
+
+  const GmailSyncReport({
+    required this.found,
+    required this.imported,
+    required this.skipped,
+  });
+
+  static const empty = GmailSyncReport(found: 0, imported: 0, skipped: 0);
+}
+
 /// On-device Gmail reader.
 ///
 /// This service does not parse transactions. It only:
@@ -345,7 +366,7 @@ class GmailEmailSource {
     // is attached by GmailTokenClient for every call.
     try {
       final domains = await senderDomains();
-      final query = _buildQuery(domains, since);
+      final query = buildQuery(domains, since);
       final messageRefs = <gmail.Message>[];
       String? pageToken;
       do {
@@ -404,12 +425,27 @@ class GmailEmailSource {
     return _parseDate(_header(message, 'Date')) ?? DateTime.now();
   }
 
-  static String _buildQuery(List<String> domains, DateTime? since) {
+  /// The Gmail search used for one sync.
+  ///
+  /// The sender list is a coarse server-side filter only; every listed message
+  /// is re-checked against the exact allowed domains before its body is read,
+  /// so a loose `from:` match cannot import a look-alike sender.
+  ///
+  /// `after:` takes a calendar date, not an epoch second, so the cursor is
+  /// rendered as `YYYY/MM/DD` with one day of overlap — Gmail's date
+  /// boundaries are not timezone-aware, and re-listing a day costs one listing
+  /// call while dedupe by message id drops what is already stored.
+  static String buildQuery(List<String> domains, DateTime? since) {
     final senders = domains.map((d) => 'from:$d').join(' OR ');
-    final after = since == null
-        ? ''
-        : ' after:${since.toUtc().millisecondsSinceEpoch ~/ 1000}';
+    final after = since == null ? '' : ' after:${_gmailDate(since)}';
     return '($senders) newer_than:30d$after';
+  }
+
+  static String _gmailDate(DateTime since) {
+    final utc = since.toUtc().subtract(const Duration(days: 1));
+    final month = utc.month.toString().padLeft(2, '0');
+    final day = utc.day.toString().padLeft(2, '0');
+    return '${utc.year}/$month/$day';
   }
 
   static String _header(gmail.Message message, String name) {
