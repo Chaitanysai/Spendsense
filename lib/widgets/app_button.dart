@@ -7,7 +7,7 @@ import '../utils/app_text_styles.dart';
 import 'pressable.dart';
 import 'sound_scope.dart';
 
-/// Primary action button — green action gradient, soft glow, press feedback and
+/// Primary action button — solid high-contrast fill, press feedback and
 /// an inline loading state. Uses a real [Material] + [InkWell] for accessibility.
 class AppPrimaryButton extends StatelessWidget {
   final String label;
@@ -53,17 +53,9 @@ class AppPrimaryButton extends StatelessWidget {
           width: expand ? double.infinity : null,
           height: 54,
           decoration: BoxDecoration(
-            gradient: gradient ?? AppColors.actionGradient,
+            color: gradient == null ? AppColors.filledBrand : null,
+            gradient: gradient,
             borderRadius: borderRadius,
-            boxShadow: enabled
-                ? [
-                    BoxShadow(
-                      color: AppColors.filledBrand.withValues(alpha: 0.30),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
           ),
           child: Material(
             color: Colors.transparent,
@@ -144,10 +136,10 @@ class AppGhostButton extends StatelessWidget {
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: AppColors.brand.withValues(alpha: 0.09),
+          color: AppColors.surfaceAlt(context),
           borderRadius: borderRadius,
           border: Border.all(
-            color: AppColors.brand.withValues(alpha: 0.18),
+            color: AppColors.border(context),
           ),
         ),
         child: Material(
@@ -165,7 +157,11 @@ class AppGhostButton extends StatelessWidget {
                   ],
                   Text(
                     label,
-                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(color: AppColors.brandInk(context),),
+                    style:
+                        AppText.weight(AppText.label(context), FontWeight.w700)
+                            .copyWith(
+                      color: AppColors.brandInk(context),
+                    ),
                   ),
                 ],
               ),

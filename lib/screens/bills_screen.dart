@@ -314,7 +314,8 @@ class _HeroStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: 6, color: AppColors.onHero(context, alpha: 0.7)),
+        Icon(Icons.circle,
+            size: 6, color: AppColors.onHero(context, alpha: 0.7)),
         const SizedBox(width: 6),
         Flexible(
           child: Text(

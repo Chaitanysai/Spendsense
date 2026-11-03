@@ -74,8 +74,7 @@ void main() {
   for (final dark in [true, false]) {
     final mode = dark ? 'dark' : 'light';
 
-    testWidgets('every dock plate is a visible shape ($mode)',
-        (tester) async {
+    testWidgets('every dock plate is a visible shape ($mode)', (tester) async {
       final p = await plates(tester, dark);
       for (final e in {'quiet': p.quiet, 'primary': p.primary}.entries) {
         final ratio = contrast(e.value, p.surface);

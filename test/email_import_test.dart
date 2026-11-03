@@ -52,7 +52,8 @@ void main() {
       final message = gmail.Message(
         internalDate: '1760426400000',
         payload: gmail.MessagePart(headers: [
-          gmail.MessagePartHeader(name: 'Date', value: 'Tue, 14 Oct 2026 10:00:00 +0530'),
+          gmail.MessagePartHeader(
+              name: 'Date', value: 'Tue, 14 Oct 2026 10:00:00 +0530'),
         ]),
       );
       expect(
@@ -64,7 +65,8 @@ void main() {
     test('falls back to an RFC 2822 Date header', () {
       final message = gmail.Message(
         payload: gmail.MessagePart(headers: [
-          gmail.MessagePartHeader(name: 'Date', value: 'Tue, 14 Oct 2026 10:00:00 +0530'),
+          gmail.MessagePartHeader(
+              name: 'Date', value: 'Tue, 14 Oct 2026 10:00:00 +0530'),
         ]),
       );
       final date = GmailEmailSource.messageDateForTest(message);
@@ -274,7 +276,8 @@ void main() {
       // Without a cursor the date clause must be absent: an `after:` of epoch
       // zero would be an empty clause, and a malformed one makes Gmail reject
       // the whole listing rather than return mail.
-      expect(GmailEmailSource.buildQuery(['a.com'], null), isNot(contains('after:')));
+      expect(GmailEmailSource.buildQuery(['a.com'], null),
+          isNot(contains('after:')));
     });
 
     test('the cursor becomes a zero-padded calendar date with a day of overlap',
@@ -298,4 +301,3 @@ void main() {
     });
   });
 }
-

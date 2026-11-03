@@ -58,8 +58,7 @@ void main() {
   const labels = ['System', 'Light', 'Dark'];
 
   for (final scale in [1.0, 1.3]) {
-    testWidgets('mode pills are one box at text scale $scale',
-        (tester) async {
+    testWidgets('mode pills are one box at text scale $scale', (tester) async {
       await pumpAppearance(tester, textScale: scale);
       final rects = [for (final l in labels) pillRect(tester, l)];
 
@@ -80,8 +79,7 @@ void main() {
     });
   }
 
-  testWidgets('no mode pill overflows its card at large text',
-      (tester) async {
+  testWidgets('no mode pill overflows its card at large text', (tester) async {
     await pumpAppearance(tester, textScale: 1.3);
     final card = tester.getRect(find.byType(GlassCard).first);
     for (final label in labels) {
@@ -93,8 +91,7 @@ void main() {
     }
   });
 
-  testWidgets('palette name and DEFAULT chip do not collide',
-      (tester) async {
+  testWidgets('palette name and DEFAULT chip do not collide', (tester) async {
     await pumpAppearance(tester, textScale: 1.0);
     expect(find.text('Premium Blue'), findsOneWidget,
         reason: 'the default palette name should not be ellipsised away');

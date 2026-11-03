@@ -183,8 +183,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('txe_orphan'), isNull);
     expect(
-      prefs.getKeys().where(
-          (k) => k.startsWith('txq_') && k.endsWith('_txe_orphan')),
+      prefs
+          .getKeys()
+          .where((k) => k.startsWith('txq_') && k.endsWith('_txe_orphan')),
       isNotEmpty,
     );
   });
@@ -218,8 +219,9 @@ void main() {
     expect(prefs.getString('txe_poisoned'), isNull,
         reason: 'an unauthenticated record cannot enter the ledger');
     expect(
-      prefs.getKeys().where(
-          (k) => k.startsWith('txq_') && k.endsWith('_txe_poisoned')),
+      prefs
+          .getKeys()
+          .where((k) => k.startsWith('txq_') && k.endsWith('_txe_poisoned')),
       isNotEmpty,
       reason: 'its bytes are kept aside for diagnosis, not deleted',
     );
@@ -250,7 +252,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('tx_legacy'), isNull);
     expect(
-      prefs.getKeys().where((k) => k.startsWith('txq_') && k.endsWith('_tx_legacy')),
+      prefs
+          .getKeys()
+          .where((k) => k.startsWith('txq_') && k.endsWith('_tx_legacy')),
       isNotEmpty,
     );
   });

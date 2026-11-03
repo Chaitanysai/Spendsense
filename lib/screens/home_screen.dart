@@ -553,7 +553,9 @@ class _HeaderSection extends StatelessWidget {
                         '$greeting,',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.weight(AppText.h2(context), FontWeight.w600).copyWith(
+                        style:
+                            AppText.weight(AppText.h2(context), FontWeight.w600)
+                                .copyWith(
                           fontSize: 18,
                           color: AppColors.textSecondary(context),
                           height: 1.2,
@@ -563,7 +565,9 @@ class _HeaderSection extends StatelessWidget {
                         name.isEmpty ? 'there.' : '$name.',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.weight(AppText.display(context), FontWeight.w800).copyWith(
+                        style: AppText.weight(
+                                AppText.display(context), FontWeight.w800)
+                            .copyWith(
                           fontSize: 34,
                           letterSpacing: -1.1,
                           height: 1.05,
@@ -767,7 +771,9 @@ class _SyncStatusStrip extends StatelessWidget {
                     ),
                     child: Text(
                       denied ? 'Fix' : 'Retry',
-                      style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
+                      style: AppText.weight(
+                              AppText.label(context), FontWeight.w700)
+                          .copyWith(
                         color: AppColors.brandInk(context),
                       ),
                     ),
@@ -856,7 +862,9 @@ class _SyncButton extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.weight(AppText.caption(context), FontWeight.w600).copyWith(
+                      style: AppText.weight(
+                              AppText.caption(context), FontWeight.w600)
+                          .copyWith(
                         fontSize: 10.5,
                         letterSpacing: 0.2,
                       ),

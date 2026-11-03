@@ -13,7 +13,8 @@ void main() {
     test('append succeeds when the audit store starts empty', () async {
       final encryption = LedgerEncryptionService();
       await encryption.createKeyIfMissing();
-      final repository = EncryptedAssistantAuditRepository(encryption: encryption);
+      final repository =
+          EncryptedAssistantAuditRepository(encryption: encryption);
 
       // An empty store must load as a mutable list: append() calls
       // entries.add, which throws on an unmodifiable/const empty list.
@@ -54,7 +55,8 @@ void main() {
       );
 
       final reloaded =
-          await EncryptedAssistantAuditRepository(encryption: encryption).load();
+          await EncryptedAssistantAuditRepository(encryption: encryption)
+              .load();
       expect(reloaded, hasLength(1));
       expect(reloaded.single.id, 'audit-2');
     });

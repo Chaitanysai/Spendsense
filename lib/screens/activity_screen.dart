@@ -206,8 +206,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                     BorderRadius.circular(AppRadius.pill),
                               ),
                               child: Text('Clear',
-                                  style: AppText.weight(
-                                          AppText.label(context),
+                                  style: AppText.weight(AppText.label(context),
                                           FontWeight.w700)
                                       .copyWith(
                                           color: AppColors.brandInk(context))),
@@ -969,8 +968,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               style: AppText.title(context).copyWith(
                   fontSize: 14, color: danger ? AppColors.danger : null)),
           subtitle: subtitle != null
-              ? Text(subtitle,
-                  style: AppText.caption(context))
+              ? Text(subtitle, style: AppText.caption(context))
               : null,
           trailing:
               selected ? Icon(Icons.check_circle_rounded, color: color) : null,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
+import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/app_logo.dart';
@@ -145,27 +146,42 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
 
   @override
   Widget build(BuildContext context) {
+    // The launch canvas follows the selected palette instead of a fixed navy.
+    //
+    // It used to paint Premium Blue's ramp literally (#021024 → #052659 →
+    // #0A3468), so a user on Paper, Plum, or any of the new themes got a navy
+    // flash before their own world appeared — the one screen that ignored the
+    // theme. The stops below are the palette's own deep → brand → bright ramp,
+    // pushed dark enough that the white wordmark keeps its 4.5:1 on every stop
+    // (the same `_holdWhite` idea the hero gradients use).
+    final deep = _holdWhite(AppColors.darkBackground);
+    final mid =
+        _holdWhite(Color.lerp(AppColors.navyDeep, AppColors.azure, 0.30)!);
+    final light =
+        _holdWhite(Color.lerp(AppColors.brand, AppColors.navyDeep, 0.55)!);
+    final glow = AppColors.brandBright;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF021024),
+      backgroundColor: deep,
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF021024), Color(0xFF052659), Color(0xFF0A3468)],
+            colors: [deep, mid, light],
           ),
         ),
         child: Stack(
           children: [
-            const Positioned(
+            Positioned(
               top: -140,
               left: -80,
-              child: _Glow(color: Color(0xFF5187C1), size: 380),
+              child: _Glow(color: glow, size: 380),
             ),
-            const Positioned(
+            Positioned(
               bottom: -160,
               right: -100,
-              child: _Glow(color: Color(0xFFC1E8FF), size: 340),
+              child: _Glow(color: AppColors.cyan, size: 340),
             ),
             SafeArea(
               child: Center(
@@ -190,9 +206,16 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
                                 animation: _spin,
                                 builder: (context, _) => Transform.rotate(
                                   angle: _spin.value * math.pi * 2,
-                                  child: const CustomPaint(
-                                    size: Size.square(168),
-                                    painter: _LaunchRingPainter(),
+                                  child: CustomPaint(
+                                    size: const Size.square(168),
+                                    painter: _LaunchRingPainter(
+                                      arcColors: [
+                                        deep.withValues(alpha: 0),
+                                        light,
+                                        AppColors.brandBright,
+                                      ],
+                                      dotColor: light,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -203,7 +226,9 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
                         const SizedBox(height: AppSpacing.xl),
                         Text(
                           'SpendSense',
-                          style: AppText.weight(AppText.display(context), FontWeight.w800).copyWith(
+                          style: AppText.weight(
+                                  AppText.display(context), FontWeight.w800)
+                              .copyWith(
                             color: Colors.white,
                             fontSize: 30,
                             letterSpacing: -0.8,
@@ -234,7 +259,11 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
                   child: Text(
                     'LOCAL-FIRST · PRIVATE BY DEFAULT',
                     style: AppText.overline(context).copyWith(
-                      color: Colors.white.withValues(alpha: 0.38),
+                      // 0.38 white measured ~3.4:1 on the old navy and falls
+                      // under 3:1 on brighter palettes. 0.62 holds the 3:1
+                      // large-text bar on every palette's held-dark canvas
+                      // while staying visually quiet.
+                      color: Colors.white.withValues(alpha: 0.62),
                       fontSize: 8.5,
                       letterSpacing: 1.8,
                     ),
@@ -276,7 +305,16 @@ class _Glow extends StatelessWidget {
 }
 
 class _LaunchRingPainter extends CustomPainter {
-  const _LaunchRingPainter();
+  /// Ring colours read the active palette, so the launch ring is lit by the
+  /// user's own world rather than a fixed ice-blue brand ramp. Held opaque
+  /// enough to stay visible on the palette's darkest canvas stop.
+  const _LaunchRingPainter({
+    required this.arcColors,
+    required this.dotColor,
+  });
+
+  final List<Color> arcColors;
+  final Color dotColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -293,9 +331,9 @@ class _LaunchRingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.2
       ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(
-        colors: [Color(0x005487B3), Color(0xFF7DA0CA), Color(0xFFC1E8FF)],
-        stops: [0.0, 0.65, 1.0],
+      ..shader = SweepGradient(
+        colors: arcColors,
+        stops: const [0.0, 0.65, 1.0],
       ).createShader(
         Rect.fromCircle(center: center, radius: radius),
       );
@@ -314,10 +352,27 @@ class _LaunchRingPainter extends CustomPainter {
     canvas.drawCircle(
       dot,
       3.4,
-      Paint()..color = const Color(0xFFC1E8FF),
+      Paint()..color = dotColor,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _LaunchRingPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _LaunchRingPainter oldDelegate) =>
+      oldDelegate.arcColors != arcColors || oldDelegate.dotColor != dotColor;
+}
+
+/// [c] darkened toward black only as far as white text on it reaches 4.5:1.
+///
+/// The launch canvas must stay legible for the white wordmark whichever palette
+/// is active — a bright brand stop (Orange + milk, Warm Amber) would otherwise
+/// put white text under the AA bar.
+Color _holdWhite(Color c) {
+  if (AppColors.contrastRatio(Colors.white, c) >= 4.5) return c;
+  for (var t = 0.05; t < 1.0; t += 0.05) {
+    final candidate = Color.lerp(c, Colors.black, t) ?? c;
+    if (AppColors.contrastRatio(Colors.white, candidate) >= 4.5) {
+      return candidate;
+    }
+  }
+  return Colors.black;
 }

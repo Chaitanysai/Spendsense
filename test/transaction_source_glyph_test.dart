@@ -32,7 +32,8 @@ Widget _host(TransactionModel tx) => MaterialApp(
 
 void main() {
   group('source glyph selection', () {
-    test('an email import is marked with the envelope the app already uses', () {
+    test('an email import is marked with the envelope the app already uses',
+        () {
       expect(transactionSourceIcon('Email-Gmail'), Icons.mail_outline_rounded);
     });
 
@@ -49,7 +50,8 @@ void main() {
   });
 
   group('the tile renders it', () {
-    testWidgets('an email import draws exactly one source icon', (tester) async {
+    testWidgets('an email import draws exactly one source icon',
+        (tester) async {
       await tester.pumpWidget(_host(_tx(source: 'Email-Gmail')));
       await tester.pumpAndSettle();
 

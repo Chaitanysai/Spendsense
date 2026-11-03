@@ -79,7 +79,9 @@ class CategoryChipPicker extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     c,
-                    style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
+                    style:
+                        AppText.weight(AppText.label(context), FontWeight.w700)
+                            .copyWith(
                       color:
                           isSelected ? ink : AppColors.textSecondary(context),
                     ),

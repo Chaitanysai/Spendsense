@@ -33,6 +33,9 @@ class AppearanceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
+    // The Theme colours list is grouped once per build from the registry order
+    // alone, so the sections can never disagree with [AppPalette.all].
+    final paletteGroups = _paletteGroups();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -83,17 +86,23 @@ class AppearanceScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               GlassCard(
+                // Slightly tighter than the default card inset: nineteen rows
+                // behind a 20dp gutter read as a narrow, unfocused list, and
+                // the longest supplied names need the extra width.
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.sm,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0; i < AppPalette.all.length; i++) ...[
-                      _PaletteRow(
-                        palette: AppPalette.all[i],
-                        selected: theme.palette.id == AppPalette.all[i].id,
-                        onTap: () => theme.setPalette(AppPalette.all[i]),
+                    for (var g = 0; g < paletteGroups.length; g++) ...[
+                      if (g > 0) const SizedBox(height: AppSpacing.md),
+                      _PaletteSection(
+                        group: paletteGroups[g],
+                        selectedId: theme.palette.id,
+                        onSelect: theme.setPalette,
                       ),
-                      if (i != AppPalette.all.length - 1)
-                        const SizedBox(height: AppSpacing.xs),
                     ],
                   ],
                 ),
@@ -355,26 +364,10 @@ class _PaletteRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Swatch shows the palette's own ramp, so the preview never
-                // depends on the currently active tokens.
-                // Swatch shows the palette's own ramp, so the preview never
-                // depends on the currently active tokens. It is always a light
-                // wash, so it needs an edge that reads on a dark glass card as
-                // well as on a light one: the theme border alone disappears on
-                // dark, hence the inset hairline drawn in the swatch's own ink.
-                Container(
-                  width: 46,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    gradient: palette.brandGradient,
-                    border: Border.all(
-                      color: AppColors.isDark(context)
-                          ? Colors.white.withValues(alpha: 0.28)
-                          : AppColors.border(context),
-                    ),
-                  ),
-                ),
+                // The preview shows the palette's own ramp, canvas and
+                // highlight — never the active tokens — so a row keeps showing
+                // the theme it names whatever is currently applied.
+                _PalettePreview(palette: palette),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Row(
@@ -382,7 +375,11 @@ class _PaletteRow extends StatelessWidget {
                       Expanded(
                         child: Text(
                           palette.label,
-                          maxLines: 1,
+                          // Two lines so the longest supplied names
+                          // ("Midnight, Indigo, Vanilla", "Royal Blue + Light
+                          // Cream") survive a narrow phone and a large text
+                          // scale instead of being clipped to an ellipsis.
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.title(context),
                         ),
@@ -411,7 +408,9 @@ class _PaletteRow extends StatelessWidget {
                             softWrap: false,
                             // 8.5 was below the legibility floor at font scale
                             // 1.0 and unreadable once the system scales text.
-                            style: AppText.weight(AppText.label(context), FontWeight.w800).copyWith(
+                            style: AppText.weight(
+                                    AppText.label(context), FontWeight.w800)
+                                .copyWith(
                               fontSize: 11,
                               letterSpacing: 0.5,
                               color: AppColors.brandWellInk(context),
@@ -432,6 +431,168 @@ class _PaletteRow extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One labelled block of the Theme colours list.
+class _PaletteGroup {
+  final String title;
+  final List<AppPalette> palettes;
+
+  const _PaletteGroup(this.title, this.palettes);
+}
+
+/// The Theme colours sections, derived from [AppPalette.all] alone.
+///
+/// Membership is by id and the order inside a section is the registry's own, so
+/// [AppPalette.all] stays the single ordered source of truth: this decides only
+/// which heading a palette appears under, never its order or its values. An id
+/// that matches no section — a palette appended after this screen was written —
+/// falls into the final section, so every entry is always shown exactly once
+/// and a new palette can never be dropped from the screen.
+List<_PaletteGroup> _paletteGroups() {
+  const premiumIds = <String>{
+    'premium_blue',
+    'paper',
+    'deep_navy',
+    'soft_pastel_teal',
+    'plum_blush',
+    'midnight',
+  };
+  const additionalIds = <String>{
+    'royal_blue_cream',
+    'wine_sand',
+    'orange_milk',
+    'plum_milk',
+    'midnight_indigo_vanilla',
+    'cherry_alabaster',
+  };
+
+  final premium = <AppPalette>[];
+  final additional = <AppPalette>[];
+  final classic = <AppPalette>[];
+
+  for (final palette in AppPalette.all) {
+    if (premiumIds.contains(palette.id)) {
+      premium.add(palette);
+    } else if (additionalIds.contains(palette.id)) {
+      additional.add(palette);
+    } else {
+      classic.add(palette);
+    }
+  }
+
+  return [
+    _PaletteGroup('Premium', premium),
+    _PaletteGroup('Additional', additional),
+    _PaletteGroup('Classic', classic),
+  ];
+}
+
+/// One section of the Theme colours list: an eyebrow title and its rows.
+class _PaletteSection extends StatelessWidget {
+  final _PaletteGroup group;
+  final String selectedId;
+  final ValueChanged<AppPalette> onSelect;
+
+  const _PaletteSection({
+    required this.group,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PaletteGroupLabel(title: group.title),
+        const SizedBox(height: AppSpacing.xs),
+        for (var i = 0; i < group.palettes.length; i++) ...[
+          _PaletteRow(
+            palette: group.palettes[i],
+            selected: selectedId == group.palettes[i].id,
+            onTap: () => onSelect(group.palettes[i]),
+          ),
+          if (i != group.palettes.length - 1)
+            const SizedBox(height: AppSpacing.xs),
+        ],
+      ],
+    );
+  }
+}
+
+/// Section eyebrow. Aligned with the swatch column so the rows stay one list.
+class _PaletteGroupLabel extends StatelessWidget {
+  final String title;
+
+  const _PaletteGroupLabel({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
+      child: Text(
+        title.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppText.overline(context),
+      ),
+    );
+  }
+}
+
+/// A miniature of the palette's own light world: its identity ramp beside a
+/// canvas swatch carrying the highlight.
+///
+/// Every colour is read from [palette] directly, never from the active tokens,
+/// so the preview keeps showing the theme it names while another one is
+/// applied. The composition is deliberately light in both modes; the dark-mode
+/// hairline keeps its edge readable on a dark glass card, exactly as the plain
+/// gradient swatch it replaces did.
+class _PalettePreview extends StatelessWidget {
+  final AppPalette palette;
+
+  const _PalettePreview({required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 34,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(
+          color: AppColors.isDark(context)
+              ? Colors.white.withValues(alpha: 0.28)
+              : AppColors.border(context),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The primary ramp: the palette's loudest identity, and the anchor the
+          // neutral and highlight cells are read against.
+          Expanded(
+            flex: 3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: palette.brandGradient),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: ColoredBox(color: palette.background)),
+                Expanded(child: ColoredBox(color: palette.accent)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

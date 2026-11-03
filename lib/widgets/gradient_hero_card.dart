@@ -4,14 +4,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import 'pressable.dart';
 
-/// Rich gradient card: layered gradient, diagonal sheen, soft coloured glow
-/// shadow, and optional press feedback. Text inside should use
-/// [AppText.onGradient].
-///
-/// When no gradient is supplied the card uses [AppColors.heroSurfaceGradient],
-/// which keeps the full green ramp in light mode and restrains it toward the
-/// dark surface in dark mode — so an unconfigured hero never floods the black
-/// canvas with saturated green.
+/// Theme-led highlight surface reserved for the primary summary on a screen.
 class GradientHeroCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -28,67 +21,23 @@ class GradientHeroCard extends StatelessWidget {
     this.radius = AppRadius.xl,
     this.gradient,
     this.onTap,
-    this.glow = true,
+    this.glow = false,
     this.glowColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
-    final dark = AppColors.isDark(context);
-
     final card = Container(
       padding: padding ?? const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
         gradient: gradient ?? AppColors.heroSurfaceGradient(context),
         borderRadius: borderRadius,
         border: AppColors.heroBorder(context),
-        boxShadow: glow
-            ? [
-                BoxShadow(
-                  color: (glowColor ?? AppColors.brand)
-                      .withValues(alpha: AppColors.heroGlowAlpha(context)),
-                  blurRadius: 26,
-                  offset: const Offset(0, 14),
-                ),
-              ]
-            : null,
       ),
-      child: Stack(
-        // Clip.none is required, not cosmetic: the highlight below deliberately
-        // hangs outside this Stack (negative offsets) and Stack's default
-        // Clip.hardEdge would truncate it into a hard-edged pale rectangle
-        // pinned to the card's content box. The outer ClipRRect below already
-        // clips everything to the card's rounded rect, so nothing escapes.
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: -30,
-            left: -20,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: dark ? 0.10 : 0.22),
-                    Colors.white.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          child,
-        ],
-      ),
+      child: child,
     );
-
-    final clipped = ClipRRect(
-      borderRadius: borderRadius,
-      child: card,
-    );
-
+    final clipped = ClipRRect(borderRadius: borderRadius, child: card);
     if (onTap == null) return clipped;
     return Pressable(onTap: onTap, borderRadius: borderRadius, child: clipped);
   }

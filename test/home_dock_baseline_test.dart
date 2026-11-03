@@ -85,7 +85,8 @@ void main() {
       slotHeights.add(tester.getSize(slot.first).height);
       labelHeights.add(tester.getSize(find.text(action.label)).height);
     }
-    expect(slotHeights.length, 1, reason: 'slots differ in height: $slotHeights');
+    expect(slotHeights.length, 1,
+        reason: 'slots differ in height: $slotHeights');
     expect(
       labelHeights.length,
       1,

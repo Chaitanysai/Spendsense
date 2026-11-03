@@ -15,7 +15,9 @@ import 'package:spendsense/utils/app_palette.dart';
 /// each other. This pins the rule and the contrast it must not break.
 void main() {
   String hex(Color c) {
-    final r = (c.r * 255).round(), g = (c.g * 255).round(), b = (c.b * 255).round();
+    final r = (c.r * 255).round(),
+        g = (c.g * 255).round(),
+        b = (c.b * 255).round();
     return '#${r.toRadixString(16).padLeft(2, '0')}'
         '${g.toRadixString(16).padLeft(2, '0')}'
         '${b.toRadixString(16).padLeft(2, '0')}';
@@ -23,7 +25,9 @@ void main() {
 
   double channel(double v) {
     v = v / 255.0;
-    return v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+    return v <= 0.03928
+        ? v / 12.92
+        : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
   }
 
   double relLum(Color c) =>
@@ -73,11 +77,11 @@ void main() {
       // Chroma = how colourful the card looks. HSV saturation is useless near
       // black (any dark navy reads ~70%), so cap the absolute chroma instead.
       final chroma = (card.computeLuminance() <= 0
-              ? 0.0
-              : ((math.max(card.r, math.max(card.g, card.b)) -
-                          math.min(card.r, math.min(card.g, card.b))) *
-                      255) /
-                  255);
+          ? 0.0
+          : ((math.max(card.r, math.max(card.g, card.b)) -
+                      math.min(card.r, math.min(card.g, card.b))) *
+                  255) /
+              255);
       // ignore: avoid_print
       print('${p.id.padRight(16)} bg=${hex(bg)} card=${hex(card)} '
           'dL*=${step.toStringAsFixed(1)} '

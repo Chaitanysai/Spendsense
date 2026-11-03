@@ -23,7 +23,8 @@ void main() {
   setUp(() => AppColors.applyPalette(AppPalette.emerald));
   tearDown(() => AppColors.applyPalette(AppPalette.emerald));
 
-  Future<ThemeProvider> pumpAppearance(WidgetTester tester, {required bool dark}) async {
+  Future<ThemeProvider> pumpAppearance(WidgetTester tester,
+      {required bool dark}) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final theme = ThemeProvider();
     // `AppColors.isDark` reads `ThemeData.brightness`, so the harness must set
@@ -33,7 +34,8 @@ void main() {
       ChangeNotifierProvider<ThemeProvider>.value(
         value: theme,
         child: MaterialApp(
-          theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+          theme:
+              ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
           home: const AppearanceScreen(),
         ),
       ),

@@ -1,12 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
-import 'glass_card.dart' show GlassHighlight;
 import 'pressable.dart';
 
 class NavItem {
@@ -125,7 +122,6 @@ class _FloatingNavBarState extends State<FloatingNavBar>
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
     final borderRadius = BorderRadius.circular(AppRadius.pill);
-    final highContrast = MediaQuery.highContrastOf(context);
 
     // The shadow sits outside the clip so it is not cut off; the blur, fill,
     // hairline and lit edge all live inside it.
@@ -141,112 +137,98 @@ class _FloatingNavBarState extends State<FloatingNavBar>
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: borderRadius,
-            boxShadow:
-                highContrast ? null : AppColors.glassShadows(context, floating: true),
+            border: Border.all(color: AppColors.border(context)),
           ),
           child: ClipRRect(
             borderRadius: borderRadius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: highContrast ? 0 : AppColors.glassBlurSigma,
-                sigmaY: highContrast ? 0 : AppColors.glassBlurSigma,
-              ),
-              child: Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xs,
-                      vertical: AppSpacing.sm,
-                    ),
-                    decoration: BoxDecoration(
-                      // High contrast replaces the see-through fill with an
-                      // opaque one: translucency over scrolling content is the
-                      // legibility problem that setting exists to remove.
-                      color: highContrast
-                          ? (dark ? AppColors.darkSurfaceAlt : Colors.white)
-                          : AppColors.navFill(context),
-                      borderRadius: borderRadius,
-                      border: Border.all(
-                        color: highContrast
-                            ? AppColors.textPrimary(context)
-                            : dark
-                                ? Colors.white
-                                    .withValues(alpha: AppColors.glassBorderAlpha)
-                                : Colors.black.withValues(alpha: 0.07),
-                        width: highContrast ? 1.5 : 1,
-                      ),
-                    ),
-                    child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final slot = constraints.maxWidth / widget.items.length;
-                  return Stack(
-                    children: [
-                      // Painted first so the glyphs and labels sit on top of it.
-                      AnimatedBuilder(
-                        animation: _position,
-                        builder: (context, _) {
-                          final center = _position.value * slot;
-                          final base = (slot - 12).clamp(40.0, 54.0);
-                          final velocity = _position.isAnimating
-                              ? _position.velocity.abs()
-                              : 0.0;
-                          final stretch = _reduceMotion
-                              ? 0
-                              : (velocity / 10).clamp(0.0, 1.0) *
-                                  (_maxStretch * (0.4 + 0.15 * _travel));
-                          final width = base + stretch;
-                          final left = (center - width / 2)
-                              .clamp(0.0, constraints.maxWidth - width);
-                          return Positioned(
-                            left: left,
-                            top: (_iconBoxHeight - _pillHeight) / 2,
-                            width: width,
-                            height: _pillHeight,
-                            // The pill is decoration: the slot below carries the
-                            // label, the selected flag and the action.
-                            child: ExcludeSemantics(
-                              child: DecoratedBox(
-                                key: const Key('nav-selected-pill'),
-                                // A translucent accent container: the bar shows
-                                // through it, so selection reads as a tint on
-                                // the glass rather than a solid slab.
-                                decoration: BoxDecoration(
-                                  color: AppColors.navSelectedFill(context),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.pill),
-                                  border: Border.all(
-                                    color: AppColors.navAccentFor(dark)
-                                        .withValues(alpha: dark ? 0.28 : 0.20),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      Row(
-                        children: [
-                          for (var i = 0; i < widget.items.length; i++)
-                            Expanded(
-                              child: _NavSlot(
-                                item: widget.items[i],
-                                selected: i == widget.currentIndex,
-                                onTap: () => widget.onTap(i),
-                                iconBoxHeight: _iconBoxHeight,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+            child: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    // High contrast replaces the see-through fill with an
+                    // opaque one: translucency over scrolling content is the
+                    // legibility problem that setting exists to remove.
+                    color: dark
+                        ? AppColors.darkSurfaceAlt
+                        : AppColors.surfaceColor(context),
+                    borderRadius: borderRadius,
+                    border: Border.all(
+                      color: AppColors.border(context),
+                      width: 1,
                     ),
                   ),
-                  // Lit top edge, shared with GlassCard.
-                  if (!highContrast)
-                    const GlassHighlight(inset: AppRadius.xl),
-                ],
-              ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final slot = constraints.maxWidth / widget.items.length;
+                      return Stack(
+                        children: [
+                          // Painted first so the glyphs and labels sit on top of it.
+                          AnimatedBuilder(
+                            animation: _position,
+                            builder: (context, _) {
+                              final center = _position.value * slot;
+                              final base = (slot - 12).clamp(40.0, 54.0);
+                              final velocity = _position.isAnimating
+                                  ? _position.velocity.abs()
+                                  : 0.0;
+                              final stretch = _reduceMotion
+                                  ? 0
+                                  : (velocity / 10).clamp(0.0, 1.0) *
+                                      (_maxStretch * (0.4 + 0.15 * _travel));
+                              final width = base + stretch;
+                              final left = (center - width / 2)
+                                  .clamp(0.0, constraints.maxWidth - width);
+                              return Positioned(
+                                left: left,
+                                top: (_iconBoxHeight - _pillHeight) / 2,
+                                width: width,
+                                height: _pillHeight,
+                                // The pill is decoration: the slot below carries the
+                                // label, the selected flag and the action.
+                                child: ExcludeSemantics(
+                                  child: DecoratedBox(
+                                    key: const Key('nav-selected-pill'),
+                                    // A translucent accent container: the bar shows
+                                    // through it, so selection reads as a tint on
+                                    // the glass rather than a solid slab.
+                                    decoration: BoxDecoration(
+                                      color: AppColors.navSelectedFill(context),
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.pill),
+                                      border: Border.all(
+                                        color: AppColors.navAccentFor(dark)
+                                            .withValues(
+                                                alpha: dark ? 0.28 : 0.20),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          Row(
+                            children: [
+                              for (var i = 0; i < widget.items.length; i++)
+                                Expanded(
+                                  child: _NavSlot(
+                                    item: widget.items[i],
+                                    selected: i == widget.currentIndex,
+                                    onTap: () => widget.onTap(i),
+                                    iconBoxHeight: _iconBoxHeight,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -308,11 +290,11 @@ class _NavSlot extends StatelessWidget {
                     duration: duration,
                     curve: AppMotion.easeOut,
                     style: AppText.onGradient(
-                      size: 10,
+                      size: 12,
                       weight: selected ? FontWeight.w700 : FontWeight.w500,
                     ).copyWith(
                       color: selected ? selectedColor : idleColor,
-                      letterSpacing: 0.3,
+                      letterSpacing: 0,
                       height: 1.1,
                     ),
                     child: Text(

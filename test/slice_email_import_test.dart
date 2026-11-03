@@ -26,7 +26,8 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('Slice sender allowlist', () {
-    test('the real sender domain is a default, so it works untouched', () async {
+    test('the real sender domain is a default, so it works untouched',
+        () async {
       final domains = await GmailEmailSource().senderDomains();
       expect(domains, contains('slice.bank.in'));
       expect(GmailEmailSource.isAllowedSender(from, domains), isTrue);
@@ -35,7 +36,8 @@ void main() {
     test('a look-alike Slice domain is still refused', () async {
       final domains = await GmailEmailSource().senderDomains();
       expect(
-        GmailEmailSource.isAllowedSender('slice <x@evil.slice.bank.in>', domains),
+        GmailEmailSource.isAllowedSender(
+            'slice <x@evil.slice.bank.in>', domains),
         isFalse,
       );
     });

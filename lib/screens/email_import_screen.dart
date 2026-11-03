@@ -276,8 +276,9 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
                             _consent
                                 ? Icons.mark_email_read_rounded
                                 : Icons.mail_outline_rounded,
-                            color:
-                                _consent ? AppColors.incomeGreen : AppColors.brand,
+                            color: _consent
+                                ? AppColors.incomeGreen
+                                : AppColors.brand,
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
@@ -373,9 +374,8 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
                           for (final domain in _domains)
                             InputChip(
                               label: Text(domain),
-                              onDeleted: _busy
-                                  ? null
-                                  : () => _removeSender(domain),
+                              onDeleted:
+                                  _busy ? null : () => _removeSender(domain),
                             ),
                         ],
                       ),

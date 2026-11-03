@@ -265,15 +265,12 @@ class _TrendCard extends StatelessWidget {
                     Expanded(
                       child: AnimatedProgressBar(
                         // Presentation only: a bar length, not a money value.
-                        fraction: maxMinor > 0
-                            ? m.amountMinor / maxMinor
-                            : 0,
+                        fraction: maxMinor > 0 ? m.amountMinor / maxMinor : 0,
                         height: 10,
                         color: m.isPartial
                             ? AppColors.brandBright
                             : AppColors.brand,
-                        trackColor:
-                            AppColors.brand.withValues(alpha: 0.10),
+                        trackColor: AppColors.brand.withValues(alpha: 0.10),
                         delay: Duration(milliseconds: 30 * i),
                         semanticLabel:
                             '${DateFormat('MMM').format(m.month)} spending',

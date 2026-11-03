@@ -539,9 +539,154 @@ class AppPalette {
     onLimeInk: Colors.white,
   );
 
+  // ── 2026 premium set, batch 2 ───────────────────────────────────────────────
+  // Six more glass palettes, each built from a product-supplied pair: one
+  // Primary and one light neutral. The neutral drives the canvas and the whole
+  // light surface stack; the primary drives the ramp; every other stop is
+  // derived so the two supplied colours read as a designed world rather than
+  // two hex values dropped into the UI. Money semantics stay invariant.
+  //
+  // Every palette here is `glass: true` on a hue-tinted near-black canvas, with
+  // dark cards held at ~10-15% chroma so they read as dark glass and not paint.
+
+  /// Royal blue on a warm bone-cream canvas; gold highlight.
+  static const royalBlueCream = AppPalette(
+    id: 'royal_blue_cream',
+    label: 'Royal Blue + Light Cream',
+    deep: Color(0xFF001A3D),
+    brand: Color(0xFF014BAA),
+    bright: Color(0xFF5AA0F0),
+    mid: Color(0xFF2273D6),
+    accent: Color(0xFFF5C86B),
+    warm: Color(0xFFE8963C),
+    background: Color(0xFFF8F3F0),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFEFE7E2),
+    borderLight: Color(0xFFDED3CC),
+    darkBackground: Color(0xFF070C18),
+    darkSurface: Color(0xFF131A2C),
+    darkSurfaceAlt: Color(0xFF1B2438),
+    borderDark: Color(0xFF2C3952),
+    glass: true,
+  );
+
+  /// Wine red on an unlit-sand canvas; antique-gold highlight.
+  ///
+  /// The label is spelled exactly as the product owner supplied it, comma
+  /// included, so it matches their naming even though it reads unusually.
+  static const wineSand = AppPalette(
+    id: 'wine_sand',
+    label: 'WineRed, UnlightSand',
+    deep: Color(0xFF330512),
+    brand: Color(0xFF7F011F),
+    bright: Color(0xFFE04A6E),
+    mid: Color(0xFFA81B3C),
+    accent: Color(0xFFEBD08B),
+    warm: Color(0xFFE39A45),
+    background: Color(0xFFF5EBD0),
+    surface: Color(0xFFFFFCF2),
+    surfaceMuted: Color(0xFFEDE0C0),
+    borderLight: Color(0xFFDFD1AE),
+    darkBackground: Color(0xFF150A0C),
+    darkSurface: Color(0xFF2E1418),
+    darkSurfaceAlt: Color(0xFF3C1C22),
+    borderDark: Color(0xFF522C33),
+    glass: true,
+  );
+
+  /// Burnt orange on a milk-white canvas; ice-blue highlight.
+  ///
+  /// White on the raw brand measures 3.39:1, under AA. The supplied primary is
+  /// kept verbatim as [brand]; filled buttons use the derived [filledBrand]
+  /// (darkened toward [deep] until white clears 4.5:1), which is the existing
+  /// mechanism every bright palette relies on.
+  static const orangeMilk = AppPalette(
+    id: 'orange_milk',
+    label: 'Orange + milk',
+    deep: Color(0xFF4F1403),
+    brand: Color(0xFFEC5E27),
+    bright: Color(0xFFFFAF78),
+    mid: Color(0xFFF5824F),
+    accent: Color(0xFF9FDDEC),
+    warm: Color(0xFFF0B23E),
+    background: Color(0xFFFDFDF1),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFF4F2E0),
+    borderLight: Color(0xFFE4E1CC),
+    darkBackground: Color(0xFF150C06),
+    darkSurface: Color(0xFF2A1811),
+    darkSurfaceAlt: Color(0xFF382218),
+    borderDark: Color(0xFF4E3324),
+    glass: true,
+  );
+
+  /// Deep plum on a warm-milk canvas; champagne highlight.
+  static const plumMilk = AppPalette(
+    id: 'plum_milk',
+    label: 'Plum + milk',
+    deep: Color(0xFF1E0A19),
+    brand: Color(0xFF381932),
+    bright: Color(0xFFC9A0C4),
+    mid: Color(0xFF5E3356),
+    accent: Color(0xFFF1D3A0),
+    warm: Color(0xFFE0A05E),
+    background: Color(0xFFFFF3E6),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFF7E9DA),
+    borderLight: Color(0xFFEBD9C6),
+    darkBackground: Color(0xFF150D14),
+    darkSurface: Color(0xFF2F1629),
+    darkSurfaceAlt: Color(0xFF3D2035),
+    borderDark: Color(0xFF553049),
+    glass: true,
+  );
+
+  /// Midnight indigo on a vanilla canvas; vanilla-gold highlight.
+  static const midnightIndigoVanilla = AppPalette(
+    id: 'midnight_indigo_vanilla',
+    label: 'Midnight, Indigo, Vanilla',
+    deep: Color(0xFF0C0E1E),
+    brand: Color(0xFF282B4A),
+    bright: Color(0xFFA0A9E2),
+    mid: Color(0xFF454C7E),
+    accent: Color(0xFFEFE0AE),
+    warm: Color(0xFFE7A85E),
+    background: Color(0xFFEEEBDA),
+    surface: Color(0xFFFCFBF4),
+    surfaceMuted: Color(0xFFE2DEC9),
+    borderLight: Color(0xFFD3CFB6),
+    darkBackground: Color(0xFF0A0C16),
+    darkSurface: Color(0xFF181C33),
+    darkSurfaceAlt: Color(0xFF222748),
+    borderDark: Color(0xFF343C68),
+    glass: true,
+  );
+
+  /// Cherry on an alabaster canvas; mint highlight.
+  static const cherryAlabaster = AppPalette(
+    id: 'cherry_alabaster',
+    label: 'Cherry and alabaster',
+    deep: Color(0xFF2E0018),
+    brand: Color(0xFF890149),
+    bright: Color(0xFFFF8FBF),
+    mid: Color(0xFFB02467),
+    accent: Color(0xFF9FE0BC),
+    warm: Color(0xFFEFA35A),
+    background: Color(0xFFF3F3E7),
+    surface: Colors.white,
+    surfaceMuted: Color(0xFFEAEADB),
+    borderLight: Color(0xFFD9D9C6),
+    darkBackground: Color(0xFF150A11),
+    darkSurface: Color(0xFF2C1220),
+    darkSurfaceAlt: Color(0xFF3C1A2C),
+    borderDark: Color(0xFF55283F),
+    glass: true,
+  );
+
   /// Palette used when nothing valid is stored (new installs, reset).
   /// Premium Blue is the 2026 default identity.
   static const AppPalette defaultPalette = premiumBlue;
+
   /// Shown in Settings → Appearance, in this order. The 2026 premium set is
   /// first and Premium Blue is the default / reset target.
   static const List<AppPalette> all = [
@@ -551,6 +696,12 @@ class AppPalette {
     softPastelTeal,
     plumBlush,
     midnight,
+    royalBlueCream,
+    wineSand,
+    orangeMilk,
+    plumMilk,
+    midnightIndigoVanilla,
+    cherryAlabaster,
     emerald,
     oceanBlue,
     warmAmber,

@@ -42,7 +42,8 @@ void main() {
 
     test('maps the codes a person can act on', () {
       expect(
-        authMessageForError(FirebaseAuthException(code: 'email-already-in-use')),
+        authMessageForError(
+            FirebaseAuthException(code: 'email-already-in-use')),
         contains('already exists'),
       );
       expect(

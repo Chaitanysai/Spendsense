@@ -27,8 +27,7 @@ class AuthNotice extends StatelessWidget {
     // incomeGreen — that green is reserved for money-in semantics, and this
     // notice is not a money signal.
     final tint = isError ? AppColors.danger : AppColors.brand;
-    final ink =
-        isError ? AppColors.danger : AppColors.brandInk(context);
+    final ink = isError ? AppColors.danger : AppColors.brandInk(context);
     final icon = isError
         ? Icons.error_outline_rounded
         : Icons.check_circle_outline_rounded;

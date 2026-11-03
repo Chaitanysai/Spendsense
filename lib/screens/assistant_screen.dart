@@ -429,8 +429,8 @@ class _MessageBlock extends StatelessWidget {
             style: AppText.body(context).copyWith(
               // deepFill is a blend of brand and the deep stop, so white is
               // not guaranteed on it; the ink is measured against the fill.
-              color:
-                  AppColors.resolveInk(Colors.white, AppColors.deepFill(context)),
+              color: AppColors.resolveInk(
+                  Colors.white, AppColors.deepFill(context)),
               fontSize: 13.5,
               height: 1.4,
             ),
@@ -736,8 +736,9 @@ class _Composer extends StatelessWidget {
                       height: 48,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient:
-                              canSend ? AppColors.accentHeroGradient(context) : null,
+                          gradient: canSend
+                              ? AppColors.accentHeroGradient(context)
+                              : null,
                           color: canSend ? null : AppColors.surfaceAlt(context),
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),

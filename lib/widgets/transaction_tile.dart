@@ -150,7 +150,7 @@ class TransactionTile extends StatelessWidget {
                                   AppText.label(context),
                                   FontWeight.w800,
                                 ).copyWith(
-                                  fontSize: 8.5,
+                                  fontSize: 10,
                                   // A fixed brown was unreadable on dark cards;
                                   // the ink is resolved against the badge as
                                   // it is actually composited.
@@ -191,7 +191,7 @@ class TransactionTile extends StatelessWidget {
                       softWrap: false,
                       style: AppText.amount(
                         context,
-                        size: 14.5,
+                        size: 16,
                         color: amountColor,
                       ),
                     ),

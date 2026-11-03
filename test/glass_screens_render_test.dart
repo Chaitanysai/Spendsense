@@ -205,7 +205,8 @@ void main() {
   setUp(() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(permissions, (call) async => <int, int>{});
+    messenger.setMockMethodCallHandler(
+        permissions, (call) async => <int, int>{});
     messenger.setMockMethodCallHandler(connectivity, (call) async => 'wifi');
     messenger.setMockMethodCallHandler(secureStorage, (call) async {
       return switch (call.method) {
@@ -294,8 +295,8 @@ void main() {
 
       // The gutter under the last row must reach above the pill and the add
       // button stacked on it, measured from the screen bottom.
-      final screenBottom = tester.view.physicalSize.height /
-          tester.view.devicePixelRatio;
+      final screenBottom =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
       final clearance = screenBottom - fab.top;
       expect(inset, greaterThanOrEqualTo(clearance),
           reason: 'inset $inset does not clear the add button (needs '

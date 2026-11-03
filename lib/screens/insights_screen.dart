@@ -53,80 +53,9 @@ class InsightsScreen extends StatelessWidget {
               Text('Understand your spending at a glance',
                   style: AppText.body(context)),
               const SizedBox(height: AppSpacing.xl),
-
-              // â”€â”€ Stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              SizedBox(
-                height: 168,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  // Escape the page inset so a card bleeding off-screen reads
-                  // as "there is more to scroll" instead of looking cropped.
-                  // The trailing end padding restores it, so the last card
-                  // still lands on the same edge as every card below.
-                  clipBehavior: Clip.none,
-                  padding: const EdgeInsetsDirectional.only(
-                    end: AppSpacing.page,
-                  ),
-                  children: [
-                    FadeSlideIn(
-                      index: 0,
-                      child: _statCard(
-                        context,
-                        title: 'This month',
-                        value: Formatters.currency.format(metrics.currentTotal),
-                        subtitle:
-                            DateFormat('MMMM yyyy').format(DateTime.now()),
-                        gradient: AppColors.heroSurfaceGradient(context),
-                        icon: Icons.calendar_month_rounded,
-                      ),
-                    ),
-                    FadeSlideIn(
-                      index: 1,
-                      child: _statCard(
-                        context,
-                        title: 'Change',
-                        // With no comparable previous month there is no delta to
-                        // report, so show a neutral placeholder rather than a
-                        // misleading "0.0% up".
-                        value: metrics.hasPreviousMonth
-                            ? '${metrics.percentChange.toStringAsFixed(1)}%'
-                            : '—',
-                        subtitle: !metrics.hasPreviousMonth
-                            ? 'No prior month data'
-                            : metrics.percentChange > 0
-                                ? 'Up vs last month'
-                                : metrics.percentChange < 0
-                                    ? 'Down vs last month'
-                                    : 'Same as last month',
-                        gradient: metrics.hasPreviousMonth &&
-                                metrics.percentChange < 0
-                            ? AppColors.successHeroGradient(context)
-                            : AppColors.heroSurfaceGradient(context),
-                        glowColor: metrics.hasPreviousMonth &&
-                                metrics.percentChange < 0
-                            ? AppColors.incomeGreen
-                            : null,
-                        icon: !metrics.hasPreviousMonth
-                            ? Icons.timeline_rounded
-                            : metrics.percentChange >= 0
-                                ? Icons.trending_up_rounded
-                                : Icons.trending_down_rounded,
-                      ),
-                    ),
-                    FadeSlideIn(
-                      index: 2,
-                      child: _statCard(
-                        context,
-                        title: 'Top category',
-                        value: metrics.topCategory,
-                        subtitle: 'Highest spend this month',
-                        gradient: AppColors.accentHeroGradient(context),
-                        glowColor: AppColors.brand,
-                        icon: Icons.auto_awesome_rounded,
-                      ),
-                    ),
-                  ],
-                ),
+              FadeSlideIn(
+                index: 0,
+                child: _monthlySummary(context, metrics),
               ),
               const SizedBox(height: AppSpacing.xl),
               FadeSlideIn(
@@ -224,59 +153,114 @@ class InsightsScreen extends StatelessWidget {
     );
   }
 
-  Widget _statCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required String subtitle,
-    required Gradient gradient,
-    required IconData icon,
-    Color? glowColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.md),
-      child: SizedBox(
-        width: 220,
-        child: GradientHeroCard(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          gradient: gradient,
-          glowColor: glowColor,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _monthlySummary(BuildContext context, _InsightMetrics metrics) {
+    final changeColor = !metrics.hasPreviousMonth
+        ? AppColors.textSecondary(context)
+        : metrics.percentChange > 0
+            ? AppColors.expenseRed
+            : metrics.percentChange < 0
+                ? AppColors.incomeGreen
+                : AppColors.textSecondary(context);
+    final changeValue = !metrics.hasPreviousMonth
+        ? '—'
+        : '${metrics.percentChange > 0 ? '+' : ''}'
+            '${metrics.percentChange.toStringAsFixed(1)}%';
+    final changeLabel = !metrics.hasPreviousMonth
+        ? 'No prior month data'
+        : metrics.percentChange > 0
+            ? 'More than last month'
+            : metrics.percentChange < 0
+                ? 'Less than last month'
+                : 'Same as last month';
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Text(title,
-                      style: AppText.onGradient(
-                          size: 12, weight: FontWeight.w600, opacity: 0.9)),
-                  const Spacer(),
-                  Icon(icon,
-                      color:
-                          AppColors.inkOnGradient(gradient).withValues(alpha: 0.9),
-                      size: 20),
-                ],
+              Expanded(
+                child: Text(
+                  'Spending · ${DateFormat('MMMM yyyy').format(DateTime.now())}',
+                  style: AppText.title(context),
+                ),
               ),
-              const Spacer(),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value,
-                    maxLines: 1,
-                    style:
-                        AppText.onGradient(size: 28, weight: FontWeight.w800)),
-              ),
-              const SizedBox(height: 6),
-              Text(subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.onGradient(
-                      size: 11, weight: FontWeight.w500, opacity: 0.9)),
+              Icon(Icons.calendar_month_rounded,
+                  color: AppColors.brandInk(context), size: 20),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.md),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              Formatters.currency.format(metrics.currentTotal),
+              maxLines: 1,
+              style: AppText.amount(context, size: 32, weight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: AppColors.border(context)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _summaryFact(
+                  context,
+                  label: 'Top category',
+                  value: metrics.topCategory,
+                  valueColor: AppColors.textPrimary(context),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _summaryFact(
+                  context,
+                  label: 'Change',
+                  value: changeValue,
+                  detail: changeLabel,
+                  valueColor: changeColor,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  Widget _summaryFact(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Color valueColor,
+    String? detail,
+  }) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppText.label(context)),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.weight(AppText.bodyStrong(context), FontWeight.w700)
+                .copyWith(color: valueColor),
+          ),
+          if (detail != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              detail,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.bodySmall(context),
+            ),
+          ],
+        ],
+      );
 
   Widget _buildCategoryBubbles(BuildContext context, _InsightMetrics metrics) {
     final total = metrics.totalCategories;

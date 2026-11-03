@@ -66,10 +66,10 @@ void main() {
       print('scale $scale submit=${submit.top.toStringAsFixed(1)}..'
           '${submit.bottom.toStringAsFixed(1)} keyboardTop=$keyboardTop');
       expect(submit.bottom, lessThanOrEqualTo(keyboardTop + 0.5),
-          reason: 'submit label sits ${(submit.bottom - keyboardTop).toStringAsFixed(1)}dp '
+          reason:
+              'submit label sits ${(submit.bottom - keyboardTop).toStringAsFixed(1)}dp '
               'behind the keyboard at ${scale}x');
     });
-
 
     testWidgets('fields are scrollable, not clipped at ${scale}x',
         (tester) async {

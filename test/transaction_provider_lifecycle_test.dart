@@ -69,7 +69,8 @@ void main() {
   // old amount/merchant until a filter changed. Every mutation must replace the
   // list.
   group('ledger list identity changes on mutation', () {
-    test('addTransaction, edit, exclude, category and delete all rekey', () async {
+    test('addTransaction, edit, exclude, category and delete all rekey',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final provider = TransactionProvider();
       await provider.ready;

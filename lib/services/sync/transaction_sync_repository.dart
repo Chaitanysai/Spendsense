@@ -85,15 +85,12 @@ class TransactionSyncRepository {
     required String deviceId,
   }) {
     if (!isAvailable) return Future<void>.value();
-    return _collection(uid)
-        .doc(syncId)
-        .set(<String, Object?>{
-          'syncId': syncId,
-          'deletedAtMs': deletedAtMs,
-          'updatedAtMs': deletedAtMs,
-          'deviceId': deviceId,
-        })
-        .timeout(timeout);
+    return _collection(uid).doc(syncId).set(<String, Object?>{
+      'syncId': syncId,
+      'deletedAtMs': deletedAtMs,
+      'updatedAtMs': deletedAtMs,
+      'deviceId': deviceId,
+    }).timeout(timeout);
   }
 
   /// Removes a tombstone once both sides are past the retention window.

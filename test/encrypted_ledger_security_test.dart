@@ -108,7 +108,8 @@ void main() {
       );
     }
 
-    test('invalid base64 key value fails closed and preserves records', () async {
+    test('invalid base64 key value fails closed and preserves records',
+        () async {
       await expectKeyFailurePreservesRecords(
         _FakeKeyStore(value: 'not-valid-base64!!!'),
       );

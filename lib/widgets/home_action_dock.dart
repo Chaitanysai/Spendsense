@@ -170,7 +170,6 @@ class _DockSlot extends StatelessWidget {
 
   const _DockSlot({required this.action, required this.primary});
 
-
   /// Fill behind a glyph. Every slot uses this same construction so the four
   /// read as one control:
   ///
@@ -214,8 +213,8 @@ class _DockSlot extends StatelessWidget {
     // against the plate it actually sits on, because a wash of any hue collapses
     // the glyph's contrast against the plate behind it.
     final wellColor = _wellFill(context, dark, primary: primary);
-    final iconColor =
-        AppColors.inkOn(AppColors.brand, wellColor, HomeActionDock.dockSurface(context));
+    final iconColor = AppColors.inkOn(
+        AppColors.brand, wellColor, HomeActionDock.dockSurface(context));
 
     final labelStyle = AppText.label(context).copyWith(
       fontSize: 11,
@@ -230,10 +229,11 @@ class _DockSlot extends StatelessWidget {
     // than its neighbours and the four icons sat at different heights. The box
     // is measured at the *effective* text scale so it still grows under
     // accessibility font settings instead of clipping.
-    final labelHeight =
-        (2 * labelStyle.fontSize! * labelStyle.height! *
-                MediaQuery.textScalerOf(context).scale(1))
-            .ceilToDouble();
+    final labelHeight = (2 *
+            labelStyle.fontSize! *
+            labelStyle.height! *
+            MediaQuery.textScalerOf(context).scale(1))
+        .ceilToDouble();
 
     return Semantics(
       button: true,

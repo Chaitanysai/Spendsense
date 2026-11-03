@@ -22,13 +22,13 @@ void main() {
 
   group('AppPalette', () {
     test('ships the 2026 premium set first and keeps the legacy palettes', () {
-      expect(AppPalette.all, hasLength(13));
+      expect(AppPalette.all, hasLength(19));
       expect(AppPalette.all.first, same(AppPalette.premiumBlue));
       expect(
         AppPalette.all.map((p) => p.label),
         containsAll([
           'Premium Blue',
-        'Paper',
+          'Paper',
           'Deep Navy',
           'Soft Pastel Teal',
           'Plum & Blush',
@@ -40,6 +40,15 @@ void main() {
           'Royal Purple',
           'Rose',
           'Teal',
+          // The six product-owner palettes. Labels are asserted verbatim: the
+          // product owner supplied these names, including the unusual
+          // "WineRed, UnlightSand" spelling, and they must not be corrected.
+          'Royal Blue + Light Cream',
+          'WineRed, UnlightSand',
+          'Orange + milk',
+          'Plum + milk',
+          'Midnight, Indigo, Vanilla',
+          'Cherry and alabaster',
         ]),
       );
     });
@@ -323,8 +332,10 @@ void main() {
 
       for (final p in AppPalette.all) {
         AppColors.applyPalette(p);
-        expect(chroma(AppColors.darkSurface), greaterThan(0.02), reason: p.label);
-        expect(chroma(AppColors.darkSurfaceAlt), greaterThan(0.02), reason: p.label);
+        expect(chroma(AppColors.darkSurface), greaterThan(0.02),
+            reason: p.label);
+        expect(chroma(AppColors.darkSurfaceAlt), greaterThan(0.02),
+            reason: p.label);
         expect(AppColors.darkSurface.computeLuminance(), lessThan(0.20));
         expect(AppColors.darkSurfaceAlt.computeLuminance(), lessThan(0.25));
         expect(
