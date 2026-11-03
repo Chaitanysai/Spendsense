@@ -243,11 +243,12 @@ the same failure on future pushes until the shim is repaired.
 | `ci-guard` | pass |
 | `pr-mergeable` | pass |
 | `security` | pass |
-| `build` | see PR #47 |
-| `Analyze and test` | see PR #47 |
+| `build` | pass (3m07s) |
+| `Analyze and test` | pass (2m47s) |
 
-CI results are recorded in the PR rather than asserted here, because the run
-was still in progress when this report was written.
+All required checks for `release/2.0.13+38` (`security`, `build`, `ci-guard`)
+pass on the final commit. The PR is blocked only on the required approving
+review, not on CI.
 
 ---
 
@@ -273,12 +274,14 @@ pipeline there, without touching any worktree:
 | `git clone --branch feat/spendsense-premium-redesign --depth 1` | 572 files |
 | `flutter pub get` | Got dependencies |
 | `dart format --set-exit-if-changed lib test` | 245 files, 0 changed |
-| `flutter analyze` | No issues found |
-| `flutter test` | see below |
-| `flutter build apk --debug` | see below |
+| `flutter analyze` | No issues found (16.3s) |
+| `flutter test` | **1,312 passed** (2m12s) |
+| `flutter build apk --debug` | Built successfully (4m53s); `aapt` reports `com.example.spendsense`, versionName `2.0.23`, versionCode `48` |
 
-No source file needed from the original working directory, which confirms the
-push contains the complete change set rather than relying on local-only files.
+The clone was made at commit `5b488b8`. No source file needed from the original
+working directory, which confirms the push contains the complete change set
+rather than relying on local-only files. A clean checkout therefore configures,
+analyses, tests and builds from GitHub alone.
 
 ---
 
