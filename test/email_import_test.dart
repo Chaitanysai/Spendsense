@@ -258,5 +258,44 @@ void main() {
       );
     });
   });
+
+  group('Gmail search query', () {
+    test('lists every sender domain and groups them as one OR clause', () {
+      final query = GmailEmailSource.buildQuery(
+        ['hdfcbank.net', 'slice.bank.in'],
+        null,
+      );
+
+      expect(query, '(from:hdfcbank.net OR from:slice.bank.in) newer_than:30d');
+      expect(query, isNot(contains('after:')));
+    });
+
+    test('the first sync is bounded by newer_than only', () {
+      // Without a cursor the date clause must be absent: an `after:` of epoch
+      // zero would be an empty clause, and a malformed one makes Gmail reject
+      // the whole listing rather than return mail.
+      expect(GmailEmailSource.buildQuery(['a.com'], null), isNot(contains('after:')));
+    });
+
+    test('the cursor becomes a zero-padded calendar date with a day of overlap',
+        () {
+      final query = GmailEmailSource.buildQuery(
+        ['a.com'],
+        DateTime.utc(2026, 3, 7, 23, 30),
+      );
+
+      // 2026/03/07 minus one day, zero-padded, never an epoch second.
+      expect(query, contains('after:2026/03/06'));
+      expect(query, isNot(matches(RegExp(r'after:\d{9,}'))));
+    });
+
+    test('a cursor at the start of a month rolls back across a year boundary',
+        () {
+      expect(
+        GmailEmailSource.buildQuery(['a.com'], DateTime.utc(2026, 1, 1, 5)),
+        contains('after:2025/12/31'),
+      );
+    });
+  });
 }
 

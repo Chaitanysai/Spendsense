@@ -1008,26 +1008,35 @@ class TransactionProvider with ChangeNotifier {
 
   /// Imports bank alert emails from Gmail.
   ///
-  /// Returns the number of new records. The whole batch is parsed first and
-  /// committed in one journalled write, matching the SMS scan. Raw email text
-  /// is never stored: the record keeps only the same derived fields as SMS and
-  /// a `Email-Gmail` source marker; the Gmail message id is the dedupe key.
+  /// Returns what the run found, imported and skipped so the screen can tell
+  /// "no bank mail matched" from "mail matched but no parser recognised it".
+  /// The whole batch is parsed first and committed in one journalled write,
+  /// matching the SMS scan. Raw email text is never stored: the record keeps
+  /// only the same derived fields as SMS and a `Email-Gmail` source marker;
+  /// the Gmail message id is the dedupe key.
   ///
-  /// The Gmail cursor is advanced only after that write succeeds, and only to
-  /// the newest message that was actually committed. A failed or interrupted
-  /// import therefore re-reads the same messages next time instead of silently
-  /// skipping them.
-  Future<int> importFromGmail({GmailEmailSource? source}) async {
+  /// The Gmail cursor is advanced only after that write succeeds, and never
+  /// past a message that matched debit wording but failed to parse, so a
+  /// parser fix can still pick it up on a later sync.
+  Future<GmailSyncReport> importFromGmail({GmailEmailSource? source}) async {
     await _initialization;
-    if (_ledgerInitError != null) return 0;
+    if (_ledgerInitError != null) return GmailSyncReport.empty;
     if (_isSyncing) throw const EmailImportBusyException();
     _isSyncing = true;
     _newThisSync = 0;
     _notifyIfAlive();
     final gmailSource = source ?? GmailEmailSource();
     try {
+      // Skip bodies already turned into records, and bodies already rejected:
+      // re-downloading the same non-transaction mail on every sync was pure
+      // cost. A rejection is still retryable after `clearRejected`, because the
+      // cursor below never moves past a message that failed to parse.
+      final seenIds = <String>{
+        ..._cache.cachedIds,
+        for (final rejected in _cache.rejectedMessages) rejected.id,
+      };
       final alerts = await gmailSource.fetchBankAlerts(
-        seenIds: _cache.cachedIds,
+        seenIds: seenIds,
         since: await gmailSource.lastSyncAt(),
       );
       if (alerts.isEmpty) {
@@ -1038,17 +1047,26 @@ class TransactionProvider with ChangeNotifier {
         // null forever, so a person whose bank domain was not yet on the
         // allowlist saw "Last sync: never" after every single sync.
         await gmailSource.markSyncedAt(DateTime.now());
-        return 0;
+        return GmailSyncReport.empty;
       }
 
       final parser = SmartParser();
       final accepted = <TransactionModel>[];
       final rejected = <String, String>{};
+      final retryable = <String>{};
       for (final alert in alerts) {
         final id = 'gmail:${alert.id}';
+        // A message with no debit wording is a definitive non-transaction and
+        // must not hold the cursor back. A message that looks like a debit but
+        // yields no amount is a parser failure and stays retryable.
+        if (!SmartParser.isDebitExpenseSms(alert.text)) {
+          rejected[id] = 'EMAIL_NOT_A_DEBIT';
+          continue;
+        }
         final parsed = await parser.parse(alert.text, id, alert.date);
         if (parsed == null) {
-          rejected[id] = 'EMAIL_NOT_A_DEBIT';
+          rejected[id] = 'EMAIL_PARSE_FAILED';
+          retryable.add(id);
           continue;
         }
         accepted.add(parsed.copyWith(
@@ -1076,20 +1094,27 @@ class TransactionProvider with ChangeNotifier {
       }
       await _cache.updateSyncMeta();
 
-      // Commit succeeded: only now is it safe to move the cursor. Advance to the
-      // newest listed alert only when every alert was committed; a partial
-      // failure keeps the old cursor so the unparsed mail is retried.
+      // Commit succeeded: only now is it safe to move the cursor.
       //
-      // `alerts` can legitimately be empty — a sync with no matching bank mail,
-      // which is every sync until the right sender domain is on the allowlist.
-      // `reduce` throws on an empty list, so that case used to fail the whole
-      // sync and report "sync failed" while never recording a last-sync time.
-      final allCommitted = accepted.length + rejected.length >= alerts.length;
-      if (allCommitted && alerts.isNotEmpty) {
-        final newestSeen = alerts
+      // The cursor stops one second before the OLDEST unparsed debit, so the
+      // next sync lists it again instead of stepping over it. Previously every
+      // alert counted as "committed" because rejected ones were included in the
+      // count, so one parser miss moved the boundary past that message forever
+      // and it could never be retried after a parser fix.
+      if (alerts.isNotEmpty) {
+        final newest = alerts
             .map((a) => a.date)
             .reduce((a, b) => a.isAfter(b) ? a : b);
-        await gmailSource.markImported(newestSeen);
+        final retryDates = alerts
+            .where((a) => retryable.contains('gmail:${a.id}'))
+            .map((a) => a.date)
+            .toList();
+        final cursor = retryDates.isEmpty
+            ? newest
+            : retryDates
+                .reduce((a, b) => a.isBefore(b) ? a : b)
+                .subtract(const Duration(seconds: 1));
+        await gmailSource.markImported(cursor);
       }
       // A sync that found nothing is still a completed sync, so the screen can
       // stop claiming it has never run.
@@ -1097,7 +1122,11 @@ class TransactionProvider with ChangeNotifier {
 
       _lastSynced = DateTime.now();
       _syncFailure = null;
-      return accepted.length;
+      return GmailSyncReport(
+        found: alerts.length,
+        imported: accepted.length,
+        skipped: rejected.length,
+      );
     } catch (e) {
       debugPrint('❌ Email import error: ${e.runtimeType}');
       _syncFailure = SyncFailure.scanFailed;

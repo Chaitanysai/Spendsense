@@ -96,9 +96,11 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
       _busy = true;
       _error = null;
     });
+    var consentRecorded = false;
     try {
       if (!await _confirmConsent()) return;
       await _source.setConsent(true);
+      consentRecorded = true;
       final email = await _source.connect();
       if (!mounted) return;
       setState(() {
@@ -109,11 +111,26 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
         const SnackBar(content: Text('Gmail connected')),
       );
     } on EmailAuthUnavailableException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      // A failed authorisation must not leave consent recorded: the persisted
+      // flag is what the next launch reads, and a stale "connected" state sent
+      // people to Sync now, which then failed with "needs to be reconnected".
+      if (consentRecorded) await _source.setConsent(false);
+      if (mounted) {
+        setState(() {
+          _consent = false;
+          _connectedEmail = null;
+          _error = e.message;
+        });
+      }
     } catch (_) {
+      if (consentRecorded) await _source.setConsent(false);
       // Never surface provider/exception text; it can contain account detail.
       if (mounted) {
-        setState(() => _error = 'Gmail could not be connected.');
+        setState(() {
+          _consent = false;
+          _connectedEmail = null;
+          _error = 'Gmail could not be connected.';
+        });
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -145,23 +162,25 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
       _error = null;
     });
     try {
-      final imported = await transactions.importFromGmail(source: _source);
+      final report = await transactions.importFromGmail(source: _source);
       final last = await _source.lastScanAt();
       if (!mounted) return;
       setState(() => _lastSync = last);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            imported == 0
-                ? 'No new bank emails'
-                : 'Imported $imported email transaction(s)',
-          ),
-        ),
+        SnackBar(content: Text(emailSyncSnackBarText(report))),
       );
     } on EmailImportBusyException {
       if (mounted) {
         setState(() => _error = 'Another sync is running. Try again shortly.');
       }
+    } on EmailConsentRequiredException {
+      if (mounted) {
+        setState(
+          () => _error = 'Email import needs Gmail consent. Tap Connect Gmail.',
+        );
+      }
+    } on EmailAuthUnavailableException catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Email sync failed. Try again later.');
@@ -406,4 +425,20 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
       ),
     );
   }
+}
+
+/// One line describing what an email sync actually did.
+///
+/// Kept out of the widget so the three outcomes the pipeline can produce — no
+/// matching mail, mail that no parser recognised, and imported records — are
+/// testable without pumping a screen. Before this, all three read "No new bank
+/// emails", which made a parser miss look identical to an empty mailbox.
+String emailSyncSnackBarText(GmailSyncReport report) {
+  if (report.imported > 0) {
+    return 'Imported ${report.imported} email transaction(s)';
+  }
+  if (report.found > 0) {
+    return 'Found ${report.found} bank email(s), but none matched a transaction';
+  }
+  return 'No bank emails matched your sender domains';
 }

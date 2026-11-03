@@ -41,9 +41,9 @@ void main() {
     await provider.ready;
     final source = _EmptyMailSource();
 
-    final imported = await provider.importFromGmail(source: source);
+    final report = await provider.importFromGmail(source: source);
 
-    expect(imported, 0);
+    expect(report.imported, 0);
     expect(
       source.recordedSync,
       isNotNull,
