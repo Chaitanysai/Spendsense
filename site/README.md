@@ -179,6 +179,7 @@ Run and passing:
 | Lint | `npm run lint` | pass, 0 warnings |
 | Build | `npm run build` | pass |
 | OTA guard | (runs inside build) | manifest, APK digest, legal pages intact |
+| Hosting cache policy | `node ../tool/validate_hosting_headers.js` | pass; see [../docs/hosting-cache-headers.md](../docs/hosting-cache-headers.md) |
 | Browser | Playwright, 1440 / 1024 / 390 | 0 console errors, 0 overflow |
 
 Bundle: 54.7 kB gzip app + 116.5 kB gzip three, split into two chunks so Three.js

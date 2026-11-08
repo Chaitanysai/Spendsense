@@ -191,6 +191,12 @@ jobs:
           npm install --no-save --no-audit --no-fund yaml
           node tool/validate_yaml.js
 
+      - name: Validate the hosting cache policy
+        # Same gate as pr-build: firebase.json decides what browsers may keep,
+        # and no emulator applies `hosting.headers` locally, so this is the only
+        # automated check on the cache policy before a release.
+        run: node tool/validate_hosting_headers.js
+
       - name: Static analysis
         run: flutter analyze
 

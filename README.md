@@ -118,6 +118,7 @@ before opening a pull request, and keep changes scoped to one concern.
 
 - [Assistant architecture](docs/assistant.md)
 - [OTA updates](docs/OTA_UPDATES.md)
+- [Hosting cache headers](docs/hosting-cache-headers.md)
 - [Firebase setup](docs/firebase.md)
 - [Spending semantics](docs/spending-semantics.md)
 - [Typography](docs/typography.md)

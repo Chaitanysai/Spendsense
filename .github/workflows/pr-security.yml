@@ -16,6 +16,8 @@ on:
       - '.github/workflows/**'
       - 'lib/**'
       - 'android/**'
+      - 'firebase.json'
+      - 'tool/validate_hosting_headers.js'
       - 'pubspec.yaml'
       - 'pubspec.lock'
   workflow_dispatch:

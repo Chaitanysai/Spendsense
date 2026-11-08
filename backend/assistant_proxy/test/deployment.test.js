@@ -73,8 +73,14 @@ test('dedicated runtime identity change leaves secrets and auth untouched', () =
 
 test('Firebase deployment target is explicit and points at the function', () => {
   assert.equal(firebaseRc.projects.default, 'spendsense-ota-2026');
-  assert.equal(firebaseJson.functions.source, 'backend/assistant_proxy');
-  assert.equal(firebaseJson.functions.runtime, 'nodejs22');
+  // `functions` is a multi-codebase array (assistant + download), not the old
+  // single-function object, so the assistant target is located by codebase.
+  const assistant = firebaseJson.functions.find(
+    (codebase) => codebase.codebase === 'assistant',
+  );
+  assert.ok(assistant, 'firebase.json has no "assistant" functions codebase');
+  assert.equal(assistant.source, 'backend/assistant_proxy');
+  assert.equal(assistant.runtime, 'nodejs22');
 });
 
 test('proxy function does not contain a hardcoded Gemini key value', () => {

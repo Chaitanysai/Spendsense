@@ -243,6 +243,13 @@ jobs:
           fi
           echo "OK: the built APK is signed by the pinned release certificate"
 
+      - name: Validate the hosting cache policy
+        # Last gate before publish: the payload assertions above prove the files
+        # exist, this proves browsers are allowed to keep the right ones. A rule
+        # that caches HTML for an hour next to immutable hashed bundles is
+        # exactly the stale-reference failure this release is meant to prevent.
+        run: node tool/validate_hosting_headers.js
+
       - name: Assert the static site pages are present in the payload
         # `firebase deploy` replaces the WHOLE Hosting release, so the published
         # site is exactly what is in ota/public. When the landing and legal pages
