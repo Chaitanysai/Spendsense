@@ -34,3 +34,14 @@ publishes the page while the button falls through to the 404 page.
 
 See [docs/OTA_UPDATES.md](../docs/OTA_UPDATES.md) for the trust model and
 publishing process.
+
+## Caching
+
+`firebase.json` gives the content-hashed bundles under `/site/assets/` a
+one-year `immutable` policy, and makes every HTML entry point plus
+`manifest.json` revalidate on each request. The download redirect stays
+`no-store`. There is deliberately no catch-all rewrite: Hosting's own 404
+handling serves `404.html` with a real 404 status, so a request for a bundle an
+old page still references cannot return a cacheable `200`. The policy is checked
+by `tool/validate_hosting_headers.js`; the measurements and reasoning are in
+[docs/hosting-cache-headers.md](../docs/hosting-cache-headers.md).

@@ -18,6 +18,8 @@ on:
       - 'lib/**'
       - 'test/**'
       - 'android/**'
+      - 'firebase.json'
+      - 'tool/validate_hosting_headers.js'
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'AGENTS.md'
@@ -84,6 +86,13 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund yaml
           node tool/validate_yaml.js
+
+      - name: Validate the hosting cache policy
+        # firebase.json decides what every visitor's browser may keep. The
+        # Firebase Hosting emulator does not apply `hosting.headers` at all, so
+        # nothing else here can catch a rule that starts caching HTML for an
+        # hour alongside immutable bundles. Needs no dependencies.
+        run: node tool/validate_hosting_headers.js
 
       - name: Verify Dart formatting of the change set (read-only)
         # --output=none never writes files; --set-exit-if-changed makes any
