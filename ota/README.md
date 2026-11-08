@@ -37,11 +37,17 @@ publishing process.
 
 ## Caching
 
-`firebase.json` gives the content-hashed bundles under `/site/assets/` a
-one-year `immutable` policy, and makes every HTML entry point plus
-`manifest.json` revalidate on each request. The download redirect stays
-`no-store`. There is deliberately no catch-all rewrite: Hosting's own 404
-handling serves `404.html` with a real 404 status, so a request for a bundle an
-old page still references cannot return a cacheable `200`. The policy is checked
-by `tool/validate_hosting_headers.js`; the measurements and reasoning are in
+`firebase.json` gives the content-hashed bundles under `/site/assets/` and the
+version-named APKs under `/releases/` a one-year `immutable` policy, and makes
+every HTML entry point (including `/` and `/legal/`) plus `manifest.json`
+revalidate on each request. The download redirect stays `no-store`.
+
+There is deliberately no catch-all rewrite: Hosting's own 404 handling serves
+`404.html` with a real 404 status, so a request for a bundle an old page still
+references cannot return a cacheable `200`. Measured live, a stale hashed URL
+answers `404` with `no-cache` — it is not cached.
+
+The policy is checked by `tool/validate_hosting_headers.js`, which runs in
+`pr-build`, in `release-branch-ci`, and immediately before every publish in
+`ota-publish`. Verification readings and the reasoning are in
 [docs/hosting-cache-headers.md](../docs/hosting-cache-headers.md).

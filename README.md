@@ -79,7 +79,9 @@ Actions secrets; local release builds use your own keystore.
   [backend/assistant_proxy](backend/assistant_proxy/README.md) and an API key
   stored server-side.
 - **OTA** uses a static manifest and a signed APK; see
-  [docs/OTA_UPDATES.md](docs/OTA_UPDATES.md).
+  [docs/OTA_UPDATES.md](docs/OTA_UPDATES.md). Hosting sets an immutable cache
+  policy for content-hashed assets and revalidation for HTML; see
+  [docs/hosting-cache-headers.md](docs/hosting-cache-headers.md).
 
 The ledger and SMS parsing work offline. A build without Firebase configuration
 runs without an account.

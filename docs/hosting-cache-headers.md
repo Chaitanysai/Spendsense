@@ -71,6 +71,30 @@ Header decisions resolved from the new `firebase.json` with the matcher
 | `/releases/spendsense*.apk` | `public, max-age=31536000, immutable` |
 | `/landing.css`, `/legal/style.css`, `/legal/**` fonts and images | *(no rule)* Hosting default `max-age=3600` |
 
+### 2.1 Measured on the live origin
+
+Deployed on 2026-11-08 with OTA run 42514904872 (build 2.0.24+49). Readings taken
+from `https://spendsense-ota-2026.web.app` after the deploy; the "before" column
+is the same paths on the previous release.
+
+| Request | Before | After (measured) |
+|---|---|---|
+| `/` | `max-age=3600` | `no-cache, max-age=0, must-revalidate` |
+| `/index.html` | `max-age=3600` | `no-cache, max-age=0, must-revalidate` |
+| `/legal/` | `max-age=3600` | `no-cache, max-age=0, must-revalidate` |
+| `/manifest.json` | `no-cache, max-age=0, must-revalidate` | unchanged |
+| `/releases/latest.apk` | `no-store, max-age=0, must-revalidate` | unchanged (302 to the current APK) |
+| `/site/assets/index-It2n_Ezl.js` | `max-age=3600` | `public, max-age=31536000, immutable` |
+| `/site/assets/index-vIX1ZQhS.css` | `max-age=3600` | `public, max-age=31536000, immutable` |
+| `/site/assets/three-BLc3E22_.js` | `max-age=3600` | `public, max-age=31536000, immutable` |
+| `/releases/spendsense-2.0.24+49.apk` | `max-age=3600` | `public, max-age=31536000, immutable` |
+| `/site/assets/index-OLDHASH0000.js` (not in the payload) | **`200`**, `max-age=3600` | **`404`**, `no-cache, max-age=0, must-revalidate` |
+| `/does-not-exist-xyz` | **`200`**, `max-age=3600` | **`404`**, `no-cache, max-age=0, must-revalidate` |
+
+The last two rows are the stale-reference fix, confirmed live: a missing hashed
+bundle now answers a real `404` and is not cached, instead of a `200` HTML body
+that the immutable rule would have pinned for a year.
+
 Four changes, in the order they matter:
 
 1. **`/site/assets/**` is immutable.** These are Vite's content-hashed outputs
@@ -167,15 +191,17 @@ verified against production instead (§1) and its rule is unchanged.
 
 ### 3.4 Known limits of this verification
 
-- **Post-deploy header values are not yet measured.** No deploy, commit or push
-  was made. Every "after" value in §2 is the decision resolved from
-  `firebase.json`, plus emulator-confirmed routing. Confirming them on the live
-  origin is the queued follow-up reviewer pass.
-- A request for a *missing* hashed name still receives the
-  `/site/assets/**` `Cache-Control` header on its `404`. Browsers do cache
-  `404`s that carry `Cache-Control`, so a stale client may hold that one URL —
-  harmless because the URL is never referenced again and a reload resolves it,
-  but it is the reason the catch-all rewrite had to go rather than be tolerated.
+- **Post-deploy header values are measured.** The policy was published on
+  2026-11-08 (OTA run 42514904872, build 2.0.24+49) and every row in §2 except
+  the emulator-only routing checks now matches the live origin. §2.1 records the
+  before/after readings.
+- A request for a *missing* hashed name does **not** inherit the
+  `/site/assets/**` header in production. Measured on the live origin, a stale
+  hashed URL answers `404` with `no-cache, max-age=0, must-revalidate`, so it is
+  not cached for a year. This is safer than the original analysis assumed —
+  Hosting's own 404 response carries its own `Cache-Control` — but the
+  catch-all rewrite still had to go and stays gone: with it in place the same
+  request returned `200` plus the 404 page, which no header could make safe.
 - `/releases/spendsense*.apk` is a glob over version-named files. It is correct
   while the workflow names APKs `spendsense-<version>+<build>.apk`, which
   `ota-publish.yml` asserts separately.
