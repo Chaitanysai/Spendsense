@@ -8,7 +8,7 @@
 > **Status of this document.** Sections 0–3 record the Phase 1 audit **as found** and
 > are deliberately left unedited, so the original state stays on the record. Every
 > finding's resolution, and the Phase 4 re-validation performed after the fixes, are
-> in [§8 Resolution log](#8-resolution-log-phase-2-4) at the end. Read §8 for current
+> in [§8 Resolution log](#8-resolution-log-phases-24) at the end. Read §8 for current
 > state.
 
 ---
