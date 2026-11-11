@@ -11,11 +11,14 @@ import 'pressable.dart';
 /// data never wears two different controls in the same flow.
 ///
 /// A dropdown for twelve categories is a full-screen overlay for a single tap;
-/// the chips keep every option visible and one tap away. The selected chip is
-/// unmistakable: its own category colour fills the pill, draws the border, and
-/// drives the ink through [AppColors.inkOn] — the same contrast-aware routing
-/// every IconWell uses — so light hues (Food's amber) darken their ink instead
-/// of vanishing into their own tint.
+/// the chips keep every option visible and one tap away.
+///
+/// Every chip is neutral until chosen: a quiet card-toned pill with a hairline
+/// and the category glyph in secondary ink. The chosen chip is the only place
+/// the category's own hue appears, as a tinted fill, a 1.5dp border in that hue
+/// and a check, so the choice is carried by shape and glyph as well as colour.
+/// Twelve differently tinted outlines at rest (the original) made the whole
+/// picker read as selected.
 class CategoryChipPicker extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onSelect;
@@ -28,23 +31,30 @@ class CategoryChipPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppColors.isDark(context);
+    final base = AppColors.glassSurface(context);
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
       children: CategoryStyle.pickerCategories.map((c) {
         final isSelected = selected == c;
         final color = CategoryStyle.color(c);
-        // The pill's fill at well strength; inkOn measures the glyph against
-        // this real composite, exactly as it does for icon wells.
-        final dark = AppColors.isDark(context);
-        final tinted = color.withValues(alpha: dark ? 0.22 : 0.18);
-        final ink =
-            AppColors.inkOn(color, tinted, AppColors.surfaceColor(context));
+        // The pill's chosen fill, composited over the card so the ink is
+        // measured against the colour that is really there.
+        final tinted = Color.alphaBlend(
+          color.withValues(alpha: dark ? 0.22 : 0.16),
+          base,
+        );
+        final ink = AppColors.resolveInk(color, tinted);
         return Semantics(
           button: true,
           selected: isSelected,
           label: c,
           excludeSemantics: true,
+          // `excludeSemantics` hides the Pressable's own tap action, so without
+          // this a screen reader reaches the chip, hears "Food, selected,
+          // button", and cannot activate it. The original had the same gap.
+          onTap: () => onSelect(c),
           child: Pressable(
             onTap: () => onSelect(c),
             sound: SoundEventType.selectionChanged,
@@ -59,9 +69,7 @@ class CategoryChipPicker extends StatelessWidget {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? Color.alphaBlend(tinted, AppColors.surfaceColor(context))
-                    : AppColors.surfaceColor(context),
+                color: isSelected ? tinted : base,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
                   width: isSelected ? 1.5 : 1,
@@ -72,18 +80,19 @@ class CategoryChipPicker extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    CategoryStyle.icon(c),
+                    isSelected ? Icons.check_rounded : CategoryStyle.icon(c),
                     size: 16,
                     color: isSelected ? ink : AppColors.textSecondary(context),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     c,
-                    style:
-                        AppText.weight(AppText.label(context), FontWeight.w700)
-                            .copyWith(
-                      color:
-                          isSelected ? ink : AppColors.textSecondary(context),
+                    style: AppText.label(context).copyWith(
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isSelected
+                          ? AppColors.textPrimary(context)
+                          : AppColors.textSecondary(context),
                     ),
                   ),
                 ],

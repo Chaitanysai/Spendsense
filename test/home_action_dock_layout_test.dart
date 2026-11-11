@@ -12,6 +12,13 @@ void main() {
       (tester) async {
     final actions = <QuickAction>[
       QuickAction(
+        label: 'Add',
+        semanticLabel: 'Add transaction',
+        icon: Icons.add_rounded,
+        primary: true,
+        onTap: () {},
+      ),
+      QuickAction(
         label: 'Add expense',
         icon: Icons.south_west_rounded,
         onTap: () {},
@@ -50,7 +57,8 @@ void main() {
     final dock = find.byType(HomeActionDock);
     final dockLeft = tester.getTopLeft(dock).dx;
     final dockWidth = tester.getSize(dock).width;
-    const slotWidth = 360 / 4;
+    // Five slots share the dock's inner width (the dock pads 5dp each side).
+    final slotWidth = (360 - 10) / actions.length;
 
     for (var i = 0; i < actions.length; i++) {
       final label = find.text(actions[i].label);
@@ -63,7 +71,7 @@ void main() {
         closeTo(labelCenter, 0.75),
         reason: '${actions[i].label}: icon must sit over its label',
       );
-      final slotCenter = dockLeft + slotWidth * (i + 0.5);
+      final slotCenter = dockLeft + 5 + slotWidth * (i + 0.5);
       expect(
         iconCenter,
         closeTo(slotCenter, 6),

@@ -3,6 +3,55 @@ import '../models/transaction_model.dart';
 import '../utils/period_math.dart';
 import 'bill_classifier.dart';
 
+/// Precomputed per-transaction facts shared by every plan comparison in one
+/// [BillDetectionService.detect] run.
+///
+/// Classification and normalization used to run once per (plan, transaction)
+/// pair — with a dozen plans and a few thousand rows that meant tens of
+/// thousands of identical regex/marker scans per screen build. Every field
+/// here depends only on the transaction, so it is computed exactly once.
+class _TxFacts {
+  final TransactionModel tx;
+  final DateTime date;
+  final bool reminderOnly;
+  final String merchantNorm;
+  final Set<String> merchantTokens;
+  final String refNorm;
+
+  const _TxFacts({
+    required this.tx,
+    required this.date,
+    required this.reminderOnly,
+    required this.merchantNorm,
+    required this.merchantTokens,
+    required this.refNorm,
+  });
+}
+
+/// Precomputed per-plan facts for one detect run (window bounds, tolerance,
+/// normalized title) — likewise hoisted out of the transaction loops.
+class _PlanFacts {
+  final RecurringPlan plan;
+  final DateTime due;
+  final DateTime windowStart;
+  final DateTime windowEnd;
+  final int tolerance;
+  final String titleNorm;
+  final Set<String> titleTokens;
+  final String? sourceRefNorm;
+
+  const _PlanFacts({
+    required this.plan,
+    required this.due,
+    required this.windowStart,
+    required this.windowEnd,
+    required this.tolerance,
+    required this.titleNorm,
+    required this.titleTokens,
+    required this.sourceRefNorm,
+  });
+}
+
 /// What a bill row is telling the user. There is deliberately no
 /// "needs review" state: ambiguous transactions stay ordinary and never ask the
 /// user a question.
@@ -109,10 +158,28 @@ class BillDetectionService {
         .where((t) => !t.isExcluded && t.type == TransactionType.expense)
         .toList();
 
-    final matches = _matchPlans(plans, tracked, day);
+    // One classification + normalization pass over the tracked rows, shared
+    // by every plan comparison below.
+    final facts = [
+      for (final tx in tracked)
+        _TxFacts(
+          tx: tx,
+          date: PeriodMath.dateOnly(tx.date),
+          reminderOnly: BillClassifier.isReminderOnly(tx.originalSms),
+          merchantNorm: _normalize(tx.merchant),
+          merchantTokens: _meaningfulTokens(tx.merchant),
+          refNorm: _normalize(tx.reference ?? ''),
+        ),
+    ];
+    final factsById = {for (final f in facts) f.tx.id: f};
+    final planFacts = [
+      for (final plan in plans) _planFactsFor(plan, factsById),
+    ];
+
+    final matches = _matchPlans(planFacts, facts, day);
     final views = <BillView>[
-      for (final plan in plans)
-        _viewForPlan(plan, tracked, day, matches[plan.id]),
+      for (final pf in planFacts)
+        _viewForPlan(pf, facts, day, matches[pf.plan.id]),
     ];
 
     final planMatchedTxIds = matches.values.map((t) => t.id).toSet();
@@ -122,6 +189,7 @@ class BillDetectionService {
       today: day,
       hiddenBillKeys: hiddenBillKeys,
       planMatchedTxIds: planMatchedTxIds,
+      planFacts: planFacts,
     );
     views.addAll(autoViews);
 
@@ -147,14 +215,15 @@ class BillDetectionService {
   // ── Confirmed plans ───────────────────────────────────────────────────────
 
   BillView _viewForPlan(
-    RecurringPlan plan,
-    List<TransactionModel> tracked,
+    _PlanFacts pf,
+    List<_TxFacts> tracked,
     DateTime day,
     TransactionModel? matched,
   ) {
+    final plan = pf.plan;
     final days = plan.daysUntilDue(day);
     final match =
-        matched != null && _withinWindow(plan, matched, day) ? matched : null;
+        matched != null && _withinWindow(pf, matched.date, day) ? matched : null;
 
     final state = match != null
         ? BillState.paid
@@ -172,30 +241,28 @@ class BillDetectionService {
       dueDate: plan.nextDue,
       state: state,
       matchedPayment: match,
-      history: _historyForPlan(plan, tracked),
+      history: _historyForPlan(pf, tracked),
     );
   }
 
   /// Reassigns at most one strong payment per plan and at most one plan per
   /// payment. A weak category-only coincidence is never enough.
   Map<String, TransactionModel> _matchPlans(
-    List<RecurringPlan> plans,
-    List<TransactionModel> tracked,
+    List<_PlanFacts> planFacts,
+    List<_TxFacts> tracked,
     DateTime day,
   ) {
     final candidates = <_PlanCandidate>[];
-    for (final plan in plans) {
-      final sourceReference = _sourceReference(plan, tracked);
-      for (final tx in tracked) {
-        if (BillClassifier.isReminderOnly(tx.originalSms)) continue;
-        if (!_withinWindow(plan, tx, day)) continue;
-        final amountGap = (tx.amountMinor - plan.amountMinor).abs();
-        final tolerance =
-            (plan.amountMinor * amountTolerance).round().clamp(100, 1 << 30);
-        if (amountGap > tolerance) continue;
-        final score = _score(plan, tx, sourceReference, amountGap);
+    for (final pf in planFacts) {
+      final plan = pf.plan;
+      for (final f in tracked) {
+        if (f.reminderOnly) continue;
+        if (!_withinWindow(pf, f.date, day)) continue;
+        final amountGap = (f.tx.amountMinor - plan.amountMinor).abs();
+        if (amountGap > pf.tolerance) continue;
+        final score = _score(pf, f, amountGap);
         if (!score.strong) continue;
-        candidates.add(_PlanCandidate(plan.id, tx, score.total, amountGap));
+        candidates.add(_PlanCandidate(plan.id, f.tx, score.total, amountGap));
       }
     }
 
@@ -221,26 +288,24 @@ class BillDetectionService {
   }
 
   _MatchScore _score(
-    RecurringPlan plan,
-    TransactionModel tx,
-    String? sourceReference,
+    _PlanFacts pf,
+    _TxFacts f,
     int amountGap,
   ) {
+    final plan = pf.plan;
     var identity = 0.0;
     var hasIdentity = false;
 
-    final ref = tx.reference?.trim();
-    if (sourceReference != null &&
-        sourceReference.isNotEmpty &&
-        ref != null &&
-        ref.isNotEmpty &&
-        _normalize(ref) == _normalize(sourceReference)) {
+    if (pf.sourceRefNorm != null &&
+        pf.sourceRefNorm!.isNotEmpty &&
+        f.refNorm.isNotEmpty &&
+        f.refNorm == pf.sourceRefNorm) {
       identity = 0.45;
       hasIdentity = true;
     }
 
-    final title = _normalize(plan.title);
-    final merchant = _normalize(tx.merchant);
+    final title = pf.titleNorm;
+    final merchant = f.merchantNorm;
     if (!hasIdentity && title.isNotEmpty && merchant.isNotEmpty) {
       if (title == merchant ||
           merchant.contains(title) ||
@@ -248,9 +313,7 @@ class BillDetectionService {
         identity = 0.40;
         hasIdentity = true;
       } else {
-        final titleTokens = _meaningfulTokens(title);
-        final merchantTokens = _meaningfulTokens(merchant);
-        final shared = titleTokens.intersection(merchantTokens);
+        final shared = pf.titleTokens.intersection(f.merchantTokens);
         if (shared.isNotEmpty) {
           identity = shared.length >= 2 ? 0.36 : 0.28;
           hasIdentity = true;
@@ -262,8 +325,7 @@ class BillDetectionService {
     // same amount inside the window must never mark a plan paid. A manual plan
     // whose title does not resemble the payment remains unmatched (the user can
     // still use Mark paid).
-    final tolerance =
-        (plan.amountMinor * amountTolerance).round().clamp(100, 1 << 30);
+    final tolerance = pf.tolerance;
     final amountScore = amountGap == 0
         ? 0.35
         : amountGap <= (plan.amountMinor * 0.005).round().clamp(100, 1 << 30)
@@ -272,9 +334,7 @@ class BillDetectionService {
                 ? 0.22
                 : 0.0;
 
-    final due = PeriodMath.dateOnly(plan.nextDue);
-    final date = PeriodMath.dateOnly(tx.date);
-    final daysFromDue = date.difference(due).inDays.abs();
+    final daysFromDue = f.date.difference(pf.due).inDays.abs();
     final dateScore = daysFromDue == 0
         ? 0.20
         : daysFromDue <= 3
@@ -286,40 +346,54 @@ class BillDetectionService {
   }
 
   List<TransactionModel> _historyForPlan(
-    RecurringPlan plan,
-    List<TransactionModel> tracked,
+    _PlanFacts pf,
+    List<_TxFacts> tracked,
   ) {
-    final sourceReference = _sourceReference(plan, tracked);
     final matches = <TransactionModel>[];
-    for (final tx in tracked) {
-      if (BillClassifier.isReminderOnly(tx.originalSms)) continue;
-      final tolerance =
-          (plan.amountMinor * amountTolerance).round().clamp(100, 1 << 30);
-      if ((tx.amountMinor - plan.amountMinor).abs() > tolerance) continue;
-      if (!_score(plan, tx, sourceReference,
-              (tx.amountMinor - plan.amountMinor).abs())
+    for (final f in tracked) {
+      if (f.reminderOnly) continue;
+      if ((f.tx.amountMinor - pf.plan.amountMinor).abs() > pf.tolerance) {
+        continue;
+      }
+      if (!_score(pf, f, (f.tx.amountMinor - pf.plan.amountMinor).abs())
           .strong) {
         continue;
       }
-      matches.add(tx);
+      matches.add(f.tx);
     }
     return _historyFor(matches);
   }
 
-  String? _sourceReference(RecurringPlan plan, List<TransactionModel> tracked) {
-    final id = plan.sourceTransactionId;
-    if (id == null) return null;
-    return tracked.where((t) => t.id == id).firstOrNull?.reference;
-  }
-
-  bool _withinWindow(RecurringPlan plan, TransactionModel t, DateTime day) {
+  _PlanFacts _planFactsFor(
+    RecurringPlan plan,
+    Map<String, _TxFacts> factsById,
+  ) {
     final due = PeriodMath.dateOnly(plan.nextDue);
     final start = PeriodMath.addDays(due, -matchDaysBeforeDue);
     final end = PeriodMath.addDays(due, matchDaysAfterDue);
-    final date = PeriodMath.dateOnly(t.date);
     final cycleStart = _previousDue(plan);
     final earliest = cycleStart.isAfter(start) ? cycleStart : start;
-    return !date.isBefore(earliest) && !date.isAfter(end);
+    String? sourceRefNorm;
+    final sourceId = plan.sourceTransactionId;
+    if (sourceId != null) {
+      final sourceRef = factsById[sourceId]?.tx.reference;
+      if (sourceRef != null) sourceRefNorm = _normalize(sourceRef);
+    }
+    return _PlanFacts(
+      plan: plan,
+      due: due,
+      windowStart: earliest,
+      windowEnd: end,
+      tolerance:
+          (plan.amountMinor * amountTolerance).round().clamp(100, 1 << 30),
+      titleNorm: _normalize(plan.title),
+      titleTokens: _meaningfulTokens(plan.title),
+      sourceRefNorm: sourceRefNorm,
+    );
+  }
+
+  bool _withinWindow(_PlanFacts pf, DateTime dateOnly, DateTime day) {
+    return !dateOnly.isBefore(pf.windowStart) && !dateOnly.isAfter(pf.windowEnd);
   }
 
   // ── Automatic detection ───────────────────────────────────────────────────
@@ -330,6 +404,7 @@ class BillDetectionService {
     required DateTime today,
     required Set<String> hiddenBillKeys,
     required Set<String> planMatchedTxIds,
+    required List<_PlanFacts> planFacts,
   }) {
     final groups = <String, _BillGroup>{};
     for (final tx in transactions) {
@@ -352,7 +427,7 @@ class BillDetectionService {
       if (hiddenBillKeys.contains(group.key)) continue;
       final entries = group.deduplicated();
       if (entries.isEmpty) continue;
-      if (_coveredByPlan(group, plans, entries)) continue;
+      if (_coveredByPlan(group, planFacts, entries)) continue;
 
       final latest = entries.last;
       final pattern = _pattern(entries);
@@ -488,27 +563,28 @@ class BillDetectionService {
 
   bool _coveredByPlan(
     _BillGroup group,
-    List<RecurringPlan> plans,
+    List<_PlanFacts> planFacts,
     List<_BillEntry> entries,
   ) {
     final groupLabel = _normalize(group.label);
     final groupTokens = _meaningfulTokens(groupLabel);
     final latestAmount = entries.last.transaction.amountMinor;
     final latestDate = PeriodMath.dateOnly(entries.last.transaction.date);
-    for (final plan in plans) {
+    for (final pf in planFacts) {
+      final plan = pf.plan;
       final sourceId = plan.sourceTransactionId;
       if (sourceId != null &&
           entries.any((e) => e.transaction.id == sourceId)) {
         return true;
       }
-      final title = _normalize(plan.title);
+      final title = pf.titleNorm;
       if (title.isNotEmpty &&
           (title == groupLabel ||
               title.contains(groupLabel) ||
               groupLabel.contains(title))) {
         return true;
       }
-      final shared = groupTokens.intersection(_meaningfulTokens(title));
+      final shared = groupTokens.intersection(pf.titleTokens);
       if (shared.isNotEmpty) return true;
       // Same category, near-identical amount and adjacent cycle: the manual
       // plan is the same obligation under a different label.

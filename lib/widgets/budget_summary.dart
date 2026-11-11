@@ -76,13 +76,13 @@ class BudgetSummary extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            periodLabel.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.overline(context),
+            'Budget limit',
+            style: AppText.label(context).copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary(context),
+            ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text('Budget limit', style: AppText.label(context)),
           const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -92,15 +92,22 @@ class BudgetSummary extends StatelessWidget {
                   ? Formatters.currency.format(progress.budgetMinor)
                   : 'No budget set',
               maxLines: 1,
-              style: AppText.amount(context, size: 28),
+              style: AppText.amount(
+                context,
+                size: 24,
+                weight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            spentText,
+            '$spentText \u00b7 $periodLabel',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppText.bodyStrong(context),
+            style: AppText.caption(context).copyWith(
+              fontSize: 12,
+              color: AppColors.textTertiary(context),
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           _UsageBar(
@@ -109,7 +116,7 @@ class BudgetSummary extends StatelessWidget {
                 ? AppColors.expenseRed
                 : (full || nearLimit)
                     ? AppColors.warning
-                    : AppColors.brandBright,
+                    : AppColors.brandInk(context),
           ),
           const SizedBox(height: AppSpacing.md),
           DecoratedBox(
@@ -132,8 +139,11 @@ class BudgetSummary extends StatelessWidget {
                       status,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.title(context)
-                          .copyWith(fontSize: 12.5, color: pillInk),
+                      style: AppText.label(context).copyWith(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: pillInk,
+                      ),
                     ),
                   ),
                 ],
@@ -154,22 +164,15 @@ class _UsageBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = AppColors.isDark(context);
-    final track = dark
-        ? Colors.white.withValues(alpha: 0.10)
-        : AppColors.brand.withValues(alpha: 0.12);
-
+    // A solid fill on the neutral tertiary track. The only colour is the
+    // state (green / amber / red), and the percentage is always printed beside
+    // it, so the bar never carries the reading alone.
     return AnimatedProgressBar(
       fraction: fraction.isNaN ? 0 : fraction,
-      height: 10,
-      trackColor: track,
+      height: 8,
+      trackColor: AppColors.surfaceTertiary(context),
+      color: tone,
       semanticLabel: 'Budget used',
-      gradient: LinearGradient(
-        colors: [
-          Color.lerp(tone, Colors.black, 0.25)!,
-          tone,
-        ],
-      ),
     );
   }
 }

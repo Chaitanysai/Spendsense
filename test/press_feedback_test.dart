@@ -598,8 +598,8 @@ void main() {
   group('floating navigation', () {
     Widget bar(List<int> taps, int index) => _host(FloatingNavBar(
           items: const [
-            NavItem(Icons.home_rounded, 'HOME'),
-            NavItem(Icons.settings_rounded, 'SETTINGS'),
+            NavItem(Icons.home_rounded, 'Home'),
+            NavItem(Icons.settings_rounded, 'Settings'),
           ],
           currentIndex: index,
           onTap: taps.add,
@@ -611,7 +611,8 @@ void main() {
       await tester.pumpWidget(bar(taps, 0));
 
       final gesture =
-          await tester.startGesture(tester.getCenter(find.text('SETTINGS')));
+          await tester.startGesture(
+              tester.getCenter(find.byKey(const ValueKey('nav:Settings'))));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
 
@@ -646,23 +647,18 @@ void main() {
       expect(
         tester.widget<Icon>(find.byIcon(Icons.settings_rounded)).color,
         // Unselected tabs share one neutral ink in every theme; its contrast
-        // on the composited glass bar is asserted in theme_tokens_contrast_test.
+        // on the idle plate is asserted in theme_tokens_contrast_test.
         AppColors.navIdleInk(context),
       );
 
-      for (final label in ['HOME', 'SETTINGS']) {
-        final slot = tester.getSize(find
-            .ancestor(
-              of: find.text(label),
-              matching: find.byType(Semantics),
-            )
-            .first);
+      for (final label in ['Home', 'Settings']) {
+        final slot = tester.getSize(find.byKey(ValueKey('nav:$label')));
         expect(slot.height, greaterThanOrEqualTo(48),
             reason: '$label must keep a 48dp tap target');
       }
 
       final settingsSemantics = find.byWidgetPredicate(
-        (w) => w is Semantics && w.properties.label == 'SETTINGS',
+        (w) => w is Semantics && w.properties.label == 'Settings',
       );
       var data =
           tester.getSemantics(settingsSemantics.first).getSemanticsData();
@@ -674,7 +670,7 @@ void main() {
       data = tester.getSemantics(settingsSemantics.first).getSemanticsData();
       expect(data.flagsCollection.isSelected, Tristate.isTrue);
 
-      await tester.tap(find.text('HOME'));
+      await tester.tap(find.byKey(const ValueKey('nav:Home')));
       await tester.pump();
       expect(taps, [0], reason: 'selection changes must not eat taps');
 

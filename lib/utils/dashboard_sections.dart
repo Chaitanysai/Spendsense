@@ -18,7 +18,7 @@ class DashboardSection {
   static String label(String id) => switch (id) {
         budget => 'Monthly budget',
         categories => 'Spending by category',
-        weekly => 'Last 7 days',
+        weekly => 'Spending trend',
         recent => 'Recent transactions',
         _ => id,
       };

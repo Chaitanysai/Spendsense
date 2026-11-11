@@ -46,8 +46,8 @@ void main() {
               'iconSecondary/${bg.key}', t.iconSecondary, bg.value, 3);
         }
 
-        // Navigation: the bar fill sits over the canvas, the selected container
-        // over the bar fill.
+        // Navigation: idle plates sit on the canvas, and the active pill is a
+        // solid ink fill that must stand clearly apart from them.
         final bar = AppColors.navBackdropFor(dark);
         final selectedBackdrop = AppColors.navSelectedBackdropFor(dark);
         expectAtLeast('nav unselected', AppColors.navIdleInkFor(dark), bar, 3);
@@ -282,14 +282,40 @@ void main() {
     });
   });
 
-  test('nav fill stays see-through in every palette', () {
+  test('every surface token is opaque in every palette', () {
     for (final palette in AppPalette.all) {
       AppColors.applyPalette(palette);
       for (final dark in [false, true]) {
-        final fill = AppColors.navFillFor(dark);
-        expect(fill.a, inInclusiveRange(0.45, 0.60),
-            reason: '${palette.label} dark=$dark');
+        final t = AppTokens.forBrightness(dark);
+        for (final entry in {
+          'navFill': AppColors.navFillFor(dark),
+          'navActiveFill': AppColors.navActiveFillFor(dark),
+          'fabFill': AppColors.fabFillFor(dark),
+          'glassFill': AppColors.glassFillFor(dark),
+          'surfaceGlass': t.surfaceGlass,
+          'surfaceGlassElevated': t.surfaceGlassElevated,
+          'overlay': AppColors.overlaySurfaceFor(dark),
+        }.entries) {
+          expect(entry.value.a, 1.0,
+              reason: '${palette.label} dark=$dark ${entry.key}');
+        }
       }
+    }
+  });
+
+  test('a light card keeps a hairline only where its tone step is too small',
+      () {
+    for (final palette in AppPalette.all) {
+      AppColors.applyPalette(palette);
+      final step = _contrast(AppColors.glassFillFor(false), palette.background);
+      expect(
+        AppColors.needsSurfaceEdgeFor(false),
+        step < AppColors.surfaceEdgeThreshold,
+        reason: '${palette.label} step ${step.toStringAsFixed(3)}',
+      );
+      // Dark mode has no shadow, so the hairline always carries the plane.
+      expect(AppColors.needsSurfaceEdgeFor(true), isTrue,
+          reason: palette.label);
     }
   });
 

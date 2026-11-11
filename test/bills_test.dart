@@ -351,4 +351,86 @@ void main() {
           reason: 'automatic detection must not persist a plan by itself');
     });
   });
+
+  group('detection memo', () {
+    late _CountingProvider tx;
+    late PlannerProvider planner;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      tx = _CountingProvider();
+      planner = PlannerProvider();
+      await planner.ready;
+    });
+
+    tearDown(() {
+      tx.dispose();
+      planner.dispose();
+    });
+
+    Future<void> pump(WidgetTester tester) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TransactionProvider>.value(value: tx),
+            ChangeNotifierProvider<PlannerProvider>.value(value: planner),
+          ],
+          child: const MaterialApp(home: BillsScreen()),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('detection runs once per data change, not once per rebuild',
+        (tester) async {
+      tx.debugSeed([
+        _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 8, 5)),
+        _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 9, 5)),
+        _tx(id: 'r3', amountMinor: 64900, date: DateTime(2026, 10, 5)),
+      ]);
+      await pump(tester);
+
+      dynamic state = tester.state(find.byType(BillsScreen));
+      final afterFirst = state.debugDetectRuns as int;
+      expect(afterFirst, 1, reason: 'the first build detects once');
+
+      // Force rebuilds with no data/plan change: the memo must not re-run.
+      // Re-pumping the same tree rebuilds BillsScreen (its inputs unchanged).
+      await pump(tester);
+      await pump(tester);
+
+      state = tester.state(find.byType(BillsScreen));
+      expect(state.debugDetectRuns as int, afterFirst,
+          reason: 'a rebuild without a data or plan change must reuse detection');
+
+      // A ledger change invalidates.
+      tx.debugSeed([
+        _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 8, 5)),
+        _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 9, 5)),
+        _tx(id: 'r3', amountMinor: 64900, date: DateTime(2026, 10, 5)),
+        _tx(id: 'r4', amountMinor: 64900, date: DateTime(2026, 10, 6)),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      state = tester.state(find.byType(BillsScreen));
+      expect(state.debugDetectRuns as int, greaterThan(afterFirst),
+          reason: 'a ledger change must re-run detection');
+    });
+
+    testWidgets('a plan change re-runs detection', (tester) async {
+      await pump(tester);
+      dynamic state = tester.state(find.byType(BillsScreen));
+      final before = state.debugDetectRuns as int;
+
+      await tester.runAsync(
+          () => planner.addPlan(_plan(nextDue: DateTime(2026, 10, 25))));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      state = tester.state(find.byType(BillsScreen));
+      expect(state.debugDetectRuns as int, greaterThan(before),
+          reason: 'adding a plan changes the detection inputs');
+    });
+  });
 }

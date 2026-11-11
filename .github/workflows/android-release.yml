@@ -285,9 +285,18 @@ jobs:
         if: ${{ vars.OTA_BASE_URL != '' }}
         env:
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          # Minimum supported version is a repository variable, never defaulted
+          # to the version being built. Defaulting it to this build is what
+          # force-blocks every older install.
+          OTA_MINIMUM_VERSION: ${{ vars.OTA_MINIMUM_VERSION }}
           ARTIFACT_PATH: ${{ env.ARTIFACT_PATH }}
         run: |
           set -euo pipefail
+          if [ -z "${OTA_MINIMUM_VERSION:-}" ]; then
+            echo "::error::Repository variable OTA_MINIMUM_VERSION is not set."
+            echo "::error::Set it to the oldest app version still supported (x.y.z). It is never defaulted, because defaulting it to the current build force-blocks every existing install."
+            exit 1
+          fi
           VERSION_LINE="$(grep -E '^version:' pubspec.yaml | head -n1)"
           VERSION_NAME="$(echo "$VERSION_LINE" | sed -E 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
           BUILD_NUMBER="$(echo "$VERSION_LINE" | sed -E 's/.*\+([0-9]+).*/\1/')"
@@ -302,6 +311,7 @@ jobs:
             --apk "$APK_TARGET" \
             --base-url "$OTA_BASE_URL" \
             --out ota/public/manifest.json \
+            --minimum "$OTA_MINIMUM_VERSION" \
             --notes "Release ${VERSION_NAME}+${BUILD_NUMBER}"
 
       - name: Upload OTA manifest artifact

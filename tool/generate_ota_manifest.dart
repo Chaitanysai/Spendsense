@@ -4,12 +4,19 @@
 //   dart run tool/generate_ota_manifest.dart \
 //     --apk ota/public/releases/spendsense-2.0.0+20.apk \
 //     --base-url https://spendsense.example \
+//     --minimum 1.8.0 \
 //     --out ota/public/manifest.json \
 //     --notes "Faster insight cards" \
 //     --notes "Fixed SMS import edge case"
 //
 // Version and build number are read from pubspec.yaml unless overridden with
 // --version / --build-number. Nothing is uploaded or published by this script.
+//
+// --minimum is required and is never defaulted to the version being published.
+// The manifest's minimumSupportedVersion is what makes installs below it show a
+// blocking, non-dismissable update screen; defaulting it to the current build
+// would force-block every existing install on every release, with no rollback
+// path (Android refuses downgrades). Pass the oldest version still supported.
 //
 // The script never prints signing material. The certificate fingerprint is a
 // public identifier and is pinned in lib/config/update_config.dart as well.
@@ -41,7 +48,20 @@ void main(List<String> args) {
     _fail('Build number must be positive.');
   }
 
-  final minimum = options.minimumVersion ?? versionName;
+  // --minimum is required, and is never defaulted to versionName.
+  //
+  // Defaulting it to the version being published sets minimumSupportedVersion
+  // equal to latestVersion, which makes UpdatePolicy.decide() return `required`
+  // for every older install: they are shown a blocking, non-dismissable update
+  // screen. Android refuses downgrades and the manifest has no rollback, so that
+  // is a one-way door for every user who has not yet updated. The floor must be
+  // a deliberate choice on every publish.
+  final minimum = options.minimumVersion;
+  if (minimum == null) {
+    _fail('--minimum is required. Pass the oldest version still supported '
+        '(x.y.z); refusing to default the floor to $versionName, which would '
+        'force-block every existing install.');
+  }
   if (!RegExp(r'^\d+\.\d+\.\d+$').hasMatch(minimum)) {
     _fail('--minimum must be x.y.z: $minimum');
   }
@@ -220,8 +240,9 @@ class _Options {
         case '-h':
           stdout.writeln(
             'Usage: dart run tool/generate_ota_manifest.dart '
-            '--apk <path> --base-url <https origin> [--out <path>] '
-            '[--version x.y.z] [--build-number n] [--minimum x.y.z] '
+            '--apk <path> --base-url <https origin> --minimum x.y.z '
+            '[--out <path>] '
+            '[--version x.y.z] [--build-number n] '
             '[--sha256 <hex>] [--cert <hex>] [--published-at <iso>] '
             '[--notes <text>]...',
           );

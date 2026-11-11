@@ -97,7 +97,7 @@ void main() {
       final bar = tester.widget<FloatingNavBar>(find.byType(FloatingNavBar));
       expect(
         bar.items.map((i) => i.label).toList(),
-        ['HOME', 'BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS'],
+        ['Home', 'Bills', 'Insights', 'Cards', 'Settings'],
       );
       expect(bar.items, hasLength(5));
     });
@@ -106,14 +106,14 @@ void main() {
       await _pumpShell(tester);
 
       final expected = <String, Type>{
-        'BILLS': BillsScreen,
-        'INSIGHTS': InsightsScreen,
-        'CARDS': CardsScreen,
-        'SETTINGS': SettingsScreen,
+        'Bills': BillsScreen,
+        'Insights': InsightsScreen,
+        'Cards': CardsScreen,
+        'Settings': SettingsScreen,
       };
 
       for (final entry in expected.entries) {
-        await tester.tap(find.text(entry.key));
+        await tester.tap(find.byKey(ValueKey('nav:${entry.key}')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.byType(entry.value), findsOneWidget,
@@ -151,8 +151,8 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'layout error on the populated Home dashboard');
 
-      for (final label in ['BILLS', 'INSIGHTS', 'CARDS', 'SETTINGS']) {
-        await tester.tap(find.text(label));
+      for (final label in ['Bills', 'Insights', 'Cards', 'Settings']) {
+        await tester.tap(find.byKey(ValueKey('nav:$label')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.text(label), findsWidgets, reason: '$label is visible');
@@ -164,7 +164,7 @@ void main() {
     testWidgets('recurring expenses stays reachable from Settings',
         (tester) async {
       await _pumpShell(tester);
-      await tester.tap(find.text('SETTINGS'));
+      await tester.tap(find.byKey(const ValueKey('nav:Settings')));
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('Recurring expenses'), findsOneWidget);
@@ -201,12 +201,14 @@ void main() {
   });
 
   group('add transaction', () {
-    testWidgets('floating action opens the real creation workflow',
+    testWidgets('the dock Add opens the real creation workflow',
         (tester) async {
       await _pumpShell(tester);
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      await tester.tap(find.byType(FloatingActionButton));
+      // There is no floating button any more: Add is the dock's first action.
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byKey(const ValueKey('dock:Add')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('dock:Add')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 

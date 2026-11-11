@@ -28,9 +28,8 @@ on:
         default: ''
         type: string
       minimum_version:
-        description: 'Oldest version still supported, x.y.z. Defaults to this build.'
-        required: false
-        default: ''
+        description: 'REQUIRED. Oldest version still supported, x.y.z. Never defaults to this build.'
+        required: true
         type: string
 
 permissions:
@@ -361,7 +360,15 @@ jobs:
           fi
           set -- --apk "$APK" --base-url "$BASE" --out ota/public/manifest.json
           if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
-          if [ -n "$MINIMUM" ]; then set -- "$@" --minimum "$MINIMUM"; fi
+          # --minimum is unconditional and required. It is deliberately NOT
+          # defaulted to the version being published: that default set
+          # minimumSupportedVersion equal to latestVersion, force-blocking every
+          # older install with no rollback path.
+          if [ -z "$MINIMUM" ]; then
+            echo "::error::minimum_version is required. Supply the oldest version still supported."
+            exit 1
+          fi
+          set -- "$@" --minimum "$MINIMUM"
           dart run tool/generate_ota_manifest.dart "$@"
           echo "--- manifest (sha256 redacted) ---"
           sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' ota/public/manifest.json

@@ -7,16 +7,16 @@ import 'package:spendsense/models/transaction_model.dart';
 import 'package:spendsense/providers/theme_provider.dart';
 import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/widgets/category_breakdown_card.dart';
+import 'package:spendsense/widgets/dashboard/spending_trend_card.dart';
 import 'package:spendsense/widgets/floating_nav_bar.dart';
-import 'package:spendsense/widgets/spending_week_card.dart';
 import 'package:spendsense/widgets/theme_toggle.dart';
 
 /// Behavioural tests for the analytics and navigation motion.
 ///
-/// These assert *state* (where the pill ended up, what the card reports, what
-/// was persisted), not a frame's pixels, so they stay honest across devices and
-/// font metrics. The stretch itself is asserted as a relationship — wider while
-/// travelling than at rest — because its exact width is spring-dependent.
+/// These assert *state* (which pill is open, what the card reports, what was
+/// persisted), not a frame's pixels, so they stay honest across devices and
+/// font metrics. The open width is asserted as a relationship — wider than a
+/// closed circle — because its exact value depends on font metrics.
 
 TransactionModel _tx(DateTime date, int amountMinor) => TransactionModel(
       id: 'tx-${date.millisecondsSinceEpoch}-$amountMinor',
@@ -32,7 +32,7 @@ TransactionModel _tx(DateTime date, int amountMinor) => TransactionModel(
     );
 
 void main() {
-  group('spring navigation pill', () {
+  group('expanding navigation pill', () {
     Future<void> pumpBar(WidgetTester tester, {required int index}) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -43,45 +43,58 @@ void main() {
       );
     }
 
-    double pillWidth(WidgetTester tester) =>
-        tester.getSize(find.byKey(const Key('nav-selected-pill'))).width;
+    Finder slot(String label) => find.byKey(ValueKey('nav:$label'));
 
-    double pillCenter(WidgetTester tester) =>
-        tester.getCenter(find.byKey(const Key('nav-selected-pill'))).dx;
+    double widthOf(WidgetTester tester, String label) => tester
+        .getSize(find.descendant(
+            of: slot(label), matching: find.byType(Container)).first)
+        .width;
 
-    testWidgets('settles centred on the destination it was tapped',
+    testWidgets('only the tapped destination opens to show its label',
         (tester) async {
       await pumpBar(tester, index: 0);
       await tester.pump();
 
-      await tester.tap(find.text('INSIGHTS'));
+      await tester.tap(slot('Insights'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(const Duration(milliseconds: 400));
 
+      // The open pill is wider than a closed 48dp circle; every other slot is
+      // closed. The selected-pill key moved with the selection.
+      expect(widthOf(tester, 'Insights'), greaterThan(48 + 20));
+      for (final label in ['Home', 'Bills', 'Cards', 'Settings']) {
+        expect(widthOf(tester, label), closeTo(48, 0.5), reason: label);
+      }
       expect(
-        pillCenter(tester),
-        closeTo(tester.getCenter(find.text('INSIGHTS')).dx, 4),
+        find.descendant(
+            of: slot('Insights'),
+            matching: find.byKey(const Key('nav-selected-pill'))),
+        findsOneWidget,
       );
     });
 
-    testWidgets('stretches while travelling and contracts at rest',
+    testWidgets('opens on a curve that arrives once, with no overshoot',
         (tester) async {
       await pumpBar(tester, index: 0);
       await tester.pump();
-      final settled = pillWidth(tester);
+      final closed = widthOf(tester, 'Settings');
 
-      await tester.tap(find.text('SETTINGS'));
-      await tester.pump(); // start the spring
-      await tester.pump(const Duration(milliseconds: 60));
-      final travelling = pillWidth(tester);
+      await tester.tap(slot('Settings'));
+      await tester.pump();
+      final samples = <double>[];
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        samples.add(widthOf(tester, 'Settings'));
+      }
+      final open = samples.last;
 
-      await tester.pump(const Duration(milliseconds: 800));
-      final arrived = pillWidth(tester);
-
-      expect(travelling, greaterThan(settled + 0.5),
-          reason: 'the pill has to stretch while it moves');
-      expect(arrived, closeTo(settled, 0.5),
-          reason: 'the pill has to contract once it arrives');
+      expect(open, greaterThan(closed + 20));
+      // Monotonic and never past the target: a width that overshoots slides
+      // the clipped label in, out and in again (PanelUI's reason for a curve).
+      for (var i = 1; i < samples.length; i++) {
+        expect(samples[i], greaterThanOrEqualTo(samples[i - 1] - 0.01));
+        expect(samples[i], lessThanOrEqualTo(open + 0.01));
+      }
     });
 
     testWidgets('a second tap mid-flight retargets instead of queueing',
@@ -89,22 +102,21 @@ void main() {
       await pumpBar(tester, index: 0);
       await tester.pump();
 
-      await tester.tap(find.text('CARDS'));
+      await tester.tap(slot('Cards'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
 
-      await tester.tap(find.text('HOME'));
+      await tester.tap(slot('Home'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump(const Duration(milliseconds: 600));
 
-      expect(
-        pillCenter(tester),
-        closeTo(tester.getCenter(find.text('HOME')).dx, 4),
-      );
+      expect(widthOf(tester, 'Home'), greaterThan(48 + 20));
+      expect(widthOf(tester, 'Cards'), closeTo(48, 0.5),
+          reason: 'the half-open pill reverses from where it got to');
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('reduced motion places the pill without travelling',
+    testWidgets('reduced motion opens the pill without animating',
         (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
@@ -115,13 +127,11 @@ void main() {
       await pumpBar(tester, index: 0);
       await tester.pump();
 
-      await tester.tap(find.text('BILLS'));
+      await tester.tap(slot('Bills'));
       await tester.pump();
 
-      expect(
-        pillCenter(tester),
-        closeTo(tester.getCenter(find.text('BILLS')).dx, 4),
-      );
+      expect(widthOf(tester, 'Bills'), greaterThan(48 + 20));
+      expect(widthOf(tester, 'Home'), closeTo(48, 0.5));
     });
   });
 
@@ -216,7 +226,7 @@ void main() {
     });
   });
 
-  group('seven-day card', () {
+  group('spending trend card', () {
     testWidgets('reduced motion reports a tapped day without animating',
         (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
@@ -238,7 +248,7 @@ void main() {
             body: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: SpendingWeekCard(
+                child: SpendingTrendCard(
                   expenses: [
                     _tx(today, 25000),
                     _tx(yesterday, 12000),
@@ -255,7 +265,7 @@ void main() {
       expect(find.text('₹250'), findsWidgets);
 
       final chart =
-          tester.getRect(find.byKey(const Key('spending-week-chart')));
+          tester.getRect(find.byKey(const Key('spending-trend-chart')));
       await tester.tapAt(
         Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy),
       );
@@ -265,19 +275,19 @@ void main() {
       expect(find.text('₹250'), findsNothing);
     });
 
-    testWidgets('shows a real empty state rather than seven empty bars',
+    testWidgets('shows a real empty state rather than an empty plot',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: SpendingWeekCard(expenses: []),
+            body: SpendingTrendCard(expenses: []),
           ),
         ),
       );
       await tester.pump(const Duration(seconds: 1));
 
       expect(find.text('No spending in the last 7 days'), findsOneWidget);
-      expect(find.byKey(const Key('spending-week-chart')), findsNothing);
+      expect(find.byKey(const Key('spending-trend-chart')), findsNothing);
     });
   });
 
@@ -299,11 +309,11 @@ class _NavHarness extends StatefulWidget {
 
 class _NavHarnessState extends State<_NavHarness> {
   static const _items = [
-    NavItem(Icons.home_rounded, 'HOME'),
-    NavItem(Icons.event_note_rounded, 'BILLS'),
-    NavItem(Icons.insights_rounded, 'INSIGHTS'),
-    NavItem(Icons.credit_card_rounded, 'CARDS'),
-    NavItem(Icons.settings_rounded, 'SETTINGS'),
+    NavItem(Icons.home_rounded, 'Home'),
+    NavItem(Icons.event_note_rounded, 'Bills'),
+    NavItem(Icons.insights_rounded, 'Insights'),
+    NavItem(Icons.credit_card_rounded, 'Cards'),
+    NavItem(Icons.settings_rounded, 'Settings'),
   ];
 
   late int _index = widget.initialIndex;

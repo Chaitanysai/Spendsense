@@ -20,7 +20,6 @@ import 'package:spendsense/screens/home_screen.dart';
 import 'package:spendsense/utils/app_colors.dart';
 import 'package:spendsense/utils/app_palette.dart';
 import 'package:spendsense/utils/app_spacing.dart';
-import 'package:spendsense/widgets/floating_nav_bar.dart';
 
 /// Renders the real app shell (real [ThemeProvider], seeded ledger, no stubbed
 /// business logic) for the reworked palettes and writes PNGs for review.
@@ -184,7 +183,7 @@ Future<Uint8List> _rgba(WidgetTester tester, ui.Image image) async {
 }
 
 Future<void> _openTab(WidgetTester tester, String label) async {
-  await tester.tap(find.text(label));
+  await tester.tap(find.byKey(ValueKey('nav:$label')));
   await _settle(tester);
 }
 
@@ -249,10 +248,10 @@ void main() {
           tester, await _capture(tester, h), '${entry.key}-home-scrolled');
 
       for (final tab in const [
-        ('BILLS', 'bills'),
-        ('INSIGHTS', 'insights'),
-        ('CARDS', 'cards'),
-        ('SETTINGS', 'settings'),
+        ('Bills', 'bills'),
+        ('Insights', 'insights'),
+        ('Cards', 'cards'),
+        ('Settings', 'settings'),
       ]) {
         await _openTab(tester, tab.$1);
         expect(tester.takeException(), isNull,
@@ -263,45 +262,42 @@ void main() {
     });
   }
 
-  testWidgets('add button never overlaps the navigation bar', (tester) async {
-    final h = await _pumpApp(tester, AppPalette.midnight, dark: true);
-    expect(h.theme.palette.id, 'midnight');
-    final fab = tester.getRect(find.byType(FloatingActionButton));
-    final bar = tester.getRect(find.byType(FloatingNavBar));
-    expect(fab.bottom, lessThanOrEqualTo(bar.top),
-        reason: 'FAB $fab overlaps the bar $bar');
+  testWidgets('nothing floats above the content: no floating Add button',
+      (tester) async {
+    await _pumpApp(tester, AppPalette.midnight, dark: true);
+    // Add is the first action of the Home dock, in the page flow.
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byKey(const ValueKey('dock:Add')), findsOneWidget);
+    for (final tab in ['Bills', 'Insights', 'Cards', 'Settings']) {
+      await _openTab(tester, tab);
+      expect(find.byType(FloatingActionButton), findsNothing, reason: tab);
+    }
   });
 
   for (final bottomInset in [0.0, 34.0, 48.0]) {
     testWidgets(
-        'Home scroll inset clears the nav pill and the add button '
+        'Home scroll inset clears the nav pill '
         '(system inset $bottomInset)', (tester) async {
       tester.view.padding = FakeViewPadding(bottom: bottomInset * 2);
       tester.view.viewPadding = FakeViewPadding(bottom: bottomInset * 2);
       addTearDown(tester.view.resetPadding);
       await _pumpApp(tester, AppPalette.midnight, dark: true);
 
-      // The widget's own rect includes its SafeArea, so measure the pill.
-      final bar = tester.getRect(find
-          .descendant(
-              of: find.byType(FloatingNavBar), matching: find.byType(ClipRRect))
-          .first);
-      final fab = tester.getRect(find.byType(FloatingActionButton));
-      // Read the inset from inside the shell body, exactly where HomeScreen
-      // does. The add button lives in the Scaffold's floating slot, outside the
-      // body's MediaQuery, so its context never sees the nav bar height.
+      // The widget's own rect includes its SafeArea, so measure the active
+      // pill: the row of destinations is exactly as tall as it is.
+      final bar =
+          tester.getRect(find.byKey(const Key('nav-selected-pill')));
       final context = tester.element(find.byType(HomeScreen));
       final inset = AppSpacing.tabBottomInset(context);
 
-      // The gutter under the last row must reach above the pill and the add
-      // button stacked on it, measured from the screen bottom.
+      // The gutter under the last row must reach above the pill, measured from
+      // the screen bottom.
       final screenBottom =
           tester.view.physicalSize.height / tester.view.devicePixelRatio;
-      final clearance = screenBottom - fab.top;
+      final clearance = screenBottom - bar.top;
       expect(inset, greaterThanOrEqualTo(clearance),
-          reason: 'inset $inset does not clear the add button (needs '
+          reason: 'inset $inset does not clear the nav pill (needs '
               '$clearance, bar ${bar.height}, system $bottomInset)');
-      expect(fab.bottom, lessThanOrEqualTo(bar.top));
       expect(bar.bottom, lessThanOrEqualTo(screenBottom - bottomInset),
           reason: 'the pill must sit above the system gesture inset');
     });

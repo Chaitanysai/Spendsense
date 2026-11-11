@@ -31,7 +31,7 @@ TransactionModel _tx(String id, DateTime date, int amountMinor) =>
     );
 
 Finder _inCard(Finder matching) => find.descendant(
-      of: find.byKey(const Key('daily-spend-card')),
+      of: find.byKey(const Key('spending-trend-card')),
       matching: matching,
     );
 
@@ -64,7 +64,13 @@ Future<TransactionProvider> _pumpHome(
     ),
   );
   await tester.pump(const Duration(seconds: 2));
-  await tester.scrollUntilVisible(find.text('Last 7 days'), 300);
+  // Home now holds a second, horizontal Scrollable (the KPI row), so name the
+  // page's own vertical scroller instead of relying on there being only one.
+  await tester.scrollUntilVisible(
+    find.text('Spending trend'),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.pump(const Duration(seconds: 2));
   return provider;
 }
@@ -89,7 +95,7 @@ void main() {
 
     // Tap the sixth of seven day columns: yesterday's slice of the plot.
     final chart =
-        tester.getRect(_inCard(find.byKey(const Key('spending-week-chart'))));
+        tester.getRect(_inCard(find.byKey(const Key('spending-trend-chart'))));
     await tester
         .tapAt(Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy));
     // The first pump starts the newly created controllers; the second advances
@@ -97,7 +103,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(_inCard(find.text(DateFormat('EEEE').format(yesterday))),
+    expect(_inCard(find.text(DateFormat('EEE d MMM').format(yesterday))),
         findsOneWidget);
     expect(_inCard(find.text('₹120')), findsOneWidget);
     expect(_inCard(find.text('₹250')), findsNothing,
@@ -121,6 +127,9 @@ void main() {
       _tx('late', DateTime(now.year, now.month, now.day, 12), 25000),
     ]);
     await tester.pump(const Duration(seconds: 2));
+    // TweenAnimationBuilder starts its controller on the frame after the tween
+    // changes, so the second pump is what actually advances the count.
+    await tester.pump(const Duration(seconds: 1));
 
     expect(_inCard(find.text('No spending in the last 7 days')), findsNothing);
     expect(_inCard(find.text('₹250')), findsOneWidget);

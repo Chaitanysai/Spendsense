@@ -9,8 +9,12 @@ import 'pressable.dart';
 
 /// Shared by the add sheet and the details screen, so both pick a type the same
 /// way: two always-visible segments instead of a dropdown overlay.
-/// Expense/income switch. The selected side is marked by tint, icon and weight,
-/// never by colour alone.
+///
+/// A segmented control in the PanelUI `tabs` mould: a quiet track, and the
+/// selected side lifts onto a solid card-coloured pill with a hairline. The
+/// selection is carried by the lifted fill, a heavier label and a check-bearing
+/// direction glyph, never by tint alone; the money colour appears only on the
+/// glyph, where it means "out" or "in".
 class TransactionTypeToggle extends StatelessWidget {
   final bool isIncome;
   final ValueChanged<TransactionType> onSelect;
@@ -26,7 +30,7 @@ class TransactionTypeToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt(context),
+        color: AppColors.surfaceTertiary(context),
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: AppColors.border(context)),
       ),
@@ -65,11 +69,15 @@ class TransactionTypeToggle extends StatelessWidget {
     required Color tint,
     required VoidCallback onTap,
   }) {
+    final dark = AppColors.isDark(context);
     return Semantics(
       button: true,
       selected: selected,
       label: label,
       excludeSemantics: true,
+      // See CategoryChipPicker: excluding semantics hides the Pressable's tap
+      // action, so a screen reader could not switch between Expense and Income.
+      onTap: onTap,
       child: Pressable(
         onTap: onTap,
         sound: SoundEventType.selectionChanged,
@@ -79,8 +87,16 @@ class TransactionTypeToggle extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           decoration: BoxDecoration(
-            color: selected ? tint.withValues(alpha: 0.14) : Colors.transparent,
+            // Opaque: the pill is the card tone, so it reads the same on every
+            // palette. The hairline is what separates it from the track.
+            color:
+                selected ? AppColors.glassSurface(context) : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(
+              color: selected ? AppColors.border(context) : Colors.transparent,
+            ),
+            boxShadow:
+                selected && !dark ? AppColors.surfaceShadowFor(dark) : const [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -88,15 +104,29 @@ class TransactionTypeToggle extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: selected ? tint : AppColors.textTertiary(context),
+                // The money colour, resolved against the pill it sits on so a
+                // light palette's green or red never falls under 3:1.
+                color: selected
+                    ? AppColors.resolveInk(
+                        tint,
+                        AppColors.glassSurface(context),
+                        minContrast: 3,
+                      )
+                    : AppColors.textTertiary(context),
               ),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppText.label(context).copyWith(
-                  fontSize: 13,
-                  color: selected ? tint : AppColors.textTertiary(context),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(context).copyWith(
+                    fontSize: 13,
+                    color: selected
+                        ? AppColors.textPrimary(context)
+                        : AppColors.textTertiary(context),
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
                 ),
               ),
             ],

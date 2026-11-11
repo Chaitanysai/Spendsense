@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LedgerKeyUnavailableException implements Exception {
@@ -43,14 +44,33 @@ class FlutterSecureLedgerKeyStore implements LedgerKeyStore {
 /// malformed, or unreadable key throws; it never creates a replacement key.
 class LedgerEncryptionService {
   static const _keyName = 'spendsense_ledger_aes256_v1';
-  static final _algorithm = AesGcm.with256bits();
+
+  /// The AES-GCM engine used for ledger payloads.
+  ///
+  /// Tests always receive the pure-Dart codec so expectations stay
+  /// deterministic and the bench measures the codec, not platform channels.
+  /// Production asks the OS for AES-256-GCM where the platform provides it
+  /// (Android Keystore, iOS CommonCrypto) and transparently falls back to a
+  /// pure-Dart implementation elsewhere. Both engines produce and consume
+  /// the same envelope format, so existing records keep decrypting — the
+  /// cross-decryption tests in `encrypted_ledger_security_test.dart` pin
+  /// that contract.
+  static AesGcm defaultAlgorithm() {
+    if (Platform.environment['FLUTTER_TEST'] == 'true') {
+      return AesGcm.with256bits();
+    }
+    return FlutterAesGcm.with256bits();
+  }
 
   final LedgerKeyStore _keyStore;
+  final AesGcm _algorithm;
 
   LedgerEncryptionService({
     FlutterSecureStorage? storage,
     LedgerKeyStore? keyStore,
-  }) : _keyStore = keyStore ?? FlutterSecureLedgerKeyStore(storage: storage);
+    AesGcm? algorithm,
+  })  : _keyStore = keyStore ?? FlutterSecureLedgerKeyStore(storage: storage),
+        _algorithm = algorithm ?? defaultAlgorithm();
 
   Future<SecretKey> _existingKey() async {
     final encoded = await _readRawKey();
@@ -140,6 +160,31 @@ class LedgerEncryptionService {
     String? expectedRecordId,
   }) async {
     final key = await _existingKey();
+    return decryptWithKeyBytes(
+      encoded,
+      Uint8List.fromList(await key.extractBytes()),
+      algorithm: _algorithm,
+      expectedRecordId: expectedRecordId,
+    );
+  }
+
+  /// Pure, isolate-safe decryption core shared by [decryptText] and by
+  /// `TransactionCacheService.loadAll`, which runs it inside a background
+  /// isolate during cold start.
+  ///
+  /// Static and side-effect-free: the caller resolves the key bytes and
+  /// chooses the engine. Background isolates have no platform channels, so
+  /// the isolate caller passes the pure-Dart engine — AES-GCM semantics are
+  /// identical across engines (pinned by the cross-decryption tests).
+  /// Any failure to authenticate throws [LedgerKeyUnavailableException],
+  /// exactly as [decryptText] always has.
+  static Future<String> decryptWithKeyBytes(
+    String encoded,
+    Uint8List keyBytes, {
+    required AesGcm algorithm,
+    String? expectedRecordId,
+  }) async {
+    final key = SecretKey(keyBytes);
     try {
       final trimmed = encoded.trim();
       if (trimmed.startsWith('{')) {
@@ -169,7 +214,7 @@ class LedgerEncryptionService {
           nonce: base64Url.decode(raw['nonce'] as String),
           mac: Mac(base64Url.decode(raw['mac'] as String)),
         );
-        final clear = await _algorithm.decrypt(
+        final clear = await algorithm.decrypt(
           box,
           secretKey: key,
           aad: utf8.encode(jsonEncode(metadata)),
@@ -181,14 +226,26 @@ class LedgerEncryptionService {
       final bytes = base64Url.decode(trimmed);
       final box = SecretBox.fromConcatenation(
         bytes,
-        nonceLength: _algorithm.nonceLength,
-        macLength: _algorithm.macAlgorithm.macLength,
+        nonceLength: algorithm.nonceLength,
+        macLength: algorithm.macAlgorithm.macLength,
       );
-      final clear = await _algorithm.decrypt(box, secretKey: key);
+      final clear = await algorithm.decrypt(box, secretKey: key);
       return utf8.decode(Uint8List.fromList(clear));
     } catch (_) {
       throw const LedgerKeyUnavailableException(
           'The encrypted ledger record could not be authenticated.');
     }
+  }
+
+  /// Raw bytes of the existing ledger key, validated exactly like
+  /// [_existingKey].
+  ///
+  /// The bytes are handed to a background isolate for cold-start decryption.
+  /// They stay inside the process — the key is already materialized in the
+  /// Dart heap for every crypto operation — so this does not widen exposure
+  /// beyond the app sandbox, and the key never leaves the device.
+  Future<Uint8List> currentKeyBytes() async {
+    final key = await _existingKey();
+    return Uint8List.fromList(await key.extractBytes());
   }
 }

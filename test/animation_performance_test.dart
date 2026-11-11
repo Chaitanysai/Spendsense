@@ -236,7 +236,7 @@ void main() {
     }
 
     Future<void> goTo(WidgetTester tester, String label) async {
-      await tester.tap(find.text(label));
+      await tester.tap(find.byKey(ValueKey('nav:$label')));
       await tester.pump(const Duration(milliseconds: 400));
     }
 
@@ -248,13 +248,13 @@ void main() {
       // frame, regardless of which tab is showing.
       expect(provider.syncs, 1, reason: 'launch performs exactly one scan');
 
-      await goTo(tester, 'BILLS');
+      await goTo(tester, 'Bills');
       expect(provider.syncs, 1,
           reason: 'passive navigation must not scan SMS or ask permission');
 
-      await goTo(tester, 'HOME');
-      await goTo(tester, 'BILLS');
-      await goTo(tester, 'INSIGHTS');
+      await goTo(tester, 'Home');
+      await goTo(tester, 'Bills');
+      await goTo(tester, 'Insights');
       expect(provider.syncs, 1, reason: 'no tab switch adds a scan');
     });
 
@@ -264,10 +264,10 @@ void main() {
       final afterLaunch = provider.syncs;
       provider.syncing = true;
 
-      await goTo(tester, 'INSIGHTS');
-      await goTo(tester, 'BILLS');
-      await goTo(tester, 'HOME');
-      await goTo(tester, 'BILLS');
+      await goTo(tester, 'Insights');
+      await goTo(tester, 'Bills');
+      await goTo(tester, 'Home');
+      await goTo(tester, 'Bills');
 
       expect(provider.syncs, afterLaunch,
           reason: 'Bills never starts or joins a scan');
@@ -275,8 +275,8 @@ void main() {
 
     testWidgets('Bills stays alive across tab switches', (tester) async {
       await pumpShell(tester, withStartDate: true);
-      await goTo(tester, 'BILLS');
-      await goTo(tester, 'HOME');
+      await goTo(tester, 'Bills');
+      await goTo(tester, 'Home');
       expect(find.byType(BillsScreen, skipOffstage: false), findsOneWidget);
     });
 
@@ -296,13 +296,13 @@ void main() {
       final atLaunch = checks;
       expect(atLaunch, 1);
 
-      await goTo(tester, 'SETTINGS');
+      await goTo(tester, 'Settings');
       expect(checks, atLaunch + 1);
 
-      await goTo(tester, 'HOME');
+      await goTo(tester, 'Home');
       expect(checks, atLaunch + 1, reason: 'leaving must not re-check');
 
-      await goTo(tester, 'SETTINGS');
+      await goTo(tester, 'Settings');
       expect(checks, atLaunch + 2);
       expect(tester.takeException(), isNull);
     });
@@ -323,7 +323,7 @@ void main() {
 
       await pumpShell(tester, withStartDate: true);
       hold = true;
-      await goTo(tester, 'SETTINGS'); // starts a check that stays pending
+      await goTo(tester, 'Settings'); // starts a check that stays pending
 
       await tester.pumpWidget(const SizedBox()); // the whole shell is gone
       gate.complete();
@@ -335,11 +335,11 @@ void main() {
     testWidgets('Insights rebuilds when its tab is shown again',
         (tester) async {
       final provider = await pumpShell(tester, withStartDate: true);
-      await goTo(tester, 'INSIGHTS');
-      await goTo(tester, 'HOME');
+      await goTo(tester, 'Insights');
+      await goTo(tester, 'Home');
 
       provider.transactionReads = 0;
-      await goTo(tester, 'INSIGHTS');
+      await goTo(tester, 'Insights');
 
       expect(provider.transactionReads, greaterThan(0),
           reason: 'month totals use DateTime.now(), so a return must refresh');
@@ -369,8 +369,8 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Check SMS from when?'), findsNothing);
 
-      await goTo(tester, 'INSIGHTS');
-      await goTo(tester, 'HOME');
+      await goTo(tester, 'Insights');
+      await goTo(tester, 'Home');
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Check SMS from when?'), findsOneWidget,
           reason: 'same as before: an unset date is asked again on return');
@@ -379,8 +379,8 @@ void main() {
     testWidgets('Home does not ask when a start date already exists',
         (tester) async {
       await pumpShell(tester, withStartDate: true);
-      await goTo(tester, 'INSIGHTS');
-      await goTo(tester, 'HOME');
+      await goTo(tester, 'Insights');
+      await goTo(tester, 'Home');
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Check SMS from when?'), findsNothing);
     });

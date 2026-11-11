@@ -28,6 +28,12 @@ void main() {
             body: HomeActionDock(
               actions: [
                 QuickAction(
+                  label: 'Add',
+                  icon: Icons.add_rounded,
+                  primary: true,
+                  onTap: () {},
+                ),
+                QuickAction(
                   label: 'Add expense',
                   icon: Icons.south_west_rounded,
                   onTap: () {},
@@ -78,10 +84,11 @@ void main() {
     }
   });
 
-  testWidgets('all four slots are present at both scales', (tester) async {
+  testWidgets('all five slots are present at both scales', (tester) async {
     for (final scale in [1.0, 1.3]) {
       await pump(tester, scale: scale);
       for (final label in [
+        'Add',
         'Add expense',
         'Add income',
         'Sync SMS',

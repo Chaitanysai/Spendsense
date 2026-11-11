@@ -12,10 +12,17 @@ import 'package:spendsense/widgets/quick_action_tile.dart';
 /// centred each icon over its label, so the earlier test passed while the real
 /// problem stayed: `Add expense` wraps to two lines and `Activity` does not, so
 /// the wrapped slot grew taller and its icon dropped below the other three.
-/// These pin the three facts that keep the four slots on one line: equal slot
+/// These pin the three facts that keep the five slots on one line: equal slot
 /// heights, equal icon tops, equal label tops — plus the 48dp touch target.
 void main() {
   List<QuickAction> actions() => [
+        QuickAction(
+          label: 'Add',
+          semanticLabel: 'Add transaction',
+          icon: Icons.add_rounded,
+          primary: true,
+          onTap: () {},
+        ),
         QuickAction(
           label: 'Add expense',
           icon: Icons.south_west_rounded,
@@ -64,38 +71,44 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('the four slots share one well size and one label-box height',
+  testWidgets('every slot shares one height and one plate line',
       (tester) async {
-    // Two facts the user could see: the wells stopped being identical, and the
-    // wrapped label made its slot a different shape from its neighbours.
+    // The facts the user can see: the slots are the same shape, and the plates
+    // share one centre line even though "Add expense" wraps and "Activity" does not.
     //
-    // Glyph vertical position cannot be asserted across slots — Material icons
-    // are not vertically symmetric (`north_east_rounded` reports a 1dp offset
-    // from `south_west_rounded`), and the well clips the icon, so that 1dp is
-    // glyph ink, not layout. Slot geometry is what must match.
+    // The label *text* is measured by its content (13dp for one line, 26dp for
+    // two), so it is not compared across slots; the box that reserves two
+    // lines is what keeps the plates level, and the plate tops prove it.
+    //
+    // Glyph position inside a plate is not compared: Material icons are not
+    // vertically symmetric, so that is glyph ink, not layout.
     await pumpDock(tester);
 
     final slotHeights = <double>{};
-    final labelHeights = <double>{};
-    for (final action in actions()) {
-      final slot = find.ancestor(
-        of: find.text(action.label),
-        matching: find.byType(Pressable),
+    final plateCentres = <double>{};
+    final targets = find.byType(Pressable);
+    expect(targets, findsNWidgets(actions().length));
+    for (var i = 0; i < actions().length; i++) {
+      slotHeights.add(tester.getSize(targets.at(i)).height);
+      final icon = find.descendant(
+        of: targets.at(i),
+        matching: find.byIcon(actions()[i].icon),
       );
-      slotHeights.add(tester.getSize(slot.first).height);
-      labelHeights.add(tester.getSize(find.text(action.label)).height);
+      // The plate is the icon's parent box. The Add disc is 44dp and the
+      // outlined squares are 40dp, so their tops differ by design; what the eye
+      // reads as "one line" is the centre.
+      final plate =
+          find.ancestor(of: icon, matching: find.byType(Container)).first;
+      plateCentres.add(tester.getCenter(plate).dy.roundToDouble());
     }
     expect(slotHeights.length, 1,
         reason: 'slots differ in height: $slotHeights');
-    expect(
-      labelHeights.length,
-      1,
-      reason: 'label boxes differ in height: $labelHeights',
-    );
+    expect(plateCentres.length, 1,
+        reason: 'plates are not on one line: $plateCentres');
 
-    // The label box reserves two lines in every slot, so the wrapped slot can
-    // never be the taller one.
-    expect(slotHeights.first, greaterThan(AppSpacing.wellSize + 20));
+    // Two label lines are reserved in every slot, so the wrapped slot can never
+    // be the taller one.
+    expect(slotHeights.first, greaterThan(HomeActionDock.plateSize + 20));
   });
 
   testWidgets('every dock slot is a legal touch target', (tester) async {

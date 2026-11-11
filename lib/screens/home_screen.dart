@@ -19,7 +19,8 @@ import '../widgets/app_page_route.dart';
 import '../widgets/app_states.dart';
 import '../widgets/budget_summary.dart';
 import '../widgets/category_breakdown_card.dart';
-import '../widgets/cycle_hero.dart';
+import '../widgets/dashboard/balance_hero.dart';
+import '../widgets/dashboard/spending_trend_card.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/home_action_dock.dart';
 import '../widgets/page_entry.dart';
@@ -28,7 +29,6 @@ import '../widgets/profile_avatar.dart';
 import '../widgets/quick_action_tile.dart';
 import '../widgets/section_header.dart';
 import '../widgets/sms_import_prompt.dart';
-import '../widgets/spending_week_card.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/transaction_tile.dart';
 import 'activity_screen.dart';
@@ -54,6 +54,84 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Local privacy toggle for the headline figure. Deliberately not persisted:
   /// it is a "hide it while someone is looking" affordance, not a preference.
   bool _balanceVisible = true;
+
+  // ── Derivation memo ──────────────────────────────────────────────────────
+  // The shell keeps Home mounted, so a balance toggle or a sync-state flip
+  // rebuilds this screen with an unchanged ledger. Sorting and cycle
+  // filtering used to rerun on every such build; they now run once per
+  // (ledger version × preference × cycle). The provider's tracked lists are
+  // memoized per ledger version, so their identity is a stable version
+  // marker for the caches below.
+  Object? _sortTxSource;
+  List<TransactionModel>? _sortedTracked;
+  Object? _sortExSource;
+  List<TransactionModel>? _sortedExpenses;
+
+  Object? _filterLedger;
+  int? _filterStartMicros;
+  int? _filterEndMicros;
+  List<TransactionModel>? _filteredTracked;
+  List<TransactionModel>? _filteredExpenses;
+
+  int _derivationComputations = 0;
+
+  @visibleForTesting
+  int get debugDerivationComputations => _derivationComputations;
+  @visibleForTesting
+  List<TransactionModel>? get debugSortedTracked => _sortedTracked;
+  @visibleForTesting
+  List<TransactionModel>? get debugCycleTracked =>
+      _filteredTracked ?? _sortedTracked;
+
+  List<TransactionModel> _sortedTrackedFor(TransactionProvider provider) {
+    final source = provider.trackedTransactions;
+    final cached = _sortedTracked;
+    if (cached != null && identical(_sortTxSource, source)) return cached;
+    _derivationComputations++;
+    _sortTxSource = source;
+    return _sortedTracked = source.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<TransactionModel> _sortedExpensesFor(TransactionProvider provider) {
+    final source = provider.trackedExpenses;
+    final cached = _sortedExpenses;
+    if (cached != null && identical(_sortExSource, source)) return cached;
+    _derivationComputations++;
+    _sortExSource = source;
+    return _sortedExpenses = source.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<TransactionModel> _cycleListFor(
+    TransactionProvider provider,
+    PeriodProvider period, {
+    required List<TransactionModel> sorted,
+    required bool expenses,
+  }) {
+    final current = period.currentPeriod;
+    final startMicros = current.start.microsecondsSinceEpoch;
+    final endMicros = current.end.microsecondsSinceEpoch;
+    final ledger = provider.trackedTransactions;
+    final cached = expenses ? _filteredExpenses : _filteredTracked;
+    if (cached != null &&
+        identical(_filterLedger, ledger) &&
+        _filterStartMicros == startMicros &&
+        _filterEndMicros == endMicros) {
+      return cached;
+    }
+    _derivationComputations++;
+    _filterLedger = ledger;
+    _filterStartMicros = startMicros;
+    _filterEndMicros = endMicros;
+    final filtered = sorted
+        .where((t) => PeriodMath.containsLocalDate(current, t.date))
+        .toList();
+    if (expenses) {
+      return _filteredExpenses = filtered;
+    }
+    return _filteredTracked = filtered;
+  }
 
   @override
   void didChangeDependencies() {
@@ -86,29 +164,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final period = context.watch<PeriodProvider>();
     final showHistory = prefs?.includeHistory ?? false;
 
-    final allTransactions = provider.trackedTransactions.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final allExpenses = provider.trackedExpenses.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-
     // Home is a current-cycle dashboard. When history is off, every card below
     // the hero (category mix, recent list) is filtered to the active salary
     // cycle, so changing the cycle hides earlier transactions without deleting
     // anything from the encrypted ledger.
+    // The sorts and the cycle filter are memoized per ledger version (see
+    // [_sortedTrackedFor]); a rebuild without a data change reuses them.
+    final allTransactions = _sortedTrackedFor(provider);
+    final allExpenses = _sortedExpensesFor(provider);
     final trackedTransactions = showHistory
         ? allTransactions
-        : allTransactions
-            .where(
-              (t) => PeriodMath.containsLocalDate(period.currentPeriod, t.date),
-            )
-            .toList();
+        : _cycleListFor(provider, period,
+            sorted: allTransactions, expenses: false);
     final trackedExpenses = showHistory
         ? allExpenses
-        : allExpenses
-            .where(
-              (t) => PeriodMath.containsLocalDate(period.currentPeriod, t.date),
-            )
-            .toList();
+        : _cycleListFor(provider, period,
+            sorted: allExpenses, expenses: true);
     // Clears the floating navigation bar *and* the Add button stacked above
     // it, using the bar's real height rather than a fixed guess.
     final scrollBottomInset = AppSpacing.tabBottomInset(context);
@@ -120,8 +191,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: () => provider.syncFromSms(userInitiated: true),
         child: CustomScrollView(
           slivers: [
-            // Greeting + one ring. The ring is the only loud object on the
-            // page; every surface below it is neutral and quiet.
+            // Greeting + the balance hero. The hero is the only loud object on
+            // the page; every surface below it is neutral and quiet.
             SliverToBoxAdapter(
               child: PageEntrance(
                 child: _HeaderSection(
@@ -349,16 +420,18 @@ class _HomeScreenState extends State<HomeScreen> {
         final loading = provider.isLoadingCache ||
             (provider.isSyncing && trackedExpenses.isEmpty);
         return [
-          const SectionHeader(title: 'Last 7 days', large: true),
+          const SectionHeader(title: 'Spending trend', large: true),
           if (loading)
-            const SpendingWeekSkeleton()
+            const SpendingTrendSkeleton()
           else
             ContentReveal(
-              child: SpendingWeekCard(
-                key: const Key('daily-spend-card'),
-                // The header says "Last 7 days", so pass the unfiltered
-                // history — the cycle-filtered list would drop older days.
-                expenses: provider.trackedExpenses.toList(growable: false),
+              child: SpendingTrendCard(
+                key: const Key('spending-trend-card'),
+                // The card owns its own 7/30-day window, so it takes the
+                // unfiltered history — the cycle-filtered list would drop
+                // older days.
+                expenses: provider.trackedExpenses,
+                income: provider.trackedIncome,
               ),
             ),
           const SizedBox(height: AppSpacing.homeSectionGap),
@@ -480,8 +553,7 @@ class _RecentFeed extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: AppColors.panelDecoration(
         context,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        shadow: false,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
         children: [
@@ -508,7 +580,7 @@ class _RecentFeed extends StatelessWidget {
 ///
 /// Suno's home opens with a huge line of type and almost nothing else above the
 /// fold; GO Club's opens with the number you came for. This block is both: the
-/// name is the headline, the ring underneath is the answer.
+/// name is the headline, the balance hero underneath is the answer.
 class _HeaderSection extends StatelessWidget {
   final AuthProvider auth;
   final TransactionProvider provider;
@@ -543,7 +615,7 @@ class _HeaderSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Column(
@@ -553,10 +625,9 @@ class _HeaderSection extends StatelessWidget {
                         '$greeting,',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            AppText.weight(AppText.h2(context), FontWeight.w600)
-                                .copyWith(
-                          fontSize: 18,
+                        style: AppText.label(context).copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary(context),
                           height: 1.2,
                         ),
@@ -565,62 +636,69 @@ class _HeaderSection extends StatelessWidget {
                         name.isEmpty ? 'there.' : '$name.',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.weight(
-                                AppText.display(context), FontWeight.w800)
-                            .copyWith(
-                          fontSize: 34,
-                          letterSpacing: -1.1,
-                          height: 1.05,
+                        // Spec 11 §6.4: greeting 20 / w600. The hierarchy comes
+                        // from size and ink, not from a heavy weight.
+                        style: AppText.display(context).copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                          height: 1.2,
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const ThemeToggle(),
-                const SizedBox(width: 2),
-                if (onEditDashboard != null) ...[
-                  Tooltip(
-                    message: 'Edit dashboard',
-                    child: Semantics(
-                      button: true,
-                      label: 'Edit dashboard',
-                      // A Semantics wrapper with excludeSemantics drops the
-                      // Pressable's tap action, so expose it explicitly for
-                      // TalkBack and switch access.
-                      onTap: onEditDashboard,
-                      excludeSemantics: true,
-                      child: Pressable(
-                        onTap: onEditDashboard,
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Icon(
-                            Icons.tune_rounded,
-                            size: 17,
-                            color: AppColors.textTertiary(context),
+                // One outlined pill holds the three controls (reference header:
+                // bell and avatar share a pill). Same actions as before, same
+                // 44dp targets; only the grouping is new.
+                Container(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.glassSurface(context),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: AppColors.border(context)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const ThemeToggle(),
+                      if (onEditDashboard != null) ...[
+                        const SizedBox(width: 2),
+                        Tooltip(
+                          message: 'Edit dashboard',
+                          child: Semantics(
+                            button: true,
+                            label: 'Edit dashboard',
+                            // A Semantics wrapper with excludeSemantics drops the
+                            // Pressable's tap action, so expose it explicitly
+                            // for TalkBack and switch access.
+                            onTap: onEditDashboard,
+                            excludeSemantics: true,
+                            child: Pressable(
+                              onTap: onEditDashboard,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                              child: SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Icons.tune_rounded,
+                                  size: 18,
+                                  color: AppColors.textSecondary(context),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
+                      ],
+                      const SizedBox(width: 2),
+                      ProfileAvatar(
+                        imageBytes: auth.profileImageBytes,
+                        name: auth.name,
+                        radius: 18,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.brandBright, AppColors.lime],
-                    ),
-                  ),
-                  child: ProfileAvatar(
-                    imageBytes: auth.profileImageBytes,
-                    name: auth.name,
-                    radius: 22,
+                    ],
                   ),
                 ),
               ],
@@ -637,22 +715,15 @@ class _HeaderSection extends StatelessWidget {
               children: [
                 const _SyncButton(),
                 Text(
-                  'Welcome back',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.overline(context)
-                      .copyWith(fontSize: 9, letterSpacing: 1.1),
-                ),
-                Text(
                   today,
                   style: AppText.overline(context)
-                      .copyWith(fontSize: 9, letterSpacing: 1.1),
+                      .copyWith(fontSize: 9.5, letterSpacing: 1.1),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
             const _SyncStatusStrip(),
-            _CycleSection(
+            _HeroSection(
               provider: provider,
               visible: balanceVisible,
               onToggleVisibility: onToggleBalance,
@@ -664,13 +735,17 @@ class _HeaderSection extends StatelessWidget {
   }
 }
 
-/// Wires the provider values into the presentational [CycleHero].
-class _CycleSection extends StatelessWidget {
+/// Wires the provider values into the presentational [BalanceHero].
+///
+/// Every figure comes from an existing provider getter: [availableBalance] is
+/// the app's all-time net definition, and the period figures use the same
+/// window rule as the rest of the dashboard. Nothing is recomputed here.
+class _HeroSection extends StatelessWidget {
   final TransactionProvider provider;
   final bool visible;
   final VoidCallback onToggleVisibility;
 
-  const _CycleSection({
+  const _HeroSection({
     required this.provider,
     required this.visible,
     required this.onToggleVisibility,
@@ -682,16 +757,19 @@ class _CycleSection extends StatelessWidget {
       builder: (context, period, _) {
         final current = period.currentPeriod;
         final previous = period.previousPeriod;
-        return CycleHero(
-          spentMinor: provider.totalExpensesForPeriod(current),
-          budgetMinor: provider.monthlyBudgetMinor,
-          transactionCount: provider.trackedTransactions.length,
-          topCategory: provider.topTrackedCategory,
-          periodLabel: period.periodLabel,
-          periodEnd: current.end,
-          previousSpentMinor: previous == null
+        return BalanceHero(
+          balanceMinor: provider.availableBalance,
+          incomeMinor: provider.totalIncomeForPeriod(current),
+          expenseMinor: provider.totalExpensesForPeriod(current),
+          previousExpenseMinor: previous == null
               ? null
               : provider.totalExpensesForPeriod(previous),
+          previousIncomeMinor: previous == null
+              ? null
+              : provider.totalIncomeForPeriod(previous),
+          budgetMinor: provider.monthlyBudgetMinor,
+          periodLabel: period.periodLabel,
+          periodEnd: current.end,
           visible: visible,
           onToggleVisibility: onToggleVisibility,
           ledgerError: provider.hasLedgerInitError,
@@ -901,10 +979,11 @@ class _SyncButton extends StatelessWidget {
 
 // ── Quick actions ────────────────────────────────────────────────────────────
 
-/// Four real actions: money out, money in, an SMS sync, and a jump to the full
-/// activity list. Every destination already existed; none is a placeholder.
-/// They live in one floating dock so the dashboard has a command surface, not
-/// another grid of cards to read.
+/// Five real actions: Add (the primary, replacing the old floating button),
+/// money out, money in, an SMS sync, and a jump to the full activity list.
+/// Every destination already existed; none is a placeholder. They live in one
+/// solid dock in the page flow, so the dashboard has a command surface that
+/// scrolls with the content and never covers a figure.
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
@@ -912,6 +991,16 @@ class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return HomeActionDock(
       actions: [
+        // Replaces the floating Add button. Opens the same shared form (the
+        // default type, expense), so validation and persistence stay in one
+        // place.
+        QuickAction(
+          label: 'Add',
+          semanticLabel: 'Add transaction',
+          icon: Icons.add_rounded,
+          primary: true,
+          onTap: () => _open(context, TransactionType.expense),
+        ),
         QuickAction(
           label: 'Add expense',
           icon: Icons.south_west_rounded,
