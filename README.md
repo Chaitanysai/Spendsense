@@ -6,17 +6,17 @@ turns them into a searchable ledger with budgets, bills, recurring plans and
 spending insights.
 
 The ledger is encrypted and stored on the device. The standard Android build
-uses an account for sign-in. SMS text stays on the device by default. If you
-explicitly enable **AI Provider Settings → Send ambiguous SMS to AI providers**,
-redacted low-confidence messages are sent to the provider you configured; read
-that screen before enabling it.
+uses an account for sign-in. SMS text is parsed on the device. Messages the
+on-device parser cannot resolve confidently are sent to the AI provider
+configured under **Settings → AI provider settings**, after redaction — see
+[Privacy](#privacy) for exactly what that redaction does and does not remove.
 
 ## What it does
 
 - **Local SMS import** — scans the Android inbox for transaction messages,
   classifies debits and credits, and extracts amount, merchant, bank and
-  category. Messages stay on the device unless cloud SMS parsing is explicitly
-  enabled as described above.
+  category. Messages stay on the device unless a low-confidence message is
+  escalated to a configured AI provider, as described in [Privacy](#privacy).
 - **Email import (Gmail)** — opt-in, on-device reading of bank alert emails
   with read-only Gmail access, for banks that alert by email instead of SMS.
 - **Manual entries** — add income or expense records without SMS.
@@ -133,7 +133,17 @@ ota/                        OTA hosting layout
 
 ## Privacy
 
-- Transaction SMS text is parsed on the device and is not uploaded.
+- Transaction SMS text is parsed on the device. Messages the on-device parser
+  cannot resolve confidently — it needs an explicit debit and scores below 0.8 —
+  are sent to the AI provider configured under **Settings → AI provider
+  settings**, but only once such a provider is configured. There is no separate
+  consent switch: configuring a provider is what enables the cloud path.
+- Before leaving the device, that text is redacted: 4–6 digit runs (OTPs) become
+  `***`, `cvv`/`pin` values are masked, and digit runs of 10–16 characters are
+  reduced to their last four digits. **Redaction is not complete.** Digit runs of
+  7–9 characters currently pass through unmodified, so an account or reference
+  number in that range can reach the provider intact. Treat the cloud path as
+  sending redacted-but-not-anonymised text.
 - The local database is encrypted; the key is kept in platform secure storage.
 - The optional assistant sends only the typed question, recent chat text and
   validated tool calls to its proxy — never the database, raw SMS or account
