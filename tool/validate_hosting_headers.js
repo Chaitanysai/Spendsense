@@ -138,6 +138,11 @@ const MATRIX = [
   ['/site/assets/index-vIX1ZQhS.css', IMMUTABLE],
   ['/site/assets/three-BLc3E22_.js', IMMUTABLE],
   ['/manifest.json', REVALIDATE],
+  // The staging channel is a mirror of the production layout one level down.
+  // It must revalidate on the same schedule: an installed staging build polls
+  // /staging/manifest.json, so a cached copy would hide the newest test build.
+  ['/staging/manifest.json', REVALIDATE],
+  ['/staging/releases/spendsense-2.0.26+51.apk', IMMUTABLE],
   ['/releases/latest.apk', NO_STORE],
   ['/releases/spendsense-2.0.24+49.apk', IMMUTABLE],
   ['/landing.css', undefined],
@@ -163,8 +168,16 @@ for (const [requestPath, expected] of MATRIX) {
 
 // Long-lived immutable caching is only safe where the URL changes when the
 // bytes change. That is the Vite build's hashed bundle directory and the
-// version-named release APKs. Anything else must not claim immutability.
-const IMMUTABLE_SOURCES = new Set(['/site/assets/**', '/releases/spendsense*.apk']);
+// version-named release APKs — on either channel. The staging release path is
+// the same shape as production's (spendsense-<name>+<build>.apk), so it carries
+// the same guarantee; it is listed separately rather than folded into a
+// `**/spendsense*.apk` pattern so that production's rule keeps matching exactly
+// the paths it always has.
+const IMMUTABLE_SOURCES = new Set([
+  '/site/assets/**',
+  '/releases/spendsense*.apk',
+  '/staging/releases/spendsense*.apk',
+]);
 for (const rule of rules) {
   for (const header of rule.headers) {
     if (header.key.toLowerCase() !== 'cache-control') continue;

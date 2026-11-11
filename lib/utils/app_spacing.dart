@@ -93,12 +93,62 @@ class AppRadius {
   /// Small square plates: KPI icons, action tiles, navigation-adjacent wells.
   static const double plate = 10;
 
+  // --- Semantic scale -----------------------------------------------------
+  //
+  // The raw steps above describe *how round* a corner is. These describe *what
+  // the corner belongs to*, so a retune of one role does not require hunting
+  // for every literal that happens to share its number. They are ordered by the
+  // size of the thing they wrap — a glyph plate is nested inside a tile, a tile
+  // inside a card, a card inside a panel, a panel inside a full container — and
+  // the nesting is deliberate: see [nested] for why a concentric inner corner
+  // must be *smaller* than its parent.
+  //
+  // [nested] and the existing [card]/[plate] keep their current values, so the
+  // semantic names are additive: nothing already on screen moves.
+
+  /// A plate behind a single glyph: the small square wells the IA uses for a
+  /// one-line icon (list rows, KPI strips, status chips).
+  static const double icon = plate;
+
+  /// A compact tile that wraps an icon plus a label: quick actions, segmented
+  /// controls, the small action buttons in a row.
+  static const double tile = md;
+
+  /// A grouped surface: chart containers, grouped list cards, sheet sections.
+  /// Same value as [card] on purpose — they are the same plane.
+  static const double panel = card;
+
+  /// The outermost plane of a screen region: a hero panel, a full-width
+  /// container that holds several [panel]s inside it.
+  static const double container = xl;
+
   static BorderRadius all(double r) => BorderRadius.circular(r);
   static const BorderRadius smAll = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius mdAll = BorderRadius.all(Radius.circular(md));
   static const BorderRadius lgAll = BorderRadius.all(Radius.circular(lg));
   static const BorderRadius cardAll = BorderRadius.all(Radius.circular(card));
   static const BorderRadius xlAll = BorderRadius.all(Radius.circular(xl));
+
+  /// A concentric corner: the radius an element *inside* a parent of radius
+  /// [outer] should use so its curve stays parallel to the parent's.
+  ///
+  /// Two elements whose corners share a centre look wrong unless the inner one
+  /// subtracts the gap between them — an inner plate at the parent's own radius
+  /// reads as a rounded square jammed into a curve, and one at a fixed radius
+  /// drifts as the parent's radius changes. Given a parent corner [outer] and
+  /// the inset [gap] between the two edges, this returns the inner radius,
+  /// clamped at zero so a plate wider than its corner cannot go negative.
+  ///
+  /// [gap] defaults to the card inset the design uses between a surface and its
+  /// content ([AppSpacing.lg]), which is the common case.
+  static double nested(double outer, [double gap = AppSpacing.lg]) {
+    final inner = outer - gap;
+    return inner > 0 ? inner : 0;
+  }
+
+  /// [nested] as a [BorderRadius], for the common "inner plate in a card" case.
+  static BorderRadius nestedAll(double outer, [double gap = AppSpacing.lg]) =>
+      BorderRadius.circular(nested(outer, gap));
 }
 
 /// Motion tokens. Durations collapse to zero when the OS requests reduced

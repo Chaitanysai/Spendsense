@@ -353,7 +353,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.heroChipFill(context),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
                 child: Icon(Icons.smart_toy_rounded,
                     color: AppColors.onHero(context)),
@@ -416,7 +416,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             height: 42,
             decoration: BoxDecoration(
               gradient: AppColors.accentHeroGradient(context),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             child: Icon(Icons.lightbulb_rounded,
                 color: AppColors.onAccentHero(context)),

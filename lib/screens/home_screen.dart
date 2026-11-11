@@ -178,8 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
             sorted: allTransactions, expenses: false);
     final trackedExpenses = showHistory
         ? allExpenses
-        : _cycleListFor(provider, period,
-            sorted: allExpenses, expenses: true);
+        : _cycleListFor(provider, period, sorted: allExpenses, expenses: true);
     // Clears the floating navigation bar *and* the Add button stacked above
     // it, using the bar's real height rather than a fixed guess.
     final scrollBottomInset = AppSpacing.tabBottomInset(context);
@@ -335,7 +334,12 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.transparent,
             elevation: reduce ? 0 : 6,
             shadowColor: AppColors.shadow(context),
-            borderRadius: AppRadius.lgAll,
+            // The lifted row is the same [GlassCard] that sits in the list, so
+            // the shadow has to follow *its* corner, not a radius of its own.
+            // Pinned to the card default because the rows below use nothing
+            // else; a row that passes its own [GlassCard.radius] would need
+            // this read from the item instead.
+            borderRadius: BorderRadius.circular(AppRadius.card),
             child: child,
           ),
           itemBuilder: (context, index) {
@@ -764,9 +768,8 @@ class _HeroSection extends StatelessWidget {
           previousExpenseMinor: previous == null
               ? null
               : provider.totalExpensesForPeriod(previous),
-          previousIncomeMinor: previous == null
-              ? null
-              : provider.totalIncomeForPeriod(previous),
+          previousIncomeMinor:
+              previous == null ? null : provider.totalIncomeForPeriod(previous),
           budgetMinor: provider.monthlyBudgetMinor,
           periodLabel: period.periodLabel,
           periodEnd: current.end,

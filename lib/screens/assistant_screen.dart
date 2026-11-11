@@ -168,12 +168,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
           titleSpacing: 0,
           title: Row(
             children: [
+              // The hero gradient, not an IconWell: the assistant mark is the
+              // one plate in the app painted with [AppColors.accentHeroGradient],
+              // and IconWell's flat wash would drop it.
               Container(
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
                   gradient: AppColors.accentHeroGradient(context),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.tile),
                 ),
                 child: Icon(Icons.auto_awesome_rounded,
                     color: AppColors.onAccentHero(context), size: 20),
@@ -421,7 +424,7 @@ class _MessageBlock extends StatelessWidget {
               topLeft: Radius.circular(AppRadius.md),
               topRight: Radius.circular(AppRadius.md),
               bottomLeft: Radius.circular(AppRadius.md),
-              bottomRight: Radius.circular(4),
+              bottomRight: Radius.circular(AppRadius.sm),
             ),
           ),
           child: Text(
@@ -450,7 +453,7 @@ class _MessageBlock extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               gradient: AppColors.accentHeroGradient(context),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.icon),
             ),
             child: Icon(Icons.auto_awesome_rounded,
                 color: AppColors.onAccentHero(context), size: 16),
@@ -472,7 +475,7 @@ class _MessageBlock extends StatelessWidget {
                         topRight: Radius.circular(AppRadius.md),
                         bottomLeft: Radius.circular(AppRadius.md),
                         bottomRight: Radius.circular(AppRadius.md),
-                        topLeft: Radius.circular(4),
+                        topLeft: Radius.circular(AppRadius.sm),
                       ),
                       border: Border.all(
                         color: message.isError
@@ -601,7 +604,7 @@ class _ThinkingBubble extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               gradient: AppColors.accentHeroGradient(context),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.icon),
             ),
             child: Icon(Icons.auto_awesome_rounded,
                 color: AppColors.onAccentHero(context), size: 16),

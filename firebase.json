@@ -43,6 +43,12 @@
         ]
       },
       {
+        "source": "/staging/manifest.json",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+        ]
+      },
+      {
         "source": "/releases/latest.apk",
         "headers": [
           { "key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate" }
@@ -50,6 +56,12 @@
       },
       {
         "source": "/releases/spendsense*.apk",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "/staging/releases/spendsense*.apk",
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
         ]

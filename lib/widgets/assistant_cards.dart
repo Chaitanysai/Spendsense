@@ -274,7 +274,7 @@ class AssistantTransactionRow extends StatelessWidget {
               height: 34,
               decoration: BoxDecoration(
                 color: AppColors.wash(context, color),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(AppRadius.icon),
               ),
               child: Icon(
                 transaction.kind == AssistantTransactionKind.investment
@@ -623,7 +623,7 @@ class AssistantBillsCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.wash(
                           context, _statusColor(context, bill.status)),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.icon),
                     ),
                     child: Icon(Icons.receipt_long_rounded,
                         size: 16,

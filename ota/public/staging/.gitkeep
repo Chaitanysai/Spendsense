@@ -1,0 +1,9 @@
+# Placeholder so CI's checkout carries ota/public/staging/.
+#
+# `firebase deploy` replaces the whole Hosting release with whatever is in
+# ota/public, so a directory that is absent from the checkout is a directory
+# that is absent from the deployed site — this is the same failure the note in
+# .gitignore describes for the landing pages. Nothing here is secret and
+# nothing here is a build artifact: manifest.json and releases/*.apk are
+# written into this tree by .github/workflows/ota-publish.yml at publish time
+# and are deliberately NOT committed.

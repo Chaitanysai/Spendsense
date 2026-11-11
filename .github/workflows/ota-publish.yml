@@ -31,6 +31,14 @@ on:
         description: 'REQUIRED. Oldest version still supported, x.y.z. Never defaults to this build.'
         required: true
         type: string
+      channel:
+        description: 'staging publishes to /staging/ and never reaches the production manifest. production is the default.'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
 
 permissions:
   contents: read
@@ -54,6 +62,9 @@ jobs:
     outputs:
       deploy_intent: ${{ steps.intent.outputs.deploy_intent }}
       version: ${{ steps.version.outputs.version }}
+      # "" for production, "staging" for the staging channel. The deploy job
+      # needs it to find the payload and to say truthfully what it published.
+      subdir: ${{ steps.channel.outputs.subdir }}
       # No APK path output on purpose. GitHub drops a job output whose value
       # matches a registered secret, and any secret whose value occurs inside
       # the APK filename empties it silently. The uploaded payload is the
@@ -63,6 +74,26 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+
+      # Resolved once, here, because three later steps have to agree on it
+      # exactly: the compiled-in OTA_MANIFEST_URL, the manifest's downloadUrl
+      # (--base-url) and the directory the payload is staged into. If any one of
+      # them computed the subdirectory itself they could disagree, and a
+      # client whose compiled URL points at one channel while the manifest it
+      # reads names the other is the one failure this whole job exists to
+      # prevent.
+      - name: Resolve the publication path
+        id: channel
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          case "$CHANNEL" in
+            production) SUBDIR="" ;;
+            staging)    SUBDIR="staging" ;;
+            *) echo "Unknown channel: $CHANNEL" >&2; exit 1 ;;
+          esac
+          echo "subdir=$SUBDIR" >> "$GITHUB_OUTPUT"
+          echo "Channel: $CHANNEL (publishing under /${SUBDIR:-<root>})"
 
       - name: Decide intent
         id: intent
@@ -178,11 +209,18 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
           GMAIL_SERVER_CLIENT_ID: ${{ vars.GMAIL_SERVER_CLIENT_ID }}
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
         run: |
           if [ -z "${OTA_BASE_URL:-}" ]; then
             echo "::error::OTA_BASE_URL repository variable is not set"
             exit 1
           fi
+          # The channel subdirectory has to be in the COMPILED url, because an
+          # installed build reads exactly this URL and nothing else. A staging
+          # build that pointed at the production manifest would offer
+          # production releases to testers.
+          OTA_ROOT="${OTA_BASE_URL%/}${SUBDIR:+/$SUBDIR}"
+          echo "Compiled OTA manifest URL: $OTA_ROOT/manifest.json"
           # Gmail OAuth is optional: an empty client ID leaves email import
           # disabled at runtime rather than failing the release.
           DEFINES=()
@@ -192,7 +230,7 @@ jobs:
           # Unquoted expansion is deliberate: with an empty array this passes
           # no extra argument (a quoted "${DEFINES[@]}" would pass one empty).
           flutter build apk --release \
-            --dart-define=OTA_MANIFEST_URL="${OTA_BASE_URL%/}/manifest.json" \
+            --dart-define=OTA_MANIFEST_URL="$OTA_ROOT/manifest.json" \
             ${DEFINES[@]+"${DEFINES[@]}"}
 
       - name: Verify the built APK is signed with the pinned certificate
@@ -324,8 +362,16 @@ jobs:
           fi
           echo "OK: download button, host rewrite and downloadApk function are all in place"
 
-      - name: Stage APK under ota/public/releases
+      - name: Stage APK under the channel's releases directory
         id: version
+        # The channel decides where the payload lands. Production keeps the
+        # historic ota/public/releases path exactly; staging nests one level
+        # inside it so a staged APK can never be reached from a production
+        # manifest, and the two channels' file names cannot collide even when
+        # they describe the same version+build (which is how a staging build is
+        # promoted: by rebuilding, not by renaming).
+        env:
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
         run: |
           VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | tr -d '[:space:]')
           NAME="${VERSION%%+*}"; BUILD="${VERSION##*+}"
@@ -333,11 +379,13 @@ jobs:
             echo "::error::pubspec version '$VERSION' is not name+build"
             exit 1
           fi
-          mkdir -p ota/public/releases
-          APK="ota/public/releases/spendsense-${NAME}+${BUILD}.apk"
+          REL_DIR="ota/public${SUBDIR:+/$SUBDIR}/releases"
+          mkdir -p "$REL_DIR"
+          APK="$REL_DIR/spendsense-${NAME}+${BUILD}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "$APK"
           echo "version=$NAME" >> "$GITHUB_OUTPUT"
           echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+          echo "manifest_path=ota/public${SUBDIR:+/$SUBDIR}/manifest.json" >> "$GITHUB_OUTPUT"
           echo "Staged $APK"
           echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
@@ -347,10 +395,14 @@ jobs:
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
           RELEASE_NOTES: ${{ inputs.notes }}
           MINIMUM: ${{ inputs.minimum_version }}
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
+          MANIFEST_PATH: ${{ steps.version.outputs.manifest_path }}
         run: |
           # Normalise once, the same way the build step does, so the manifest's
-          # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree.
-          BASE="${OTA_BASE_URL%/}"
+          # downloadUrl and the compiled OTA_MANIFEST_URL cannot disagree. The
+          # downloadUrl must carry the channel subdirectory, because the client
+          # downloads exactly the URL the manifest names.
+          BASE="${OTA_BASE_URL%/}${SUBDIR:+/$SUBDIR}"
           # --apk is required: the generator hashes the staged APK to produce the
           # manifest's sha256. Omitting it failed the run with exit 64.
           APK="${{ steps.version.outputs.apk_path }}"
@@ -358,7 +410,7 @@ jobs:
             echo "::error::Staged APK not found at '$APK'"
             exit 1
           fi
-          set -- --apk "$APK" --base-url "$BASE" --out ota/public/manifest.json
+          set -- --apk "$APK" --base-url "$BASE" --out "$MANIFEST_PATH"
           if [ -n "$RELEASE_NOTES" ]; then set -- "$@" --notes "$RELEASE_NOTES"; fi
           # --minimum is unconditional and required. It is deliberately NOT
           # defaulted to the version being published: that default set
@@ -371,14 +423,16 @@ jobs:
           set -- "$@" --minimum "$MINIMUM"
           dart run tool/generate_ota_manifest.dart "$@"
           echo "--- manifest (sha256 redacted) ---"
-          sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' ota/public/manifest.json
+          sed -e 's/\("sha256": *"\)[^"]*/\1<redacted>/' "$MANIFEST_PATH"
           echo "manifest_url=$BASE/manifest.json" >> "$GITHUB_OUTPUT"
 
       - name: Verify manifest integrity locally
         env:
           OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
+          MANIFEST_PATH: ${{ steps.version.outputs.manifest_path }}
         run: |
-          BASE="${OTA_BASE_URL%/}"
+          BASE="${OTA_BASE_URL%/}${SUBDIR:+/$SUBDIR}"
           HOST=$(printf '%s' "$BASE" | sed -E 's#https?://([^/]+).*#\1#')
           # The exact APK this run staged. Globbing the directory would depend on
           # whatever else is present and could verify a different artifact than
@@ -388,11 +442,62 @@ jobs:
             echo "::error::No staged APK at '$APK'"
             exit 1
           fi
-          echo "Checking $APK against ota/public/manifest.json"
+          echo "Checking $APK against $MANIFEST_PATH"
           dart run tool/validate_ota_manifest.dart \
-            --manifest ota/public/manifest.json \
+            --manifest "$MANIFEST_PATH" \
             --apk "$APK" \
             --expect-host "$HOST"
+
+      - name: Pre-flight the version against the live manifest
+        # The update decision is made on the client: UpdatePolicy asks
+        # `latest.isNewerThan(installed)`, i.e. compareTo(...) > 0. Nothing on
+        # the server compares a candidate against what is live, and
+        # validate_ota_manifest.dart is deliberately offline, so a candidate
+        # that does not sort strictly above the live one passes every other
+        # gate, publishes cleanly, and is then never offered to anybody.
+        #
+        # This runs the comparison in Dart against lib/models/update_manifest
+        # rather than in shell. An earlier attempt used `sort -V` plus an
+        # integer test on the build number; `sort -V` and AppVersion disagree
+        # on pre-release ordering, and the build-number test misfires on a
+        # rebuild of the *same* version name — precisely the case a rebuild
+        # creates. The tool is the app's own algorithm, pinned to the model by
+        # test/ota_monotonicity_test.dart.
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
+          MANIFEST_PATH: ${{ steps.version.outputs.manifest_path }}
+        run: |
+          # Compare against the channel being published to, not against
+          # production: a staging build is allowed to be older than production
+          # (that is often the point) but must still advance staging.
+          LIVE="${OTA_BASE_URL%/}${SUBDIR:+/$SUBDIR}/manifest.json"
+          dart run tool/check_ota_monotonicity.dart \
+            --candidate "$MANIFEST_PATH" \
+            --live-url "$LIVE"
+
+      - name: Assert the production manifest was not touched by a staging run
+        # firebase deploy replaces the whole Hosting release, so a staging
+        # publish also republishes production. That is only safe if production's
+        # bytes are identical to what is live — and the one way this job could
+        # change them is by writing a manifest at the production path. It does
+        # not: the manifest path is derived from the channel. This asserts the
+        # derivation rather than trusting it, because the failure is silent —
+        # testers would start being offered production releases.
+        env:
+          SUBDIR: ${{ steps.channel.outputs.subdir }}
+          MANIFEST_PATH: ${{ steps.version.outputs.manifest_path }}
+        run: |
+          EXPECTED="ota/public${SUBDIR:+/$SUBDIR}/manifest.json"
+          if [ "$MANIFEST_PATH" != "$EXPECTED" ]; then
+            echo "::error::channel '$SUBDIR' wrote its manifest to '$MANIFEST_PATH', expected '$EXPECTED'"
+            exit 1
+          fi
+          if [ -n "$SUBDIR" ] && [ -f ota/public/manifest.json ]; then
+            echo "::error::a staging run produced ota/public/manifest.json; staging must never own the production manifest"
+            exit 1
+          fi
+          echo "OK: $SUBDIR run wrote $MANIFEST_PATH and left the production manifest alone"
 
       - name: Upload the validated OTA payload
         # The deploy job runs on a fresh checkout, where ota/public holds only
@@ -410,6 +515,7 @@ jobs:
         run: |
           {
             echo "### OTA ${{ steps.intent.outputs.deploy_intent == 'true' && 'DEPLOY' || 'VALIDATE ONLY' }}"
+            echo "- channel: ${{ inputs.channel }}"
             echo "- version: \`${{ steps.version.outputs.version }}\`"
             echo "- sha256: \`${{ steps.version.outputs.sha256 }}\`"
             echo "- pin: matched release keystore"
@@ -441,17 +547,24 @@ jobs:
           path: ota/public
 
       - name: Assert the payload is the one that will be published
+        env:
+          SUBDIR: ${{ needs.validate.outputs.subdir }}
         run: |
           set -euo pipefail
-          if [ ! -s ota/public/manifest.json ]; then
-            echo "::error::No validated manifest.json in the payload; refusing to publish an empty site"
+          # The payload was staged under the channel the validate job resolved,
+          # so this job checks the same subdirectory rather than assuming the
+          # production layout. A staging run that landed under releases/ would
+          # mean the resolution never reached the staging step.
+          DIR="ota/public${SUBDIR:+/$SUBDIR}"
+          if [ ! -s "$DIR/manifest.json" ]; then
+            echo "::error::No validated manifest.json at $DIR/manifest.json; refusing to publish an empty site"
             exit 1
           fi
           shopt -s nullglob
-          apks=(ota/public/releases/*.apk)
+          apks=("$DIR"/releases/*.apk)
           shopt -u nullglob
           if [ ${#apks[@]} -ne 1 ]; then
-            echo "::error::Expected exactly one APK in ota/public/releases, found ${#apks[@]}; refusing to publish"
+            echo "::error::Expected exactly one APK in $DIR/releases, found ${#apks[@]}; refusing to publish"
             exit 1
           fi
           APK="${apks[0]}"
@@ -459,16 +572,16 @@ jobs:
           # The manifest must describe this exact file, and its digest must be
           # this file's digest. Anything else means the payload is a mix of
           # runs, and publishing it would advertise an APK the site lacks.
-          if ! grep -qF "releases/$APK_NAME" ota/public/manifest.json; then
+          if ! grep -qF "releases/$APK_NAME" "$DIR/manifest.json"; then
             echo "::error::manifest.json does not reference releases/$APK_NAME; refusing to publish"
             exit 1
           fi
           SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
-          if ! grep -qF "$SHA" ota/public/manifest.json; then
+          if ! grep -qF "$SHA" "$DIR/manifest.json"; then
             echo "::error::manifest.json does not carry the sha256 of releases/$APK_NAME; refusing to publish"
             exit 1
           fi
-          echo "Publishing ota/public/manifest.json + ota/public/releases/$APK_NAME (sha256 $SHA)"
+          echo "Publishing $DIR/manifest.json + $DIR/releases/$APK_NAME (sha256 $SHA)"
 
       - name: Setup Node
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
@@ -531,11 +644,13 @@ jobs:
           exit 1
 
       - name: Record what was published
+        env:
+          SUBDIR: ${{ needs.validate.outputs.subdir }}
         run: |
           {
             echo "### Published to Firebase Hosting"
             echo "- project: \`spendsense-ota-2026\`"
             echo "- version: \`${{ needs.validate.outputs.version }}\`"
-            echo "- channel: production (\`hosting\` + \`functions:downloadApk\`)"
+            echo "- channel: ${SUBDIR:-production} (\`hosting\` + \`functions:downloadApk\`)"
             echo "- download: https://spendsense-ota-2026.web.app/releases/latest.apk"
           } >> "$GITHUB_STEP_SUMMARY"
