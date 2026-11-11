@@ -237,6 +237,181 @@ void main() {
     });
   });
 
+  group('journal bookkeeping on a healthy activation', () {
+    test('a plain put stages the journal once and leaves no committed marker',
+        () async {
+      final writes = <String>[];
+      final cache = TransactionCacheService(
+        writeHook: (op, key) async => writes.add('$op $key'),
+      );
+      await cache.init();
+      writes.clear();
+      await cache.put(_tx('journal-count', 5000));
+
+      final journalSets = writes
+          .where((entry) => entry.startsWith('set txj_import_journal'))
+          .length;
+      // The pending journal that makes the write recoverable. A second
+      // 'committed' copy of the journal used to be written and immediately
+      // deleted for activations that remove nothing — pure overhead.
+      expect(journalSets, 1);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('txj_import_journal'), isNull,
+          reason: 'a completed activation leaves no journal behind');
+    });
+
+    test(
+        'an already-applied pending non-replace activation replays identically, repeatedly',
+        () async {
+      // Simulate a crash in the window after the index commit but before the
+      // journal was dropped: the pending journal describes work that is
+      // already fully visible. Replay must converge to the identical state —
+      // and stay there across repeated starts.
+      final records = [_tx('replay-a', 1000), _tx('replay-b', 2000)];
+      final cache = TransactionCacheService();
+      await cache.init();
+      await cache.putAll(records);
+
+      final prefs = await SharedPreferences.getInstance();
+      final encryption = LedgerEncryptionService();
+      prefs.setString(
+        'txj_import_journal',
+        jsonEncode({
+          'schemaVersion': 2,
+          'ciphertext': await encryption.encryptText(jsonEncode({
+            'v': 2,
+            'phase': 'pending',
+            'replace': false,
+            'records': [for (final tx in records) tx.toJson()],
+            'remove': <String>[],
+          })),
+        }),
+      );
+
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final restarted = TransactionCacheService();
+        await restarted.init();
+        final loaded = await restarted.loadAll();
+        expect(loaded.map((t) => t.id).toSet(), {'replay-a', 'replay-b'},
+            reason: 'replay must not add, drop or duplicate rows');
+        expect((await SharedPreferences.getInstance())
+                .getString('txj_import_journal'),
+            isNull,
+            reason: 'the replayed journal must be consumed');
+      }
+    });
+
+    Future<void> seedDeleteJournal(
+      List<String> keepIds, {
+      required List<String> removeIds,
+      List<String>? targetIds,
+    }) async {
+      final cache = TransactionCacheService();
+      await cache.init();
+      await cache
+          .putAll([for (final id in keepIds.followedBy(removeIds)) _tx(id, 100)]);
+      final prefs = await SharedPreferences.getInstance();
+      final encryption = LedgerEncryptionService();
+      final journal = <String, dynamic>{
+        'v': 2,
+        'phase': 'delete_pending',
+        'remove': removeIds,
+        if (targetIds != null) 'targetIds': targetIds,
+      };
+      prefs.setString(
+        'txj_import_journal',
+        jsonEncode({
+          'schemaVersion': 2,
+          'ciphertext': await encryption.encryptText(jsonEncode(journal)),
+        }),
+      );
+    }
+
+    test('recovers a legacy delete_pending journal that carries targetIds',
+        () async {
+      // Compatibility with journals written by older app versions: the
+      // recovery result must not depend on which journal shape arrives.
+      await seedDeleteJournal(['del-keep-a', 'del-keep-b'],
+          removeIds: ['del-gone'], targetIds: ['del-keep-a', 'del-keep-b']);
+
+      final restarted = TransactionCacheService();
+      await restarted.init();
+      expect((await restarted.loadAll()).map((t) => t.id).toSet(),
+          {'del-keep-a', 'del-keep-b'});
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('txe_del-gone'), isNull,
+          reason: 'a recovered delete removes the payload');
+      expect(prefs.getString('txj_import_journal'), isNull);
+    });
+
+    test('recovers a delete_pending journal without targetIds', () async {
+      // Journals written from now on carry only the removed ids; recovery
+      // computes the surviving index from the committed index minus 'remove'.
+      await seedDeleteJournal(['del-keep-a', 'del-keep-b'],
+          removeIds: ['del-gone']);
+
+      final restarted = TransactionCacheService();
+      await restarted.init();
+      expect((await restarted.loadAll()).map((t) => t.id).toSet(),
+          {'del-keep-a', 'del-keep-b'});
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('txe_del-gone'), isNull);
+      expect(prefs.getString('txj_import_journal'), isNull);
+    });
+
+    test('recovers a partial delete that names an id the ledger never had',
+        () async {
+      await seedDeleteJournal(['del-keep-a', 'del-keep-b'],
+          removeIds: ['del-gone', 'never-existed']);
+
+      final restarted = TransactionCacheService();
+      await restarted.init();
+      expect((await restarted.loadAll()).map((t) => t.id).toSet(),
+          {'del-keep-a', 'del-keep-b'},
+          reason: 'an unknown id in the removal list is ignored, not fatal');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('txj_import_journal'), isNull);
+    });
+
+    test('a corrupt payload fails loadAll with the same error shape it had '
+        'when decryption ran on the main isolate', () async {
+      // The sync-metadata migration is marked done so init() does not touch
+      // the records themselves — the corruption is first met inside
+      // loadAll's background isolate, and the exception must cross the
+      // isolate boundary unchanged.
+      final encryption = LedgerEncryptionService();
+      await encryption.createKeyIfMissing();
+      final good = _tx('iso-good', 1000);
+      final corrupt = _tx('iso-corrupt', 2000);
+      final envelopeJson = jsonDecode(await encryption.encryptText(
+        jsonEncode(corrupt.toJson()),
+        recordId: 'iso-corrupt',
+      )) as Map<String, dynamic>;
+      // Flip one character inside the ciphertext: authentication must fail.
+      final cipher = envelopeJson['ciphertext'] as String;
+      envelopeJson['ciphertext'] = (cipher.startsWith('A') ? 'B' : 'A') +
+          cipher.substring(1);
+      SharedPreferences.setMockInitialValues({
+        ...await _encryptedLedger([good, corrupt]),
+        'txe_iso-corrupt': jsonEncode(envelopeJson),
+        'tx_sync_metadata_v1': jsonEncode({'done': true, 'migrated': 0}),
+      });
+
+      final cache = TransactionCacheService();
+      await cache.init();
+
+      await expectLater(
+        cache.loadAll(),
+        throwsA(isA<LedgerMigrationException>().having(
+          (e) => e.code,
+          'code',
+          'decrypt_failed',
+        )),
+      );
+    });
+  });
+
   group('a lost id index does not read as an empty ledger', () {
     test(
         'payloads alone are recovered and the rebuilt index survives a restart',

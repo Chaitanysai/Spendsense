@@ -64,19 +64,34 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // A Wrap, not a Row: at 320dp with 2x text the total and the count
+          // pill together are wider than the card, and a Row has nowhere to put
+          // the pill but off the edge (measured: 25dp over). The pill now drops
+          // to its own line when it does not fit beside the total.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.sm,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Spent this cycle',
-                      style: AppText.overline(context).copyWith(fontSize: 9.5),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Spent this cycle',
+                    style: AppText.label(context).copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary(context),
                     ),
-                    const SizedBox(height: 3),
-                    FittedBox(
+                  ),
+                  const SizedBox(height: 3),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width,
+                    ),
+                    child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -84,29 +99,29 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
                         style: AppText.amount(
                           context,
                           size: 24,
+                          weight: FontWeight.w600,
                           letterSpacing: -0.6,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.md),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
+                  horizontal: 10,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt(context),
+                  color: AppColors.surfaceTertiary(context),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Text(
                   count == 1 ? '1 category' : '$count categories',
-                  style: AppText.weight(AppText.label(context), FontWeight.w700)
-                      .copyWith(
-                    fontSize: 10,
+                  style: AppText.label(context).copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary(context),
                   ),
                 ),

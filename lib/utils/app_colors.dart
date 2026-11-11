@@ -130,10 +130,9 @@ class AppColors {
   /// Broad ambient washes are suppressed in that case so the canvas stays black.
   static bool get isAmoledCanvas => _palette.isAmoled;
 
-  /// True when the active palette draws translucent glass cards over its dark
-  /// canvas (Midnight and the 2026 premium set). This flag only selects the
-  /// card, hero, border and overlay treatment; the canvas colour comes from the
-  /// palette and may be black or tinted.
+  /// True when the active palette uses the tinted dark tone (the palette's
+  /// historical `glass` flag). Cards are solid either way; this only selects
+  /// `darkSurfaceAlt` for cards so a tinted canvas still shows a step.
   static bool get isGlassPalette => _palette.glass;
 
   // ── Brand ramp ─────────────────────────────────────────────────────────────
@@ -221,6 +220,26 @@ class AppColors {
 
   static Color surfaceAlt(BuildContext context) =>
       isDark(context) ? darkSurfaceAlt : surfaceMuted;
+
+  /// The third step of the surface ladder: a band set *into* a surface, such
+  /// as a card footer of actions or a totals strip.
+  ///
+  /// Derived from the card tone plus a little of the palette's own ink, so it
+  /// works on all 19 palettes without adding a colour to any of them.
+  static Color surfaceTertiary(BuildContext context) => Color.alphaBlend(
+        textPrimary(context)
+            .withValues(alpha: isDark(context) ? 0.08 : 0.05),
+        glassSurface(context),
+      );
+
+  /// The quiet step *below* a raised card: halfway between the card and the
+  /// page.
+  ///
+  /// `surfaceAlt` is an inset wash (chips, wells), not a elevation step — on a
+  /// tinted palette it reads louder than the card it is supposed to sit under.
+  /// A midpoint blend keeps the ladder monotonic on all 19 palettes.
+  static Color surfaceGrouped(BuildContext context) =>
+      Color.lerp(glassSurface(context), scaffold(context), 0.5)!;
 
   static Color panel(BuildContext context) =>
       isDark(context) ? darkSurfaceAlt : surfaceMuted;
@@ -412,40 +431,30 @@ class AppColors {
     );
   }
 
-  // ── Glass recipe ──────────────────────────────────────────────────────────────
-  // One recipe for every translucent surface (cards and the navigation pill).
-  // The numbers live here so the two cannot drift apart again: fill alpha,
-  // hairline alpha, lit top edge, blur and shadow.
+  // ── Surface recipe ────────────────────────────────────────────────────────────
+  // Every surface is solid (see docs/design-redesign/11-visual-direction-spec.md).
+  // The `glass*` names are kept so existing call sites resolve, but nothing they
+  // return is translucent and nothing in the app blurs what is behind it.
+  //
+  // A palette's `glass` flag now selects only its *tone*: tinted dark palettes
+  // (Premium Blue, Deep Navy, Plum Blush, Soft Pastel Teal, Midnight) lift cards
+  // to `darkSurfaceAlt` so their tinted canvas still shows a step, while the
+  // rest use `darkSurface`.
 
-  /// Backdrop blur of a glass surface. Modest for readability and cost.
-  static const double glassBlurSigma = 14;
-
-  /// Fill alpha of a dark glass card over its canvas.
-  static const double glassFillAlpha = 0.62;
-
-  /// Alpha of the white hairline around a dark glass surface.
+  /// Alpha of the white hairline around a dark card on a tinted palette.
   static const double glassBorderAlpha = 0.10;
-
-  /// Alpha at the centre of the lit top edge (see `GlassEdge`).
-  static const double glassHighlightAlpha = 0.18;
-
-  /// Fill alpha of the floating navigation pill. Lower than a card on purpose:
-  /// the pill floats over scrolling content and should stay see-through.
-  static const double navFillAlpha = 0.56;
 
   /// Alpha of the unselected navigation foreground, identical in every theme.
   static const double navIdleAlpha = 0.82;
 
-  /// True on a tinted or black glass dark canvas, where cards are real glass.
+  /// True on a tinted dark canvas (a palette with the `glass` tone flag).
   static bool isGlassCanvas(BuildContext context) =>
       isDark(context) && isGlassPalette;
 
-  /// Context-free card fill (see [glassFill]).
+  /// Context-free card fill (see [glassFill]). Always opaque.
   static Color glassFillFor(bool dark) {
-    if (!dark) return surface.withValues(alpha: 0.92);
-    return isGlassPalette
-        ? darkSurfaceAlt.withValues(alpha: glassFillAlpha)
-        : darkSurface.withValues(alpha: 0.94);
+    if (!dark) return surface;
+    return isGlassPalette ? darkSurfaceAlt : darkSurface;
   }
 
   /// Context-free card edge (see [glassBorder]).
@@ -456,28 +465,56 @@ class AppColors {
         : borderDark;
   }
 
-  /// The opaque colour a glass card actually shows over its canvas. Use this as
-  /// the background when measuring ink that sits on a card.
+  /// The colour a card shows. Identical to [glassFillFor] now that fills are
+  /// opaque; kept as the name ink measurements already use.
   static Color glassBase(bool dark) => Color.alphaBlend(
         glassFillFor(dark),
         dark ? darkBackground : background,
       );
 
-  /// Separation shadow of a glass surface. [floating] is the deeper, softer
-  /// shadow used by the navigation pill.
+  /// Separation shadow of a raised surface.
+  ///
+  /// Restrained on purpose: in light mode a card separates from the page by
+  /// tone, and the shadow only softens the edge (4% black, 8dp blur, 2dp
+  /// drop). Dark mode has no shadow — black on near-black reads as a smudge,
+  /// so the hairline carries the plane instead. [floating] is the slightly
+  /// deeper one used by controls that sit above scrolling content (the Add
+  /// button and the active navigation pill).
   static List<BoxShadow> glassShadows(
     BuildContext context, {
     bool floating = false,
   }) =>
-      [
-        BoxShadow(
-          color: isGlassCanvas(context)
-              ? Colors.black.withValues(alpha: floating ? 0.42 : 0.35)
-              : shadow(context),
-          blurRadius: floating ? 24 : (isDark(context) ? 18 : 16),
-          offset: Offset(0, floating ? 10 : 6),
-        ),
-      ];
+      surfaceShadowFor(isDark(context), floating: floating);
+
+  /// Context-free form of [glassShadows].
+  static List<BoxShadow> surfaceShadowFor(bool dark, {bool floating = false}) {
+    if (dark) {
+      return floating
+          ? const [
+              BoxShadow(
+                color: Color(0x52000000),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ]
+          : const [];
+    }
+    return floating
+        ? const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, 3),
+            ),
+          ]
+        : const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ];
+  }
 
   /// Edge of a hero card: a light hairline on navy glass, the neutral border on
   /// AMOLED, none in light mode.
@@ -486,12 +523,6 @@ class AppColors {
     return Border.all(
       color: isGlassPalette ? Colors.white.withValues(alpha: 0.14) : borderDark,
     );
-  }
-
-  /// Opacity of the soft blue light under hero cards.
-  static double heroGlowAlpha(BuildContext context) {
-    if (!isDark(context)) return 0.30;
-    return isGlassPalette ? 0.32 : 0.18;
   }
 
   /// Card fill. Light mode is deliberately near-opaque: on a pastel canvas a
@@ -542,9 +573,30 @@ class AppColors {
       BoxDecoration(
         color: glassSurface(context),
         borderRadius: borderRadius,
-        border: Border.all(color: glassBorder(context)),
+        border: needsSurfaceEdgeFor(isDark(context))
+            ? Border.all(color: glassBorder(context))
+            : null,
         boxShadow: shadow ? glassShadows(context) : null,
       );
+
+  /// Below this card-to-page contrast a card needs a hairline to read as a
+  /// plane. The reference design measures ~1.09:1 (#FFFFFF on #F5F5F5) and
+  /// uses no border; six light palettes sit under 1.06:1 (Orange Milk is
+  /// 1.025:1) and would otherwise dissolve into the page.
+  static const double surfaceEdgeThreshold = 1.06;
+
+  /// Whether a raised card needs its hairline on the current palette.
+  ///
+  /// Dark mode always keeps it: with no shadow there, the hairline is what
+  /// separates a card from a near-black canvas. Light mode keeps it only where
+  /// the measured tone step is too small to carry the plane on its own.
+  static bool needsSurfaceEdgeFor(bool dark) {
+    if (dark) return true;
+    return _contrast(glassFillFor(false), background) < surfaceEdgeThreshold;
+  }
+
+  static bool needsSurfaceEdge(BuildContext context) =>
+      needsSurfaceEdgeFor(isDark(context));
 
   /// The ink for text and glyphs drawn on [gradient], measured against its
   /// worst stop. White when it clears [minContrast] on every stop, otherwise
@@ -690,21 +742,14 @@ class AppColors {
   // has to read as one control without a glow: the nav glass tinted with the
   // accent, and a resolved accent glyph.
 
-  /// Translucent: the nav glass with a stronger accent tint than the selected
-  /// tab, so it reads as the one action without a solid fill or a glow.
-  static Color fabFillFor(bool dark) => Color.alphaBlend(
-        navAccentFor(dark).withValues(alpha: dark ? 0.30 : 0.18),
-        navFillFor(dark),
-      );
+  /// Solid ink disc: the same object as the active navigation pill, so the
+  /// primary action and the current destination read as one family.
+  static Color fabFillFor(bool dark) => navActiveFillFor(dark);
 
-  /// What the button sits on when nothing scrolls behind it.
-  static Color fabBackdropFor(bool dark) => Color.alphaBlend(
-        fabFillFor(dark),
-        dark ? darkBackground : background,
-      );
+  /// Opaque, so the backdrop is the fill itself.
+  static Color fabBackdropFor(bool dark) => fabFillFor(dark);
 
-  static Color fabInkFor(bool dark) =>
-      resolveInk(brandInkFor(dark), fabBackdropFor(dark));
+  static Color fabInkFor(bool dark) => navActiveInkFor(dark);
 
   // ── Analytics tokens ─────────────────────────────────────────────────────────
   // The two dashboard analytics surfaces ("Last 7 days" and "Spending by
@@ -729,8 +774,9 @@ class AppColors {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        line.withValues(alpha: isDark(context) ? 0.30 : 0.22),
-        line.withValues(alpha: 0.02),
+        // Spec 11 §3.6: the wash is a hint under the line, never a block.
+        line.withValues(alpha: isDark(context) ? 0.10 : 0.08),
+        line.withValues(alpha: 0.0),
       ],
     );
   }
@@ -753,9 +799,10 @@ class AppColors {
       ? Colors.white.withValues(alpha: 0.10)
       : Colors.white.withValues(alpha: 0.85);
 
-  // ── Navigation pill ──────────────────────────────────────────────────────────
-  // The bar is translucent glass; the selected state is a translucent accent
-  // container, never a solid slab. Every value is context-free (`For(dark)`) so
+  // ── Navigation ───────────────────────────────────────────────────────────────
+  // A floating row of solid circles (PanelUI `Tabs variant="expanding"`). Idle
+  // destinations are quiet tertiary plates; the active one is a solid ink pill
+  // that opens to show its label. Every value is context-free (`For(dark)`) so
   // tests and widgets measure exactly the same colours.
 
   /// The accent hue the selection is tinted with: the lit stop on dark canvases
@@ -763,31 +810,40 @@ class AppColors {
   /// light ones.
   static Color navAccentFor(bool dark) => dark ? brandBright : filledBrand;
 
-  /// Fill of the floating bar.
-  static Color navFillFor(bool dark) =>
-      (dark ? darkSurfaceAlt : surface).withValues(alpha: navFillAlpha);
+  /// The floating bar the destinations sit in: the card tone, solid. Content
+  /// scrolls *under* it, so it must be opaque — without it, text showed
+  /// through the gaps between the circles.
+  static Color navBarFillFor(bool dark) => glassFillFor(dark);
 
-  /// What the bar is composited onto when nothing scrolls behind it.
-  static Color navBackdropFor(bool dark) => Color.alphaBlend(
-        navFillFor(dark),
-        dark ? darkBackground : background,
+  /// Plate behind an idle destination: one quiet step into the bar (the
+  /// tertiary recipe: the palette's ink at 5% / 8% over the card). Opaque.
+  static Color navFillFor(bool dark) => Color.alphaBlend(
+        textPrimaryFor(dark).withValues(alpha: dark ? 0.08 : 0.05),
+        navBarFillFor(dark),
       );
 
-  /// Translucent accent container behind the selected tab.
-  static Color navSelectedFillFor(bool dark) =>
-      navAccentFor(dark).withValues(alpha: dark ? 0.22 : 0.14);
+  /// Opaque, so the backdrop is the fill itself.
+  static Color navBackdropFor(bool dark) => navFillFor(dark);
 
-  /// Opaque colour the selected tab's foreground sits on.
-  static Color navSelectedBackdropFor(bool dark) => Color.alphaBlend(
-        navSelectedFillFor(dark),
-        navBackdropFor(dark),
-      );
+  /// The active destination: solid primary ink (near-black in light, near-white
+  /// in dark). Neutral rather than brand-coloured, exactly as the reference
+  /// draws it; the palette's identity stays in the canvas, cards and charts.
+  static Color navActiveFillFor(bool dark) => textPrimaryFor(dark);
 
-  /// Foreground of the selected tab, resolved against the container it sits on.
-  static Color navSelectedInkFor(bool dark) =>
-      resolveInk(brandInkFor(dark), navSelectedBackdropFor(dark));
+  /// Glyph and label on the active pill: the page tone, measured against the
+  /// pill so a light canvas tint can never weaken it.
+  static Color navActiveInkFor(bool dark) =>
+      resolveInk(dark ? darkBackground : background, navActiveFillFor(dark),
+          minContrast: 7);
 
-  /// Foreground of an unselected tab: the neutral secondary text tier at one
+  /// Kept for existing callers: the selected container *is* the active fill.
+  static Color navSelectedFillFor(bool dark) => navActiveFillFor(dark);
+
+  static Color navSelectedBackdropFor(bool dark) => navActiveFillFor(dark);
+
+  static Color navSelectedInkFor(bool dark) => navActiveInkFor(dark);
+
+  /// Foreground of an idle destination: the neutral secondary text tier at one
   /// alpha in every theme.
   static Color navIdleInkFor(bool dark) =>
       textSecondaryFor(dark).withValues(alpha: navIdleAlpha);
@@ -802,6 +858,13 @@ class AppColors {
 
   static Color navIdleInk(BuildContext context) =>
       navIdleInkFor(isDark(context));
+
+  /// Active pill: solid ink fill.
+  static Color navActiveFill(BuildContext context) =>
+      navActiveFillFor(isDark(context));
+
+  static Color navActiveInk(BuildContext context) =>
+      navActiveInkFor(isDark(context));
 
   /// Kept for compatibility: the selected container as a (flat) gradient.
   static LinearGradient navPillGradient(BuildContext context) {
@@ -915,10 +978,8 @@ class AppTokens {
       surface: surface,
       surfaceElevated: raised,
       surfaceGlass: AppColors.glassFillFor(dark),
-      surfaceGlassElevated: dark
-          ? AppColors.darkSurfaceAlt
-              .withValues(alpha: AppColors.isGlassPalette ? 0.74 : 0.96)
-          : AppColors.surface.withValues(alpha: 0.96),
+      surfaceGlassElevated:
+          dark ? AppColors.darkSurfaceAlt : AppColors.surface,
       textPrimary: AppColors.textPrimaryFor(dark),
       textSecondary: AppColors.textSecondaryFor(dark),
       textMuted: textMuted,

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -123,6 +125,80 @@ void main() {
 
     test('empty key value fails closed and preserves records', () async {
       await expectKeyFailurePreservesRecords(_FakeKeyStore(value: ''));
+    });
+
+    group('algorithm seam', () {
+      test(
+          'explicit and default algorithms round-trip and cross-decrypt each other',
+          () async {
+        final keyValue = base64UrlEncode(List<int>.filled(32, 0x77));
+        final explicit = LedgerEncryptionService(
+          keyStore: _FakeKeyStore(value: keyValue),
+          algorithm: AesGcm.with256bits(),
+        );
+        final deflt = LedgerEncryptionService(
+          keyStore: _FakeKeyStore(value: keyValue),
+        );
+
+        const payload = '{"schemaVersion":2,"amountMinor":123}';
+        final fromExplicit =
+            await explicit.encryptText(payload, recordId: 'r1');
+        final fromDefault = await deflt.encryptText(payload, recordId: 'r1');
+
+        for (final envelope in [fromExplicit, fromDefault]) {
+          final decoded =
+              jsonDecode(envelope) as Map<String, dynamic>;
+          expect(decoded['schemaVersion'], 2);
+          expect(decoded['algorithm'], 'AES-256-GCM');
+          expect(decoded['recordId'], 'r1');
+          expect(decoded['nonce'], isA<String>());
+          expect(decoded['ciphertext'], isA<String>());
+          expect(decoded['mac'], isA<String>());
+        }
+
+        // Cross-decryption: the format is the contract, not the engine.
+        expect(
+          await deflt.decryptText(fromExplicit, expectedRecordId: 'r1'),
+          payload,
+        );
+        expect(
+          await explicit.decryptText(fromDefault, expectedRecordId: 'r1'),
+          payload,
+        );
+      });
+
+      test('the Flutter algorithm implementation reads Dart envelopes',
+          () async {
+        // Pins the ENVELOPE CONTRACT through the FlutterAesGcm class. In the
+        // test VM (and for payloads under the plugin's 2000-byte dispatch
+        // threshold) FlutterAesGcm routes to its Dart fallback, so this is
+        // not engine-interop evidence — the on-device integration test
+        // (integration_test/ledger_crypto_device_test.dart) pins the real
+        // platform-channel path above the threshold.
+        final keyValue = base64UrlEncode(List<int>.filled(32, 0x78));
+        final dartService = LedgerEncryptionService(
+          keyStore: _FakeKeyStore(value: keyValue),
+          algorithm: AesGcm.with256bits(),
+        );
+        final flutterService = LedgerEncryptionService(
+          keyStore: _FakeKeyStore(value: keyValue),
+          algorithm: FlutterAesGcm.with256bits(),
+        );
+
+        const payload = '{"amountMinor":42}';
+        final envelope =
+            await dartService.encryptText(payload, recordId: 'r2');
+        expect(
+          await flutterService.decryptText(envelope, expectedRecordId: 'r2'),
+          payload,
+        );
+        final envelopeBack =
+            await flutterService.encryptText(payload, recordId: 'r2');
+        expect(
+          await dartService.decryptText(envelopeBack, expectedRecordId: 'r2'),
+          payload,
+        );
+      });
     });
 
     test('createKeyIfMissing does not overwrite an existing key', () async {

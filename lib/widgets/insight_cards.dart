@@ -21,37 +21,84 @@ String describeChange(int? tenths, {String basis = 'last period'}) {
 }
 
 /// Week/month comparisons, category breakdown, largest expenses and a
-/// six-month trend — all recomputed from [transactions] on every build.
-class InsightComparisons extends StatelessWidget {
+/// six-month trend. The five analytical passes scan the whole ledger, so the
+/// result is cached and recomputed only when the ledger identity or the
+/// calendar day changes — a parent rebuild (theme, sync state, tab show) reuses
+/// it. The key is the day, not the month, because the week and month
+/// comparisons measure "to date" and shift at midnight.
+class InsightComparisons extends StatefulWidget {
   final List<TransactionModel> transactions;
   final DateTime? now;
 
   const InsightComparisons({super.key, required this.transactions, this.now});
 
   @override
-  Widget build(BuildContext context) {
-    final clock = now ?? DateTime.now();
-    final week = SpendingInsights.weekOverWeek(transactions, clock);
-    final month = SpendingInsights.monthOverMonth(transactions, clock);
-    final monthRange = PeriodMath.calendarMonth(clock);
-    final breakdown =
-        SpendingInsights.categoryBreakdown(transactions, monthRange);
-    final largest = SpendingInsights.largestExpenses(transactions, monthRange);
-    final trend = SpendingInsights.monthlyTrend(transactions, clock);
+  State<InsightComparisons> createState() => _InsightComparisonsState();
+}
 
+class _InsightComparisonsState extends State<InsightComparisons> {
+  _InsightBundle? _cache;
+  List<TransactionModel>? _cacheSource;
+  DateTime? _cacheDay;
+
+  int _computations = 0;
+
+  @visibleForTesting
+  int get debugComputations => _computations;
+
+  @override
+  Widget build(BuildContext context) {
+    final clock = widget.now ?? DateTime.now();
+    final source = widget.transactions;
+    final day = PeriodMath.dateOnly(clock);
+
+    if (_cache == null ||
+        !identical(_cacheSource, source) ||
+        _cacheDay != day) {
+      final monthRange = PeriodMath.calendarMonth(clock);
+      _cache = _InsightBundle(
+        week: SpendingInsights.weekOverWeek(source, clock),
+        month: SpendingInsights.monthOverMonth(source, clock),
+        breakdown: SpendingInsights.categoryBreakdown(source, monthRange),
+        largest: SpendingInsights.largestExpenses(source, monthRange),
+        trend: SpendingInsights.monthlyTrend(source, clock),
+      );
+      _cacheSource = source;
+      _cacheDay = day;
+      _computations++;
+    }
+
+    final bundle = _cache!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ComparisonCard(week: week, month: month),
+        _ComparisonCard(week: bundle.week, month: bundle.month),
         const SizedBox(height: AppSpacing.lg),
-        _BreakdownCard(shares: breakdown),
+        _BreakdownCard(shares: bundle.breakdown),
         const SizedBox(height: AppSpacing.lg),
-        _LargestCard(expenses: largest),
+        _LargestCard(expenses: bundle.largest),
         const SizedBox(height: AppSpacing.lg),
-        _TrendCard(months: trend),
+        _TrendCard(months: bundle.trend),
       ],
     );
   }
+}
+
+/// The five analytical passes for one (ledger, day) pair.
+class _InsightBundle {
+  final PeriodComparison week;
+  final PeriodComparison month;
+  final List<CategoryShare> breakdown;
+  final List<TransactionModel> largest;
+  final List<MonthTotal> trend;
+
+  const _InsightBundle({
+    required this.week,
+    required this.month,
+    required this.breakdown,
+    required this.largest,
+    required this.trend,
+  });
 }
 
 String _range(DateTimeRange r) {

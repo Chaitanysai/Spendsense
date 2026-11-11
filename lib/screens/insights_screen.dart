@@ -19,8 +19,22 @@ import '../widgets/insight_cards.dart';
 import 'assistant_screen.dart';
 import 'summary_screen.dart';
 
-class InsightsScreen extends StatelessWidget {
+class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
+
+  @override
+  State<InsightsScreen> createState() => _InsightsScreenState();
+}
+
+class _InsightsScreenState extends State<InsightsScreen> {
+  _InsightMetrics? _metricsCache;
+  List<TransactionModel>? _metricsSource;
+  DateTime? _metricsMonth;
+
+  int _metricComputations = 0;
+
+  @visibleForTesting
+  int get debugMetricComputations => _metricComputations;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +44,7 @@ class InsightsScreen extends StatelessWidget {
     // the tab's ticker state: the screen rebuilds when the tab is shown again
     // and cannot display a stale month after the clock rolled over.
     TickerMode.valuesOf(context);
-    final metrics = _buildMetrics(provider);
+    final metrics = _metricsFor(provider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -103,12 +117,25 @@ class InsightsScreen extends StatelessWidget {
     );
   }
 
-  _InsightMetrics _buildMetrics(TransactionProvider provider) {
-    // Calendar-month reporting, deliberately separate from the salary cycle.
-    // Both months are derived from ONE captured "now" so the pair can never
-    // straddle a midnight rollover, and membership is decided on the LOCAL
-    // calendar day.
+  _InsightMetrics _metricsFor(TransactionProvider provider) {
+    final source = provider.transactions;
     final now = DateTime.now();
+    final month = DateTime(now.year, now.month);
+    if (_metricsCache != null &&
+        identical(_metricsSource, source) &&
+        _metricsMonth == month) {
+      return _metricsCache!;
+    }
+    _metricsSource = source;
+    _metricsMonth = month;
+    _metricComputations++;
+    return _metricsCache = _buildMetrics(provider, now);
+  }
+
+  _InsightMetrics _buildMetrics(TransactionProvider provider, DateTime now) {
+    // Calendar-month reporting, deliberately separate from the salary cycle.
+    // Both months come from ONE captured "now" so the pair can never straddle
+    // a midnight rollover, and membership is decided on the LOCAL calendar day.
     final thisMonth = PeriodMath.calendarMonth(now);
     final lastMonth =
         PeriodMath.calendarMonth(DateTime(now.year, now.month - 1));

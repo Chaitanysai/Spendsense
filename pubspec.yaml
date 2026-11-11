@@ -1,7 +1,7 @@
 name: spendsense
 description: A smart expense tracker
 
-version: 2.0.24+49
+version: 2.0.25+50
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -39,7 +39,16 @@ dependencies:
   audioplayers: ^6.8.1
   package_info_plus: ^9.0.1
   crypto: 3.0.7
-  cryptography: 2.7.0
+  # 2.8.x floor required by cryptography_flutter 2.3.4 (AGP-8-compatible
+  # Android build). The envelope format is defined by
+  # LedgerEncryptionService, not by the library; the tamper and
+  # cross-decryption suites pin that behavior across the bump.
+  cryptography: ^2.8.1
+  # OS-provided AES-256-GCM for the ledger where the platform offers it
+  # (Android Keystore / iOS CommonCrypto), transparently falling back to a
+  # pure-Dart implementation elsewhere. Same envelope format as the
+  # pure-Dart codec — see LedgerEncryptionService.defaultAlgorithm.
+  cryptography_flutter: ^2.3.4
   firebase_core: ^5.1.0
   firebase_app_check: ^0.5.1
   firebase_auth: ^7.0.1
@@ -106,6 +115,11 @@ dev_dependencies:
   sqflite_common_ffi: ^2.3.3
   flutter_local_notifications_platform_interface: ^8.0.0
   flutter_test:
+    sdk: flutter
+  # On-device verification of the ledger crypto path (real platform-channel
+  # AES on Android/iOS). Run explicitly:
+  #   flutter test integration_test -d <device>
+  integration_test:
     sdk: flutter
 
 flutter_launcher_icons:

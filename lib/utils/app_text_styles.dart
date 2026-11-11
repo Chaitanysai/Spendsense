@@ -23,6 +23,28 @@ class AppText {
         fontFeatures: _tabular,
       );
 
+  /// The dashboard's headline figure — the largest number on the screen.
+  ///
+  /// Distinct from [hero] because it is a *role*, not a size: callers pass the
+  /// size they need and the style keeps tabular figures, tight tracking and the
+  /// body face (so the rupee sign always renders). It is meant to be wrapped in
+  /// a [FittedBox] so a very large amount scales down instead of truncating.
+  static TextStyle displayAmount(
+    BuildContext context, {
+    double size = 40,
+    FontWeight weight = FontWeight.w800,
+    Color? color,
+  }) =>
+      AppTypography.resolve(
+        fontSize: size,
+        display: false,
+        fontWeight: weight,
+        letterSpacing: -1.4,
+        height: 1.05,
+        color: color ?? AppColors.textPrimary(context),
+        fontFeatures: _tabular,
+      );
+
   static TextStyle display(BuildContext context) => AppTypography.resolve(
         fontSize: 32,
         display: false,

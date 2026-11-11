@@ -48,7 +48,7 @@ Future<void> _pumpInsights(WidgetTester tester) async {
   );
   await tester.pump(const Duration(milliseconds: 100));
 
-  await tester.tap(find.text('INSIGHTS'));
+  await tester.tap(find.byKey(const ValueKey('nav:Insights')));
   await tester.pump(const Duration(milliseconds: 500));
   await tester.pump(const Duration(milliseconds: 500));
 }

@@ -357,16 +357,23 @@ class _CategoryBarRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               SizedBox(
                 width: 32,
-                child: Text(
-                  '$percent%',
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  style: AppText.amount(
-                    context,
-                    size: 10.5,
-                    weight: FontWeight.w600,
-                    color: AppColors.textTertiary(context),
-                    letterSpacing: 0,
+                // Scale down instead of clipping. At 2x text "43%" is 48dp of
+                // glyphs in this 32dp box, so a plain Text clips the sign
+                // (demonstrated by home_text_scale_defects_test on the original
+                // file; not seen in a capture).
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$percent%',
+                    maxLines: 1,
+                    style: AppText.amount(
+                      context,
+                      size: 10.5,
+                      weight: FontWeight.w600,
+                      color: AppColors.textTertiary(context),
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
               ),

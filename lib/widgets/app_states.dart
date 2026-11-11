@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +5,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
 import 'app_button.dart';
+import 'app_surface.dart';
 import 'glass_card.dart';
 import 'pressable.dart';
 
@@ -246,20 +246,23 @@ class SkeletonList extends StatelessWidget {
   }
 }
 
-/// Contextual placeholder that mirrors the "Last 7 days" card.
+/// Contextual placeholder that mirrors [SpendingTrendCard].
 ///
-/// Same block structure as the real card — header pair, plot, seven day marks —
-/// so the content swap does not move anything on the page.
-class SpendingWeekSkeleton extends StatelessWidget {
-  const SpendingWeekSkeleton({super.key});
-
-  static const List<double> _heights = [34, 52, 22, 66, 40, 58, 30];
+/// Same block structure and height as the real card — header pair with the
+/// window toggle, subtitle, 150dp plot, axis marks — so the content swap does
+/// not move anything on the page.
+class SpendingTrendSkeleton extends StatelessWidget {
+  const SpendingTrendSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    final grid = AppColors.border(context).withValues(alpha: 0.5);
+
+    return AppSurface(
+      level: AppSurfaceLevel.raised,
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,44 +272,37 @@ class SpendingWeekSkeleton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SkeletonBox(height: 10, width: 64),
-                    SizedBox(height: AppSpacing.sm),
-                    SkeletonBox(height: 26, width: 132, radius: AppRadius.sm),
+                    SizedBox(height: 4),
+                    SkeletonBox(height: 28, width: 132, radius: AppRadius.sm),
                   ],
                 ),
               ),
-              SkeletonBox(height: 10, width: 54),
+              SizedBox(width: AppSpacing.md),
+              // The 7D / 30D segmented control.
+              SkeletonBox(height: 32, width: 84, radius: AppRadius.pill),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.sm),
+          const SkeletonBox(height: 10, width: 196),
+          const SizedBox(height: AppSpacing.md),
+          // The plot: three hairlines at the same rows the real chart draws.
           SizedBox(
-            height: 122,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            height: 150,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (var i = 0; i < _heights.length; i++)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: SkeletonBox(
-                          height: _heights[i],
-                          width: 18,
-                          radius: 9,
-                        ),
-                      ),
-                    ),
-                  ),
+                for (var i = 0; i < 3; i++)
+                  Container(height: 1, color: grid),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               for (var i = 0; i < 7; i++)
                 const Expanded(
                   child: Center(
-                    child: SkeletonBox(height: 16, width: 16, radius: 8),
+                    child: SkeletonBox(height: 10, width: 12, radius: 5),
                   ),
                 ),
             ],
@@ -359,8 +355,8 @@ class CategoryBreakdownSkeleton extends StatelessWidget {
 /// Reveals freshly loaded content after its skeleton is removed.
 ///
 /// A hard swap from placeholder to data is the one moment a dashboard can feel
-/// like it flickered. This fades the real content in while a small blur resolves,
-/// over the same duration as the skeleton's own 300 ms exit, and does nothing at
+/// like it flickered. This fades the real content in while it rises 8dp into
+/// place, over the same duration as the skeleton's own exit, and does nothing at
 /// all when the platform asks for reduced motion.
 class ContentReveal extends StatefulWidget {
   final Widget child;
@@ -408,13 +404,12 @@ class _ContentRevealState extends State<ContentReveal>
       animation: curved,
       builder: (context, child) {
         final t = curved.value;
+        // Transform and opacity only: an 8dp rise settling into place. No
+        // blur filter (spec 11: nothing in the app blurs).
         return Opacity(
           opacity: t.clamp(0.0, 1.0),
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: (1 - t) * 4,
-              sigmaY: (1 - t) * 4,
-            ),
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * 8),
             child: child,
           ),
         );

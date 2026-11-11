@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:isolate';
+
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ledger_encryption_service.dart';
@@ -909,18 +912,67 @@ class TransactionCacheService {
 
   Future<List<TransactionModel>> loadAll() async {
     _assertInit();
-    final results = <TransactionModel>[];
+    // Raw payloads are gathered on the caller's isolate; decryption and JSON
+    // parsing run in a background isolate so a large ledger cannot block the
+    // UI thread during cold start. Only encrypted bytes and the key go in,
+    // and only the parsed ledger comes back — nothing plaintext lingers
+    // anywhere it did not already exist.
+    final raws = <String, String>{};
     for (final id in _cachedIds) {
-      final tx = await get(id);
-      if (tx == null) {
+      final raw = _prefs.getString('$_encryptedPrefix$id');
+      if (raw == null) {
         throw const LedgerMigrationException('missing_encrypted_record',
             'An encrypted ledger record is missing.');
       }
-      results.add(tx);
+      raws[id] = raw;
     }
-    results.sort((a, b) => b.date.compareTo(a.date));
-    debugPrint('📦 Local DB loaded ${results.length} transactions');
-    return results;
+    if (raws.isEmpty) {
+      debugPrint('📦 Local DB loaded 0 transactions');
+      return <TransactionModel>[];
+    }
+
+    final Uint8List keyBytes;
+    try {
+      keyBytes = await _encryption.currentKeyBytes();
+    } on LedgerKeyUnavailableException {
+      // Preserve the failure shape the main-isolate reader always produced,
+      // so the error card keeps saying the record could not be
+      // authenticated rather than naming the key store.
+      throw const LedgerMigrationException(
+          'decrypt_failed', 'A ledger record could not be authenticated.');
+    }
+    final records = await Isolate.run(() async {
+      // The pure-Dart engine is deliberate: platform channels do not exist
+      // on background isolates, and AES-GCM semantics are identical across
+      // engines (pinned by the cross-decryption tests).
+      final engine = AesGcm.with256bits();
+      final out = <TransactionModel>[];
+      for (final entry in raws.entries) {
+        try {
+          final clear = await LedgerEncryptionService.decryptWithKeyBytes(
+            entry.value,
+            keyBytes,
+            algorithm: engine,
+            expectedRecordId: entry.key,
+          );
+          final tx = TransactionModel.fromJson(
+              jsonDecode(clear) as Map<String, dynamic>);
+          if (tx.id != entry.key) {
+            throw const FormatException('record id mismatch');
+          }
+          out.add(tx);
+        } catch (_) {
+          // Same conversion _readEncrypted performs on the main isolate, so
+          // callers see the identical failure shape either way.
+          throw const LedgerMigrationException(
+              'decrypt_failed', 'A ledger record could not be authenticated.');
+        }
+      }
+      return out;
+    });
+    records.sort((a, b) => b.date.compareTo(a.date));
+    debugPrint('📦 Local DB loaded ${records.length} transactions');
+    return records;
   }
 
   /// Records modified after [epochMs], for the sync layer's incremental pull.
@@ -1016,10 +1068,6 @@ class TransactionCacheService {
       'v': 2,
       'phase': 'delete_pending',
       'remove': [smsId],
-      'targetIds': [
-        for (final id in _cachedIds)
-          if (id != smsId) id
-      ],
     });
     await _recoverJournal();
   }
@@ -1035,15 +1083,10 @@ class TransactionCacheService {
       if (_cachedIds.contains(id)) targets.add(id);
     }
     if (targets.isEmpty) return 0;
-    final targetIds = [
-      for (final id in _cachedIds)
-        if (!targets.contains(id)) id
-    ];
     await _writeJournal({
       'v': 2,
       'phase': 'delete_pending',
       'remove': targets.toList(growable: false),
-      'targetIds': targetIds,
     });
     await _recoverJournal();
     return targets.length;
@@ -1264,7 +1307,6 @@ class TransactionCacheService {
     required bool replace,
   }) async {
     await _recoverJournal();
-
     final newIds = [for (final r in records) r.id];
     final newSet = newIds.toSet();
     final removeIds = replace
@@ -1307,15 +1349,24 @@ class TransactionCacheService {
     }
 
     try {
-      await _writeJournal({
-        'v': 2,
-        'phase': 'committed',
-        'remove': removeIds,
-      });
-      for (final id in removeIds) {
-        await _remove('$_encryptedPrefix$id');
+      if (removeIds.isEmpty) {
+        // Nothing was removed, so the committed-phase journal would only
+        // repeat what the pending journal already says: replaying it
+        // re-applies payloads that are already in place and commits an index
+        // that is already correct. Dropping the journal directly skips an
+        // encrypt + write + delete cycle on every add and edit.
+        await _remove(_journalKey);
+      } else {
+        await _writeJournal({
+          'v': 2,
+          'phase': 'committed',
+          'remove': removeIds,
+        });
+        for (final id in removeIds) {
+          await _remove('$_encryptedPrefix$id');
+        }
+        await _remove(_journalKey);
       }
-      await _remove(_journalKey);
     } catch (e) {
       debugPrint('⚠️ Activation saved; cleanup deferred (${e.runtimeType})');
     }
@@ -1525,20 +1576,21 @@ class TransactionCacheService {
     }
   }
 
-  /// Writes every payload, then reads each back to prove it was stored intact.
+  /// Writes every payload, then proves it was stored intact.
   /// Payloads are invisible until [_commitIndex] runs, except that an upsert
   /// of an existing id replaces its payload — which is what the rollback
   /// snapshot and the journal protect.
+  ///
+  /// The authoritative verification is the read-back inside [_writeEncrypted]:
+  /// every record is decrypted and compared against what was intended BEFORE
+  /// any of this becomes visible through the index. A second whole-batch
+  /// re-read used to repeat that proof, doubling the batch's crypto cost
+  /// without adding a guarantee — payload keys are per-id and unique, so no
+  /// later write in the batch can clobber an earlier one.
   Future<void> _applyPayloads(List<TransactionModel> records) async {
     for (final r in records) {
       await writeHook?.call('set', '$_encryptedPrefix${r.id}');
       await _writeEncrypted(r);
-    }
-    for (final r in records) {
-      final check = await _readEncrypted(r.id);
-      if (check == null || !_sameTransaction(check, r)) {
-        throw StateError('verify_failed');
-      }
     }
   }
 
@@ -1661,9 +1713,18 @@ class TransactionCacheService {
         await _commitIndex(
             [for (final r in records) r.id], journal['replace'] == true);
       } else if (phase == 'delete_pending') {
-        final targetIds = (journal['targetIds'] as List).cast<String>();
+        final removes = (journal['remove'] as List).cast<String>();
+        // Journals written by older versions carry the exact post-delete
+        // index; current ones omit it and recovery derives it from the
+        // committed index. Both shapes must converge to the same state.
+        final targetIds = journal['targetIds'] is List
+            ? (journal['targetIds'] as List).cast<String>()
+            : [
+                for (final id in _cachedIds)
+                  if (!removes.contains(id)) id
+              ];
         await _commitExactIndex(targetIds);
-        for (final id in (journal['remove'] as List).cast<String>()) {
+        for (final id in removes) {
           await _remove('$_encryptedPrefix$id');
         }
       } else if (phase != 'committed') {

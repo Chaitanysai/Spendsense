@@ -103,7 +103,10 @@ void main() {
     testWidgets('dashboard with data has no overflow at ${scale}x text',
         (tester) async {
       await pumpDashboard(tester, textScale: scale, seed: sampleTransactions());
-      expect(find.text('Welcome back'), findsOneWidget);
+      // The dashboard's own marker. This used to assert the auth screen's
+      // "Welcome back", which this harness never renders (the app opens on
+      // Home), so the gate could not pass and never exercised the dashboard.
+      expect(find.text('Available balance'), findsOneWidget);
       // Any layout exception (e.g. RenderFlex overflow) fails the test and is
       // reported by the binding with the full widget chain.
     });
@@ -111,7 +114,7 @@ void main() {
     testWidgets('empty dashboard has no overflow at ${scale}x text',
         (tester) async {
       await pumpDashboard(tester, textScale: scale);
-      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Available balance'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

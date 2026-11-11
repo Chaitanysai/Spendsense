@@ -40,9 +40,13 @@ class SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
+              // Two lines on the dashboard. At 2x text "Monthly budget" next to
+              // "Manage" does not fit on one line and was truncated with an
+              // ellipsis (shown by home_text_scale_defects_test with Inter
+              // loaded; I have not seen it in a capture).
               maxLines: large ? 2 : 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.h2(context).copyWith(fontSize: large ? 21 : 17),
+              style: AppText.h2(context).copyWith(fontSize: 17),
             ),
           ),
           if (hasAction)

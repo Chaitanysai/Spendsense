@@ -355,22 +355,44 @@ class TransactionProvider with ChangeNotifier {
   /// included, decided in local time, with no `Duration` arithmetic so a DST
   /// change cannot shift a day.
   Iterable<TransactionModel> expensesInPeriod(DateTimeRange? period) {
+    // Memoized per ledger version + period. The null period means "the
+    // current calendar month", so its cache key carries the year-month: a
+    // month rollover changes the key and can never serve stale rows.
+    final source = _transactions;
+    if (!identical(_memoExpensesSource, source)) {
+      _memoExpensesByPeriod.clear();
+      _memoExpensesSource = source;
+    }
+    if (_memoExpensesByPeriod.length > 32) _memoExpensesByPeriod.clear();
+
+    final String key;
     if (period == null) {
       final now = DateTime.now();
-      return _transactions.where((t) =>
+      key = 'month:${now.year}-${now.month}';
+    } else {
+      final startDay = PeriodMath.dateOnly(period.start);
+      final endDay = PeriodMath.dateOnly(period.end);
+      key = 'range:${startDay.microsecondsSinceEpoch}'
+          '-${endDay.microsecondsSinceEpoch}';
+    }
+    return _memoExpensesByPeriod.putIfAbsent(key, () {
+      if (period == null) {
+        final now = DateTime.now();
+        return List.unmodifiable(_transactions.where((t) =>
+            t.type == TransactionType.expense &&
+            !t.isExcluded &&
+            _isLocalMonth(t.date, now)));
+      }
+
+      final startDay = PeriodMath.dateOnly(period.start);
+      final endDayExclusive = PeriodMath.addDays(period.end, 1);
+
+      return List.unmodifiable(_transactions.where((t) =>
           t.type == TransactionType.expense &&
           !t.isExcluded &&
-          _isLocalMonth(t.date, now));
-    }
-
-    final startDay = PeriodMath.dateOnly(period.start);
-    final endDayExclusive = PeriodMath.addDays(period.end, 1);
-
-    return _transactions.where((t) =>
-        t.type == TransactionType.expense &&
-        !t.isExcluded &&
-        !_localDate(t.date).isBefore(startDay) &&
-        _localDate(t.date).isBefore(endDayExclusive));
+          !_localDate(t.date).isBefore(startDay) &&
+          _localDate(t.date).isBefore(endDayExclusive)));
+    });
   }
 
   DateTime _localDate(DateTime date) => date.toLocal();
@@ -384,6 +406,55 @@ class TransactionProvider with ChangeNotifier {
       expensesInPeriod(period).fold<int>(0, (sum, t) => sum + t.amountMinor);
 
   int get totalExpenses => totalExpensesForPeriod(null);
+
+  /// Income inside [period], using exactly the same window rule as
+  /// [expensesInPeriod]: non-excluded rows, local calendar days, both ends
+  /// inclusive.
+  ///
+  /// This exists so the dashboard hero can show income and expenses for the
+  /// same period without a presentation widget re-deriving the window. It is
+  /// the mirror of [totalExpensesForPeriod] and never changes the meaning of
+  /// [availableBalance], which stays an all-time net figure.
+  Iterable<TransactionModel> incomeInPeriod(DateTimeRange? period) {
+    final source = _transactions;
+    if (!identical(_memoIncomeSource, source)) {
+      _memoIncomeByPeriod.clear();
+      _memoIncomeSource = source;
+    }
+    if (_memoIncomeByPeriod.length > 32) _memoIncomeByPeriod.clear();
+
+    final String key;
+    if (period == null) {
+      final now = DateTime.now();
+      key = 'month:${now.year}-${now.month}';
+    } else {
+      final startDay = PeriodMath.dateOnly(period.start);
+      final endDay = PeriodMath.dateOnly(period.end);
+      key = 'range:${startDay.microsecondsSinceEpoch}'
+          '-${endDay.microsecondsSinceEpoch}';
+    }
+    return _memoIncomeByPeriod.putIfAbsent(key, () {
+      if (period == null) {
+        final now = DateTime.now();
+        return List.unmodifiable(_transactions.where((t) =>
+            t.type == TransactionType.income &&
+            !t.isExcluded &&
+            _isLocalMonth(t.date, now)));
+      }
+
+      final startDay = PeriodMath.dateOnly(period.start);
+      final endDayExclusive = PeriodMath.addDays(period.end, 1);
+
+      return List.unmodifiable(_transactions.where((t) =>
+          t.type == TransactionType.income &&
+          !t.isExcluded &&
+          !_localDate(t.date).isBefore(startDay) &&
+          _localDate(t.date).isBefore(endDayExclusive)));
+    });
+  }
+
+  int totalIncomeForPeriod(DateTimeRange? period) =>
+      incomeInPeriod(period).fold<int>(0, (sum, t) => sum + t.amountMinor);
 
   String topCategoryForPeriod(DateTimeRange? period) {
     if (_transactions.isEmpty) return "None";
@@ -403,11 +474,66 @@ class TransactionProvider with ChangeNotifier {
     return cats;
   }
 
-  Iterable<TransactionModel> get trackedTransactions =>
-      _transactions.where((t) => !t.isExcluded);
+  // ── Derivation memo ──────────────────────────────────────────────────────
+  // `_transactions` is replaced copy-on-write on every mutation, so list
+  // identity is the invalidation signal: a memo can never outlive the list
+  // it was derived from. These caches turn the per-build O(n) scans that
+  // Home/Cards/Budgets/Bills repeat several times per notification into
+  // once-per-data-change work.
+  List<TransactionModel>? _memoTrackedSource;
+  List<TransactionModel>? _memoTracked;
+  List<TransactionModel>? _memoExpensesTrackedSource;
+  List<TransactionModel>? _memoTrackedExpenses;
+  List<TransactionModel>? _memoIncomeTrackedSource;
+  List<TransactionModel>? _memoTrackedIncome;
+  List<TransactionModel>? _memoExpensesSource;
+  final Map<String, List<TransactionModel>> _memoExpensesByPeriod = {};
 
-  Iterable<TransactionModel> get trackedExpenses =>
-      trackedTransactions.where((t) => t.type == TransactionType.expense);
+  List<TransactionModel>? _memoIncomeSource;
+  final Map<String, List<TransactionModel>> _memoIncomeByPeriod = {};
+
+  /// Tracked (non-excluded) transactions, cached per ledger version.
+  List<TransactionModel> get trackedTransactions {
+    final cached = _memoTracked;
+    if (cached != null && identical(_memoTrackedSource, _transactions)) {
+      return cached;
+    }
+    final source = _transactions;
+    _memoTrackedSource = source;
+    return _memoTracked =
+        List.unmodifiable(source.where((t) => !t.isExcluded));
+  }
+
+  /// Tracked expenses, cached per ledger version. Guarded by its OWN source
+  /// marker so a `trackedTransactions` refresh for a newer ledger cannot make
+  /// this cache look current — the two caches hold different lists.
+  List<TransactionModel> get trackedExpenses {
+    final cached = _memoTrackedExpenses;
+    if (cached != null &&
+        identical(_memoExpensesTrackedSource, _transactions)) {
+      return cached;
+    }
+    final source = _transactions;
+    _memoExpensesTrackedSource = source;
+    return _memoTrackedExpenses = List.unmodifiable(
+      source.where((t) => !t.isExcluded && t.type == TransactionType.expense),
+    );
+  }
+
+  /// Tracked income, cached per ledger version. Mirrors [trackedExpenses] so
+  /// the dashboard can pass an income series to the trend card without
+  /// re-filtering the ledger on every build.
+  List<TransactionModel> get trackedIncome {
+    final cached = _memoTrackedIncome;
+    if (cached != null && identical(_memoIncomeTrackedSource, _transactions)) {
+      return cached;
+    }
+    final source = _transactions;
+    _memoIncomeTrackedSource = source;
+    return _memoTrackedIncome = List.unmodifiable(
+      source.where((t) => !t.isExcluded && t.type == TransactionType.income),
+    );
+  }
 
   int get totalTrackedExpenses =>
       trackedExpenses.fold<int>(0, (sum, t) => sum + t.amountMinor);
@@ -878,10 +1004,13 @@ class TransactionProvider with ChangeNotifier {
       if (updated.isEmpty) return 0;
       await _cache.putAll(updated);
       final byId = {for (final tx in updated) tx.id: tx};
-      for (var i = 0; i < _transactions.length; i++) {
-        final replacement = byId[_transactions[i].id];
-        if (replacement != null) _transactions[i] = replacement;
-      }
+      // Copy-on-write: replace the list rather than assigning into it. The
+      // dashboard and Insights cache their filtered views keyed on the
+      // ledger's list identity, so an in-place edit would keep that identity
+      // and let them serve a stale copy after the exclusion flips (audit R4).
+      _transactions = [
+        for (final tx in _transactions) byId[tx.id] ?? tx,
+      ];
       _notifyIfAlive();
       return updated.length;
     });
@@ -952,10 +1081,12 @@ class TransactionProvider with ChangeNotifier {
       if (updated.isEmpty) return 0;
       await _cache.putAll(updated);
       final byId = {for (final tx in updated) tx.id: tx};
-      for (var i = 0; i < _transactions.length; i++) {
-        final replacement = byId[_transactions[i].id];
-        if (replacement != null) _transactions[i] = replacement;
-      }
+      // Copy-on-write, for the same reason as `setExclusionForIds`: an
+      // in-place undo would keep the list identity and leave cached views
+      // showing the pre-undo flags.
+      _transactions = [
+        for (final tx in _transactions) byId[tx.id] ?? tx,
+      ];
       _notifyIfAlive();
       return updated.length;
     });

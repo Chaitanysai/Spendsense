@@ -3,10 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/recurring_plan.dart';
+import '../models/transaction_model.dart';
 import '../providers/planner_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/bill_classifier.dart';
 import '../services/bill_detection_service.dart';
+import '../utils/period_math.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 import '../utils/app_text_styles.dart';
@@ -42,6 +44,29 @@ class _BillsScreenState extends State<BillsScreen> {
 
   BillState? _filter;
 
+  // Detection memo: plan detection is the heaviest derivation in the app, so
+  // it runs only when something it reads actually changes. The plan and
+  // hidden-key sources are handed out as fresh unmodifiable wrappers on every
+  // access, so the key carries a cheap content signature instead of object
+  // identity; the transaction source is identity-stable between mutations
+  // (copy-on-write). The date-only day is part of the key so a detection
+  // cannot go stale across midnight.
+  List<BillView>? _detectedCache;
+  String? _detectedPlansKey;
+  List<TransactionModel>? _detectedTxSource;
+  String? _detectedHiddenKey;
+  DateTime? _detectedDay;
+
+  int _detectRuns = 0;
+
+  @visibleForTesting
+  int get debugDetectRuns => _detectRuns;
+
+  String _plansKey(List<RecurringPlan> plans) =>
+      '${plans.length}:${plans.map((p) => p.id).join(',')}';
+
+  String _hiddenKey(Set<String> keys) => '${keys.length}:${keys.join(',')}';
+
   @override
   Widget build(BuildContext context) {
     final tx = context.watch<TransactionProvider>();
@@ -49,13 +74,34 @@ class _BillsScreenState extends State<BillsScreen> {
     // still renders the bills already derivable from transactions.
     final planner = context.watch<PlannerProvider?>();
     final today = DateTime.now();
+    final day = PeriodMath.dateOnly(today);
 
-    final all = _detector.detect(
-      plans: planner?.plans ?? const [],
-      transactions: tx.transactions,
-      today: today,
-      hiddenBillKeys: planner?.hiddenBillKeys ?? const {},
-    );
+    final plans = planner?.plans ?? const <RecurringPlan>[];
+    final hidden = planner?.hiddenBillKeys ?? const <String>{};
+    final plansKey = _plansKey(plans);
+    final hiddenKey = _hiddenKey(hidden);
+    final txSource = tx.transactions;
+    final cacheValid = _detectedCache != null &&
+        _detectedPlansKey == plansKey &&
+        _detectedHiddenKey == hiddenKey &&
+        _detectedDay == day &&
+        identical(_detectedTxSource, txSource);
+    final List<BillView> all;
+    if (cacheValid) {
+      all = _detectedCache!;
+    } else {
+      all = _detectedCache = _detector.detect(
+        plans: plans,
+        transactions: txSource,
+        today: today,
+        hiddenBillKeys: hidden,
+      );
+      _detectRuns++;
+      _detectedPlansKey = plansKey;
+      _detectedHiddenKey = hiddenKey;
+      _detectedDay = day;
+      _detectedTxSource = txSource;
+    }
     final visible =
         _filter == null ? all : all.where((v) => v.state == _filter).toList();
 

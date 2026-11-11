@@ -1,9 +1,7 @@
-import 'dart:ui' show ImageFilter;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
@@ -23,7 +21,6 @@ import 'screens/home_screen.dart';
 import 'screens/launch_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/add_transaction_screen.dart';
 import 'screens/insights_screen.dart';
 import 'screens/cards_screen.dart';
 
@@ -437,17 +434,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
 
-  /// The Add button hides while the user scrolls down (so it never sits on top
-  /// of the content being read) and returns on scroll up or a tab change.
-  bool _fabVisible = true;
-
-  /// Settings opts out of the Add action entirely: a settings screen has no
-  /// quick-add to offer, and the end-floated button sat on top of its rows.
-  /// Every other tab keeps it.
-  static const int _settingsIndex = 4;
-
-  bool get _showAddFab => _fabVisible && _currentIndex != _settingsIndex;
-
   @override
   void initState() {
     super.initState();
@@ -480,23 +466,12 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     super.dispose();
   }
 
-  bool _onUserScroll(UserScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    final visible = switch (notification.direction) {
-      ScrollDirection.reverse => false,
-      ScrollDirection.forward => true,
-      ScrollDirection.idle => _fabVisible,
-    };
-    if (visible != _fabVisible) setState(() => _fabVisible = visible);
-    return false;
-  }
-
   static const List<NavItem> _navItems = [
-    NavItem(Icons.home_rounded, 'HOME'),
-    NavItem(Icons.event_note_rounded, 'BILLS'),
-    NavItem(Icons.insights_rounded, 'INSIGHTS'),
-    NavItem(Icons.credit_card_rounded, 'CARDS'),
-    NavItem(Icons.settings_rounded, 'SETTINGS'),
+    NavItem(Icons.home_rounded, 'Home'),
+    NavItem(Icons.event_note_rounded, 'Bills'),
+    NavItem(Icons.insights_rounded, 'Insights'),
+    NavItem(Icons.credit_card_rounded, 'Cards'),
+    NavItem(Icons.settings_rounded, 'Settings'),
   ];
 
   final List<Widget> _screens = const [
@@ -511,23 +486,13 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     if (index != _currentIndex) {
       // Only a real tab change gets a cue; re-tapping the active tab is silent.
       SoundScope.play(context, SoundEventType.selectionChanged);
-      setState(() {
-        _currentIndex = index;
-        _fabVisible = true;
-      });
+      setState(() => _currentIndex = index);
     }
-  }
-
-  void _openAddTransaction() {
-    SoundScope.play(context, SoundEventType.buttonTap);
-    // The dashboard's floating action opens the shared form as a modal sheet so
-    // logging an entry never loses the dashboard behind it.
-    showAddTransactionSheet(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Subscribe to appearance changes. The FAB below reads its gradient
+    // Subscribe to appearance changes. The navigation bar reads its colours
     // straight from the AppColors tokens rather than from Theme.of, so without
     // this dependency the shell would not rebuild when a stored palette is
     // restored on startup and would keep the default ramp it painted first.
@@ -537,102 +502,15 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: AppBackground(
-        child: NotificationListener<UserScrollNotification>(
-          onNotification: _onUserScroll,
-          child: FadeIndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
+        child: FadeIndexedStack(
+          index: _currentIndex,
+          children: _screens,
         ),
       ),
-      // End-floated rather than centre-floated: with five destinations the
-      // centre slot is Insights and a centred button would cover its label.
-      floatingActionButton: MediaQuery.maybeDisableAnimationsOf(context) == true
-          // Reduced motion: no slide or fade, the button just appears or
-          // disappears.
-          ? (_showAddFab
-              ? _AddFab(onPressed: _openAddTransaction)
-              : const SizedBox.shrink())
-          : IgnorePointer(
-              ignoring: !_showAddFab,
-              child: AnimatedSlide(
-                offset: _showAddFab ? Offset.zero : const Offset(0, 1.5),
-                duration: AppMotion.respect(context, AppMotion.base),
-                curve: AppMotion.easeOut,
-                child: AnimatedOpacity(
-                  opacity: _showAddFab ? 1 : 0,
-                  duration: AppMotion.respect(context, AppMotion.base),
-                  child: _AddFab(onPressed: _openAddTransaction),
-                ),
-              ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: FloatingNavBar(
         items: _navItems,
         currentIndex: _currentIndex,
         onTap: _onTap,
-      ),
-    );
-  }
-}
-
-/// The floating Add action. Icon + tooltip carry the meaning.
-///
-/// It is the same glass as the navigation bar, tinted with the accent (see
-/// [AppColors.fabFillFor]) and drawn with a resolved accent glyph: no solid
-/// slab and no coloured glow, so it never competes with the bar below it.
-class _AddFab extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _AddFab({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = AppColors.isDark(context);
-    final highContrast = MediaQuery.highContrastOf(context);
-    return SizedBox(
-      width: 56,
-      height: 56,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: highContrast
-              ? null
-              : AppColors.glassShadows(context, floating: true),
-        ),
-        child: ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: highContrast ? 0 : AppColors.glassBlurSigma,
-              sigmaY: highContrast ? 0 : AppColors.glassBlurSigma,
-            ),
-            child: FloatingActionButton(
-              onPressed: onPressed,
-              backgroundColor: highContrast
-                  ? AppColors.overlaySurfaceFor(dark)
-                  : AppColors.fabFillFor(dark),
-              foregroundColor: AppColors.fabInkFor(dark),
-              elevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              highlightElevation: 0,
-              shape: CircleBorder(
-                side: BorderSide(
-                  color: highContrast
-                      ? AppColors.fabInkFor(dark)
-                      : AppColors.navAccentFor(dark)
-                          .withValues(alpha: dark ? 0.34 : 0.26),
-                ),
-              ),
-              tooltip: 'Add transaction',
-              child: Icon(
-                Icons.add_rounded,
-                color: AppColors.fabInkFor(dark),
-                size: 28,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

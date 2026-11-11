@@ -16,13 +16,24 @@ class AppSpacing {
   /// starts and ends here. Home used to run a 16dp gutter of its own, which put
   /// the dock 4dp inside the section headers below it and read as a
   /// misalignment rather than as a tighter rhythm.
-  static const double page = 20;
+  static const double page = 16;
 
   /// Kept as an alias so existing call sites resolve to the one inset. Do not
   /// introduce a second value; a screen that wants more space nests a [lg].
   static const double homePage = page;
-  static const double homeSectionGap = 20;
+  static const double homeSectionGap = 16;
+
+  /// Vertical gap between two dashboard sections.
+  static const double sectionGap = 16;
   static const double homeHeaderGap = 10;
+
+  /// Padding inside a standard grouped surface. Cards, chart containers and
+  /// list surfaces all use this so their content starts on the same line.
+  ///
+  /// 16dp, the reference design's primary rhythm (see spec 11 §D6). The raw
+  /// scale keeps [xl] at 20 for the places that genuinely want more room
+  /// (hero figures, empty states, sheet headers); only the *role* tokens moved.
+  static const double cardPadding = lg;
 
   /// Icon wells: one well, one glyph, one touch target, everywhere.
   ///
@@ -44,23 +55,24 @@ class AppSpacing {
   /// Bottom gutter that clears the floating navigation bar.
   static const double navClearance = 108;
 
-  /// Bottom gutter that clears both the floating navigation bar *and* the
-  /// end-floated Add button stacked above it. Every tab that scrolls to the
-  /// bottom must use this so the last row is never hidden behind the FAB.
-  static const double fabClearance = navClearance + 56;
+  /// Kept for the two settings sub-screens that already pass it. It used to add
+  /// the height of the floating Add button; that button is gone (Add lives in
+  /// the Home dock), so it is now the same as [navClearance].
+  static const double fabClearance = navClearance;
 
-  /// Adaptive version of [fabClearance] for the five shell tabs.
+  /// Adaptive bottom gutter for the five shell tabs.
   ///
   /// The shell's Scaffold extends the body under the floating navigation bar
   /// and reports the bar's real height (device inset and large-text growth
   /// included) as bottom padding, so the gutter below follows the actual bar
-  /// instead of a fixed guess. [fabClearance] is kept as the lower bound for
-  /// hosts that have no bar (tests, embedded previews).
+  /// instead of a fixed guess. [navClearance] is the lower bound for hosts that
+  /// have no bar (tests, embedded previews).
   static double tabBottomInset(BuildContext context) {
     final bar = MediaQuery.paddingOf(context).bottom;
-    // Add button (58) + the gap above the bar (16) + breathing room (8).
-    final dynamicInset = bar + 58 + lg + sm;
-    return dynamicInset > fabClearance ? dynamicInset : fabClearance;
+    // The bar's own height already includes its padding; add breathing room so
+    // the last row's bottom edge is never flush with the pill.
+    final dynamicInset = bar + lg + sm;
+    return dynamicInset > navClearance ? dynamicInset : navClearance;
   }
 }
 
@@ -72,12 +84,20 @@ class AppRadius {
   static const double md = 12;
   static const double lg = 16;
   static const double xl = 22;
+
+  /// The radius of a standard card, chart container or grouped surface.
+  /// 16dp to match the reference proportions; the hero keeps [xl].
+  static const double card = 16;
   static const double pill = 999;
+
+  /// Small square plates: KPI icons, action tiles, navigation-adjacent wells.
+  static const double plate = 10;
 
   static BorderRadius all(double r) => BorderRadius.circular(r);
   static const BorderRadius smAll = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius mdAll = BorderRadius.all(Radius.circular(md));
   static const BorderRadius lgAll = BorderRadius.all(Radius.circular(lg));
+  static const BorderRadius cardAll = BorderRadius.all(Radius.circular(card));
   static const BorderRadius xlAll = BorderRadius.all(Radius.circular(xl));
 }
 

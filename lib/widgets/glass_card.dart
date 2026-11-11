@@ -15,6 +15,12 @@ class GlassHighlight extends StatelessWidget {
 }
 
 /// Shared opaque surface for content groups and interactive rows.
+///
+/// The name is historical: nothing here is glass. It paints the same solid
+/// card tone as [AppSurface]'s raised level, with the hairline only where the
+/// palette needs it ([AppColors.needsSurfaceEdge]). Its default padding stays
+/// 20dp until each consuming screen is migrated to [AppSurface] in its own
+/// stage, so this change re-styles every card without re-flowing any screen.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -47,10 +53,9 @@ class GlassCard extends StatelessWidget {
         borderRadius: borderRadius,
         gradient: gradient,
         color: gradient == null ? fill : null,
-        border: Border.all(
-          color:
-              gradient == null ? AppColors.border(context) : Colors.transparent,
-        ),
+        border: gradient == null && AppColors.needsSurfaceEdge(context)
+            ? Border.all(color: AppColors.border(context))
+            : null,
       ),
       child: onTap == null
           ? Padding(padding: resolvedPadding, child: child)

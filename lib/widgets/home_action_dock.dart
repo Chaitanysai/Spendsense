@@ -7,143 +7,147 @@ import '../utils/app_text_styles.dart';
 import 'pressable.dart';
 import 'quick_action_tile.dart';
 
-/// The dashboard's floating command dock.
+/// The dashboard's action dock: one solid card holding the actions the app
+/// exists for.
 ///
-/// GO Club's home puts the actions the app exists for in one floating capsule
-/// at the thumb, not in four separate outlined boxes. Suno does the same with
-/// its composer: one solid surface, one accented primary, everything else quiet.
-/// This is that dock. It is the only glass-adjacent surface on the page besides
-/// the navigation pill, so it reads as chrome rather than as another card.
+/// Anatomy, from the reference screenshots (Quick Payment / Others card):
+///
+/// * One white surface, not a tinted strip and not a gradient. Same tone,
+///   hairline rule and shadow as every other card on the page.
+/// * Quiet actions are small outlined rounded squares with a neutral glyph.
+///   Colour is not used here; the glyph and label carry the meaning.
+/// * The leading action ([QuickAction.primary], Home's **Add**) is a solid ink
+///   circle, the same object as the active navigation pill. It replaces the
+///   old floating button, so adding a transaction is one tap from the top of
+///   Home and nothing floats over the figures below.
+///
+/// The dock lives in the page flow, so it scrolls with the content and can never
+/// cover financial information.
 class HomeActionDock extends StatelessWidget {
   final List<QuickAction> actions;
 
   const HomeActionDock({super.key, required this.actions});
 
-  /// The dock's own surface: in dark mode its gradient starts one step above
-  /// [AppColors.surfaceColor], so measuring ink against the plain surface would
-  /// pick the wrong glyph colour for the top row.
-  static Color dockSurface(BuildContext context) {
-    final surface = AppColors.glassSurface(context);
-    if (!AppColors.isDark(context)) return surface;
-    return Color.alphaBlend(
-      Colors.white.withValues(alpha: 0.05),
-      surface,
-    );
-  }
+  /// The dock's own tone. A plain card, so ink measured against it is ink
+  /// measured against what is actually behind the plates.
+  static Color dockSurface(BuildContext context) =>
+      AppColors.glassSurface(context);
 
-  /// Brand wash applied over the quiet plate for the accented slot.
+  /// Plate behind a quiet glyph: one tertiary step off the card (the palette's
+  /// own ink at 5% / 8%). The hairline around it carries the shape; the tone
+  /// step only keeps it from reading as a hole in the card.
+  static Color quietPlate(BuildContext context, bool isDark) =>
+      AppColors.surfaceTertiary(context);
+
+  /// Solid ink disc of the primary action: the active-navigation pill's fill.
+  static Color primaryPlate(bool isDark) => AppColors.fabFillFor(isDark);
+
+  /// Glyph on the primary disc.
+  static Color primaryInk(bool isDark) => AppColors.fabInkFor(isDark);
+
+  /// Plate edge length. 44dp, so every plate is also a legal touch target.
+  static const double plateSize = 44;
+
+  /// Narrowest a slot may get before its two-line label would clip. The dock
+  /// folds to fewer columns instead of shrinking a label or a target.
+  static const double minSlotWidth = 54;
+
+  /// Columns for [count] actions in [width] dp at [textScale].
   ///
-  /// Exposed so `home_dock_well_test.dart` asserts against the value the widget
-  /// actually paints. The first version of that test carried its own copy, and
-  /// when this alpha was tuned the test kept measuring the old constant and
-  /// reported numbers that no longer matched the screen.
-  static double primaryWashAlpha(bool isDark) => isDark ? 0.12 : 0.16;
-
-  /// One surface step off the dock, behind a quiet glyph.
-  static Color quietPlate(BuildContext context, bool isDark) => isDark
-      ? Color.alphaBlend(
-          Colors.white.withValues(alpha: 0.10),
-          dockSurface(context),
-        )
-      : AppColors.surfaceMuted;
+  /// One row when every slot keeps [minSlotWidth] at the effective text size;
+  /// otherwise two rows. Visible for tests.
+  static int columnsFor({
+    required double width,
+    required double textScale,
+    required int count,
+  }) {
+    if (count <= 0) return 1;
+    final fits = width / count >= minSlotWidth * (textScale > 1 ? textScale : 1);
+    return fits && textScale <= 1.3 ? count : (count / 2).ceil();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    // Four slots only survive a genuinely large text setting as two rows.
-    final columns = scale > 1.3 ? 2 : 4;
-
-    final rows = <List<QuickAction>>[
-      for (var i = 0; i < actions.length; i += columns)
-        actions.sublist(i, (i + columns).clamp(0, actions.length)),
-    ];
-
-    final dark = AppColors.isDark(context);
 
     // The dock is a panel like every other card on the page: same tone, same
-    // hairline, same shadow. In dark mode the only addition is the lit top, so
-    // it still reads as the one piece of chrome.
+    // hairline, same shadow.
     final panel = AppColors.panelDecoration(
       context,
-      borderRadius: BorderRadius.circular(AppRadius.xl),
+      borderRadius: BorderRadius.circular(AppRadius.card),
     );
+    const inset = 5.0;
+
     return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: panel.copyWith(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: dark
-              ? [dockSurface(context), panel.color!]
-              : [Colors.white, panel.color!],
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var r = 0; r < rows.length; r++) ...[
-            if (r > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: AppColors.border(context).withValues(alpha: 0.7),
-              ),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Dividers used to sit *between* the slots, where the paint
-                  // order put them above the glyph plates: the lines appeared to
-                  // cut straight through the circles. They are painted behind the
-                  // plates now, and each slot is opaque only inside its plate, so
-                  // the rule reads as a separatrix rather than a slash.
-                  for (var c = 0; c < columns; c++)
-                    Expanded(
-                      child: SizedBox(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: SizedBox(
-                                width: 1,
-                                child: CustomPaint(
-                                  painter: _EdgeRulePainter(
-                                    show: c > 0,
-                                    color: AppColors.border(context)
-                                        .withValues(alpha: 0.7),
+      padding: const EdgeInsets.all(inset),
+      decoration: panel,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = columnsFor(
+            width: constraints.maxWidth,
+            textScale: scale,
+            count: actions.length,
+          );
+          final rows = <List<QuickAction>>[
+            for (var i = 0; i < actions.length; i += columns)
+              actions.sublist(i, (i + columns).clamp(0, actions.length)),
+          ];
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var r = 0; r < rows.length; r++) ...[
+                if (r > 0)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: AppColors.border(context).withValues(alpha: 0.7),
+                  ),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // The rule between slots is the first (bottom-most) child
+                      // of each slot's own stack, so it is painted behind the
+                      // plate and can never slice through one.
+                      for (var c = 0; c < columns; c++)
+                        Expanded(
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: SizedBox(
+                                  width: 1,
+                                  child: CustomPaint(
+                                    painter: _EdgeRulePainter(
+                                      show: c > 0,
+                                      color: AppColors.border(context)
+                                          .withValues(alpha: 0.7),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            c < rows[r].length
-                                ? _DockSlot(
-                                    action: rows[r][c],
-                                    primary: r == 0 && c == 0,
-                                  )
-                                : const SizedBox.shrink(),
-                          ],
+                              c < rows[r].length
+                                  ? _DockSlot(action: rows[r][c])
+                                  : const SizedBox.shrink(),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 /// Paints the one-pixel rule on the leading edge of a slot, if asked.
-///
-/// A [VerticalDivider] between slots painted *over* the neighbouring glyph
-/// plates because the Row's paint order follows child order; drawing the rule
-/// as the first (bottom-most) child of the slot's own stack keeps it behind the
-/// plate. See [HomeActionDock.build].
 class _EdgeRulePainter extends CustomPainter {
   const _EdgeRulePainter({required this.show, required this.color});
 
@@ -166,68 +170,26 @@ class _EdgeRulePainter extends CustomPainter {
 
 class _DockSlot extends StatelessWidget {
   final QuickAction action;
-  final bool primary;
 
-  const _DockSlot({required this.action, required this.primary});
-
-  /// Fill behind a glyph. Every slot uses this same construction so the four
-  /// read as one control:
-  ///
-  /// * quiet slots — one published surface step off the dock.
-  /// * the primary — the same step, accented, so it is *distinguished* without
-  ///   being a different kind of object.
-  ///
-  /// The primary used to be filled with [AppColors.actionGradient], a saturated
-  /// navy disc. Against three pale plates that read as one enabled control and
-  /// three disabled ones (light mode measured 0.18x the plate's luminance), which
-  /// is exactly what "only Add expense has an icon" was describing.
-  ///
-  /// It is now accented by pushing the plate *away* from the dock in the theme's
-  /// own direction — lighter in dark, brand-tinted in light. Washing the brand
-  /// over a dark plate does not work: the brand's dark end pulled the fill down,
-  /// leaving the primary (measured `#2F3E49`) marginally darker than its
-  /// neighbours (`#33414B`), so the accent was invisible.
-  static Color _wellFill(
-    BuildContext context,
-    bool dark, {
-    required bool primary,
-  }) {
-    final base = HomeActionDock.quietPlate(context, dark);
-    if (!primary) return base;
-    // Push the plate *away* from the dock surface, in the theme's own direction:
-    // dark mode lightens, light mode lays a brand tint down. Washing the brand
-    // over a dark plate is what broke this — the brand's dark end pulled the
-    // fill below its neighbours, so the accented slot read as the dimmest one.
-    return Color.alphaBlend(
-      (dark ? Colors.white : AppColors.brand)
-          .withValues(alpha: HomeActionDock.primaryWashAlpha(dark)),
-      base,
-    );
-  }
+  const _DockSlot({required this.action});
 
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
-    // One construction for all four slots (see [_wellFill]); the primary differs
-    // by brand tint and ink weight, not by being a filled disc. Ink is measured
-    // against the plate it actually sits on, because a wash of any hue collapses
-    // the glyph's contrast against the plate behind it.
-    final wellColor = _wellFill(context, dark, primary: primary);
-    final iconColor = AppColors.inkOn(
-        AppColors.brand, wellColor, HomeActionDock.dockSurface(context));
+    final primary = action.primary;
 
     final labelStyle = AppText.label(context).copyWith(
       fontSize: 11,
       height: 1.15,
-      fontWeight: primary ? FontWeight.w700 : FontWeight.w600,
+      fontWeight: primary ? FontWeight.w600 : FontWeight.w500,
       color: primary
           ? AppColors.textPrimary(context)
           : AppColors.textSecondary(context),
     );
     // Both label lines are reserved for every slot. "Add expense" wraps and
     // "Activity" does not, so without a fixed box the two-line slot grew taller
-    // than its neighbours and the four icons sat at different heights. The box
-    // is measured at the *effective* text scale so it still grows under
+    // than its neighbours and the icons sat at different heights. The box is
+    // measured at the *effective* text scale so it still grows under
     // accessibility font settings instead of clipping.
     final labelHeight = (2 *
             labelStyle.fontSize! *
@@ -235,64 +197,75 @@ class _DockSlot extends StatelessWidget {
             MediaQuery.textScalerOf(context).scale(1))
         .ceilToDouble();
 
+    final plate = primary
+        ? Container(
+            width: HomeActionDock.plateSize,
+            height: HomeActionDock.plateSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: HomeActionDock.primaryPlate(dark),
+            ),
+            child: Icon(
+              action.icon,
+              size: 24,
+              color: HomeActionDock.primaryInk(dark),
+            ),
+          )
+        : Container(
+            // 44 wide, 40 tall: the reference's outlined tile. The slot is
+            // 44dp tall either way, so the touch target is unchanged.
+            width: HomeActionDock.plateSize,
+            height: HomeActionDock.plateSize - 4,
+            decoration: BoxDecoration(
+              color: HomeActionDock.quietPlate(context, dark),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.border(context)),
+            ),
+            child: Icon(
+              action.icon,
+              size: AppSpacing.wellGlyph,
+              color: AppColors.textPrimary(context),
+            ),
+          );
+
     return Semantics(
+      key: ValueKey('dock:${action.label}'),
       button: true,
-      label: action.label,
+      label: action.semanticLabel ?? action.label,
       excludeSemantics: true,
       child: Pressable(
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         sound: SoundEventType.buttonTap,
         child: ConstrainedBox(
-          // 40dp well + gap + two label lines is already past 48dp; the floor
-          // keeps the target legal before the label box is added.
           constraints: const BoxConstraints(
             minHeight: AppSpacing.wellTouchTarget,
           ),
           child: Padding(
+            // 4dp each side, not 8: with five actions a 320dp phone gives a slot
+            // 55dp, and a 44dp plate needs the room.
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
+              horizontal: AppSpacing.xs,
               vertical: AppSpacing.sm,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
-              // Stretch makes the label fill the slot; the icon is centred
+              // Stretch makes the label fill the slot; the plate is centred
               // inside that width. Without this the Column shrink-wrapped to
               // the label and the whole stack sat at the slot's left edge.
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: AppSpacing.wellSize,
-                    height: AppSpacing.wellSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      // The same plate in every slot; the primary's brand wash
-                      // comes from [_wellFill], not from a gradient disc.
-                      color: wellColor,
-                      border: Border.all(
-                        color: primary
-                            ? AppColors.brand.withValues(alpha: 0.55)
-                            : AppColors.border(context).withValues(
-                                alpha: dark ? 0.9 : 1.0,
-                              ),
-                      ),
-                    ),
-                    child: Icon(
-                      action.icon,
-                      size: AppSpacing.wellGlyph,
-                      color: iconColor,
-                    ),
-                  ),
+                SizedBox(
+                  height: HomeActionDock.plateSize,
+                  child: Center(child: plate),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 SizedBox(
                   height: labelHeight,
-                  // Centre the text inside the reserved box. Every slot reserves
-                  // two lines, so a one-line label ("Activity") would otherwise
-                  // hang from the top of its box while a wrapped one ("Add
-                  // expense") filled it — same box, different optical baseline.
+                  // Centre the text inside the reserved box so a one-line label
+                  // ("Activity") and a wrapped one ("Add expense") share a
+                  // baseline region.
                   child: Center(
                     child: Text(
                       action.label,

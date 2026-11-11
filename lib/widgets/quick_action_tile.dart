@@ -12,10 +12,21 @@ class QuickAction {
   final IconData icon;
   final VoidCallback onTap;
 
+  /// The one action the dock leads with (Home's Add). It is drawn as a solid
+  /// ink circle instead of an outlined plate. Nothing else changes about it:
+  /// same target size, same press feedback, same semantics role.
+  final bool primary;
+
+  /// Announced instead of [label] when the short visible label is not enough
+  /// on its own ("Add" is announced as "Add transaction").
+  final String? semanticLabel;
+
   const QuickAction({
     required this.label,
     required this.icon,
     required this.onTap,
+    this.primary = false,
+    this.semanticLabel,
   });
 }
 

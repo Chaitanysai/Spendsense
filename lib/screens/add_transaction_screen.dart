@@ -60,6 +60,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   /// Inline validation message for the amount field, or null when it is valid.
   String? _amountError;
+
+  /// Set when the write was rejected. Shown above the Add button until the next
+  /// attempt. It used to be a SnackBar, which floats at the bottom of the
+  /// screen and covered the very button the user had to press again (measured
+  /// 51 to 54dp of overlap at every text size).
+  String? _saveError;
   late TransactionType _type = widget.initialType;
 
   bool get _isIncome => _type == TransactionType.income;
@@ -85,9 +91,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         // Editing the amount clears a stale error, so the message never sits
         // against text the user has already corrected.
         if (_amountError != null) _amountError = null;
+        if (_saveError != null) _saveError = null;
       });
     });
-    _merchantController.addListener(() => setState(() {}));
+    _merchantController.addListener(() => setState(() {
+          if (_saveError != null) _saveError = null;
+        }));
   }
 
   @override
@@ -141,7 +150,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
-                    hintText: 'e.g. Swiggy, Uber, Reliance',
+                    hintText: 'e.g. Swiggy or Uber',
                     prefixIcon: Icon(Icons.storefront_outlined),
                   ),
                 ),
@@ -173,16 +182,26 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             AppSpacing.page,
             AppSpacing.lg,
           ),
-          child: AppPrimaryButton(
-            label: _isIncome ? 'Add income' : 'Add expense',
-            icon: Icons.check_rounded,
-            loading: _saving,
-            // The saved cue is this button's real feedback, so suppress the
-            // generic tap tick rather than stacking two sounds.
-            sound: null,
-            onPressed: _amountController.text.trim().isNotEmpty && !_saving
-                ? _save
-                : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_saveError != null) ...[
+                _SaveError(message: _saveError!),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              AppPrimaryButton(
+                label: _isIncome ? 'Add income' : 'Add expense',
+                icon: Icons.check_rounded,
+                loading: _saving,
+                // The saved cue is this button's real feedback, so suppress the
+                // generic tap tick rather than stacking two sounds.
+                sound: null,
+                onPressed: _amountController.text.trim().isNotEmpty && !_saving
+                    ? _save
+                    : null,
+              ),
+            ],
           ),
         ),
       ],
@@ -235,7 +254,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceColor(context),
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppRadius.xl),
+                    top: Radius.circular(AppRadius.card),
                   ),
                   border: Border.all(color: AppColors.border(context)),
                 ),
@@ -303,10 +322,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       // Nothing was persisted, so nothing may be announced. Tell the user and
       // leave the form open so the entry can be retried.
       if (!mounted) return;
-      setState(() => _saving = false);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not save. Please try again.')),
-      );
+      setState(() {
+        _saving = false;
+        _saveError = 'Could not save. Please try again.';
+      });
+      // Silent on purpose: a rejected write plays no cue, success or failure
+      // (sound_integration_test pins this).
       return;
     }
 
@@ -321,20 +342,55 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 }
 
+/// The failure message of a rejected save, announced as it appears.
+class _SaveError extends StatelessWidget {
+  final String message;
+
+  const _SaveError({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded,
+              size: 18, color: AppColors.danger),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: AppText.label(context).copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.danger,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SheetGrabber extends StatelessWidget {
   const _SheetGrabber();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        margin:
-            const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.border(context),
-          borderRadius: BorderRadius.circular(2),
+    return ExcludeSemantics(
+      child: Center(
+        child: Container(
+          width: 40,
+          height: 4,
+          margin:
+              const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.border(context),
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../models/transaction_model.dart';
 import '../services/sound_service.dart';
@@ -10,6 +11,17 @@ import '../utils/formatters.dart';
 import '../screens/transaction_details_screen.dart';
 import 'app_page_route.dart';
 import 'pressable.dart';
+
+/// The date on a Home row: "9 Nov", with the year only when it is not this one.
+///
+/// The full "Nov 09, 2026" was the first thing to clip on a 390dp phone: the
+/// amount column takes its width first, so three of eight rows ended in
+/// "Nov 09, 20…". Activity hides the date entirely and the details screen
+/// formats its own, so this changes nothing outside the Home feed.
+String _compactDate(DateTime d) {
+  final sameYear = d.year == DateTime.now().year;
+  return DateFormat(sameYear ? 'd MMM' : 'd MMM yyyy').format(d);
+}
 
 /// A mark for transactions that did *not* arrive from the phone's SMS inbox.
 ///
@@ -70,8 +82,13 @@ class TransactionTile extends StatelessWidget {
 
     final meta = <String>[
       transaction.category,
+      // Excluded rows are listed (Activity shows the whole ledger) but are not
+      // counted in any total, so the row says so instead of looking counted.
+      // Placed before the bank: on a narrow row the end of the line is what
+      // truncates, and the status matters more than the bank name.
+      if (transaction.isExcluded) 'Excluded',
       if (transaction.bankName.isNotEmpty) transaction.bankName,
-      if (showDate) Formatters.date(transaction.date),
+      if (showDate) _compactDate(transaction.date),
     ].join(' · ');
 
     return Padding(
@@ -87,7 +104,8 @@ class TransactionTile extends StatelessWidget {
         child: Semantics(
           button: true,
           label: '${transaction.merchant}, ${transaction.category}, '
-              '$amountPrefix ${Formatters.currency.format(transaction.amountMinor)}',
+              '$amountPrefix ${Formatters.currency.format(transaction.amountMinor)}'
+              '${transaction.isExcluded ? ', excluded from totals' : ''}',
           excludeSemantics: true,
           child: Container(
             padding: EdgeInsets.symmetric(
@@ -148,7 +166,7 @@ class TransactionTile extends StatelessWidget {
                                 'REVIEW',
                                 style: AppText.weight(
                                   AppText.label(context),
-                                  FontWeight.w800,
+                                  FontWeight.w700,
                                 ).copyWith(
                                   fontSize: 10,
                                   // A fixed brown was unreadable on dark cards;

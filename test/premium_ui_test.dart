@@ -96,11 +96,11 @@ void main() {
   tearDown(() => AppColors.applyPalette(AppPalette.emerald));
 
   group('home entry points share one form', () {
-    testWidgets('the floating action opens the shared form as a modal sheet',
+    testWidgets('the dock Add opens the shared form as a modal sheet',
         (tester) async {
       await _pumpShell(tester);
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('dock:Add')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -130,7 +130,7 @@ void main() {
       final transactions = await _pumpShell(tester);
       await tester.pump(const Duration(seconds: 1));
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('dock:Add')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -157,7 +157,7 @@ void main() {
         (tester) async {
       await _pumpShell(tester);
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('dock:Add')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -246,7 +246,7 @@ void main() {
     });
   });
   group('balance card', () {
-    testWidgets('shows current-cycle spending as the primary figure',
+    testWidgets('leads with the available balance and still reports the cycle',
         (tester) async {
       final transactions = await _pumpShell(tester);
       await _seed(
@@ -258,8 +258,12 @@ void main() {
         transactions,
       );
 
+      // availableBalance = 4000 income − 1000 expense.
+      expect(find.text(Formatters.currency.format(300000)), findsWidgets);
+      expect(find.text('Available balance'), findsOneWidget);
+      // The cycle's own figures are still on the hero, not just the balance.
       expect(find.text(Formatters.currency.format(100000)), findsWidgets);
-      expect(find.text('Total spent this cycle'), findsOneWidget);
+      expect(find.text(Formatters.currency.format(400000)), findsWidgets);
     });
 
     testWidgets('the eye toggle masks the figure without touching the data',
@@ -289,7 +293,11 @@ void main() {
         transactions,
       );
 
-      expect(find.textContaining('than last cycle'), findsNothing);
+      // No comparable previous spend means no chip at all — not a "+0%" chip
+      // and not an invented direction.
+      expect(find.textContaining('last period'), findsNothing);
+      expect(find.textContaining('more spent'), findsNothing);
+      expect(find.textContaining('less spent'), findsNothing);
     });
   });
 
@@ -494,15 +502,15 @@ void main() {
         0,
       );
 
-      await tester.tap(find.text('INSIGHTS'));
+      await tester.tap(find.byKey(const ValueKey('nav:Insights')));
       await tester.pump(const Duration(milliseconds: 500));
       expect(
         tester.widget<FadeIndexedStack>(find.byType(FadeIndexedStack)).index,
         2,
-        reason: 'INSIGHTS is the third destination',
+        reason: 'Insights is the third destination',
       );
 
-      await tester.tap(find.text('HOME'));
+      await tester.tap(find.byKey(const ValueKey('nav:Home')));
       await tester.pump(const Duration(milliseconds: 500));
       expect(
         tester.widget<FadeIndexedStack>(find.byType(FadeIndexedStack)).index,
@@ -538,7 +546,7 @@ void main() {
 
       // One frame after the tap the incoming tab is already at rest: the fade
       // wrapper is not inserted at all when animations are disabled.
-      await tester.tap(find.text('CARDS'));
+      await tester.tap(find.byKey(const ValueKey('nav:Cards')));
       await tester.pump();
 
       expect(find.byType(FadeTransition), findsNothing);

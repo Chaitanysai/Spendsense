@@ -526,10 +526,15 @@ class BillClassifier {
     return '${kind.name}:${norm.isEmpty ? kind.name : norm}';
   }
 
+  /// Precompiled: [normalize] used to build both patterns on every call, and
+  /// it runs once per classified transaction (and once per reminder check).
+  static final _nonAlnum = RegExp(r'[^a-z0-9]+');
+  static final _whitespace = RegExp(r'\s+');
+
   static String normalize(String value) => value
       .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(_nonAlnum, ' ')
+      .replaceAll(_whitespace, ' ')
       .trim();
 
   static BillClassification _ordinary(String merchant, String reason) =>
@@ -572,11 +577,17 @@ class BillClassifier {
   /// Substring matching made `emi` match inside `premium` (turning insurance
   /// into a loan) and `rent` match inside `current`. Multi-word phrases and
   /// full merchant names still use the same boundary-aware check.
+  ///
+  /// Patterns are cached per keyword: the keyword lists are constants, so the
+  /// same handful of patterns used to be recompiled on every classification.
+  static final _keywordPatterns = <String, RegExp>{};
+
   static bool _containsKeyword(String haystack, List<String> needles) {
     for (final needle in needles) {
-      final pattern = RegExp(
-        '(?:^|[^a-z0-9])${RegExp.escape(needle)}(?:[^a-z0-9]|\$)',
-      );
+      final pattern =
+          _keywordPatterns.putIfAbsent(needle, () => RegExp(
+                '(?:^|[^a-z0-9])${RegExp.escape(needle)}(?:[^a-z0-9]|\$)',
+              ));
       if (pattern.hasMatch(haystack)) return true;
     }
     return false;

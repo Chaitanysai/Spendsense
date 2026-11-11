@@ -100,7 +100,8 @@ class AppPalette {
   final Color darkSurfaceAlt;
   final Color borderDark;
 
-  /// Dark-mode cards are translucent navy glass with blue-lit hero cards. The
+  /// Selects the tinted dark tone: cards use [darkSurfaceAlt] (solid, never
+  /// translucent) and heroes get the lit-corner treatment. The
   /// canvas behind them is still [darkBackground], which must stay pure black;
   /// this flag changes only how cards, heroes, borders and overlays look.
   final bool glass;
