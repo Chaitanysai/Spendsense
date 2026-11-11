@@ -1,105 +1,174 @@
 # SpendSense
 
-SpendSense is an offline-first Flutter expense tracking app focused on Indian bank and UPI transaction workflows. It reliably reads transaction SMS messages from the Android device inbox, extracts expense entries locally, caches them locally, and presents spending activity, insights, budget tracking, and manual transaction management in a mobile UI.
+SpendSense is an offline-first expense tracker for Android. It reads bank and
+UPI transaction messages from the device inbox, parses them on the phone, and
+turns them into a searchable ledger with budgets, bills, recurring plans and
+spending insights.
 
-## Features
+The ledger is encrypted and stored on the device. The standard Android build
+uses an account for sign-in. SMS text stays on the device by default. If you
+explicitly enable **AI Provider Settings → Send ambiguous SMS to AI providers**,
+redacted low-confidence messages are sent to the provider you configured; read
+that screen before enabling it.
 
-- Local-first SMS-based transaction sync from the device inbox
-- Smart transaction parsing with strict regex-first rule validation and debit filtering
-- Optional local AI fallback strictly for ambiguous debit messages matching context
-- Persistent local SQLite caching with real-time UI updates
-- Monthly budget tracking & historical insights
-- Offline-first architecture - works without internet, no Firebase login required 
-- Full manual transaction entry and history search
-- Fast start times and automatic background synchronization
+## What it does
 
-## Tech Stack
+- **Local SMS import** — scans the Android inbox for transaction messages,
+  classifies debits and credits, and extracts amount, merchant, bank and
+  category. Messages stay on the device unless cloud SMS parsing is explicitly
+  enabled as described above.
+- **Email import (Gmail)** — opt-in, on-device reading of bank alert emails
+  with read-only Gmail access, for banks that alert by email instead of SMS.
+- **Manual entries** — add income or expense records without SMS.
+- **Encrypted ledger** — records are stored in an on-device encrypted store
+  protected with AES-256-GCM; the key lives in platform secure storage.
+- **Budgets and alerts** — monthly cycle budget, category budgets and warning
+  thresholds.
+- **Bills and recurring plans** — detects repeat payments and tracks upcoming
+  obligations.
+- **Insights** — category breakdown, seven-day activity, month-over-month
+  comparison and instrument-level spending.
+- **Optional assistant** — a local, deterministic finance assistant. Cloud
+  assistance is opt-in and proxied through a server that holds the model key.
+- **Offline first** — the app opens and works without a network connection.
+- **Appearance** — nineteen curated palettes, each in light and dark mode.
+- **OTA updates** — released builds can check for and install signed updates
+  from Settings → Software update.
 
-- Flutter & Dart
-- Provider for state management
-- `sqflite` for robust local database caching
-- `flutter_dotenv` for configurable API keys (kept out of source control)
-- `shared_preferences` for fast local configurations
-- `flutter_sms_inbox` & `permission_handler` for local text extraction
-- `fl_chart` for insights and charts
+## Install
 
-## Project Structure
+Android 7.0 or newer. The current release is **2.0.25 (build 50)**, and the
+minimum supported version is **2.0.24**.
 
-```text
-lib/
-  main.dart                         App entrypoint and initialization
-  models/transaction_model.dart     Transaction data configurations
-  providers/
-    transaction_provider.dart       Heart of transactions: sync, logic & caching
-    theme_provider.dart             Dynamic theme and appearance logic
-    period_provider.dart            Date/period filters for UI
-  screens/
-    home_screen.dart                Main dashboard
-    activity_screen.dart            List of synced and manual transactions
-    insights_screen.dart            Analytics and categorization
-    settings_screen.dart            App config and backup
-  services/
-    smart_parser.dart               Strict rule-based debit parser
-    sms_service.dart                Android inbox access
-    gemini_service.dart             LLM fallback for edge extraction
-    database_service.dart           SQLite driver
-    transaction_cache_service.dart  Db operations
+### From the website (recommended)
+
+1. Open <https://spendsense-ota-2026.web.app>.
+2. Choose **Download APK**. The button always resolves to the build the live
+   manifest names, so it cannot go stale.
+3. Allow installs from the browser or file manager when prompted.
+4. Install. Updating over an existing build with the same signing key preserves
+   local data.
+
+### From GitHub Releases
+
+Every release is published as a GitHub Release asset:
+
+<https://github.com/Chaitanysai/Spendsense/releases/latest>
+
+GitHub Releases are the durable archive of downloadable APKs. The
+[latest release](https://github.com/Chaitanysai/Spendsense/releases/latest) is
+kept in step with the OTA channel, but an individual release page shows the
+build it was published for — always check the version before installing.
+
+Both routes serve the same signed APK. A build installed from either updates
+over the other, because the signing certificate is unchanged.
+
+### Verifying a download
+
+| | 2.0.25 (build 50) | 2.0.24 (build 49) |
+|---|---|---|
+| Package | `com.example.spendsense` | `com.example.spendsense` |
+| versionName / versionCode | `2.0.25` / `50` | `2.0.24` / `49` |
+| minSdk | 24 (Android 7.0+) | 24 (Android 7.0+) |
+| SHA-256 | `3c56d47d9634d8075c8405a2cf7ea2a5704df3a4090d6a6c44527d5432e90551` | `d48fe7ac7edafb4141868a6dfeebaeacfebe808432d1f7d8e046b96b8a04dea5` |
+| Signing certificate SHA-256 | `42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367` | `42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367` |
+
+```bash
+sha256sum spendsense-2.0.25+50.apk
+# 3c56d47d9634d8075c8405a2cf7ea2a5704df3a4090d6a6c44527d5432e90551
 ```
 
-## Setup & Build
+Installed builds check the downloaded APK's SHA-256, package name and signing
+certificate against these values before opening the system installer; the trust
+model is documented in [docs/OTA_UPDATES.md](docs/OTA_UPDATES.md).
 
-### 1. Install Flutter dependencies
+## Build from source
+
+Requirements:
+
+- Flutter with the Android toolchain
+- An Android device or emulator
+- JDK 17 for the Android build
 
 ```bash
 flutter pub get
-```
-
-### 2. Configure AI Provider Keys (Optional)
-
-SpendSense supports multiple AI providers for intelligent transaction parsing: **Groq**, **Cerebras**, **Gemini**, and **OpenRouter**.
-
-**🔐 Recommended:** Configure keys at runtime via the in-app settings:
-1. Launch the app
-2. Go to **Settings → AI Provider Settings**
-3. Enter your API keys securely (stored in platform-encrypted storage)
-4. Keys never leave your device and are not compiled into the APK
-
-**Alternative (Development Only):** Use `.env` files:
-1. Copy `.env.example` to `.env`
-2. Fill in your keys (e.g., `GROQ_API_KEY`, `CEREBRAS_API_KEY`)
-3. `.env` remains untracked via `.gitignore`
-
-**Priority:** Secure Storage > .env > --dart-define (CI/CD)
-
-### 3. Android permissions
-
-The app requires SMS read permission on Android devices for transaction sync. Test on a real device with transaction SMS messages available in the inbox.
-
-### 4. Running the App
-
-```bash
+flutter analyze
+flutter test
 flutter run
 ```
 
-### 5. Automated Cloud Android Builds
+Create a release APK with your own signing configuration:
 
-This repository is configured with a GitHub Actions workflow `.github/workflows/android-release.yml` that automatically:
-- Checks out the latest code
-- Runs static analysis (`flutter analyze`) and tests (`flutter test`)
-- Securely builds signed Release APKs
-- Publishes automated GitHub Releases containing the `.apk` on every new version tag (`v*.*.*`)
-- Validates the build outputs 
+```bash
+flutter build apk --release
+```
 
-To sign effectively, the workflow expects GitHub Action Secrets:
-- `SIGNING_KEY` (Base64 of your upload-keystore.jks)
-- `KEY_ALIAS` 
-- `KEY_PASSWORD`
-- `STORE_PASSWORD`
+The repository does not contain signing keys. CI builds are signed from GitHub
+Actions secrets; local release builds use your own keystore.
 
-If they are missing, it safely falls back to the debug keystore for testing without failing the build.
+### Optional services
 
-## Version
+- **Accounts** require a Firebase project configuration.
+- **OTA** uses a static manifest and a signed APK; see
+  [docs/OTA_UPDATES.md](docs/OTA_UPDATES.md).
 
-Current app version in `pubspec.yaml`:
+The ledger and SMS parsing work offline. A build without Firebase configuration
+runs without an account.
 
-- `2.0.0`
+## Project layout
+
+```text
+lib/
+  main.dart                 app shell, navigation and theme
+  models/                   transaction, recurring plan and update models
+  providers/                ledger, period, theme, planner and update state
+  screens/                  home, activity, insights, budgets, bills, settings
+  services/                 SMS import, parsing, storage and updates
+  utils/                    design tokens, formatting and period math
+  widgets/                  shared cards, charts, navigation and controls
+assets/                     icons, fonts and sound cues
+docs/                       architecture and setup notes
+ota/                        OTA hosting layout
+```
+
+## Privacy
+
+- Transaction SMS text is parsed on the device and is not uploaded.
+- The local database is encrypted; the key is kept in platform secure storage.
+- The optional assistant sends only the typed question, recent chat text and
+  validated tool calls to its proxy — never the database, raw SMS or account
+  tokens beyond the request's short-lived authentication token.
+
+## Contributing
+
+Issues and pull requests are welcome. Run `flutter analyze` and `flutter test`
+before opening a pull request, and keep changes scoped to one concern.
+
+## Documentation
+
+Available on this branch:
+
+- [OTA updates](docs/OTA_UPDATES.md) — manifest schema, download verification and
+  the pinned signing certificate
+
+On the [`release/2.0.13+38`](https://github.com/Chaitanysai/Spendsense/tree/release/2.0.13%2B38)
+branch, but **not yet on `main`** — these are intentionally not written as
+relative links here, because the files do not exist on `main` and the links
+would 404:
+
+| Document | Path on the release branch |
+|---|---|
+| Changelog and release history | `CHANGELOG.md` |
+| Assistant architecture | `docs/assistant.md` |
+| Email import (Gmail) | `docs/email-import.md` |
+| Firebase setup | `docs/firebase.md` |
+| Hosting cache headers | `docs/hosting-cache-headers.md` |
+| Spending semantics | `docs/spending-semantics.md` |
+| Typography | `docs/typography.md` |
+| Theme system and palettes | `docs/design-redesign/02-theme-implementation.md` |
+| Sound credits | `assets/sounds/CREDITS.md` |
+| Assistant proxy | `backend/assistant_proxy/README.md` |
+
+Release history and per-release notes live in
+[GitHub Releases](https://github.com/Chaitanysai/Spendsense/releases), which is
+also the authoritative location for downloadable APKs.
