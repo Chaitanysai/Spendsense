@@ -39,13 +39,45 @@ that screen before enabling it.
 
 ## Install
 
-Android 7.0 or newer.
+Android 7.0 or newer. The current release is **2.0.25 (build 50)**.
 
-1. Open the [latest release](https://github.com/Chaitanysai/Spendsense/releases/latest).
-2. Download the `.apk`.
+### From the website (recommended)
+
+1. Open <https://spendsense-ota-2026.web.app>.
+2. Choose **Download APK**. The button always resolves to the build the live
+   manifest names, so it cannot go stale.
 3. Allow installs from the browser or file manager when prompted.
 4. Install. Updating over an existing build with the same signing key preserves
    local data.
+
+### From GitHub Releases
+
+Every release is also published as a GitHub Release asset:
+
+<https://github.com/Chaitanysai/Spendsense/releases/latest>
+
+GitHub Releases are the durable archive of downloadable APKs. The
+[latest release](https://github.com/Chaitanysai/Spendsense/releases/latest) is
+kept in step with the OTA channel, but an individual release page shows the
+build it was published for — always check the version before installing.
+
+Both routes serve the same signed APK. A build installed from either updates
+over the other, because the signing certificate is unchanged.
+
+### Verifying a download
+
+| | 2.0.25 (build 50) |
+|---|---|
+| Package | `com.example.spendsense` |
+| versionName / versionCode | `2.0.25` / `50` |
+| minSdk | 24 (Android 7.0+) |
+| SHA-256 | `3c56d47d9634d8075c8405a2cf7ea2a5704df3a4090d6a6c44527d5432e90551` |
+| Signing certificate SHA-256 | `42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367` |
+
+Installed builds check the downloaded APK's SHA-256, package name and signing
+certificate against these values before opening the system installer; see
+[docs/OTA_UPDATES.md](docs/OTA_UPDATES.md) for the trust model. Release history
+and per-release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Build from source
 

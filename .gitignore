@@ -95,3 +95,9 @@ node_modules/
 # Vite build output for the landing site (source is tracked in site/; the built
 # shell and hashed assets are produced at deploy time).
 site/dist/
+
+# Recovered historical release APKs held locally for provenance. These are large
+# binaries published as GitHub Release assets, never committed: .release-recovery
+# exists so a recovered artifact can be verified and re-attached without keeping
+# a 65 MB APK in Git history.
+/.release-recovery/
