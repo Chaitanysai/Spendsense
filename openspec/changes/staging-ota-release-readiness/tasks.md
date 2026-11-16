@@ -164,7 +164,9 @@ deploy or a device stays unchecked and says what is missing.
       lists `tool/validate_yaml.js`, `tool/test_validate_yaml_ota_guard.js`,
       `tool/validate_ota_manifest.dart`, `tool/capture_hosting_inventory.js` and
       `tool/check_ota_monotonicity.dart`, and runs the guard test after the YAML
-      validation step. Not observed: CI execution of either job.
+      validation step. Observed in CI: PR #56 run 43823791665 (Release Branch
+      CI, `build` job): `OK: 11 YAML file(s)` and `OK: 17 OTA guard case(s)`.
+      PR Build's copy of the same step has not run on this change.
 
 ## Verification
 
