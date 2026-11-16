@@ -80,6 +80,15 @@ void main(List<String> args) {
       check(url.host.toLowerCase() == options.expectHost!.toLowerCase(),
           'downloadUrl host is ${options.expectHost}');
     }
+    if (options.expectPath != null) {
+      // A prefix test would accept "/stagingevil/..." for --expect-path
+      // "/staging/". Require the prefix to end on a path-segment boundary.
+      final want = options.expectPath!.toLowerCase();
+      final got = url.path.toLowerCase();
+      final normalised = want.endsWith('/') ? want : '$want/';
+      check(got.startsWith(normalised),
+          'downloadUrl path starts with $normalised');
+    }
     final expectedName = apkFile.uri.pathSegments.last;
     check(url.pathSegments.last == expectedName,
         'downloadUrl filename matches the staged APK ($expectedName)');
@@ -115,17 +124,20 @@ class _Options {
   final String manifestPath;
   final String apkPath;
   final String? expectHost;
+  final String? expectPath;
 
   const _Options({
     required this.manifestPath,
     required this.apkPath,
     this.expectHost,
+    this.expectPath,
   });
 
   static _Options parse(List<String> args) {
     String? manifest;
     String? apk;
     String? host;
+    String? path;
     for (var i = 0; i < args.length; i++) {
       switch (args[i]) {
         case '--manifest':
@@ -134,13 +146,15 @@ class _Options {
           apk = _value(args, ++i, '--apk');
         case '--expect-host':
           host = _value(args, ++i, '--expect-host');
+        case '--expect-path':
+          path = _value(args, ++i, '--expect-path');
         default:
           _fail('Unexpected argument: ${args[i]}');
       }
     }
     if (manifest == null) _fail('--manifest is required');
     if (apk == null) _fail('--apk is required');
-    return _Options(manifestPath: manifest, apkPath: apk, expectHost: host);
+    return _Options(manifestPath: manifest, apkPath: apk, expectHost: host, expectPath: path);
   }
 
   static String _value(List<String> args, int index, String flag) {

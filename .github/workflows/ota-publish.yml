@@ -52,11 +52,13 @@ jobs:
     name: Build manifest and validate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    # Signing secrets are only available to protected refs. The release
-    # environment adds the repository's protected-branch policy; the explicit
-    # guard keeps the intent readable and fails closed if that policy changes.
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
+    # This job signs the APK, so it is a signing boundary, not a build step.
+    # The release environment is what gates unsigned credential use: its
+    # protected-branch policy refuses any ref that is not protected. Removing it
+    # would let any `release/*` branch - protected or not - reach the keystore
+    # secrets, which is exactly the exposure this job must not have.
     environment: release
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     permissions:
       contents: read
     outputs:
@@ -287,6 +289,83 @@ jobs:
         # exactly the stale-reference failure this release is meant to prevent.
         run: node tool/validate_hosting_headers.js
 
+      - name: Preflight read-only Hosting inventory access
+        # Only a run that will actually deploy needs the production baseline: a
+        # validate-only dispatch changes nothing on Hosting, so requiring a live
+        # credential there would block a check-only run for no benefit.
+        if: steps.channel.outputs.subdir == 'staging' && steps.intent.outputs.deploy_intent == 'true'
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_TOKEN:-}" ]; then
+            echo "::error::HOSTING_INVENTORY_AUTH_MISSING: FIREBASE_TOKEN is required to read the authoritative Hosting release inventory"
+            exit 1
+          fi
+          node tool/capture_hosting_inventory.js --preflight
+
+      - name: Capture authoritative production inventory
+        id: inventory
+        if: steps.channel.outputs.subdir == 'staging' && steps.intent.outputs.deploy_intent == 'true'
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          INVENTORY_DIR: ota/recovery-baseline
+        run: node tool/capture_hosting_inventory.js --output "$INVENTORY_DIR"
+
+      - name: Restore captured production bytes into the staging payload
+        # A staging publish replaces the whole Hosting release, so production's
+        # manifest.json and APK must be in the payload or they disappear from
+        # the live site. They are gitignored and absent from a fresh checkout;
+        # the capture above is the only source. This copies them to their
+        # production paths BEFORE the staging manifest is generated, so the
+        # payload carries production by construction rather than by a later
+        # comparison that could be skipped.
+        if: steps.channel.outputs.subdir == 'staging' && steps.intent.outputs.deploy_intent == 'true'
+        run: |
+          set -euo pipefail
+          test -s ota/recovery-baseline/manifest.json || {
+            echo "::error::HOSTING_INVENTORY_NO_BASELINE: ota/recovery-baseline/manifest.json is missing"; exit 1;
+          }
+          cp ota/recovery-baseline/manifest.json ota/public/manifest.json
+          mkdir -p ota/public/releases
+          cp ota/recovery-baseline/releases/*.apk ota/public/releases/
+          echo "OK: restored production manifest + $(ls ota/recovery-baseline/releases/*.apk | wc -l) production APK(s) into the payload"
+
+      - name: Verify the restored production payload against the captured manifest
+        # Completeness is decided by the manifest, not by what happened to be
+        # downloaded. The capture step could retrieve every file it found and
+        # still miss the APK the manifest names; looping over the captured set
+        # would pass that case. This resolves the manifest's own downloadUrl.
+        if: steps.channel.outputs.subdir == 'staging' && steps.intent.outputs.deploy_intent == 'true'
+        run: |
+          set -euo pipefail
+          test -d ota/recovery-baseline || { echo "::error::HOSTING_INVENTORY_NO_BASELINE: capture directory missing"; exit 1; }
+          test -s ota/recovery-baseline/inventory.json || { echo "::error::HOSTING_INVENTORY_NO_METADATA: inventory.json missing"; exit 1; }
+          test -s ota/recovery-baseline/SHA256SUMS || { echo "::error::HOSTING_INVENTORY_NO_METADATA: SHA256SUMS missing"; exit 1; }
+          ( cd ota/recovery-baseline && sha256sum --check --quiet SHA256SUMS ) || {
+            echo "::error::HOSTING_INVENTORY_METADATA_MISMATCH: recovery baseline does not match its SHA256SUMS"; exit 1;
+          }
+          APK_PATH=$(node -e '
+            const m = require("./ota/recovery-baseline/manifest.json");
+            const u = new URL(m.downloadUrl);
+            if (u.pathname !== "/releases/" + u.pathname.split("/").pop()) {
+              console.error("::error::manifest downloadUrl is not /releases/<file>.apk: " + u.pathname);
+              process.exit(1);
+            }
+            process.stdout.write(u.pathname);
+          ')
+          REL="${APK_PATH#/releases/}"
+          test -s "ota/public/releases/$REL" || {
+            echo "::error::PRODUCTION_ASSET_MISSING: manifest names $APK_PATH, absent from the payload"; exit 1;
+          }
+          cmp --silent "ota/recovery-baseline/releases/$REL" "ota/public/releases/$REL" || {
+            echo "::error::PRODUCTION_ASSET_ALTERED: $REL differs from the captured bytes"; exit 1;
+          }
+          cmp --silent ota/recovery-baseline/manifest.json ota/public/manifest.json || {
+            echo "::error::PRODUCTION_ASSET_ALTERED: manifest.json differs from the captured bytes"; exit 1;
+          }
+          echo "OK: production manifest and $APK_PATH are present and byte-identical to the capture"
+
       - name: Assert the static site pages are present in the payload
         # `firebase deploy` replaces the WHOLE Hosting release, so the published
         # site is exactly what is in ota/public. When the landing and legal pages
@@ -443,10 +522,15 @@ jobs:
             exit 1
           fi
           echo "Checking $APK against $MANIFEST_PATH"
+          # A staging manifest must name the staging path. Without --expect-path
+          # a staging run that accidentally emitted the production downloadUrl
+          # would pass every check and quietly tell testers to install the
+          # production build.
           dart run tool/validate_ota_manifest.dart \
             --manifest "$MANIFEST_PATH" \
             --apk "$APK" \
-            --expect-host "$HOST"
+            --expect-host "$HOST" \
+            ${SUBDIR:+--expect-path "/$SUBDIR/"}
 
       - name: Pre-flight the version against the live manifest
         # The update decision is made on the client: UpdatePolicy asks
@@ -476,14 +560,13 @@ jobs:
             --candidate "$MANIFEST_PATH" \
             --live-url "$LIVE"
 
-      - name: Assert the production manifest was not touched by a staging run
-        # firebase deploy replaces the whole Hosting release, so a staging
-        # publish also republishes production. That is only safe if production's
-        # bytes are identical to what is live — and the one way this job could
-        # change them is by writing a manifest at the production path. It does
-        # not: the manifest path is derived from the channel. This asserts the
-        # derivation rather than trusting it, because the failure is silent —
-        # testers would start being offered production releases.
+      - name: Assert the staging manifest landed under the channel path
+        # The restore step above put production's manifest at ota/public/
+        # manifest.json on purpose. This proves the staging manifest was NOT
+        # written there and that production's copy is still the captured bytes:
+        # if the two were the same file, staging would have overwritten the
+        # production manifest inside the payload and the comparison to the
+        # capture would have been against the thing it was meant to protect.
         env:
           SUBDIR: ${{ steps.channel.outputs.subdir }}
           MANIFEST_PATH: ${{ steps.version.outputs.manifest_path }}
@@ -493,11 +576,21 @@ jobs:
             echo "::error::channel '$SUBDIR' wrote its manifest to '$MANIFEST_PATH', expected '$EXPECTED'"
             exit 1
           fi
-          if [ -n "$SUBDIR" ] && [ -f ota/public/manifest.json ]; then
-            echo "::error::a staging run produced ota/public/manifest.json; staging must never own the production manifest"
-            exit 1
+          if [ -n "$SUBDIR" ]; then
+            cmp --silent ota/recovery-baseline/manifest.json ota/public/manifest.json || {
+              echo "::error::PRODUCTION_MANIFEST_ALTERED: the staging run changed the production manifest in the payload"; exit 1;
+            }
           fi
-          echo "OK: $SUBDIR run wrote $MANIFEST_PATH and left the production manifest alone"
+          echo "OK: $SUBDIR run wrote $MANIFEST_PATH and left the production manifest at the captured bytes"
+
+      - name: Upload retained production recovery baseline
+        if: steps.channel.outputs.subdir == 'staging' && steps.intent.outputs.deploy_intent == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-recovery
+          path: ota/recovery-baseline
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Upload the validated OTA payload
         # The deploy job runs on a fresh checkout, where ota/public holds only
@@ -546,6 +639,32 @@ jobs:
           name: ota-payload
           path: ota/public
 
+      - name: Download the retained production recovery baseline
+        # Needed only to prove the payload still carries production's bytes; the
+        # payload already contains them because validate restored them. A
+        # staging deploy without the baseline cannot be verified, so this is
+        # gated on the same condition.
+        if: needs.validate.outputs.subdir != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-recovery
+          path: ota/recovery-baseline
+
+      - name: Verify the recovery baseline is intact
+        if: needs.validate.outputs.subdir != ''
+        run: |
+          set -euo pipefail
+          test -s ota/recovery-baseline/manifest.json || {
+            echo "::error::HOSTING_INVENTORY_NO_BASELINE: recovery artifact has no manifest.json"; exit 1;
+          }
+          test -s ota/recovery-baseline/SHA256SUMS || {
+            echo "::error::HOSTING_INVENTORY_NO_METADATA: recovery artifact has no SHA256SUMS"; exit 1;
+          }
+          ( cd ota/recovery-baseline && sha256sum --check --quiet SHA256SUMS ) || {
+            echo "::error::HOSTING_INVENTORY_METADATA_MISMATCH: recovery artifact is corrupt"; exit 1;
+          }
+          echo "OK: recovery artifact matches its SHA256SUMS"
+
       - name: Assert the payload is the one that will be published
         env:
           SUBDIR: ${{ needs.validate.outputs.subdir }}
@@ -582,6 +701,38 @@ jobs:
             exit 1
           fi
           echo "Publishing $DIR/manifest.json + $DIR/releases/$APK_NAME (sha256 $SHA)"
+          if [ -n "$SUBDIR" ]; then
+            # Independent of validate's own check: prove the bytes about to be
+            # published for production are the bytes that were captured. The
+            # baseline was downloaded from the recovery artifact, so this also
+            # proves the artifact the runbook relies on is the one this deploy
+            # was gated on.
+            test -d ota/recovery-baseline || { echo "::error::HOSTING_INVENTORY_NO_BASELINE: baseline not downloaded"; exit 1; }
+            cmp --silent ota/recovery-baseline/manifest.json ota/public/manifest.json || {
+              echo "::error::PRODUCTION_MANIFEST_ALTERED: payload manifest differs from the capture"; exit 1;
+            }
+            # Fail closed if a capture run produced no APK at all: the loop
+            # below cannot detect an empty baseline by itself.
+            baseline_apks=0
+            shopt -s nullglob
+            baseline_list=(ota/recovery-baseline/releases/*.apk)
+            shopt -u nullglob
+            baseline_apks=${#baseline_list[@]}
+            if [ "$baseline_apks" -lt 1 ]; then
+              echo "::error::HOSTING_INVENTORY_NO_APK: recovery baseline holds no production APK"
+              exit 1
+            fi
+            for apk in "${baseline_list[@]}"; do
+              rel="${apk#ota/recovery-baseline/}"
+              test -f "ota/public/$rel" || {
+                echo "::error::PRODUCTION_ASSET_MISSING: $rel is in the baseline but not the payload"; exit 1;
+              }
+              cmp --silent "$apk" "ota/public/$rel" || {
+                echo "::error::PRODUCTION_ASSET_ALTERED: $rel differs from the baseline"; exit 1;
+              }
+            done
+            echo "OK: $baseline_apks production APK(s) and the production manifest match the recovery baseline"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
@@ -623,24 +774,132 @@ jobs:
             --token "$FIREBASE_TOKEN" \
             --non-interactive
 
-      - name: Verify the live download link serves an APK
-        # The site is public and the check is one request, so prove the button
-        # works instead of assuming the deploy took. Retries cover the window
-        # where Hosting has the rewrite but the function is still rolling out.
+      - name: Verify the published channel and the download link
+        # The channel's manifest must be live AND still describe the build this
+        # run published - a 200 alone would pass on a stale or wrong manifest,
+        # which is the failure an OTA update causes without any error. The
+        # download button must still resolve through the downloadApk rewrite.
+        env:
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          SUBDIR: ${{ needs.validate.outputs.subdir }}
         run: |
           set -euo pipefail
-          URL="https://spendsense-ota-2026.web.app/releases/latest.apk"
+          BASE="${OTA_BASE_URL%/}${SUBDIR:+/$SUBDIR}"
+          # Version and digest come from the payload that is about to be
+          # published, not from job outputs: GitHub drops an output whose value
+          # matches a registered secret, and the payload is the artifact the
+          # deploy gate already verified.
+          APK=$(ls "ota/public${SUBDIR:+/$SUBDIR}"/releases/*.apk)
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          VERSION=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).latestVersion)' "ota/public${SUBDIR:+/$SUBDIR}/manifest.json")
+
           for i in 1 2 3 4 5 6; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' -I \
-                     --max-time 20 --proto '=https' "$URL" || echo "000")
-            echo "attempt $i: HTTP $CODE"
-            if [ "$CODE" = "302" ] || [ "$CODE" = "200" ]; then
-              echo "OK: $URL resolves to the published APK"
-              exit 0
+            if curl -fsS --max-time 20 --proto '=https' "$BASE/manifest.json" -o published.json; then
+              break
             fi
+            echo "attempt $i: $BASE/manifest.json not served yet"
             sleep 15
           done
-          echo "::error::$URL did not serve an APK after deploy (last HTTP $CODE)"
+          test -s published.json || { echo "::error::$BASE/manifest.json is not served after deploy"; exit 1; }
+
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync("published.json", "utf8"));
+            const [base, version, sha, subdir] = process.argv.slice(1);
+            const fail = (code, msg) => { console.error(`::error::${code} ${msg}`); process.exit(1); };
+            if (m.latestVersion !== version) fail("PUBLISHED_VERSION_MISMATCH", `published ${m.latestVersion}, expected ${version}`);
+            if (m.sha256 !== sha) fail("PUBLISHED_HASH_MISMATCH", `published sha256 ${m.sha256}, expected ${sha}`);
+            const u = new URL(m.downloadUrl);
+            const wantPath = `${subdir ? "/" + subdir : ""}/releases/`;
+            if (!u.pathname.startsWith(wantPath)) fail("PUBLISHED_URL_WRONG_CHANNEL", `downloadUrl ${u.pathname} is not under ${wantPath}`);
+            if (!/\.apk$/.test(u.pathname)) fail("PUBLISHED_URL_NOT_APK", u.pathname);
+            if (!/^\d+\.\d+\.\d+$/.test(m.minimumSupportedVersion)) fail("PUBLISHED_MINIMUM_INVALID", m.minimumSupportedVersion);
+            console.log(`OK: published ${m.latestVersion} sha256 ${m.sha256.slice(0, 12)}… downloadUrl ${u.pathname}`);
+          ' "$BASE" "$VERSION" "$SHA" "${SUBDIR:-}"
+
+          # The APK the published manifest names must be downloadable at that
+          # exact URL, not merely referenced.
+          APK_URL=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync("published.json","utf8")).downloadUrl)')
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -I --max-time 60 --proto '=https' "$APK_URL" || echo "000")
+          if [ "$CODE" != "200" ]; then
+            echo "::error::PUBLISHED_APK_UNREACHABLE: $APK_URL returned HTTP $CODE"
+            exit 1
+          fi
+          echo "OK: $APK_URL serves the APK"
+
+          # A staging deploy republishes production too. The staging checks above
+          # prove the staging channel; none of them looks at production's own
+          # manifest, so a deploy that deleted it would still pass them. Compare
+          # live production against the captured baseline by content, not by
+          # status code: the downloadApk rewrite keeps answering even when the
+          # manifest file behind it is gone.
+          if [ -n "$SUBDIR" ]; then
+            ok=0
+            for i in 1 2 3 4 5 6; do
+              if curl -fsS --max-time 20 --proto '=https' "${OTA_BASE_URL%/}/manifest.json" -o prod-live.json; then ok=1; break; fi
+              echo "attempt $i: production /manifest.json not served yet"
+              sleep 15
+            done
+            if [ "$ok" -ne 1 ]; then
+              echo "::error::PRODUCTION_MANIFEST_GONE: staging deploy removed production /manifest.json"
+              exit 1
+            fi
+            node -e '
+              const fs = require("fs");
+              const live = JSON.parse(fs.readFileSync("prod-live.json", "utf8"));
+              const baseline = JSON.parse(fs.readFileSync("ota/recovery-baseline/manifest.json", "utf8"));
+              const fail = (code, msg) => { console.error(`::error::${code} ${msg}`); process.exit(1); };
+              if (live.sha256 !== baseline.sha256) fail("PRODUCTION_MANIFEST_ALTERED", `live sha256 ${live.sha256}, baseline ${baseline.sha256}`);
+              if (live.latestVersion !== baseline.latestVersion) fail("PRODUCTION_MANIFEST_ALTERED", `live ${live.latestVersion}, baseline ${baseline.latestVersion}`);
+              if (live.latestBuildNumber !== baseline.latestBuildNumber) fail("PRODUCTION_MANIFEST_ALTERED", `live build ${live.latestBuildNumber}, baseline ${baseline.latestBuildNumber}`);
+              if (live.downloadUrl !== baseline.downloadUrl) fail("PRODUCTION_MANIFEST_ALTERED", `live downloadUrl ${live.downloadUrl}, baseline ${baseline.downloadUrl}`);
+              console.log(`OK: live production manifest matches the baseline (${live.latestVersion}+${live.latestBuildNumber})`);
+            '
+
+            PROD_APK=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync("ota/recovery-baseline/manifest.json","utf8")).downloadUrl)')
+            # Hash the served bytes, not just the status. A 200 with a truncated
+            # or replaced body would install a build the manifest never
+            # authorised, and no status code would show it.
+            PROD_SHA=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync("ota/recovery-baseline/manifest.json","utf8")).sha256)')
+            CODE=$(curl -sL -o prod-live.apk -w '%{http_code}' --max-redirs 1 --max-filesize 200000000 --max-time 600 --proto '=https' "$PROD_APK" || echo "000")
+            if [ "$CODE" != "200" ]; then
+              echo "::error::PRODUCTION_APK_GONE: $PROD_APK returned HTTP $CODE"
+              exit 1
+            fi
+            GOT_SHA=$(sha256sum prod-live.apk | cut -d' ' -f1)
+            if [ "$GOT_SHA" != "$PROD_SHA" ]; then
+              echo "::error::PRODUCTION_APK_ALTERED: $PROD_APK serves sha256 $GOT_SHA, baseline is $PROD_SHA"
+              exit 1
+            fi
+            echo "OK: production APK bytes match the baseline (sha256 ${PROD_SHA:0:12}…)"
+
+            # The page chrome is part of the release tree too. Check a real page
+            # and its stylesheet, using status codes rather than the catch-all
+            # rewrite, which can turn a miss into an HTTP 200.
+            for p in /legal/ /legal/style.css; do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-redirs 0 --max-time 30 --proto '=https' "${OTA_BASE_URL%/}$p" || echo "000")
+              if [ "$CODE" != "200" ]; then
+                echo "::error::PRODUCTION_PAGE_GONE: $p returned HTTP $CODE after the staging deploy"
+                exit 1
+              fi
+            done
+            echo "OK: production /legal/ pages survived the staging deploy"
+          fi
+
+          # Last check, and the only one allowed to end the step successfully.
+          for i in 1 2 3 4 5 6; do
+            REDIR=$(curl -s -o /dev/null -w '%{redirect_url}' -I --max-redirs 0 --max-time 20 --proto '=https' \
+                      "${OTA_BASE_URL%/}/releases/latest.apk" || true)
+            echo "attempt $i: /releases/latest.apk -> ${REDIR:-<none>}"
+            case "$REDIR" in
+              */releases/spendsense-*.apk)
+                echo "OK: production download link redirects to a versioned APK"
+                exit 0
+                ;;
+            esac
+            sleep 15
+          done
+          echo "::error::DOWNLOAD_LINK_BROKEN: /releases/latest.apk does not redirect to a versioned APK after deploy"
           exit 1
 
       - name: Record what was published
@@ -652,5 +911,5 @@ jobs:
             echo "- project: \`spendsense-ota-2026\`"
             echo "- version: \`${{ needs.validate.outputs.version }}\`"
             echo "- channel: ${SUBDIR:-production} (\`hosting\` + \`functions:downloadApk\`)"
-            echo "- download: https://spendsense-ota-2026.web.app/releases/latest.apk"
+            echo "- manifest: https://spendsense-ota-2026.web.app${SUBDIR:+/$SUBDIR}/manifest.json"
           } >> "$GITHUB_STEP_SUMMARY"
