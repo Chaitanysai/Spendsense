@@ -20,6 +20,11 @@ on:
       - 'android/**'
       - 'firebase.json'
       - 'tool/validate_hosting_headers.js'
+      - 'tool/validate_yaml.js'
+      - 'tool/test_validate_yaml_ota_guard.js'
+      - 'tool/validate_ota_manifest.dart'
+      - 'tool/capture_hosting_inventory.js'
+      - 'tool/check_ota_monotonicity.dart'
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'AGENTS.md'
@@ -86,6 +91,7 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund yaml
           node tool/validate_yaml.js
+          node tool/test_validate_yaml_ota_guard.js
 
       - name: Validate the hosting cache policy
         # firebase.json decides what every visitor's browser may keep. The
