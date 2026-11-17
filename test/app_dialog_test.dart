@@ -13,19 +13,20 @@ import 'package:spendsense/widgets/app_dialog.dart';
 /// what the later migration is checked against.
 
 Widget _host({bool dark = false, double textScale = 1.0}) => MaterialApp(
-      theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
-      home: MediaQuery(
-        data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-        child: const Scaffold(body: SizedBox.expand()),
-      ),
-    );
+  theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+  home: MediaQuery(
+    data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+    child: const Scaffold(body: SizedBox.expand()),
+  ),
+);
 
 void main() {
   setUp(() => AppColors.applyPalette(AppPalette.defaultPalette));
   tearDown(() => AppColors.applyPalette(AppPalette.defaultPalette));
 
-  testWidgets('confirm resolves true and cancel resolves false',
-      (tester) async {
+  testWidgets('confirm resolves true and cancel resolves false', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host());
     final context = tester.element(find.byType(Scaffold));
 
@@ -48,16 +49,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(confirmed, isFalse);
 
-    showAppConfirmDialog(context, title: 'Delete budget?', confirmLabel: 'Delete')
-        .then((value) => confirmed = value);
+    showAppConfirmDialog(
+      context,
+      title: 'Delete budget?',
+      confirmLabel: 'Delete',
+    ).then((value) => confirmed = value);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(confirmed, isTrue);
   });
 
-  testWidgets('dismissing the barrier is a refusal, never a confirmation',
-      (tester) async {
+  testWidgets('dismissing the barrier is a refusal, never a confirmation', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host());
     final context = tester.element(find.byType(Scaffold));
 
@@ -96,8 +101,9 @@ void main() {
     expect(background, AppColors.danger);
   });
 
-  testWidgets('a long body scrolls and stays inside the dialog at 2x text',
-      (tester) async {
+  testWidgets('a long body scrolls and stays inside the dialog at 2x text', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host(textScale: 2.0));
     final context = tester.element(find.byType(Scaffold));
 
@@ -120,8 +126,9 @@ void main() {
     expect(find.text('About this ledger'), findsNothing);
   });
 
-  testWidgets('the dialog surface comes from the theme, on every palette',
-      (tester) async {
+  testWidgets('the dialog surface comes from the theme, on every palette', (
+    tester,
+  ) async {
     for (final palette in AppPalette.all) {
       AppColors.applyPalette(palette);
       for (final dark in [false, true]) {
@@ -130,8 +137,11 @@ void main() {
         showAppAlertDialog(context, title: 'Confirm', message: 'Body');
         await tester.pumpAndSettle();
 
-        expect(tester.takeException(), isNull,
-            reason: '${palette.id} dark=$dark');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '${palette.id} dark=$dark',
+        );
         expect(find.text('Confirm'), findsOneWidget);
 
         await tester.tap(find.text('OK'));

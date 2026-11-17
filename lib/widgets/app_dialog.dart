@@ -44,8 +44,7 @@ class AppDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone =
-        destructive ? AppColors.danger : AppColors.brandInk(context);
+    final tone = destructive ? AppColors.danger : AppColors.brandInk(context);
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -145,11 +145,8 @@ void main() {
     injection,
   ];
 
-  FinanceToolEngine engine() => FinanceToolEngine(
-        transactions: transactions,
-        plans: [plan],
-        now: now,
-      );
+  FinanceToolEngine engine() =>
+      FinanceToolEngine(transactions: transactions, plans: [plan], now: now);
 
   group('merchant alias retrieval', () {
     test('Groww and Zerodha match whole aliases only', () {
@@ -189,20 +186,22 @@ void main() {
   });
 
   group('dates, totals and pagination', () {
-    test('calendar October totals are authoritative and exclude excluded rows',
-        () {
-      final result = engine().execute('get_spending_summary', {
-        'startDate': '2026-10-01',
-        'endDate': '2026-10-31',
-      });
-      expect(result.data['spendingMinor'], 2140900);
-      expect(result.data['incomeMinor'], 10025000);
-      expect(result.data['excludedMinor'], 200000);
-      expect(result.data['investmentMinor'], 1300000);
-      expect(result.data['transferMinor'], 500000);
-      expect(result.data['expenseCount'], 10);
-      expect(result.data['excludedCount'], 1);
-    });
+    test(
+      'calendar October totals are authoritative and exclude excluded rows',
+      () {
+        final result = engine().execute('get_spending_summary', {
+          'startDate': '2026-10-01',
+          'endDate': '2026-10-31',
+        });
+        expect(result.data['spendingMinor'], 2140900);
+        expect(result.data['incomeMinor'], 10025000);
+        expect(result.data['excludedMinor'], 200000);
+        expect(result.data['investmentMinor'], 1300000);
+        expect(result.data['transferMinor'], 500000);
+        expect(result.data['expenseCount'], 10);
+        expect(result.data['excludedCount'], 1);
+      },
+    );
 
     test('pagination uses all matches for totals, not just the page', () {
       final result = engine().execute('search_transactions', {
@@ -268,8 +267,8 @@ void main() {
         'startDate': '2026-10-01',
         'endDate': '2026-10-31',
       });
-      final categories =
-          (result.data['categories'] as List).cast<Map<String, dynamic>>();
+      final categories = (result.data['categories'] as List)
+          .cast<Map<String, dynamic>>();
       final food = categories.firstWhere((c) => c['category'] == 'Food');
       expect(food['amountMinor'], 160000);
       expect(food['count'], 4);
@@ -282,8 +281,8 @@ void main() {
       expect((result.data['current'] as Map)['spendingMinor'], 2140900);
       expect((result.data['previous'] as Map)['spendingMinor'], 570000);
       expect(result.data['deltaMinor'], 1570900);
-      final drivers =
-          (result.data['categoryDrivers'] as List).cast<Map<String, dynamic>>();
+      final drivers = (result.data['categoryDrivers'] as List)
+          .cast<Map<String, dynamic>>();
       expect(drivers.first['category'], 'Investment');
     });
   });
@@ -311,18 +310,26 @@ void main() {
   });
 
   group('preview and validation gates', () {
-    test('exclusion preview reports resulting spending and does not mutate',
-        () {
-      final result = engine().execute('preview_transaction_exclusion', {
-        'transactionIds': ['g2', 'g3'],
-      });
-      final pending = result.pending!;
-      expect(pending.type, AssistantChangeType.exclusion);
-      expect(pending.expectedCount, 1);
-      expect(pending.expectedTotalMinor, 1000000);
-      expect(pending.spendingAfterMinor, pending.spendingBeforeMinor - 1000000);
-      expect(transactions.where((t) => t.id == 'g2').single.isExcluded, false);
-    });
+    test(
+      'exclusion preview reports resulting spending and does not mutate',
+      () {
+        final result = engine().execute('preview_transaction_exclusion', {
+          'transactionIds': ['g2', 'g3'],
+        });
+        final pending = result.pending!;
+        expect(pending.type, AssistantChangeType.exclusion);
+        expect(pending.expectedCount, 1);
+        expect(pending.expectedTotalMinor, 1000000);
+        expect(
+          pending.spendingAfterMinor,
+          pending.spendingBeforeMinor - 1000000,
+        );
+        expect(
+          transactions.where((t) => t.id == 'g2').single.isExcluded,
+          false,
+        );
+      },
+    );
 
     test('deletion preview uses exact ids and reports permanent intent', () {
       final result = engine().execute('preview_transaction_deletion', {
@@ -402,8 +409,8 @@ void main() {
       account: 'XX9876',
       reference: 'UTR999999',
     );
-    final projection =
-        AssistantTransactionView.fromTransaction(sensitive).toToolJson();
+    final projection = AssistantTransactionView.fromTransaction(sensitive)
+        .toToolJson();
     final encoded = jsonEncode(projection);
     expect(projection.keys, {
       'id',

@@ -6,12 +6,12 @@ enum PlanFrequency { weekly, biWeekly, monthly, quarterly, yearly }
 
 extension PlanFrequencyX on PlanFrequency {
   String get label => switch (this) {
-        PlanFrequency.weekly => 'Weekly',
-        PlanFrequency.biWeekly => 'Every 2 weeks',
-        PlanFrequency.monthly => 'Monthly',
-        PlanFrequency.quarterly => 'Every 3 months',
-        PlanFrequency.yearly => 'Yearly',
-      };
+    PlanFrequency.weekly => 'Weekly',
+    PlanFrequency.biWeekly => 'Every 2 weeks',
+    PlanFrequency.monthly => 'Monthly',
+    PlanFrequency.quarterly => 'Every 3 months',
+    PlanFrequency.yearly => 'Yearly',
+  };
 
   /// This plan's amount expressed per month, in integer paise, rounded to the
   /// nearest paise (half up). Conversion factors are exact fractions:
@@ -138,15 +138,15 @@ class RecurringPlan {
   /// month-end bill returns to the 31st after a short month. Only reschedules;
   /// never touches the ledger.
   RecurringPlan advanced() => RecurringPlan(
-        id: id,
-        title: title,
-        category: category,
-        amountMinor: amountMinor,
-        frequency: frequency,
-        nextDue: followingDue,
-        anchorDay: anchorDay,
-        sourceTransactionId: sourceTransactionId,
-      );
+    id: id,
+    title: title,
+    category: category,
+    amountMinor: amountMinor,
+    frequency: frequency,
+    nextDue: followingDue,
+    anchorDay: anchorDay,
+    sourceTransactionId: sourceTransactionId,
+  );
 
   /// The same plan rolled forward to its first due date on or after [today].
   /// Used to prefill a plan made from an old transaction. Bounded so a corrupt
@@ -181,16 +181,15 @@ class RecurringPlan {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'category': category,
-        'amountMinor': amountMinor,
-        'frequency': frequency.name,
-        'nextDue': _ymd(nextDue),
-        'anchorDay': anchorDay,
-        if (sourceTransactionId != null)
-          'sourceTransactionId': sourceTransactionId,
-      };
+    'id': id,
+    'title': title,
+    'category': category,
+    'amountMinor': amountMinor,
+    'frequency': frequency.name,
+    'nextDue': _ymd(nextDue),
+    'anchorDay': anchorDay,
+    if (sourceTransactionId != null) 'sourceTransactionId': sourceTransactionId,
+  };
 
   /// Strict decoder: any missing or ill-typed field throws [FormatException]
   /// instead of being replaced by a guess.
@@ -233,7 +232,8 @@ class RecurringPlan {
     return plan;
   }
 
-  static String _ymd(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+  static String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 

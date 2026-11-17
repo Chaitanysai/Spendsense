@@ -64,13 +64,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
               const SizedBox(height: AppSpacing.xl),
               Text('Insights', style: AppText.h1(context)),
               const SizedBox(height: 4),
-              Text('Understand your spending at a glance',
-                  style: AppText.body(context)),
-              const SizedBox(height: AppSpacing.xl),
-              FadeSlideIn(
-                index: 0,
-                child: _monthlySummary(context, metrics),
+              Text(
+                'Understand your spending at a glance',
+                style: AppText.body(context),
               ),
+              const SizedBox(height: AppSpacing.xl),
+              FadeSlideIn(index: 0, child: _monthlySummary(context, metrics)),
               const SizedBox(height: AppSpacing.xl),
               FadeSlideIn(
                 index: 3,
@@ -85,20 +84,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
               FadeSlideIn(
                 index: 5,
                 child: GlassCard(
-                  onTap: () => Navigator.of(context).push(
-                    AppPageRoute(builder: (_) => const SummaryScreen()),
-                  ),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(AppPageRoute(builder: (_) => const SummaryScreen())),
                   child: Row(
                     children: [
-                      Icon(Icons.summarize_rounded,
-                          color: AppColors.brandInk(context)),
+                      Icon(
+                        Icons.summarize_rounded,
+                        color: AppColors.brandInk(context),
+                      ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: Text('Financial summary',
-                            style: AppText.title(context)),
+                        child: Text(
+                          'Financial summary',
+                          style: AppText.title(context),
+                        ),
                       ),
-                      Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textTertiary(context)),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textTertiary(context),
+                      ),
                     ],
                   ),
                 ),
@@ -137,21 +142,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     // Both months come from ONE captured "now" so the pair can never straddle
     // a midnight rollover, and membership is decided on the LOCAL calendar day.
     final thisMonth = PeriodMath.calendarMonth(now);
-    final lastMonth =
-        PeriodMath.calendarMonth(DateTime(now.year, now.month - 1));
+    final lastMonth = PeriodMath.calendarMonth(
+      DateTime(now.year, now.month - 1),
+    );
 
     bool inMonth(TransactionModel t, DateTimeRange month) =>
         !t.isExcluded &&
         t.type == TransactionType.expense &&
         PeriodMath.containsLocalDate(month, t.date);
 
-    final currentMonthTx =
-        provider.transactions.where((t) => inMonth(t, thisMonth)).toList();
-    final lastMonthTx =
-        provider.transactions.where((t) => inMonth(t, lastMonth)).toList();
+    final currentMonthTx = provider.transactions
+        .where((t) => inMonth(t, thisMonth))
+        .toList();
+    final lastMonthTx = provider.transactions
+        .where((t) => inMonth(t, lastMonth))
+        .toList();
 
-    final currentTotal =
-        currentMonthTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+    final currentTotal = currentMonthTx.fold<int>(
+      0,
+      (sum, t) => sum + t.amountMinor,
+    );
     final lastTotal = lastMonthTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
 
     double percentChange = 0;
@@ -167,8 +177,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final sortedCategories = categoryMap.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final topCategory =
-        sortedCategories.isEmpty ? 'No data' : sortedCategories.first.key;
+    final topCategory = sortedCategories.isEmpty
+        ? 'No data'
+        : sortedCategories.first.key;
 
     return _InsightMetrics(
       currentTotal: currentTotal,
@@ -184,21 +195,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final changeColor = !metrics.hasPreviousMonth
         ? AppColors.textSecondary(context)
         : metrics.percentChange > 0
-            ? AppColors.expenseRed
-            : metrics.percentChange < 0
-                ? AppColors.incomeGreen
-                : AppColors.textSecondary(context);
+        ? AppColors.expenseRed
+        : metrics.percentChange < 0
+        ? AppColors.incomeGreen
+        : AppColors.textSecondary(context);
     final changeValue = !metrics.hasPreviousMonth
         ? '—'
         : '${metrics.percentChange > 0 ? '+' : ''}'
-            '${metrics.percentChange.toStringAsFixed(1)}%';
+              '${metrics.percentChange.toStringAsFixed(1)}%';
     final changeLabel = !metrics.hasPreviousMonth
         ? 'No prior month data'
         : metrics.percentChange > 0
-            ? 'More than last month'
-            : metrics.percentChange < 0
-                ? 'Less than last month'
-                : 'Same as last month';
+        ? 'More than last month'
+        : metrics.percentChange < 0
+        ? 'Less than last month'
+        : 'Same as last month';
 
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -213,8 +224,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   style: AppText.title(context),
                 ),
               ),
-              Icon(Icons.calendar_month_rounded,
-                  color: AppColors.brandInk(context), size: 20),
+              Icon(
+                Icons.calendar_month_rounded,
+                color: AppColors.brandInk(context),
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -264,30 +278,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
     required String value,
     required Color valueColor,
     String? detail,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppText.label(context)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.weight(AppText.bodyStrong(context), FontWeight.w700)
-                .copyWith(color: valueColor),
-          ),
-          if (detail != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              detail,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.bodySmall(context),
-            ),
-          ],
-        ],
-      );
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: AppText.label(context)),
+      const SizedBox(height: AppSpacing.xs),
+      Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppText.weight(
+          AppText.bodyStrong(context),
+          FontWeight.w700,
+        ).copyWith(color: valueColor),
+      ),
+      if (detail != null) ...[
+        const SizedBox(height: 2),
+        Text(
+          detail,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.bodySmall(context),
+        ),
+      ],
+    ],
+  );
 
   Widget _buildCategoryBubbles(BuildContext context, _InsightMetrics metrics) {
     final total = metrics.totalCategories;
@@ -298,10 +313,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Row(
             children: [
               Expanded(
-                child: Text('Top categories',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.title(context)),
+                child: Text(
+                  'Top categories',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.title(context),
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text('THIS MONTH', style: AppText.overline(context)),
@@ -309,8 +326,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (metrics.categories.isEmpty)
-            Text('No spending data yet this month.',
-                style: AppText.body(context))
+            Text(
+              'No spending data yet this month.',
+              style: AppText.body(context),
+            )
           else
             SizedBox(
               height: 96,
@@ -355,26 +374,33 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   color: AppColors.heroChipFill(context),
                   borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
-                child: Icon(Icons.smart_toy_rounded,
-                    color: AppColors.onHero(context)),
+                child: Icon(
+                  Icons.smart_toy_rounded,
+                  color: AppColors.onHero(context),
+                ),
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.heroChipFill(context),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text('Tap to open',
-                    style:
-                        AppText.onGradient(size: 11, weight: FontWeight.w700)),
+                child: Text(
+                  'Tap to open',
+                  style: AppText.onGradient(size: 11, weight: FontWeight.w700),
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Ask SpendSense AI',
-              style: AppText.onGradient(size: 24, weight: FontWeight.w800)),
+          Text(
+            'Ask SpendSense AI',
+            style: AppText.onGradient(size: 24, weight: FontWeight.w800),
+          ),
           const SizedBox(height: AppSpacing.sm),
           // `height: 1.4` was the clipping cause: a 1.4x line box over two
           // lines needs 2.8 * fontSize of vertical space, which overran the
@@ -398,8 +424,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     String tip = 'Spending is steady. Ask the bot what drove the month.';
 
     if (metrics.currentTotal > 10000) {
-      tip =
-          'High spending detected. Ask the bot for top merchants and trim ideas.';
+      tip = 'High spending detected. Ask the bot for top merchants and trim ideas.';
     } else if (metrics.percentChange > 20) {
       tip =
           'This month jumped sharply. A follow-up about categories will help.';
@@ -418,8 +443,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
               gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(AppRadius.card),
             ),
-            child: Icon(Icons.lightbulb_rounded,
-                color: AppColors.onAccentHero(context)),
+            child: Icon(
+              Icons.lightbulb_rounded,
+              color: AppColors.onAccentHero(context),
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

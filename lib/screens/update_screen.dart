@@ -74,7 +74,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
                       provider.installed == null
                           ? 'SpendSense for Android'
                           : 'Build ${provider.installed!.buildNumber} · '
-                              'com.example.spendsense',
+                                'com.example.spendsense',
                       style: AppText.body(context),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -128,8 +128,10 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                   ),
                                 ),
                                 Expanded(
-                                  child:
-                                      Text(note, style: AppText.body(context)),
+                                  child: Text(
+                                    note,
+                                    style: AppText.body(context),
+                                  ),
                                 ),
                               ],
                             ),
@@ -212,15 +214,15 @@ class _StatusPill extends StatelessWidget {
       UpdateUiState.downloading => ('Downloading…', AppColors.brand),
       UpdateUiState.verifying => ('Verifying…', AppColors.brand),
       UpdateUiState.readyToInstall => (
-          'Ready to install',
-          AppColors.incomeGreen
-        ),
+        'Ready to install',
+        AppColors.incomeGreen,
+      ),
       UpdateUiState.installing => ('Installing…', AppColors.brand),
       UpdateUiState.error => ('Update check failed', AppColors.danger),
       UpdateUiState.idle => (
-          'Not checked yet',
-          AppColors.textTertiary(context)
-        ),
+        'Not checked yet',
+        AppColors.textTertiary(context),
+      ),
     };
 
     return Container(
@@ -233,10 +235,7 @@ class _StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        label,
-        style: AppText.label(context).copyWith(color: color),
-      ),
+      child: Text(label, style: AppText.label(context).copyWith(color: color)),
     );
   }
 }
@@ -266,8 +265,8 @@ class _StatusBody extends StatelessWidget {
           body: provider.isConfigured
               ? 'Tap below to check for a new version.'
               : 'This build was compiled without an update manifest URL, so '
-                  'there is nothing to check. Install a release build to '
-                  'receive updates.',
+                    'there is nothing to check. Install a release build to '
+                    'receive updates.',
           action: provider.isConfigured
               ? AppPrimaryButton(
                   label: 'Check for updates',
@@ -284,8 +283,8 @@ class _StatusBody extends StatelessWidget {
           body: provider.installed == null
               ? 'The latest available version is installed.'
               : 'Version ${provider.installed!.versionName} '
-                  '(build ${provider.installed!.buildNumber}) is the latest '
-                  'release.',
+                    '(build ${provider.installed!.buildNumber}) is the latest '
+                    'release.',
           action: AppGhostButton(
             label: 'Check again',
             icon: Icons.refresh_rounded,
@@ -303,11 +302,11 @@ class _StatusBody extends StatelessWidget {
               : 'Version ${manifest?.latest.versionName ?? ''} is available',
           body: required
               ? 'Version ${provider.installed?.versionName ?? ''} is below the '
-                  'minimum supported version. Update to keep receiving fixes. '
-                  'You can keep using the app and export your data from '
-                  'Settings at any time — updating never deletes transactions.'
+                    'minimum supported version. Update to keep receiving fixes. '
+                    'You can keep using the app and export your data from '
+                    'Settings at any time — updating never deletes transactions.'
               : 'Download and install the latest SpendSense release. Your data '
-                  'stays on this device.',
+                    'stays on this device.',
           tint: required ? AppColors.danger : null,
           action: Column(
             children: [
@@ -349,7 +348,8 @@ class _StatusBody extends StatelessWidget {
         return _MessageCard(
           icon: Icons.install_mobile_rounded,
           title: 'Update ready to install',
-          body: provider.message ??
+          body:
+              provider.message ??
               'Android will ask you to confirm the install. SpendSense cannot '
                   'install anything without that confirmation.',
           action: AppPrimaryButton(

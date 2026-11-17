@@ -107,9 +107,8 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
         _consent = true;
         _connectedEmail = email;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gmail connected')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Gmail connected')));
     } on EmailAuthUnavailableException catch (e) {
       // A failed authorisation must not leave consent recorded: the persisted
       // flag is what the next launch reads, and a stale "connected" state sent
@@ -147,9 +146,8 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
         _connectedEmail = null;
         _lastSync = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gmail disconnected')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Gmail disconnected')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -166,9 +164,8 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
       final last = await _source.lastScanAt();
       if (!mounted) return;
       setState(() => _lastSync = last);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(emailSyncSnackBarText(report))),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(emailSyncSnackBarText(report))));
     } on EmailImportBusyException {
       if (mounted) {
         setState(() => _error = 'Another sync is running. Try again shortly.');
@@ -215,9 +212,7 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
   }
 
   Future<void> _removeSender(String domain) async {
-    await _source.setSenderDomains(
-      _domains.where((d) => d != domain).toList(),
-    );
+    await _source.setSenderDomains(_domains.where((d) => d != domain).toList());
     final updated = await _source.senderDomains();
     if (!mounted) return;
     setState(() => _domains = updated);
@@ -374,8 +369,9 @@ class _EmailImportScreenState extends State<EmailImportScreen> {
                           for (final domain in _domains)
                             InputChip(
                               label: Text(domain),
-                              onDeleted:
-                                  _busy ? null : () => _removeSender(domain),
+                              onDeleted: _busy
+                                  ? null
+                                  : () => _removeSender(domain),
                             ),
                         ],
                       ),

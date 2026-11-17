@@ -25,62 +25,71 @@ void main() {
   });
 
   TransactionModel tx(DateTime date, int minor) => TransactionModel(
-        id: 'tx-${date.millisecondsSinceEpoch}',
-        amountMinor: minor,
-        type: TransactionType.expense,
-        merchant: 'Merchant',
-        category: 'Food',
-        paymentMethod: 'UPI',
-        date: date,
-        time: '10:00',
-        originalSms: '',
-        isExcluded: false,
-      );
+    id: 'tx-${date.millisecondsSinceEpoch}',
+    amountMinor: minor,
+    type: TransactionType.expense,
+    merchant: 'Merchant',
+    category: 'Food',
+    paymentMethod: 'UPI',
+    date: date,
+    time: '10:00',
+    originalSms: '',
+    isExcluded: false,
+  );
 
   for (final scale in [1.0, 1.3, 2.0]) {
     for (final width in [320.0, 360.0, 411.0]) {
-      testWidgets('tooltip stays inside the card at ${width}dp, ${scale}x text',
-          (tester) async {
-        tester.view.physicalSize = Size(width * 3, 2000);
-        tester.view.devicePixelRatio = 3;
-        tester.platformDispatcher.textScaleFactorTestValue = scale;
-        addTearDown(tester.view.reset);
-        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      testWidgets(
+        'tooltip stays inside the card at ${width}dp, ${scale}x text',
+        (tester) async {
+          tester.view.physicalSize = Size(width * 3, 2000);
+          tester.view.devicePixelRatio = 3;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day, 12);
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SpendingTrendCard(
-                    expenses: [
-                      tx(today, 123456789),
-                      tx(today.subtract(const Duration(days: 3)), 4000),
-                    ],
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day, 12);
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SpendingTrendCard(
+                      expenses: [
+                        tx(today, 123456789),
+                        tx(today.subtract(const Duration(days: 3)), 4000),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-        await tester.pump(const Duration(seconds: 2));
+          );
+          await tester.pump(const Duration(seconds: 2));
 
-        final bubble = tester.getRect(find.textContaining(' · ₹'));
-        final card = tester.getRect(find.byType(SpendingTrendCard));
-        expect(bubble.right, lessThanOrEqualTo(card.right),
-            reason: 'bubble $bubble runs past the card $card');
-        expect(bubble.left, greaterThanOrEqualTo(card.left),
-            reason: 'bubble $bubble starts left of the card $card');
-        expect(tester.takeException(), isNull);
-      });
+          final bubble = tester.getRect(find.textContaining(' · ₹'));
+          final card = tester.getRect(find.byType(SpendingTrendCard));
+          expect(
+            bubble.right,
+            lessThanOrEqualTo(card.right),
+            reason: 'bubble $bubble runs past the card $card',
+          );
+          expect(
+            bubble.left,
+            greaterThanOrEqualTo(card.left),
+            reason: 'bubble $bubble starts left of the card $card',
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
     }
   }
 
-  testWidgets('selecting the first day keeps the tooltip inside the card too',
-      (tester) async {
+  testWidgets('selecting the first day keeps the tooltip inside the card too', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360 * 3, 2000);
     tester.view.devicePixelRatio = 3;
     tester.platformDispatcher.textScaleFactorTestValue = 1.3;

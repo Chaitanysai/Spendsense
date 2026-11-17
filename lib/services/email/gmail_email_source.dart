@@ -85,8 +85,9 @@ class GmailEmailSource {
   static const prefsSendersKey = 'email_gmail_senders_v1';
   static const prefsConnectedEmailKey = 'email_gmail_connected_email_v1';
 
-  static const _serverClientId =
-      String.fromEnvironment('GMAIL_SERVER_CLIENT_ID');
+  static const _serverClientId = String.fromEnvironment(
+    'GMAIL_SERVER_CLIENT_ID',
+  );
   static const scope = 'https://www.googleapis.com/auth/gmail.readonly';
 
   /// Bank alert senders. Kept as exact domains (not free-form regexes) so a
@@ -285,8 +286,9 @@ class GmailEmailSource {
     }
     await _initialise();
     final account = await _connectInteractive();
-    final authorization =
-        await account.authorizationClient.authorizeScopes(const [scope]);
+    final authorization = await account.authorizationClient.authorizeScopes(
+      const [scope],
+    );
     if (authorization.accessToken.isEmpty) {
       throw const EmailAuthUnavailableException('Gmail did not grant access.');
     }
@@ -299,8 +301,8 @@ class GmailEmailSource {
     // A normal sync must never show account or consent UI. If the silent path
     // is unavailable the person has to press Connect again.
     try {
-      final account =
-          await GoogleSignIn.instance.attemptLightweightAuthentication();
+      final account = await GoogleSignIn.instance
+          .attemptLightweightAuthentication();
       if (account != null) return account;
     } catch (_) {
       // Fall through to the actionable error below.
@@ -359,8 +361,9 @@ class GmailEmailSource {
     }
     await _initialise();
     final account = await _syncSilently();
-    final authorization =
-        await account.authorizationClient.authorizeScopes(const [scope]);
+    final authorization = await account.authorizationClient.authorizeScopes(
+      const [scope],
+    );
     final client = GmailTokenClient(authorization.accessToken);
     final api = gmail.GmailApi(client);
     // The Gmail client owns no request-specific auth state; the bearer header
@@ -385,11 +388,7 @@ class GmailEmailSource {
       for (final ref in messageRefs) {
         final id = ref.id;
         if (id == null || seenIds.contains('gmail:$id')) continue;
-        final message = await api.users.messages.get(
-          'me',
-          id,
-          format: 'full',
-        );
+        final message = await api.users.messages.get('me', id, format: 'full');
         final subject = _header(message, 'Subject');
         final from = _header(message, 'From');
         if (!isAllowedSender(from, domains)) continue;
@@ -468,8 +467,9 @@ class GmailEmailSource {
   /// display name while the real mailbox belongs to the attacker.
   @visibleForTesting
   static bool isAllowedSender(String from, List<String> domains) {
-    final angleAddresses =
-        RegExp(r'<([^<>]*)>').allMatches(from).map((m) => m.group(1)!.trim());
+    final angleAddresses = RegExp(r'<([^<>]*)>')
+        .allMatches(from)
+        .map((m) => m.group(1)!.trim());
     final list = angleAddresses.toList();
     if (list.length > 1) return false;
     final address = (list.isEmpty ? from.trim() : list.single).toLowerCase();
@@ -573,8 +573,9 @@ class GmailEmailSource {
   static String htmlToText(String html) {
     return html
         .replaceAll(
-            RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false),
-            ' ')
+          RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false),
+          ' ',
+        )
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
         .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
         .replaceAll(RegExp(r'<[^>]+>'), ' ')

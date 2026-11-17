@@ -14,25 +14,30 @@ class AIQueryService {
 
     // Filter to current month, non-excluded transactions
     final currentMonthTx = txs
-        .where((t) =>
-            t.date.month == now.month &&
-            t.date.year == now.year &&
-            !t.isExcluded)
+        .where(
+          (t) =>
+              t.date.month == now.month &&
+              t.date.year == now.year &&
+              !t.isExcluded,
+        )
         .toList();
 
-    final expenseTx =
-        currentMonthTx.where((t) => t.type == TransactionType.expense).toList();
-    final incomeTx =
-        currentMonthTx.where((t) => t.type == TransactionType.income).toList();
+    final expenseTx = currentMonthTx
+        .where((t) => t.type == TransactionType.expense)
+        .toList();
+    final incomeTx = currentMonthTx
+        .where((t) => t.type == TransactionType.income)
+        .toList();
 
     final list = expenseTx.isNotEmpty
         ? expenseTx
         : txs
-            .where((t) => !t.isExcluded && t.type == TransactionType.expense)
-            .toList();
+              .where((t) => !t.isExcluded && t.type == TransactionType.expense)
+              .toList();
 
     bool hasAny(List<String> phrases) => phrases.any(q.contains);
-    bool asksAveragePerDay = (q.contains("average") || q.contains("avg")) &&
+    bool asksAveragePerDay =
+        (q.contains("average") || q.contains("avg")) &&
         (q.contains("per day") || q.contains("daily") || q.contains("a day"));
     bool asksTotalSpent = hasAny([
       "total spent",
@@ -46,8 +51,10 @@ class AIQueryService {
     if (q.contains("salary") ||
         q.contains("income") ||
         q.contains("credited")) {
-      final totalIncome =
-          incomeTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
+      final totalIncome = incomeTx.fold<int>(
+        0,
+        (sum, t) => sum + t.amountMinor,
+      );
       if (totalIncome == 0) {
         return "I couldn't find any income transactions this month.";
       }
@@ -72,8 +79,9 @@ class AIQueryService {
         q.contains("highest") ||
         q.contains("maximum") ||
         q.contains("max")) {
-      final maxTx =
-          list.reduce((a, b) => a.amountMinor > b.amountMinor ? a : b);
+      final maxTx = list.reduce(
+        (a, b) => a.amountMinor > b.amountMinor ? a : b,
+      );
       return "Your highest transaction is ${Formatters.currency.format(maxTx.amountMinor)}"
           " at ${maxTx.merchant}.";
     }
@@ -83,8 +91,9 @@ class AIQueryService {
         q.contains("smallest") ||
         q.contains("minimum") ||
         q.contains("min")) {
-      final minTx =
-          list.reduce((a, b) => a.amountMinor < b.amountMinor ? a : b);
+      final minTx = list.reduce(
+        (a, b) => a.amountMinor < b.amountMinor ? a : b,
+      );
       return "Your lowest transaction is ${Formatters.currency.format(minTx.amountMinor)}"
           " at ${minTx.merchant}.";
     }
@@ -92,8 +101,9 @@ class AIQueryService {
     // ─── 3. PETROL / FUEL ────────────────────────────────────────────────────
     if ((q.contains("petrol") || q.contains("fuel")) &&
         (q.contains("spend") || q.contains("spent") || q.contains("much"))) {
-      final fuelTx =
-          expenseTx.where((t) => t.category.toLowerCase() == "fuel").toList();
+      final fuelTx = expenseTx
+          .where((t) => t.category.toLowerCase() == "fuel")
+          .toList();
       final total = fuelTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
       return "You spent ${Formatters.currency.format(total)} on fuel this month.";
     }
@@ -101,8 +111,9 @@ class AIQueryService {
     // ─── 4. FOOD ─────────────────────────────────────────────────────────────
     if ((q.contains("food") || q.contains("swiggy") || q.contains("zomato")) &&
         (q.contains("spend") || q.contains("spent") || q.contains("much"))) {
-      final foodTx =
-          expenseTx.where((t) => t.category.toLowerCase() == "food").toList();
+      final foodTx = expenseTx
+          .where((t) => t.category.toLowerCase() == "food")
+          .toList();
       final total = foodTx.fold<int>(0, (sum, t) => sum + t.amountMinor);
       return "You spent ${Formatters.currency.format(total)} on food this month.";
     }

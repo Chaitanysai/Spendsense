@@ -43,23 +43,19 @@ class UpdateProvider extends ChangeNotifier {
   UpdateProvider({
     UpdateService? service,
     this.installedVersionLoader = _loadInstalledVersion,
-  }) : service = service ??
-            UpdateService(
-              config: UpdateConfig.fromEnvironment(),
-              platform: const MethodChannelUpdatePlatform(),
-            );
+  }) : service =
+           service ??
+           UpdateService(
+             config: UpdateConfig.fromEnvironment(),
+             platform: const MethodChannelUpdatePlatform(),
+           );
 
   static Future<AppVersion> _loadInstalledVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
       final build = int.tryParse(info.buildNumber) ?? 0;
       return AppVersion.tryParse(info.version, buildNumber: build) ??
-          AppVersion(
-            major: 0,
-            minor: 0,
-            patch: 0,
-            buildNumber: build,
-          );
+          AppVersion(major: 0, minor: 0, patch: 0, buildNumber: build);
     } catch (_) {
       return const AppVersion(major: 0, minor: 0, patch: 0, buildNumber: 0);
     }

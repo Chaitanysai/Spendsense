@@ -88,9 +88,9 @@ class TransactionModel {
     this.billReminderHint = false,
     String? syncId,
     this.updatedAtMs = 0,
-  })  : assert((amount == null) != (amountMinor == null)),
-        amountMinor = amountMinor ?? amount! * 100,
-        syncId = syncId ?? '';
+  }) : assert((amount == null) != (amountMinor == null)),
+       amountMinor = amountMinor ?? amount! * 100,
+       syncId = syncId ?? '';
 
   /// Categories that record money moving between the user's own accounts.
   ///
@@ -130,29 +130,29 @@ class TransactionModel {
   // ─── SERIALISATION ─────────────────────────────────────────────────────────
 
   Map<String, dynamic> toJson() => {
-        'schemaVersion': 2,
-        'currency': 'INR',
-        'amountMinor': amountMinor,
-        'id': id,
-        'type': type == TransactionType.income ? 'income' : 'expense',
-        'merchant': merchant,
-        'category': category,
-        'paymentMethod': paymentMethod,
-        'date': date.toIso8601String(),
-        'time': time,
-        'originalSms': originalSms,
-        'isExcluded': isExcluded,
-        'bank': bank,
-        'account': account,
-        'reference': reference,
-        'source': source,
-        'confidence': confidence,
-        'needsReview': needsReview,
-        if (billKindHint != null) 'billKindHint': billKindHint,
-        if (billReminderHint) 'billReminderHint': true,
-        'syncId': syncId,
-        'updatedAtMs': updatedAtMs,
-      };
+    'schemaVersion': 2,
+    'currency': 'INR',
+    'amountMinor': amountMinor,
+    'id': id,
+    'type': type == TransactionType.income ? 'income' : 'expense',
+    'merchant': merchant,
+    'category': category,
+    'paymentMethod': paymentMethod,
+    'date': date.toIso8601String(),
+    'time': time,
+    'originalSms': originalSms,
+    'isExcluded': isExcluded,
+    'bank': bank,
+    'account': account,
+    'reference': reference,
+    'source': source,
+    'confidence': confidence,
+    'needsReview': needsReview,
+    if (billKindHint != null) 'billKindHint': billKindHint,
+    if (billReminderHint) 'billReminderHint': true,
+    'syncId': syncId,
+    'updatedAtMs': updatedAtMs,
+  };
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final schema = json['schemaVersion'];

@@ -81,7 +81,8 @@ class _BillsScreenState extends State<BillsScreen> {
     final plansKey = _plansKey(plans);
     final hiddenKey = _hiddenKey(hidden);
     final txSource = tx.transactions;
-    final cacheValid = _detectedCache != null &&
+    final cacheValid =
+        _detectedCache != null &&
         _detectedPlansKey == plansKey &&
         _detectedHiddenKey == hiddenKey &&
         _detectedDay == day &&
@@ -102,8 +103,9 @@ class _BillsScreenState extends State<BillsScreen> {
       _detectedDay = day;
       _detectedTxSource = txSource;
     }
-    final visible =
-        _filter == null ? all : all.where((v) => v.state == _filter).toList();
+    final visible = _filter == null
+        ? all
+        : all.where((v) => v.state == _filter).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -190,8 +192,8 @@ class _BillsScreenState extends State<BillsScreen> {
                         : 'Nothing here',
                     message: _filter == null
                         ? 'SpendSense adds utility, loan, insurance, rent and '
-                            'subscription bills automatically from your '
-                            'payments. You can also add one manually.'
+                              'subscription bills automatically from your '
+                              'payments. You can also add one manually.'
                         : 'No bills in this state right now.',
                     actionLabel: _filter == null && planner != null
                         ? 'Add a bill'
@@ -296,7 +298,8 @@ class _Overview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dueSoon = views.where(
-        (v) => v.state == BillState.overdue || v.state == BillState.dueSoon);
+      (v) => v.state == BillState.overdue || v.state == BillState.dueSoon,
+    );
     final dueTotal = dueSoon.fold<int>(0, (sum, v) => sum + v.amountMinor);
     final overdue = views.where((v) => v.state == BillState.overdue).length;
     final paid = views.where((v) => v.state == BillState.paid).length;
@@ -339,9 +342,7 @@ class _Overview extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
-                child: _HeroStat(
-                  label: paid == 1 ? '1 paid' : '$paid paid',
-                ),
+                child: _HeroStat(label: paid == 1 ? '1 paid' : '$paid paid'),
               ),
             ],
           ),
@@ -360,8 +361,11 @@ class _HeroStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle,
-            size: 6, color: AppColors.onHero(context, alpha: 0.7)),
+        Icon(
+          Icons.circle,
+          size: 6,
+          color: AppColors.onHero(context, alpha: 0.7),
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -474,8 +478,11 @@ class _BillRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(color: color.withValues(alpha: 0.35)),
                 ),
-                child: Icon(CategoryStyle.icon(view.category),
-                    size: 19, color: color),
+                child: Icon(
+                  CategoryStyle.icon(view.category),
+                  size: 19,
+                  color: color,
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -521,15 +528,9 @@ class _BillRow extends StatelessWidget {
                   child: const Text('Mark paid'),
                 ),
               ] else if (view.state == BillState.paid)
-                Text(
-                  'Matched to a payment',
-                  style: AppText.bodySmall(context),
-                ),
+                Text('Matched to a payment', style: AppText.bodySmall(context)),
               const Spacer(),
-              TextButton(
-                onPressed: onTap,
-                child: const Text('Details'),
-              ),
+              TextButton(onPressed: onTap, child: const Text('Details')),
             ],
           ),
         ],
@@ -538,11 +539,11 @@ class _BillRow extends StatelessWidget {
   }
 
   static Color _tone(BuildContext context, BillState state) => switch (state) {
-        BillState.paid => AppColors.incomeGreen,
-        BillState.overdue => AppColors.expenseRed,
-        BillState.dueSoon => AppColors.warning,
-        BillState.upcoming => AppColors.textSecondary(context),
-      };
+    BillState.paid => AppColors.incomeGreen,
+    BillState.overdue => AppColors.expenseRed,
+    BillState.dueSoon => AppColors.warning,
+    BillState.upcoming => AppColors.textSecondary(context),
+  };
 
   static String _subtitle(BillView view) {
     final fmt = DateFormat('d MMM');
@@ -555,8 +556,9 @@ class _BillRow extends StatelessWidget {
             ' · $confidence';
       }
       final kind = auto.kind.label;
-      final pattern =
-          auto.isRecurring ? '$kind · ${auto.occurrenceCount} payments' : kind;
+      final pattern = auto.isRecurring
+          ? '$kind · ${auto.occurrenceCount} payments'
+          : kind;
       final due = view.dueDate;
       return due == null
           ? '$pattern · $confidence'
@@ -597,10 +599,10 @@ class _StateChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
-          fontSize: 10.5,
-          color: tone,
-        ),
+        style: AppText.weight(
+          AppText.label(context),
+          FontWeight.w700,
+        ).copyWith(fontSize: 10.5, color: tone),
       ),
     );
   }
@@ -665,8 +667,10 @@ class _BillDetail extends StatelessWidget {
                           style: AppText.bodySmall(context),
                         ),
                       ),
-                      Text(Formatters.currency.format(t.amountMinor),
-                          style: AppText.amount(context, size: 13)),
+                      Text(
+                        Formatters.currency.format(t.amountMinor),
+                        style: AppText.amount(context, size: 13),
+                      ),
                     ],
                   ),
                 ),

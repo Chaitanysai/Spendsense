@@ -59,11 +59,11 @@ enum BillState { paid, overdue, dueSoon, upcoming }
 
 extension BillStateX on BillState {
   String get label => switch (this) {
-        BillState.paid => 'Paid',
-        BillState.overdue => 'Overdue',
-        BillState.dueSoon => 'Due soon',
-        BillState.upcoming => 'Upcoming',
-      };
+    BillState.paid => 'Paid',
+    BillState.overdue => 'Overdue',
+    BillState.dueSoon => 'Due soon',
+    BillState.upcoming => 'Upcoming',
+  };
 }
 
 /// An automatically detected obligation. It is derived from existing
@@ -222,16 +222,17 @@ class BillDetectionService {
   ) {
     final plan = pf.plan;
     final days = plan.daysUntilDue(day);
-    final match =
-        matched != null && _withinWindow(pf, matched.date, day) ? matched : null;
+    final match = matched != null && _withinWindow(pf, matched.date, day)
+        ? matched
+        : null;
 
     final state = match != null
         ? BillState.paid
         : days < 0
-            ? BillState.overdue
-            : days <= 3
-                ? BillState.dueSoon
-                : BillState.upcoming;
+        ? BillState.overdue
+        : days <= 3
+        ? BillState.dueSoon
+        : BillState.upcoming;
 
     return BillView(
       plan: plan,
@@ -287,11 +288,7 @@ class BillDetectionService {
     return out;
   }
 
-  _MatchScore _score(
-    _PlanFacts pf,
-    _TxFacts f,
-    int amountGap,
-  ) {
+  _MatchScore _score(_PlanFacts pf, _TxFacts f, int amountGap) {
     final plan = pf.plan;
     var identity = 0.0;
     var hasIdentity = false;
@@ -329,17 +326,17 @@ class BillDetectionService {
     final amountScore = amountGap == 0
         ? 0.35
         : amountGap <= (plan.amountMinor * 0.005).round().clamp(100, 1 << 30)
-            ? 0.30
-            : amountGap <= tolerance
-                ? 0.22
-                : 0.0;
+        ? 0.30
+        : amountGap <= tolerance
+        ? 0.22
+        : 0.0;
 
     final daysFromDue = f.date.difference(pf.due).inDays.abs();
     final dateScore = daysFromDue == 0
         ? 0.20
         : daysFromDue <= 3
-            ? 0.16
-            : 0.10;
+        ? 0.16
+        : 0.10;
 
     final total = identity + amountScore + dateScore;
     return _MatchScore(total: total, strong: hasIdentity && total >= 0.65);
@@ -355,8 +352,11 @@ class BillDetectionService {
       if ((f.tx.amountMinor - pf.plan.amountMinor).abs() > pf.tolerance) {
         continue;
       }
-      if (!_score(pf, f, (f.tx.amountMinor - pf.plan.amountMinor).abs())
-          .strong) {
+      if (!_score(
+        pf,
+        f,
+        (f.tx.amountMinor - pf.plan.amountMinor).abs(),
+      ).strong) {
         continue;
       }
       matches.add(f.tx);
@@ -384,8 +384,10 @@ class BillDetectionService {
       due: due,
       windowStart: earliest,
       windowEnd: end,
-      tolerance:
-          (plan.amountMinor * amountTolerance).round().clamp(100, 1 << 30),
+      tolerance: (plan.amountMinor * amountTolerance).round().clamp(
+        100,
+        1 << 30,
+      ),
       titleNorm: _normalize(plan.title),
       titleTokens: _meaningfulTokens(plan.title),
       sourceRefNorm: sourceRefNorm,
@@ -393,7 +395,8 @@ class BillDetectionService {
   }
 
   bool _withinWindow(_PlanFacts pf, DateTime dateOnly, DateTime day) {
-    return !dateOnly.isBefore(pf.windowStart) && !dateOnly.isAfter(pf.windowEnd);
+    return !dateOnly.isBefore(pf.windowStart) &&
+        !dateOnly.isAfter(pf.windowEnd);
   }
 
   // ── Automatic detection ───────────────────────────────────────────────────
@@ -433,29 +436,31 @@ class BillDetectionService {
       final pattern = _pattern(entries);
       if (pattern != null) {
         final state = _stateForDue(pattern.nextDue, today);
-        out.add(BillView(
-          autoBill: AutoBill(
-            billerKey: group.key,
+        out.add(
+          BillView(
+            autoBill: AutoBill(
+              billerKey: group.key,
+              title: latest.classification.billerLabel,
+              category: latest.transaction.category,
+              expectedAmountMinor: latest.transaction.amountMinor,
+              dueDate: pattern.nextDue,
+              state: state,
+              confidence: pattern.confidence,
+              isRecurring: true,
+              occurrenceCount: entries.length,
+              kind: group.kind,
+              lastPayment: latest.transaction,
+              history: _historyFor(entries.reversed.map((e) => e.transaction)),
+            ),
             title: latest.classification.billerLabel,
             category: latest.transaction.category,
-            expectedAmountMinor: latest.transaction.amountMinor,
+            amountMinor: latest.transaction.amountMinor,
             dueDate: pattern.nextDue,
             state: state,
-            confidence: pattern.confidence,
-            isRecurring: true,
-            occurrenceCount: entries.length,
-            kind: group.kind,
-            lastPayment: latest.transaction,
+            matchedPayment: null,
             history: _historyFor(entries.reversed.map((e) => e.transaction)),
           ),
-          title: latest.classification.billerLabel,
-          category: latest.transaction.category,
-          amountMinor: latest.transaction.amountMinor,
-          dueDate: pattern.nextDue,
-          state: state,
-          matchedPayment: null,
-          history: _historyFor(entries.reversed.map((e) => e.transaction)),
-        ));
+        );
         continue;
       }
 
@@ -464,36 +469,40 @@ class BillDetectionService {
       // A single generic "bill" mention is not specific enough. It can still
       // become a bill through a reliable recurring pattern above.
       final strong = entries
-          .where((e) =>
-              e.classification.evidence == BillEvidence.paidBill &&
-              (e.classification.kind != BillKind.other ||
-                  e.classification.confidence >= 0.8))
+          .where(
+            (e) =>
+                e.classification.evidence == BillEvidence.paidBill &&
+                (e.classification.kind != BillKind.other ||
+                    e.classification.confidence >= 0.8),
+          )
           .toList();
       if (strong.isEmpty) continue;
       final paid = strong.last;
-      out.add(BillView(
-        autoBill: AutoBill(
-          billerKey: group.key,
+      out.add(
+        BillView(
+          autoBill: AutoBill(
+            billerKey: group.key,
+            title: paid.classification.billerLabel,
+            category: paid.transaction.category,
+            expectedAmountMinor: paid.transaction.amountMinor,
+            dueDate: paid.transaction.date,
+            state: BillState.paid,
+            confidence: paid.classification.confidence,
+            isRecurring: false,
+            occurrenceCount: entries.length,
+            kind: group.kind,
+            lastPayment: paid.transaction,
+            history: _historyFor(entries.reversed.map((e) => e.transaction)),
+          ),
           title: paid.classification.billerLabel,
           category: paid.transaction.category,
-          expectedAmountMinor: paid.transaction.amountMinor,
+          amountMinor: paid.transaction.amountMinor,
           dueDate: paid.transaction.date,
           state: BillState.paid,
-          confidence: paid.classification.confidence,
-          isRecurring: false,
-          occurrenceCount: entries.length,
-          kind: group.kind,
-          lastPayment: paid.transaction,
+          matchedPayment: paid.transaction,
           history: _historyFor(entries.reversed.map((e) => e.transaction)),
         ),
-        title: paid.classification.billerLabel,
-        category: paid.transaction.category,
-        amountMinor: paid.transaction.amountMinor,
-        dueDate: paid.transaction.date,
-        state: BillState.paid,
-        matchedPayment: paid.transaction,
-        history: _historyFor(entries.reversed.map((e) => e.transaction)),
-      ));
+      );
     }
     return out;
   }
@@ -545,12 +554,13 @@ class BillDetectionService {
     final strength = entries
         .map((e) => e.classification.confidence)
         .reduce((a, b) => a > b ? a : b);
-    final confidence = (0.72 +
-            (sorted.length >= 3 ? 0.12 : 0.0) +
-            (amountConsistent ? 0.05 : 0.0) +
-            strength * 0.08)
-        .clamp(0.0, 0.98)
-        .toDouble();
+    final confidence =
+        (0.72 +
+                (sorted.length >= 3 ? 0.12 : 0.0) +
+                (amountConsistent ? 0.05 : 0.0) +
+                strength * 0.08)
+            .clamp(0.0, 0.98)
+            .toDouble();
     return _BillPattern(nextDue: nextDue, confidence: confidence);
   }
 
@@ -590,8 +600,10 @@ class BillDetectionService {
       // plan is the same obligation under a different label.
       final amountGap = (latestAmount - plan.amountMinor).abs();
       final tolerance = (plan.amountMinor * 0.05).round().clamp(100, 1 << 30);
-      final dueGap =
-          latestDate.difference(PeriodMath.dateOnly(plan.nextDue)).inDays.abs();
+      final dueGap = latestDate
+          .difference(PeriodMath.dateOnly(plan.nextDue))
+          .inDays
+          .abs();
       if (plan.category.toLowerCase() ==
               entries.last.transaction.category.toLowerCase() &&
           amountGap <= tolerance &&
@@ -613,26 +625,26 @@ class BillDetectionService {
       value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
 
   static Set<String> _meaningfulTokens(String value) => {
-        for (final token in _normalize(value).split(' '))
-          if (token.length >= 4 &&
-              !const {
-                'bill',
-                'bills',
-                'payment',
-                'payments',
-                'paid',
-                'autopay',
-                'debit',
-                'credit',
-                'india',
-                'bank',
-                'limited',
-                'services',
-                'service',
-                'account',
-              }.contains(token))
-            token,
-      };
+    for (final token in _normalize(value).split(' '))
+      if (token.length >= 4 &&
+          !const {
+            'bill',
+            'bills',
+            'payment',
+            'payments',
+            'paid',
+            'autopay',
+            'debit',
+            'credit',
+            'india',
+            'bank',
+            'limited',
+            'services',
+            'service',
+            'account',
+          }.contains(token))
+        token,
+  };
 
   DateTime _advance(DateTime from, int days) {
     if (days == 30) return _addMonths(from, 1);

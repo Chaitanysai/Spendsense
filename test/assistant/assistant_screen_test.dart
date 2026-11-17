@@ -8,31 +8,34 @@ import 'fakes.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('assistant chat renders a preview and requires an explicit tap',
-      (tester) async {
-    final ledger = MemoryLedger(transactions: [
-      tx(
-        id: 'groww-1',
-        amountMinor: 100000,
-        date: DateTime(2026, 10, 1),
-        merchant: 'Groww',
-        category: 'Investment',
-      ),
-      tx(
-        id: 'groww-2',
-        amountMinor: 250000,
-        date: DateTime(2026, 10, 2),
-        merchant: 'Groww Broking',
-        category: 'Investment',
-      ),
-      tx(
-        id: 'food',
-        amountMinor: 50000,
-        date: DateTime(2026, 10, 3),
-        merchant: 'Swiggy',
-        category: 'Food',
-      ),
-    ]);
+  testWidgets('assistant chat renders a preview and requires an explicit tap', (
+    tester,
+  ) async {
+    final ledger = MemoryLedger(
+      transactions: [
+        tx(
+          id: 'groww-1',
+          amountMinor: 100000,
+          date: DateTime(2026, 10, 1),
+          merchant: 'Groww',
+          category: 'Investment',
+        ),
+        tx(
+          id: 'groww-2',
+          amountMinor: 250000,
+          date: DateTime(2026, 10, 2),
+          merchant: 'Groww Broking',
+          category: 'Investment',
+        ),
+        tx(
+          id: 'food',
+          amountMinor: 50000,
+          date: DateTime(2026, 10, 3),
+          merchant: 'Swiggy',
+          category: 'Food',
+        ),
+      ],
+    );
     final audit = MemoryAudit();
     final controller = AssistantController(
       ledger: ledger,
@@ -41,9 +44,9 @@ void main() {
       clock: () => DateTime(2026, 10, 25, 12),
     );
 
-    await tester.pumpWidget(MaterialApp(
-      home: AssistantScreen(controller: controller),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: AssistantScreen(controller: controller)),
+    );
     await tester.pumpAndSettle();
     expect(find.text('SpendSense Assistant'), findsOneWidget);
 
@@ -54,8 +57,11 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
-    expect(controller.pendingAction, isNotNull,
-        reason: controller.messages.last.text);
+    expect(
+      controller.pendingAction,
+      isNotNull,
+      reason: controller.messages.last.text,
+    );
     await tester.drag(find.byType(ListView).last, const Offset(0, -700));
     await tester.pumpAndSettle();
 
@@ -79,8 +85,9 @@ void main() {
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
-    await tester
-        .tap(find.widgetWithText(FilledButton, 'Exclude from spending'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Exclude from spending'),
+    );
     await tester.pumpAndSettle();
 
     expect(ledger.exclusionWrites, 1);
@@ -94,30 +101,33 @@ void main() {
     expect(find.textContaining('Excluded 2 transactions'), findsOneWidget);
   });
 
-  testWidgets('assistant cards survive 2x text on a narrow phone',
-      (tester) async {
+  testWidgets('assistant cards survive 2x text on a narrow phone', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    final ledger = MemoryLedger(transactions: [
-      tx(
-        id: 'groww-long',
-        amountMinor: 123456789,
-        date: DateTime(2026, 10, 1),
-        merchant: 'A Very Long Groww Broking Narration That Must Wrap Safely',
-        category: 'Investment',
-      ),
-      tx(
-        id: 'food-long',
-        amountMinor: 98765,
-        date: DateTime(2026, 10, 2),
-        merchant: 'A Very Long Restaurant Name That Must Ellipsize',
-        category: 'Food',
-      ),
-    ]);
+    final ledger = MemoryLedger(
+      transactions: [
+        tx(
+          id: 'groww-long',
+          amountMinor: 123456789,
+          date: DateTime(2026, 10, 1),
+          merchant: 'A Very Long Groww Broking Narration That Must Wrap Safely',
+          category: 'Investment',
+        ),
+        tx(
+          id: 'food-long',
+          amountMinor: 98765,
+          date: DateTime(2026, 10, 2),
+          merchant: 'A Very Long Restaurant Name That Must Ellipsize',
+          category: 'Food',
+        ),
+      ],
+    );
     final controller = AssistantController(
       ledger: ledger,
       audit: MemoryAudit(),
@@ -125,13 +135,15 @@ void main() {
       clock: () => DateTime(2026, 10, 25, 12),
     );
 
-    await tester.pumpWidget(MaterialApp(
-      home: AssistantScreen(controller: controller),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: AssistantScreen(controller: controller)),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.byType(TextField), 'Remove Groww from spending');
+      find.byType(TextField),
+      'Remove Groww from spending',
+    );
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();

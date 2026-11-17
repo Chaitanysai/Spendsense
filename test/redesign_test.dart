@@ -41,22 +41,21 @@ TransactionModel _tx({
   String? account,
   String category = 'Food',
   String merchant = 'Test Merchant',
-}) =>
-    TransactionModel(
-      id: 'id-$amount-$method-$type',
-      amount: amount.toInt(),
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: method,
-      date: DateTime.now(),
-      time: '',
-      originalSms: '',
-      isExcluded: false,
-      bank: bank,
-      account: account,
-      source: 'Test',
-    );
+}) => TransactionModel(
+  id: 'id-$amount-$method-$type',
+  amount: amount.toInt(),
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: method,
+  date: DateTime.now(),
+  time: '',
+  originalSms: '',
+  isExcluded: false,
+  bank: bank,
+  account: account,
+  source: 'Test',
+);
 
 Future<TransactionProvider> _pumpShell(WidgetTester tester) async {
   // Galaxy S24 is the design target: 1080x2340 at 3x => 360x780 logical.
@@ -90,15 +89,19 @@ void main() {
   });
 
   group('five-destination navigation', () {
-    testWidgets('bar exposes exactly Home, Bills, Insights, Cards, Settings',
-        (tester) async {
+    testWidgets('bar exposes exactly Home, Bills, Insights, Cards, Settings', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       final bar = tester.widget<FloatingNavBar>(find.byType(FloatingNavBar));
-      expect(
-        bar.items.map((i) => i.label).toList(),
-        ['Home', 'Bills', 'Insights', 'Cards', 'Settings'],
-      );
+      expect(bar.items.map((i) => i.label).toList(), [
+        'Home',
+        'Bills',
+        'Insights',
+        'Cards',
+        'Settings',
+      ]);
       expect(bar.items, hasLength(5));
     });
 
@@ -116,53 +119,67 @@ void main() {
         await tester.tap(find.byKey(ValueKey('nav:${entry.key}')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byType(entry.value), findsOneWidget,
-            reason: 'tapping ${entry.key} should show ${entry.value}');
+        expect(
+          find.byType(entry.value),
+          findsOneWidget,
+          reason: 'tapping ${entry.key} should show ${entry.value}',
+        );
       }
     });
 
-    testWidgets('populated screens lay out cleanly at phone width',
-        (tester) async {
+    testWidgets('populated screens lay out cleanly at phone width', (
+      tester,
+    ) async {
       final transactions = await _pumpShell(tester);
       // Seed after the provider's empty-database read settles, otherwise the
       // read replaces the seeded rows.
       await tester.pump(const Duration(seconds: 1));
       transactions.debugSeed([
         _tx(
-            amount: 1499.5,
-            method: 'UPI',
-            bank: 'HDFC Bank',
-            merchant: 'Bamboli Purefresh Veg And Fruits Supermart Pvt Ltd',
-            category: 'Food & Groceries'),
+          amount: 1499.5,
+          method: 'UPI',
+          bank: 'HDFC Bank',
+          merchant: 'Bamboli Purefresh Veg And Fruits Supermart Pvt Ltd',
+          category: 'Food & Groceries',
+        ),
         _tx(
-            amount: 25000,
-            method: 'Credit Card',
-            bank: 'ICICI Bank',
-            category: 'Shopping'),
+          amount: 25000,
+          method: 'Credit Card',
+          bank: 'ICICI Bank',
+          category: 'Shopping',
+        ),
         _tx(
-            amount: 320,
-            type: TransactionType.income,
-            method: 'Bank Transfer',
-            bank: 'State Bank of India',
-            category: 'Income'),
+          amount: 320,
+          type: TransactionType.income,
+          method: 'Bank Transfer',
+          bank: 'State Bank of India',
+          category: 'Income',
+        ),
       ]);
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(HomeScreen), findsOneWidget);
-      expect(tester.takeException(), isNull,
-          reason: 'layout error on the populated Home dashboard');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'layout error on the populated Home dashboard',
+      );
 
       for (final label in ['Bills', 'Insights', 'Cards', 'Settings']) {
         await tester.tap(find.byKey(ValueKey('nav:$label')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.text(label), findsWidgets, reason: '$label is visible');
-        expect(tester.takeException(), isNull,
-            reason: 'layout error while showing $label');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'layout error while showing $label',
+        );
       }
     });
 
-    testWidgets('recurring expenses stays reachable from Settings',
-        (tester) async {
+    testWidgets('recurring expenses stays reachable from Settings', (
+      tester,
+    ) async {
       await _pumpShell(tester);
       await tester.tap(find.byKey(const ValueKey('nav:Settings')));
       await tester.pump(const Duration(milliseconds: 400));
@@ -172,20 +189,22 @@ void main() {
   });
 
   group('secondary route transitions', () {
-    testWidgets('AppPageRoute uses a shorter reverse transition',
-        (tester) async {
+    testWidgets('AppPageRoute uses a shorter reverse transition', (
+      tester,
+    ) async {
       final observer = _RecordingNavigatorObserver();
-      await tester.pumpWidget(MaterialApp(
-        navigatorObservers: [observer],
-        home: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              AppPageRoute(builder: (_) => const Text('DETAILS')),
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [observer],
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context)
+                  .push(AppPageRoute(builder: (_) => const Text('DETAILS'))),
+              child: const Text('OPEN'),
             ),
-            child: const Text('OPEN'),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('OPEN'));
       await tester.pump(const Duration(milliseconds: 300));
@@ -201,8 +220,9 @@ void main() {
   });
 
   group('add transaction', () {
-    testWidgets('the dock Add opens the real creation workflow',
-        (tester) async {
+    testWidgets('the dock Add opens the real creation workflow', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       // There is no floating button any more: Add is the dock's first action.
@@ -229,7 +249,8 @@ void main() {
                 ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
               ],
               child: const AddTransactionScreen(
-                  initialType: TransactionType.income),
+                initialType: TransactionType.income,
+              ),
             ),
           ),
         ),
@@ -245,8 +266,9 @@ void main() {
       expect(transactions.transactions.single.type, TransactionType.income);
     });
 
-    testWidgets('expense mode is the default and rejects a zero amount',
-        (tester) async {
+    testWidgets('expense mode is the default and rejects a zero amount', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
 
       await tester.pumpWidget(
@@ -278,12 +300,19 @@ void main() {
 
   group('budget summary', () {
     testWidgets('renders the used percentage', (tester) async {
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(
+        MaterialApp(
           home: Scaffold(
-              body: BudgetSummary(
-                  progress: const BudgetProgress(
-                      spentMinor: 2500, budgetMinor: 10000),
-                  periodLabel: 'Period'))));
+            body: BudgetSummary(
+              progress: const BudgetProgress(
+                spentMinor: 2500,
+                budgetMinor: 10000,
+              ),
+              periodLabel: 'Period',
+            ),
+          ),
+        ),
+      );
       await tester.pump(const Duration(seconds: 1));
       expect(find.textContaining('25% used'), findsOneWidget);
     });
@@ -316,8 +345,11 @@ void main() {
 
       final byBank = provider.statsBy((t) => t.bank);
       expect(byBank['Other']!.count, 2);
-      expect(byBank['Axis Bank']!.spent, 3000,
-          reason: 'surrounding whitespace must not split one bank in two');
+      expect(
+        byBank['Axis Bank']!.spent,
+        3000,
+        reason: 'surrounding whitespace must not split one bank in two',
+      );
     });
   });
 

@@ -40,18 +40,18 @@ class _Provider extends TransactionProvider {
 }
 
 TransactionModel _tx({String merchant = 'Swiggy'}) => TransactionModel(
-      id: 't1',
-      amountMinor: 24900,
-      type: TransactionType.expense,
-      merchant: merchant,
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 11, 9),
-      time: '10:42 AM',
-      originalSms: '',
-      isExcluded: false,
-      bank: 'HDFC Bank',
-    );
+  id: 't1',
+  amountMinor: 24900,
+  type: TransactionType.expense,
+  merchant: merchant,
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: DateTime(2026, 11, 9),
+  time: '10:42 AM',
+  originalSms: '',
+  isExcluded: false,
+  bank: 'HDFC Bank',
+);
 
 void main() {
   setUpAll(() async {
@@ -113,8 +113,9 @@ void main() {
   }
 
   for (final scale in [1.0, 2.0]) {
-    testWidgets('a failed save never covers the Save button at ${scale}x',
-        (tester) async {
+    testWidgets('a failed save never covers the Save button at ${scale}x', (
+      tester,
+    ) async {
       await open(tester, fail: true, scale: scale);
       final button = tester.getRect(find.byType(AppPrimaryButton));
       await tester.tap(find.byType(AppPrimaryButton));
@@ -122,16 +123,22 @@ void main() {
 
       final message = find.text('Could not save. Please try again.');
       expect(message, findsOneWidget);
-      expect(find.byType(SnackBar), findsNothing,
-          reason: 'a floating SnackBar covered the Save button');
       expect(
-          tester.getRect(message).bottom, lessThanOrEqualTo(button.top + 0.5));
+        find.byType(SnackBar),
+        findsNothing,
+        reason: 'a floating SnackBar covered the Save button',
+      );
+      expect(
+        tester.getRect(message).bottom,
+        lessThanOrEqualTo(button.top + 0.5),
+      );
       expect(find.byType(AppPrimaryButton).hitTestable(), findsOneWidget);
     });
   }
 
-  testWidgets('a blank merchant is flagged on its field and above Save',
-      (tester) async {
+  testWidgets('a blank merchant is flagged on its field and above Save', (
+    tester,
+  ) async {
     await open(tester, merchant: '');
     await tester.tap(find.byType(AppPrimaryButton));
     await settle(tester);
@@ -153,11 +160,14 @@ void main() {
       expect(find.text('Discard changes?'), findsNothing);
     });
 
-    testWidgets('with edits, back asks first and Keep editing stays',
-        (tester) async {
+    testWidgets('with edits, back asks first and Keep editing stays', (
+      tester,
+    ) async {
       await open(tester);
       await tester.enterText(
-          find.widgetWithText(TextField, 'Merchant'), 'Cafe');
+        find.widgetWithText(TextField, 'Merchant'),
+        'Cafe',
+      );
       await tester.pump();
       await tester.pageBack();
       await settle(tester);
@@ -165,14 +175,19 @@ void main() {
       await tester.tap(find.text('Keep editing'));
       await settle(tester);
       expect(find.byType(TransactionDetailsScreen), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Cafe'), findsOneWidget,
-          reason: 'the edit must survive "Keep editing"');
+      expect(
+        find.widgetWithText(TextField, 'Cafe'),
+        findsOneWidget,
+        reason: 'the edit must survive "Keep editing"',
+      );
     });
 
     testWidgets('Discard leaves and drops the edit', (tester) async {
       await open(tester);
       await tester.enterText(
-          find.widgetWithText(TextField, 'Merchant'), 'Cafe');
+        find.widgetWithText(TextField, 'Merchant'),
+        'Cafe',
+      );
       await tester.pump();
       await tester.pageBack();
       await settle(tester);
@@ -184,7 +199,9 @@ void main() {
     testWidgets('a saved edit leaves without asking', (tester) async {
       final provider = await open(tester);
       await tester.enterText(
-          find.widgetWithText(TextField, 'Merchant'), 'Cafe');
+        find.widgetWithText(TextField, 'Merchant'),
+        'Cafe',
+      );
       await tester.pump();
       await tester.tap(find.byType(AppPrimaryButton));
       await settle(tester);
@@ -193,18 +210,24 @@ void main() {
       expect(find.byType(TransactionDetailsScreen), findsNothing);
     });
 
-    testWidgets('a failed save keeps the edits and keeps the guard',
-        (tester) async {
+    testWidgets('a failed save keeps the edits and keeps the guard', (
+      tester,
+    ) async {
       await open(tester, fail: true);
       await tester.enterText(
-          find.widgetWithText(TextField, 'Merchant'), 'Cafe');
+        find.widgetWithText(TextField, 'Merchant'),
+        'Cafe',
+      );
       await tester.pump();
       await tester.tap(find.byType(AppPrimaryButton));
       await settle(tester);
       await tester.pageBack();
       await settle(tester);
-      expect(find.text('Discard changes?'), findsOneWidget,
-          reason: 'nothing was saved, so leaving still discards the edit');
+      expect(
+        find.text('Discard changes?'),
+        findsOneWidget,
+        reason: 'nothing was saved, so leaving still discards the edit',
+      );
     });
   });
 
@@ -227,8 +250,9 @@ void main() {
   });
 
   for (final scale in [1.0, 2.0]) {
-    testWidgets('the detail rows share one title column at ${scale}x',
-        (tester) async {
+    testWidgets('the detail rows share one title column at ${scale}x', (
+      tester,
+    ) async {
       // Found in a 2x capture: the Exclude row had no leading plate, so its
       // title started ~50px left of the two rows above it.
       await open(tester, scale: scale);
@@ -244,32 +268,43 @@ void main() {
       final method = titleX('Payment method');
       final exclude = titleX('Exclude from Insights');
       expect(method, closeTo(date, 0.5));
-      expect(exclude, closeTo(method, 0.5),
-          reason: 'Exclude title at $exclude, Payment method at $method');
+      expect(
+        exclude,
+        closeTo(method, 0.5),
+        reason: 'Exclude title at $exclude, Payment method at $method',
+      );
     });
   }
 
   for (final scale in [1.0, 2.0]) {
-    testWidgets('the title starts right after the back arrow at ${scale}x',
-        (tester) async {
+    testWidgets('the title starts right after the back arrow at ${scale}x', (
+      tester,
+    ) async {
       // The default titleSpacing left the title 72dp from the edge: 16dp of
       // dead space after the 56dp arrow slot, 56dp off the page margin.
       await open(tester, scale: scale);
       final title = tester.getTopLeft(find.text('Edit transaction')).dx;
-      expect(title, closeTo(56, 0.5),
-          reason: 'title at $title, expected directly after the 56dp slot');
+      expect(
+        title,
+        closeTo(56, 0.5),
+        reason: 'title at $title, expected directly after the 56dp slot',
+      );
     });
 
-    testWidgets('the last field is separated from Save at ${scale}x',
-        (tester) async {
+    testWidgets('the last field is separated from Save at ${scale}x', (
+      tester,
+    ) async {
       await open(tester, scale: scale);
       final bank = find.byType(TextField).last;
       await tester.ensureVisible(bank);
       await tester.pump();
       final field = tester.getRect(bank);
       final button = tester.getRect(find.byType(AppPrimaryButton));
-      expect(button.top - field.bottom, greaterThanOrEqualTo(12),
-          reason: 'Bank field $field runs into the Save button $button');
+      expect(
+        button.top - field.bottom,
+        greaterThanOrEqualTo(12),
+        reason: 'Bank field $field runs into the Save button $button',
+      );
       expect(
         find.descendant(
           of: find.byType(Scaffold),
@@ -281,8 +316,9 @@ void main() {
     });
   }
 
-  testWidgets('there is no delete action (declined for this stage)',
-      (tester) async {
+  testWidgets('there is no delete action (declined for this stage)', (
+    tester,
+  ) async {
     await open(tester);
     expect(find.textContaining('Delete'), findsNothing);
     expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);

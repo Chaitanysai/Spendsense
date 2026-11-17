@@ -55,12 +55,7 @@ class _ThemeToggleState extends State<ThemeToggle>
       return;
     }
     _thumb.animateWith(
-      SpringSimulation(
-        AppSpring.thumb,
-        _thumb.value,
-        target,
-        _thumb.velocity,
-      ),
+      SpringSimulation(AppSpring.thumb, _thumb.value, target, _thumb.velocity),
     );
   }
 
@@ -117,8 +112,9 @@ class _ThemeToggleState extends State<ThemeToggle>
                                     : Colors.black,
                                 t,
                               ),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                               border: Border.all(
                                 color: Color.lerp(
                                   AppColors.border(context),
@@ -173,10 +169,7 @@ class _ThemeToggleState extends State<ThemeToggle>
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: dark
-                                    ? [
-                                        Colors.white,
-                                        const Color(0xFFDDE4E9),
-                                      ]
+                                    ? [Colors.white, const Color(0xFFDDE4E9)]
                                     : [
                                         AppColors.navyDeep,
                                         Color.lerp(

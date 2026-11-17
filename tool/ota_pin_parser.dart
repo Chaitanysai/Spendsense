@@ -36,12 +36,10 @@ class OtaPinResult {
   final OtaPinError? error;
   final String? detail;
 
-  const OtaPinResult.ok(String this.fingerprint)
-      : error = null,
-        detail = null;
+  const OtaPinResult.ok(String this.fingerprint) : error = null, detail = null;
 
   const OtaPinResult.failure(OtaPinError this.error, String this.detail)
-      : fingerprint = null;
+    : fingerprint = null;
 
   bool get isOk => fingerprint != null;
 }

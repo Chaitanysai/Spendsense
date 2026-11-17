@@ -89,14 +89,16 @@ class TransactionTypeToggle extends StatelessWidget {
           decoration: BoxDecoration(
             // Opaque: the pill is the card tone, so it reads the same on every
             // palette. The hairline is what separates it from the track.
-            color:
-                selected ? AppColors.glassSurface(context) : Colors.transparent,
+            color: selected
+                ? AppColors.glassSurface(context)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
               color: selected ? AppColors.border(context) : Colors.transparent,
             ),
-            boxShadow:
-                selected && !dark ? AppColors.surfaceShadowFor(dark) : const [],
+            boxShadow: selected && !dark
+                ? AppColors.surfaceShadowFor(dark)
+                : const [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

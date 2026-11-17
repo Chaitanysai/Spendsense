@@ -13,9 +13,8 @@ Widget _host(
   return MaterialApp(
     home: Builder(
       builder: (context) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: Scaffold(
           body: Center(
             child: SizedBox(
@@ -33,13 +32,12 @@ Widget _host(
 }
 
 void main() {
-  testWidgets('orders rows by amount and shows amount and share',
-      (tester) async {
-    await tester.pumpWidget(_host({
-      'Food': 5000,
-      'Travel': 3000,
-      'Shopping': 2000,
-    }));
+  testWidgets('orders rows by amount and shows amount and share', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host({'Food': 5000, 'Travel': 3000, 'Shopping': 2000}),
+    );
     await tester.pump(const Duration(seconds: 1));
 
     final texts = tester
@@ -54,16 +52,17 @@ void main() {
         .widgetList<AnimatedProgressBar>(find.byType(AnimatedProgressBar))
         .map((w) => w.fraction)
         .toList();
-    expect(fractions,
-        [closeTo(0.5, 1e-9), closeTo(0.3, 1e-9), closeTo(0.2, 1e-9)]);
+    expect(fractions, [
+      closeTo(0.5, 1e-9),
+      closeTo(0.3, 1e-9),
+      closeTo(0.2, 1e-9),
+    ]);
   });
 
   testWidgets('bar fractions are shares of the category total', (tester) async {
-    await tester.pumpWidget(_host({
-      'Food': 6000,
-      'Travel': 2000,
-      'Bills': 2000,
-    }));
+    await tester.pumpWidget(
+      _host({'Food': 6000, 'Travel': 2000, 'Bills': 2000}),
+    );
     await tester.pump(const Duration(seconds: 1));
 
     final fractions = tester
@@ -71,13 +70,17 @@ void main() {
         .map((w) => w.fraction)
         .toList();
 
-    expect(fractions,
-        [closeTo(0.6, 1e-9), closeTo(0.2, 1e-9), closeTo(0.2, 1e-9)]);
+    expect(fractions, [
+      closeTo(0.6, 1e-9),
+      closeTo(0.2, 1e-9),
+      closeTo(0.2, 1e-9),
+    ]);
     expect(fractions.fold<double>(0, (a, b) => a + b), closeTo(1.0, 1e-9));
   });
 
-  testWidgets('zero and negative totals fall back to the empty state',
-      (tester) async {
+  testWidgets('zero and negative totals fall back to the empty state', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host({'Food': 0, 'Travel': -500}));
     await tester.pump();
 
@@ -86,9 +89,7 @@ void main() {
   });
 
   testWidgets('many categories are capped and summarised', (tester) async {
-    final totals = {
-      for (var i = 0; i < 9; i++) 'Category $i': (9 - i) * 100,
-    };
+    final totals = {for (var i = 0; i < 9; i++) 'Category $i': (9 - i) * 100};
     await tester.pumpWidget(_host(totals, maxRows: 6));
     await tester.pump(const Duration(seconds: 1));
 
@@ -96,8 +97,9 @@ void main() {
     expect(find.text('+3 more categories'), findsOneWidget);
   });
 
-  testWidgets('a single category is 100 percent and fills the bar',
-      (tester) async {
+  testWidgets('a single category is 100 percent and fills the bar', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host({'Food': 12345}));
     await tester.pump(const Duration(seconds: 1));
 
@@ -107,16 +109,19 @@ void main() {
     expect(bar.fraction, 1.0);
   });
 
-  testWidgets('no overflow on a narrow screen with very large amounts',
-      (tester) async {
-    await tester.pumpWidget(_host(
-      {
-        'Food': 98765432100,
-        'A very long category name that should ellipsize': 50000000000,
-      },
-      width: 280,
-      textScale: 1.3,
-    ));
+  testWidgets('no overflow on a narrow screen with very large amounts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        {
+          'Food': 98765432100,
+          'A very long category name that should ellipsize': 50000000000,
+        },
+        width: 280,
+        textScale: 1.3,
+      ),
+    );
     await tester.pump(const Duration(seconds: 1));
 
     expect(tester.takeException(), isNull);
@@ -128,9 +133,13 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(
-        find.bySemanticsLabel('Food, 50 percent of spending'), findsOneWidget);
-    expect(find.bySemanticsLabel('Travel, 50 percent of spending'),
-        findsOneWidget);
+      find.bySemanticsLabel('Food, 50 percent of spending'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Travel, 50 percent of spending'),
+      findsOneWidget,
+    );
     handle.dispose();
   });
 }

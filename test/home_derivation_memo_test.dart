@@ -80,18 +80,19 @@ void main() {
   // Platform channels the ledger's secure key store talks to. In a widget
   // test the binding answers reads from these mocks instead of the OS; an
   // unmocked channel makes the key lookup hang forever rather than throw.
-  const secureStorage =
-      MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
-  const permissions =
-      MethodChannel('flutter.baseflow.com/permissions/methods');
-  const connectivity =
-      MethodChannel('dev.fluttercommunity.plus/connectivity');
+  const secureStorage = MethodChannel(
+    'plugins.it_nomads.com/flutter_secure_storage',
+  );
+  const permissions = MethodChannel('flutter.baseflow.com/permissions/methods');
+  const connectivity = MethodChannel('dev.fluttercommunity.plus/connectivity');
 
   setUp(() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
-        permissions, (call) async => <int, int>{});
+      permissions,
+      (call) async => <int, int>{},
+    );
     messenger.setMockMethodCallHandler(connectivity, (call) async => 'wifi');
     messenger.setMockMethodCallHandler(secureStorage, (call) async {
       return switch (call.method) {
@@ -131,45 +132,55 @@ void main() {
 
   tearDown(() => transactions.dispose());
 
-  testWidgets('sorts and filters once per data change, not once per build',
-      (tester) async {
+  testWidgets('sorts and filters once per data change, not once per build', (
+    tester,
+  ) async {
     transactions.debugSeed([
       _tx('a', 100, DateTime(2026, 10, 1)),
       _tx('b', 200, DateTime(2026, 10, 2)),
     ]);
 
-    await tester.pumpWidget(harness(
-      transactions: transactions,
-      auth: auth,
-      period: period,
-      theme: theme,
-    ));
+    await tester.pumpWidget(
+      harness(
+        transactions: transactions,
+        auth: auth,
+        period: period,
+        theme: theme,
+      ),
+    );
     await _settle(tester);
 
     dynamic state = tester.state(find.byType(HomeScreen));
-    final computationsAfterFirstBuild = state.debugDerivationComputations as int;
+    final computationsAfterFirstBuild =
+        state.debugDerivationComputations as int;
     expect(computationsAfterFirstBuild, greaterThanOrEqualTo(1));
 
     // Two rebuilds with NO data change: the memo must not recompute.
-    await tester.pumpWidget(harness(
-      transactions: transactions,
-      auth: auth,
-      period: period,
-      theme: theme,
-    ));
+    await tester.pumpWidget(
+      harness(
+        transactions: transactions,
+        auth: auth,
+        period: period,
+        theme: theme,
+      ),
+    );
     await _settle(tester);
-    await tester.pumpWidget(harness(
-      transactions: transactions,
-      auth: auth,
-      period: period,
-      theme: theme,
-    ));
+    await tester.pumpWidget(
+      harness(
+        transactions: transactions,
+        auth: auth,
+        period: period,
+        theme: theme,
+      ),
+    );
     await _settle(tester);
 
     state = tester.state(find.byType(HomeScreen));
-    expect(state.debugDerivationComputations as int,
-        computationsAfterFirstBuild,
-        reason: 'a rebuild without a ledger change must reuse the derivation');
+    expect(
+      state.debugDerivationComputations as int,
+      computationsAfterFirstBuild,
+      reason: 'a rebuild without a ledger change must reuse the derivation',
+    );
 
     // The sorted list handed to sections stays identical across those builds.
     final sortedBefore = state.debugSortedTracked as List<TransactionModel>?;
@@ -183,36 +194,46 @@ void main() {
     await _settle(tester);
 
     state = tester.state(find.byType(HomeScreen));
-    expect(state.debugDerivationComputations as int,
-        greaterThan(computationsAfterFirstBuild),
-        reason: 'a ledger change must recompute the derivation');
+    expect(
+      state.debugDerivationComputations as int,
+      greaterThan(computationsAfterFirstBuild),
+      reason: 'a ledger change must recompute the derivation',
+    );
     final sortedAfter = state.debugSortedTracked as List<TransactionModel>?;
     expect(identical(sortedBefore, sortedAfter), isFalse);
-    expect(sortedAfter!.map((t) => t.id), ['c', 'b', 'a'],
-        reason: 'date-descending order preserved');
+    expect(sortedAfter!.map((t) => t.id), [
+      'c',
+      'b',
+      'a',
+    ], reason: 'date-descending order preserved');
   });
 
-  testWidgets('history toggle and cycle change recompute the filtered lists',
-      (tester) async {
+  testWidgets('history toggle and cycle change recompute the filtered lists', (
+    tester,
+  ) async {
     transactions.debugSeed([
       _tx('in-cycle', 100, DateTime.now()),
       // Outside the current salary cycle (a year ago).
       _tx('old', 200, DateTime.now().subtract(const Duration(days: 400))),
     ]);
 
-    await tester.pumpWidget(harness(
-      transactions: transactions,
-      auth: auth,
-      period: period,
-      theme: theme,
-    ));
+    await tester.pumpWidget(
+      harness(
+        transactions: transactions,
+        auth: auth,
+        period: period,
+        theme: theme,
+      ),
+    );
     await _settle(tester);
 
     dynamic state = tester.state(find.byType(HomeScreen));
     final baseline = state.debugDerivationComputations as int;
     // History ON by default: both rows visible (the list IS the sorted list).
-    expect((state.debugCycleTracked as List<TransactionModel>?)
-        ?.map((t) => t.id), ['in-cycle', 'old']);
+    expect(
+      (state.debugCycleTracked as List<TransactionModel>?)?.map((t) => t.id),
+      ['in-cycle', 'old'],
+    );
 
     // Toggling history re-derives (a preference change is a key change).
     await tester.runAsync(() => theme.setIncludeHistory(false));
@@ -220,8 +241,10 @@ void main() {
 
     state = tester.state(find.byType(HomeScreen));
     expect(state.debugDerivationComputations as int, greaterThan(baseline));
-    expect((state.debugCycleTracked as List<TransactionModel>?)
-        ?.map((t) => t.id), ['in-cycle'],
-        reason: 'history off hides rows outside the current cycle');
+    expect(
+      (state.debugCycleTracked as List<TransactionModel>?)?.map((t) => t.id),
+      ['in-cycle'],
+      reason: 'history off hides rows outside the current cycle',
+    );
   });
 }

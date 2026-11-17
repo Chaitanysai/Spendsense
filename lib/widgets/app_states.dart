@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
@@ -44,11 +43,7 @@ class AppEmptyState extends StatelessWidget {
                   color: AppColors.brand.withValues(alpha: 0.16),
                 ),
               ),
-              child: Icon(
-                icon,
-                size: 36,
-                color: AppColors.brandInk(context),
-              ),
+              child: Icon(icon, size: 36, color: AppColors.brandInk(context)),
             ),
             const SizedBox(height: AppSpacing.xl),
             Text(
@@ -66,8 +61,10 @@ class AppEmptyState extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
                 width: 220,
-                child:
-                    AppPrimaryButton(label: actionLabel!, onPressed: onAction),
+                child: AppPrimaryButton(
+                  label: actionLabel!,
+                  onPressed: onAction,
+                ),
               ),
             ],
           ],
@@ -98,13 +95,19 @@ class AppErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off_rounded,
-                size: 44, color: AppColors.textTertiary(context)),
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 44,
+              color: AppColors.textTertiary(context),
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(title, style: AppText.title(context)),
             const SizedBox(height: AppSpacing.sm),
-            Text(message,
-                textAlign: TextAlign.center, style: AppText.body(context)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppText.body(context),
+            ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
@@ -291,8 +294,7 @@ class SpendingTrendSkeleton extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (var i = 0; i < 3; i++)
-                  Container(height: 1, color: grid),
+                for (var i = 0; i < 3; i++) Container(height: 1, color: grid),
               ],
             ),
           ),
@@ -455,9 +457,6 @@ class AppTappable extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Pressable(
-        onTap: onTap,
-        borderRadius: borderRadius,
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      Pressable(onTap: onTap, borderRadius: borderRadius, child: child);
 }

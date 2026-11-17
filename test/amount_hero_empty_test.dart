@@ -19,11 +19,13 @@ void main() {
   Future<List<String>> texts(WidgetTester tester, String initial) async {
     final controller = TextEditingController(text: initial);
     addTearDown(controller.dispose);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: AmountHeroField(controller: controller, isIncome: false),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AmountHeroField(controller: controller, isIncome: false),
+        ),
       ),
-    ));
+    );
     return tester
         .widgetList<Text>(find.byType(Text))
         .map((t) => t.data ?? '')
@@ -32,8 +34,11 @@ void main() {
 
   testWidgets('empty amount shows no rupee figure', (tester) async {
     final shown = await texts(tester, '');
-    expect(shown.any((t) => t.contains('₹')), isFalse,
-        reason: 'empty input rendered a rupee amount: $shown');
+    expect(
+      shown.any((t) => t.contains('₹')),
+      isFalse,
+      reason: 'empty input rendered a rupee amount: $shown',
+    );
   });
 
   testWidgets('typed amount is formatted', (tester) async {
@@ -43,7 +48,10 @@ void main() {
 
   testWidgets('a typed zero is still shown', (tester) async {
     final shown = await texts(tester, '0');
-    expect(shown, contains('₹0'),
-        reason: 'zero is real input, unlike emptiness');
+    expect(
+      shown,
+      contains('₹0'),
+      reason: 'zero is real input, unlike emptiness',
+    );
   });
 }

@@ -37,34 +37,33 @@ TransactionModel _tx(
   String category,
   int daysAgo, {
   TransactionType type = TransactionType.expense,
-}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: rupees * 100,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'UPI',
-      date: DateTime.now().subtract(Duration(days: daysAgo)),
-      time: '18:30',
-      originalSms: '',
-      isExcluded: false,
-      source: 'Test',
-      bank: 'HDFC Bank',
-    );
+}) => TransactionModel(
+  id: id,
+  amountMinor: rupees * 100,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'UPI',
+  date: DateTime.now().subtract(Duration(days: daysAgo)),
+  time: '18:30',
+  originalSms: '',
+  isExcluded: false,
+  source: 'Test',
+  bank: 'HDFC Bank',
+);
 
 List<TransactionModel> _ledger() => [
-      _tx('1', 420, 'Blue Tokai', 'Food', 0),
-      _tx('2', 78, 'Metro Card', 'Travel', 0),
-      _tx('3', 649, 'Netflix', 'Entertainment', 1),
-      _tx('4', 1240, 'Nature Basket', 'Food', 2),
-      _tx('5', 2199, 'FabIndia', 'Shopping', 3),
-      _tx('6', 500, 'HP Petrol', 'Fuel', 4),
-      _tx('7', 2850, 'Airtel Broadband', 'Bills', 6),
-      _tx('8', 12000, 'Rent', 'Bills', 9),
-      _tx('9', 4500, 'Zara', 'Shopping', 12),
-      _tx('10', 65000, 'Salary', 'Income', 2, type: TransactionType.income),
-    ];
+  _tx('1', 420, 'Blue Tokai', 'Food', 0),
+  _tx('2', 78, 'Metro Card', 'Travel', 0),
+  _tx('3', 649, 'Netflix', 'Entertainment', 1),
+  _tx('4', 1240, 'Nature Basket', 'Food', 2),
+  _tx('5', 2199, 'FabIndia', 'Shopping', 3),
+  _tx('6', 500, 'HP Petrol', 'Fuel', 4),
+  _tx('7', 2850, 'Airtel Broadband', 'Bills', 6),
+  _tx('8', 12000, 'Rent', 'Bills', 9),
+  _tx('9', 4500, 'Zara', 'Shopping', 12),
+  _tx('10', 65000, 'Salary', 'Income', 2, type: TransactionType.income),
+];
 
 Future<void> _loadFonts() async {
   final inter = FontLoader('Inter')
@@ -84,8 +83,10 @@ Future<void> _loadFonts() async {
   final root = Platform.environment['FLUTTER_ROOT'];
   final file = root == null
       ? null
-      : File('$root/bin/cache/artifacts/material_fonts/'
-          'materialicons-regular.otf');
+      : File(
+          '$root/bin/cache/artifacts/material_fonts/'
+          'materialicons-regular.otf',
+        );
   if (file != null && file.existsSync()) {
     final icons = FontLoader('MaterialIcons')
       ..addFont(Future.value(ByteData.sublistView(file.readAsBytesSync())));
@@ -198,14 +199,17 @@ void main() {
   // premium_palette_pages_test: they answer the OS, not the business logic.
   const permissions = MethodChannel('flutter.baseflow.com/permissions/methods');
   const connectivity = MethodChannel('dev.fluttercommunity.plus/connectivity');
-  const secureStorage =
-      MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+  const secureStorage = MethodChannel(
+    'plugins.it_nomads.com/flutter_secure_storage',
+  );
 
   setUp(() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
-        permissions, (call) async => <int, int>{});
+      permissions,
+      (call) async => <int, int>{},
+    );
     messenger.setMockMethodCallHandler(connectivity, (call) async => 'wifi');
     messenger.setMockMethodCallHandler(secureStorage, (call) async {
       return switch (call.method) {
@@ -241,11 +245,17 @@ void main() {
       // Home, then scrolled so content runs under the bar and the add button.
       await _savePng(tester, await _capture(tester, h), '${entry.key}-home');
       await tester.fling(
-          find.byType(Scrollable).first, const Offset(0, -600), 1500);
+        find.byType(Scrollable).first,
+        const Offset(0, -600),
+        1500,
+      );
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pump(const Duration(milliseconds: 300));
       await _savePng(
-          tester, await _capture(tester, h), '${entry.key}-home-scrolled');
+        tester,
+        await _capture(tester, h),
+        '${entry.key}-home-scrolled',
+      );
 
       for (final tab in const [
         ('Bills', 'bills'),
@@ -254,16 +264,23 @@ void main() {
         ('Settings', 'settings'),
       ]) {
         await _openTab(tester, tab.$1);
-        expect(tester.takeException(), isNull,
-            reason: '${entry.key} ${tab.$2} threw');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '${entry.key} ${tab.$2} threw',
+        );
         await _savePng(
-            tester, await _capture(tester, h), '${entry.key}-${tab.$2}');
+          tester,
+          await _capture(tester, h),
+          '${entry.key}-${tab.$2}',
+        );
       }
     });
   }
 
-  testWidgets('nothing floats above the content: no floating Add button',
-      (tester) async {
+  testWidgets('nothing floats above the content: no floating Add button', (
+    tester,
+  ) async {
     await _pumpApp(tester, AppPalette.midnight, dark: true);
     // Add is the first action of the Home dock, in the page flow.
     expect(find.byType(FloatingActionButton), findsNothing);
@@ -275,8 +292,7 @@ void main() {
   });
 
   for (final bottomInset in [0.0, 34.0, 48.0]) {
-    testWidgets(
-        'Home scroll inset clears the nav pill '
+    testWidgets('Home scroll inset clears the nav pill '
         '(system inset $bottomInset)', (tester) async {
       tester.view.padding = FakeViewPadding(bottom: bottomInset * 2);
       tester.view.viewPadding = FakeViewPadding(bottom: bottomInset * 2);
@@ -285,8 +301,7 @@ void main() {
 
       // The widget's own rect includes its SafeArea, so measure the active
       // pill: the row of destinations is exactly as tall as it is.
-      final bar =
-          tester.getRect(find.byKey(const Key('nav-selected-pill')));
+      final bar = tester.getRect(find.byKey(const Key('nav-selected-pill')));
       final context = tester.element(find.byType(HomeScreen));
       final inset = AppSpacing.tabBottomInset(context);
 
@@ -295,16 +310,24 @@ void main() {
       final screenBottom =
           tester.view.physicalSize.height / tester.view.devicePixelRatio;
       final clearance = screenBottom - bar.top;
-      expect(inset, greaterThanOrEqualTo(clearance),
-          reason: 'inset $inset does not clear the nav pill (needs '
-              '$clearance, bar ${bar.height}, system $bottomInset)');
-      expect(bar.bottom, lessThanOrEqualTo(screenBottom - bottomInset),
-          reason: 'the pill must sit above the system gesture inset');
+      expect(
+        inset,
+        greaterThanOrEqualTo(clearance),
+        reason:
+            'inset $inset does not clear the nav pill (needs '
+            '$clearance, bar ${bar.height}, system $bottomInset)',
+      );
+      expect(
+        bar.bottom,
+        lessThanOrEqualTo(screenBottom - bottomInset),
+        reason: 'the pill must sit above the system gesture inset',
+      );
     });
   }
 
-  testWidgets('theme switch leaves no widget on the old palette',
-      (tester) async {
+  testWidgets('theme switch leaves no widget on the old palette', (
+    tester,
+  ) async {
     // A → B through the real provider path.
     final h = await _pumpApp(tester, AppPalette.midnight, dark: true);
     await h.theme.setPalette(AppPalette.plumBlush);
@@ -330,8 +353,10 @@ void main() {
     }
     final pixels = freshBytes.length ~/ 4;
     // ignore: avoid_print
-    print('theme switch: $differing of $pixels pixels differ '
-        '(${(differing / pixels * 100).toStringAsFixed(3)}%)');
+    print(
+      'theme switch: $differing of $pixels pixels differ '
+      '(${(differing / pixels * 100).toStringAsFixed(3)}%)',
+    );
     if (differing > 0) {
       await _savePng(tester, freshImage, 'switch-fresh-plum-home');
     }

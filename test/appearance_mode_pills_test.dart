@@ -67,14 +67,26 @@ void main() {
       expect(rects[1].left, lessThan(rects[2].left));
 
       for (final r in rects.skip(1)) {
-        expect(r.width, moreOrLessEquals(rects.first.width, epsilon: 1.0),
-            reason: 'pill widths differ');
-        expect(r.height, moreOrLessEquals(rects.first.height, epsilon: 1.0),
-            reason: 'pill heights differ — a descender decided the box');
-        expect(r.top, moreOrLessEquals(rects.first.top, epsilon: 1.0),
-            reason: 'pill tops are not on one line');
-        expect(r.bottom, moreOrLessEquals(rects.first.bottom, epsilon: 1.0),
-            reason: 'pill bottoms are not on one line');
+        expect(
+          r.width,
+          moreOrLessEquals(rects.first.width, epsilon: 1.0),
+          reason: 'pill widths differ',
+        );
+        expect(
+          r.height,
+          moreOrLessEquals(rects.first.height, epsilon: 1.0),
+          reason: 'pill heights differ — a descender decided the box',
+        );
+        expect(
+          r.top,
+          moreOrLessEquals(rects.first.top, epsilon: 1.0),
+          reason: 'pill tops are not on one line',
+        );
+        expect(
+          r.bottom,
+          moreOrLessEquals(rects.first.bottom, epsilon: 1.0),
+          reason: 'pill bottoms are not on one line',
+        );
       }
     });
   }
@@ -84,20 +96,32 @@ void main() {
     final card = tester.getRect(find.byType(GlassCard).first);
     for (final label in labels) {
       final r = pillRect(tester, label);
-      expect(r.top, greaterThanOrEqualTo(card.top - 0.5),
-          reason: '$label overflows the card top');
-      expect(r.bottom, lessThanOrEqualTo(card.bottom + 0.5),
-          reason: '$label overflows the card bottom');
+      expect(
+        r.top,
+        greaterThanOrEqualTo(card.top - 0.5),
+        reason: '$label overflows the card top',
+      );
+      expect(
+        r.bottom,
+        lessThanOrEqualTo(card.bottom + 0.5),
+        reason: '$label overflows the card bottom',
+      );
     }
   });
 
   testWidgets('palette name and DEFAULT chip do not collide', (tester) async {
     await pumpAppearance(tester, textScale: 1.0);
-    expect(find.text('Premium Blue'), findsOneWidget,
-        reason: 'the default palette name should not be ellipsised away');
+    expect(
+      find.text('Premium Blue'),
+      findsOneWidget,
+      reason: 'the default palette name should not be ellipsised away',
+    );
     final name = tester.getRect(find.text('Premium Blue'));
     final chip = tester.getRect(find.text('DEFAULT'));
-    expect(name.right, lessThanOrEqualTo(chip.left + 0.5),
-        reason: 'the palette name overlaps the DEFAULT chip');
+    expect(
+      name.right,
+      lessThanOrEqualTo(chip.left + 0.5),
+      reason: 'the palette name overlaps the DEFAULT chip',
+    );
   });
 }

@@ -22,15 +22,16 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  const permissionsChannel =
-      MethodChannel('flutter.baseflow.com/permissions/methods');
+  const permissionsChannel = MethodChannel(
+    'flutter.baseflow.com/permissions/methods',
+  );
   setUp(() {
     // Only the permissions channel answers (denied); every HTTP-capable
     // channel stays unmocked, so any network attempt would fail loudly.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(permissionsChannel, (call) async {
-      return <int, int>{108: 0};
-    });
+          return <int, int>{108: 0};
+        });
     AppColors.applyPalette(AppPalette.emerald);
   });
   tearDown(() {
@@ -39,8 +40,9 @@ void main() {
     AppColors.applyPalette(AppPalette.emerald);
   });
 
-  testWidgets('the app starts and renders the dashboard with no network',
-      (tester) async {
+  testWidgets('the app starts and renders the dashboard with no network', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -65,8 +67,11 @@ void main() {
     await transactions.ready;
     await tester.pump(const Duration(seconds: 1));
 
-    expect(transactions.hasLedgerInitError, isFalse,
-        reason: 'the local encrypted ledger needs no network to load');
+    expect(
+      transactions.hasLedgerInitError,
+      isFalse,
+      reason: 'the local encrypted ledger needs no network to load',
+    );
     // The dashboard itself, not the auth screen: the app opens on Home in this
     // harness, so "Welcome back" was a stale marker that never rendered.
     expect(find.text('Spend Amount'), findsOneWidget);

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+
 import '../models/transaction_model.dart';
 
 class LegacyDatabaseFormatException implements Exception {
@@ -61,13 +62,17 @@ class DatabaseService {
         // Version 1's `amount` column was explicitly whole INR rupees.
         // Convert it inside the database upgrade transaction only once.
         await db.execute(
-            'ALTER TABLE transactions ADD COLUMN schemaVersion INTEGER NOT NULL DEFAULT 1');
+          'ALTER TABLE transactions ADD COLUMN schemaVersion INTEGER NOT NULL DEFAULT 1',
+        );
         await db.execute(
-            "ALTER TABLE transactions ADD COLUMN currency TEXT NOT NULL DEFAULT 'INR'");
-        await db
-            .execute('ALTER TABLE transactions ADD COLUMN amountMinor INTEGER');
+          "ALTER TABLE transactions ADD COLUMN currency TEXT NOT NULL DEFAULT 'INR'",
+        );
         await db.execute(
-            "ALTER TABLE transactions ADD COLUMN amountUnit TEXT NOT NULL DEFAULT 'INR_WHOLE_RUPEES_V1'");
+          'ALTER TABLE transactions ADD COLUMN amountMinor INTEGER',
+        );
+        await db.execute(
+          "ALTER TABLE transactions ADD COLUMN amountUnit TEXT NOT NULL DEFAULT 'INR_WHOLE_RUPEES_V1'",
+        );
 
         final rows = await db.query('transactions', columns: ['id', 'amount']);
         for (final row in rows) {
@@ -79,7 +84,8 @@ class DatabaseService {
               amount < 0 ||
               amount > 90000000000000) {
             throw const LegacyDatabaseFormatException(
-                'A legacy SQLite amount is ambiguous.');
+              'A legacy SQLite amount is ambiguous.',
+            );
           }
           await db.update(
             'transactions',
@@ -99,7 +105,8 @@ class DatabaseService {
     await _loadIds();
     _initialized = true;
     debugPrint(
-        '📦 Database initialized. Cached IDs count: ${_cachedIds.length}');
+      '📦 Database initialized. Cached IDs count: ${_cachedIds.length}',
+    );
   }
 
   Future<void> _loadIds() async {
@@ -145,7 +152,8 @@ class DatabaseService {
         row['amountMinor'] is! int ||
         (row['amountMinor'] as int) < 0) {
       throw const LegacyDatabaseFormatException(
-          'The SQLite row has no trusted paise unit.');
+        'The SQLite row has no trusted paise unit.',
+      );
     }
     return {
       'schemaVersion': 2,
@@ -177,21 +185,19 @@ class DatabaseService {
 
   Future<void> put(TransactionModel tx) async {
     throw StateError(
-        'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.');
+      'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.',
+    );
   }
 
   Future<void> putAll(List<TransactionModel> txs) async {
     throw StateError(
-        'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.');
+      'Legacy DatabaseService cannot write v2 transactions. Use TransactionCacheService.',
+    );
   }
 
   Future<void> remove(String id) async {
     if (_database == null) await init();
-    await _database!.delete(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await _database!.delete('transactions', where: 'id = ?', whereArgs: [id]);
     _cachedIds.remove(id);
   }
 

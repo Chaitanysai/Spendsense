@@ -126,9 +126,13 @@ void main() {
         "static const String pinnedSigningCertSha256 = '${pin.toUpperCase()}';\n",
       );
 
-      expect(result.isOk, isFalse,
-          reason: 'uppercase must be rejected rather than silently normalised, '
-              'so the stored constant and the compared value stay identical');
+      expect(
+        result.isOk,
+        isFalse,
+        reason:
+            'uppercase must be rejected rather than silently normalised, '
+            'so the stored constant and the compared value stay identical',
+      );
       expect(result.error, OtaPinError.malformed);
     });
 

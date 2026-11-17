@@ -132,8 +132,10 @@ class UpdateService {
     }
 
     try {
-      final body =
-          await transport.get(manifestUri, timeout: config.requestTimeout);
+      final body = await transport.get(
+        manifestUri,
+        timeout: config.requestTimeout,
+      );
       final manifest = UpdateManifest.fromJsonString(
         body,
         expectedAppId: config.appId,
@@ -147,13 +149,14 @@ class UpdateService {
           !_constantTimeEquals(claimed, config.pinnedCertSha256)) {
         return const UpdateCheckResult(
           UpdateCheckStatus.invalidManifest,
-          message:
-              'The update channel is signed with an unexpected certificate and was rejected.',
+          message: 'The update channel is signed with an unexpected certificate and was rejected.',
         );
       }
 
-      final decision =
-          UpdatePolicy.decide(installed: installed, manifest: manifest);
+      final decision = UpdatePolicy.decide(
+        installed: installed,
+        manifest: manifest,
+      );
       if (decision == UpdateDecision.upToDate) {
         return UpdateCheckResult(
           UpdateCheckStatus.upToDate,
@@ -223,8 +226,9 @@ class UpdateService {
     // Defence in depth: never trust a manifest object that bypassed the parser.
     final downloadUrl = manifest.downloadUrl;
     final host = downloadUrl.host.toLowerCase();
-    final approved =
-        config.approvedHosts.map((h) => h.toLowerCase()).contains(host);
+    final approved = config.approvedHosts
+        .map((h) => h.toLowerCase())
+        .contains(host);
     if (downloadUrl.scheme.toLowerCase() != 'https' ||
         !approved ||
         !downloadUrl.path.toLowerCase().endsWith('.apk') ||
@@ -258,8 +262,9 @@ class UpdateService {
     final client = clientFactory();
     try {
       final request = http.Request('GET', manifest.downloadUrl);
-      final response =
-          await client.send(request).timeout(config.downloadTimeout);
+      final response = await client
+          .send(request)
+          .timeout(config.downloadTimeout);
       if (response.statusCode != HttpStatus.ok) {
         throw UpdateDownloadException(
           'http_${response.statusCode}',
@@ -274,8 +279,9 @@ class UpdateService {
       var received = 0;
 
       try {
-        await for (final chunk
-            in response.stream.timeout(config.downloadTimeout)) {
+        await for (final chunk in response.stream.timeout(
+          config.downloadTimeout,
+        )) {
           if (cancelToken?.isCancelled ?? false) {
             throw const UpdateCancelled();
           }
@@ -412,20 +418,22 @@ UpdateManifest decodeManifest(
   String body, {
   required String appId,
   required Set<String> hosts,
-}) =>
-    UpdateManifest.fromJsonString(body,
-        expectedAppId: appId, approvedHosts: hosts);
+}) => UpdateManifest.fromJsonString(
+  body,
+  expectedAppId: appId,
+  approvedHosts: hosts,
+);
 
 String manifestToJson(UpdateManifest manifest) => jsonEncode({
-      'schemaVersion': manifest.schemaVersion,
-      'appId': manifest.appId,
-      'latestVersion': manifest.latest.versionName,
-      'latestBuildNumber': manifest.latest.buildNumber,
-      'minimumSupportedVersion': manifest.minimum.versionName,
-      'downloadUrl': manifest.downloadUrl.toString(),
-      'releaseNotes': manifest.releaseNotes,
-      'sha256': manifest.sha256,
-      'signingCertSha256': manifest.signingCertSha256,
-      if (manifest.publishedAt != null)
-        'publishedAt': manifest.publishedAt!.toIso8601String(),
-    });
+  'schemaVersion': manifest.schemaVersion,
+  'appId': manifest.appId,
+  'latestVersion': manifest.latest.versionName,
+  'latestBuildNumber': manifest.latest.buildNumber,
+  'minimumSupportedVersion': manifest.minimum.versionName,
+  'downloadUrl': manifest.downloadUrl.toString(),
+  'releaseNotes': manifest.releaseNotes,
+  'sha256': manifest.sha256,
+  'signingCertSha256': manifest.signingCertSha256,
+  if (manifest.publishedAt != null)
+    'publishedAt': manifest.publishedAt!.toIso8601String(),
+});

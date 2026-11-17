@@ -21,22 +21,25 @@ import 'package:spendsense/widgets/insight_cards.dart';
 /// per day, for the "to date" comparisons) instead of once per rebuild, because
 /// the shell keeps the tab mounted and re-shows it on every visit.
 
-TransactionModel _tx(String id, int amountMinor, DateTime date,
-        {TransactionType type = TransactionType.expense,
-        bool excluded = false,
-        String category = 'Shopping'}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: amountMinor,
-      type: type,
-      merchant: 'Merchant $id',
-      category: category,
-      paymentMethod: 'UPI',
-      date: date,
-      time: '10:00',
-      originalSms: '',
-      isExcluded: excluded,
-    );
+TransactionModel _tx(
+  String id,
+  int amountMinor,
+  DateTime date, {
+  TransactionType type = TransactionType.expense,
+  bool excluded = false,
+  String category = 'Shopping',
+}) => TransactionModel(
+  id: id,
+  amountMinor: amountMinor,
+  type: type,
+  merchant: 'Merchant $id',
+  category: category,
+  paymentMethod: 'UPI',
+  date: date,
+  time: '10:00',
+  originalSms: '',
+  isExcluded: excluded,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -50,11 +53,11 @@ void main() {
     final clock = DateTime(2026, 10, 20, 14);
 
     List<TransactionModel> ledger() => [
-          _tx('a', 100, DateTime(2026, 10, 19), category: 'Food'),
-          _tx('b', 200, DateTime(2026, 10, 18), category: 'Travel'),
-          _tx('c', 300, DateTime(2026, 10, 5), category: 'Food'),
-          _tx('d', 400, DateTime(2026, 9, 20), category: 'Food'),
-        ];
+      _tx('a', 100, DateTime(2026, 10, 19), category: 'Food'),
+      _tx('b', 200, DateTime(2026, 10, 18), category: 'Travel'),
+      _tx('c', 300, DateTime(2026, 10, 5), category: 'Food'),
+      _tx('d', 400, DateTime(2026, 9, 20), category: 'Food'),
+    ];
 
     Widget harness(List<TransactionModel> txs, {required DateTime now}) =>
         MaterialApp(
@@ -82,8 +85,11 @@ void main() {
       await tester.pump();
 
       state = tester.state(find.byType(InsightComparisons));
-      expect(state.debugComputations as int, afterFirst,
-          reason: 'a rebuild without a ledger or day change must reuse');
+      expect(
+        state.debugComputations as int,
+        afterFirst,
+        reason: 'a rebuild without a ledger or day change must reuse',
+      );
     });
 
     testWidgets('a new ledger identity recomputes', (tester) async {
@@ -99,25 +105,29 @@ void main() {
       expect(state.debugComputations as int, greaterThan(before));
     });
 
-    testWidgets('a later day recomputes (week/month are "to date")',
-        (tester) async {
+    testWidgets('a later day recomputes (week/month are "to date")', (
+      tester,
+    ) async {
       final txs = ledger();
       await tester.pumpWidget(harness(txs, now: clock));
       await tester.pump();
       dynamic state = tester.state(find.byType(InsightComparisons));
       final before = state.debugComputations as int;
 
-      await tester.pumpWidget(
-          harness(txs, now: DateTime(2026, 10, 21, 9)));
+      await tester.pumpWidget(harness(txs, now: DateTime(2026, 10, 21, 9)));
       await tester.pump();
 
       state = tester.state(find.byType(InsightComparisons));
-      expect(state.debugComputations as int, greaterThan(before),
-          reason: 'the comparison windows shift at midnight');
+      expect(
+        state.debugComputations as int,
+        greaterThan(before),
+        reason: 'the comparison windows shift at midnight',
+      );
     });
 
-    testWidgets('rendered output matches the direct computation',
-        (tester) async {
+    testWidgets('rendered output matches the direct computation', (
+      tester,
+    ) async {
       final txs = ledger();
       await tester.pumpWidget(harness(txs, now: clock));
       await tester.pump();
@@ -130,8 +140,11 @@ void main() {
         findsOneWidget,
         reason: 'the comparison card renders from the bundle',
       );
-      expect(month.currentMinor, 600,
-          reason: 'the three October expenses count, September does not');
+      expect(
+        month.currentMinor,
+        600,
+        reason: 'the three October expenses count, September does not',
+      );
     });
   });
 
@@ -159,24 +172,24 @@ void main() {
     });
 
     Widget harness() => MultiProvider(
-          providers: [
-            ChangeNotifierProvider<TransactionProvider>.value(
-                value: transactions),
-            ChangeNotifierProvider<AuthProvider>.value(value: auth),
-            ChangeNotifierProvider<PeriodProvider>.value(value: period),
-            ChangeNotifierProvider<ThemeProvider>.value(value: theme),
-            ChangeNotifierProvider<PlannerProvider>.value(value: planner),
-          ],
-          child: const MaterialApp(home: InsightsScreen()),
-        );
+      providers: [
+        ChangeNotifierProvider<TransactionProvider>.value(value: transactions),
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ChangeNotifierProvider<PeriodProvider>.value(value: period),
+        ChangeNotifierProvider<ThemeProvider>.value(value: theme),
+        ChangeNotifierProvider<PlannerProvider>.value(value: planner),
+      ],
+      child: const MaterialApp(home: InsightsScreen()),
+    );
 
     Future<void> settle(WidgetTester tester) async {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('scans the ledger once per data change, not per rebuild',
-        (tester) async {
+    testWidgets('scans the ledger once per data change, not per rebuild', (
+      tester,
+    ) async {
       final now = DateTime.now();
       transactions.debugSeed([
         _tx('a', 100, DateTime(now.year, now.month, 3)),
@@ -197,8 +210,11 @@ void main() {
       await settle(tester);
 
       state = tester.state(find.byType(InsightsScreen));
-      expect(state.debugMetricComputations as int, afterFirst,
-          reason: 'a rebuild without a ledger change must reuse the metrics');
+      expect(
+        state.debugMetricComputations as int,
+        afterFirst,
+        reason: 'a rebuild without a ledger change must reuse the metrics',
+      );
 
       // A ledger change invalidates.
       transactions.debugSeed([
@@ -209,8 +225,11 @@ void main() {
       await settle(tester);
 
       state = tester.state(find.byType(InsightsScreen));
-      expect(state.debugMetricComputations as int, greaterThan(afterFirst),
-          reason: 'a ledger change must recompute the metrics');
+      expect(
+        state.debugMetricComputations as int,
+        greaterThan(afterFirst),
+        reason: 'a ledger change must recompute the metrics',
+      );
     });
   });
 }

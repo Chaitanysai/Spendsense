@@ -61,10 +61,7 @@ Widget _scene(AppPalette palette, int selected) {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Transaction ${i + 1}',
-                          style: text,
-                        ),
+                        child: Text('Transaction ${i + 1}', style: text),
                       ),
                       Text('₹${(i + 1) * 420}', style: text),
                     ],
@@ -98,12 +95,15 @@ void main() {
     final root = Platform.environment['FLUTTER_ROOT'];
     final iconFile = root == null
         ? null
-        : File('$root/bin/cache/artifacts/material_fonts/'
-            'materialicons-regular.otf');
+        : File(
+            '$root/bin/cache/artifacts/material_fonts/'
+            'materialicons-regular.otf',
+          );
     if (iconFile != null && iconFile.existsSync()) {
       final icons = FontLoader('MaterialIcons')
         ..addFont(
-            Future.value(ByteData.sublistView(iconFile.readAsBytesSync())));
+          Future.value(ByteData.sublistView(iconFile.readAsBytesSync())),
+        );
       await icons.load();
     }
   });
@@ -133,8 +133,9 @@ void main() {
           final boundary =
               key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
           final image = await boundary.toImage(pixelRatio: 2);
-          final bytes =
-              (await image.toByteData(format: ui.ImageByteFormat.png))!;
+          final bytes = (await image.toByteData(
+            format: ui.ImageByteFormat.png,
+          ))!;
           final file = File(
             'docs/design-review/glass-refine/${entry.key}-tab$selected.png',
           );

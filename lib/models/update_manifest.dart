@@ -167,8 +167,11 @@ class UpdateManifest {
         'Manifest must be a JSON object.',
       );
     }
-    return fromMap(decoded,
-        expectedAppId: expectedAppId, approvedHosts: approvedHosts);
+    return fromMap(
+      decoded,
+      expectedAppId: expectedAppId,
+      approvedHosts: approvedHosts,
+    );
   }
 
   static UpdateManifest fromMap(
@@ -218,8 +221,10 @@ class UpdateManifest {
         'latestBuildNumber must be a positive integer.',
       );
     }
-    final latest =
-        AppVersion.tryParse(latestVersionRaw, buildNumber: latestBuildNumber);
+    final latest = AppVersion.tryParse(
+      latestVersionRaw,
+      buildNumber: latestBuildNumber,
+    );
     if (latest == null) {
       throw ManifestValidationException(
         ManifestError.invalidVersion,
@@ -367,11 +372,7 @@ class UpdateManifest {
 }
 
 /// Remote policy decision for an installed build.
-enum UpdateDecision {
-  upToDate,
-  optional,
-  required,
-}
+enum UpdateDecision { upToDate, optional, required }
 
 class UpdatePolicy {
   const UpdatePolicy._();

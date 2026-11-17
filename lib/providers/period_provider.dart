@@ -169,7 +169,7 @@ class PeriodProvider with ChangeNotifier {
     'Sep',
     'Oct',
     'Nov',
-    'Dec'
+    'Dec',
   ];
   String _mon(int m) => _months[m];
 }

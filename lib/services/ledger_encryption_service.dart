@@ -24,10 +24,11 @@ class FlutterSecureLedgerKeyStore implements LedgerKeyStore {
   final FlutterSecureStorage _storage;
 
   const FlutterSecureLedgerKeyStore({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          );
 
   @override
   Future<String?> read(String keyName) => _storage.read(key: keyName);
@@ -69,14 +70,15 @@ class LedgerEncryptionService {
     FlutterSecureStorage? storage,
     LedgerKeyStore? keyStore,
     AesGcm? algorithm,
-  })  : _keyStore = keyStore ?? FlutterSecureLedgerKeyStore(storage: storage),
-        _algorithm = algorithm ?? defaultAlgorithm();
+  }) : _keyStore = keyStore ?? FlutterSecureLedgerKeyStore(storage: storage),
+       _algorithm = algorithm ?? defaultAlgorithm();
 
   Future<SecretKey> _existingKey() async {
     final encoded = await _readRawKey();
     if (encoded == null || encoded.isEmpty) {
       throw const LedgerKeyUnavailableException(
-          'The ledger encryption key is unavailable.');
+        'The ledger encryption key is unavailable.',
+      );
     }
 
     try {
@@ -87,7 +89,8 @@ class LedgerEncryptionService {
       return SecretKey(bytes);
     } catch (_) {
       throw const LedgerKeyUnavailableException(
-          'The ledger encryption key is invalid.');
+        'The ledger encryption key is invalid.',
+      );
     }
   }
 
@@ -99,18 +102,17 @@ class LedgerEncryptionService {
     final generated = await _algorithm.newSecretKey();
     final bytes = await generated.extractBytes();
     try {
-      await _keyStore.write(
-        _keyName,
-        base64UrlEncode(bytes),
-      );
+      await _keyStore.write(_keyName, base64UrlEncode(bytes));
     } catch (error) {
       throw LedgerKeyUnavailableException(
-          'The new ledger key could not be protected: ${error.runtimeType}.');
+        'The new ledger key could not be protected: ${error.runtimeType}.',
+      );
     }
   }
 
   Future<String?> _readRawKey() async {
-    final allowTestFallback = Platform.environment['FLUTTER_TEST'] == 'true' &&
+    final allowTestFallback =
+        Platform.environment['FLUTTER_TEST'] == 'true' &&
         _keyStore is FlutterSecureLedgerKeyStore;
     if (allowTestFallback) {
       // Test-only fallback for existing default test fixtures.
@@ -123,7 +125,8 @@ class LedgerEncryptionService {
         return base64UrlEncode(Uint8List.fromList(List.filled(32, 0x42)));
       }
       throw LedgerKeyUnavailableException(
-          'The ledger encryption key could not be read: ${error.runtimeType}.');
+        'The ledger encryption key could not be read: ${error.runtimeType}.',
+      );
     }
   }
 
@@ -155,10 +158,7 @@ class LedgerEncryptionService {
     });
   }
 
-  Future<String> decryptText(
-    String encoded, {
-    String? expectedRecordId,
-  }) async {
+  Future<String> decryptText(String encoded, {String? expectedRecordId}) async {
     final key = await _existingKey();
     return decryptWithKeyBytes(
       encoded,
@@ -233,7 +233,8 @@ class LedgerEncryptionService {
       return utf8.decode(Uint8List.fromList(clear));
     } catch (_) {
       throw const LedgerKeyUnavailableException(
-          'The encrypted ledger record could not be authenticated.');
+        'The encrypted ledger record could not be authenticated.',
+      );
     }
   }
 

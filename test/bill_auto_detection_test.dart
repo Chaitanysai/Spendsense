@@ -23,23 +23,22 @@ TransactionModel _tx({
   String? sourceTransactionId,
   String? billKindHint,
   bool billReminderHint = false,
-}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: amountMinor,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'Card',
-      date: date,
-      time: '10:00',
-      originalSms: sms,
-      isExcluded: excluded,
-      reference: reference,
-      source: sourceTransactionId ?? 'SMS-Parser',
-      billKindHint: billKindHint,
-      billReminderHint: billReminderHint,
-    );
+}) => TransactionModel(
+  id: id,
+  amountMinor: amountMinor,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'Card',
+  date: date,
+  time: '10:00',
+  originalSms: sms,
+  isExcluded: excluded,
+  reference: reference,
+  source: sourceTransactionId ?? 'SMS-Parser',
+  billKindHint: billKindHint,
+  billReminderHint: billReminderHint,
+);
 
 RecurringPlan _plan({
   String id = 'p1',
@@ -48,16 +47,15 @@ RecurringPlan _plan({
   int amountMinor = 64900,
   DateTime? nextDue,
   String? sourceTransactionId,
-}) =>
-    RecurringPlan.create(
-      id: id,
-      title: title,
-      category: category,
-      amountMinor: amountMinor,
-      frequency: PlanFrequency.monthly,
-      nextDue: nextDue ?? DateTime(2026, 10, 22),
-      sourceTransactionId: sourceTransactionId,
-    );
+}) => RecurringPlan.create(
+  id: id,
+  title: title,
+  category: category,
+  amountMinor: amountMinor,
+  frequency: PlanFrequency.monthly,
+  nextDue: nextDue ?? DateTime(2026, 10, 22),
+  sourceTransactionId: sourceTransactionId,
+);
 
 void main() {
   group('reminder vs payment', () {
@@ -600,17 +598,19 @@ void main() {
   });
 
   group('optional advisor boundary', () {
-    test('the local-only advisor performs no work and returns nothing',
-        () async {
-      final result = await const LocalOnlyBillAdvisor().advise(
-        const BillAdvisoryRequest(
-          redactedText: 'electricity bill',
-          localKind: BillKind.utility,
-          localConfidence: 0.8,
-        ),
-      );
-      expect(result, isNull);
-    });
+    test(
+      'the local-only advisor performs no work and returns nothing',
+      () async {
+        final result = await const LocalOnlyBillAdvisor().advise(
+          const BillAdvisoryRequest(
+            redactedText: 'electricity bill',
+            localKind: BillKind.utility,
+            localConfidence: 0.8,
+          ),
+        );
+        expect(result, isNull);
+      },
+    );
 
     test('redaction removes account, phone, OTP and balance data', () {
       final redacted = BillTextRedactor.redact(

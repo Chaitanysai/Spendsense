@@ -73,7 +73,8 @@ class AppColors {
     final limeAccent = next.limeAccent;
     // A palette may pin its highlight ink (saturated highlights need white);
     // otherwise keep the contrast-aware deep-stop choice.
-    _limeInk = next.onLimeInk ??
+    _limeInk =
+        next.onLimeInk ??
         (_contrast(limeAccent, next.deep) >= 4.5 ? next.deep : (Colors.black));
   }
 
@@ -227,10 +228,9 @@ class AppColors {
   /// Derived from the card tone plus a little of the palette's own ink, so it
   /// works on all 19 palettes without adding a colour to any of them.
   static Color surfaceTertiary(BuildContext context) => Color.alphaBlend(
-        textPrimary(context)
-            .withValues(alpha: isDark(context) ? 0.08 : 0.05),
-        glassSurface(context),
-      );
+    textPrimary(context).withValues(alpha: isDark(context) ? 0.08 : 0.05),
+    glassSurface(context),
+  );
 
   /// The quiet step *below* a raised card: halfway between the card and the
   /// page.
@@ -344,7 +344,8 @@ class AppColors {
     double minContrast = 4.5,
   }) {
     if (_contrast(preferred, background) >= minContrast) return preferred;
-    final toward = _contrast(Colors.white, background) >=
+    final toward =
+        _contrast(Colors.white, background) >=
             _contrast(Colors.black, background)
         ? Colors.white
         : Colors.black;
@@ -467,10 +468,8 @@ class AppColors {
 
   /// The colour a card shows. Identical to [glassFillFor] now that fills are
   /// opaque; kept as the name ink measurements already use.
-  static Color glassBase(bool dark) => Color.alphaBlend(
-        glassFillFor(dark),
-        dark ? darkBackground : background,
-      );
+  static Color glassBase(bool dark) =>
+      Color.alphaBlend(glassFillFor(dark), dark ? darkBackground : background);
 
   /// Separation shadow of a raised surface.
   ///
@@ -483,8 +482,7 @@ class AppColors {
   static List<BoxShadow> glassShadows(
     BuildContext context, {
     bool floating = false,
-  }) =>
-      surfaceShadowFor(isDark(context), floating: floating);
+  }) => surfaceShadowFor(isDark(context), floating: floating);
 
   /// Context-free form of [glassShadows].
   static List<BoxShadow> surfaceShadowFor(bool dark, {bool floating = false}) {
@@ -546,8 +544,8 @@ class AppColors {
   static Color overlaySurfaceFor(bool dark) => !dark
       ? surface
       : isGlassPalette
-          ? darkSurfaceAlt
-          : darkSurface;
+      ? darkSurfaceAlt
+      : darkSurface;
 
   static Color overlaySurface(BuildContext context) =>
       overlaySurfaceFor(isDark(context));
@@ -569,15 +567,14 @@ class AppColors {
     BuildContext context, {
     required BorderRadiusGeometry borderRadius,
     bool shadow = true,
-  }) =>
-      BoxDecoration(
-        color: glassSurface(context),
-        borderRadius: borderRadius,
-        border: needsSurfaceEdgeFor(isDark(context))
-            ? Border.all(color: glassBorder(context))
-            : null,
-        boxShadow: shadow ? glassShadows(context) : null,
-      );
+  }) => BoxDecoration(
+    color: glassSurface(context),
+    borderRadius: borderRadius,
+    border: needsSurfaceEdgeFor(isDark(context))
+        ? Border.all(color: glassBorder(context))
+        : null,
+    boxShadow: shadow ? glassShadows(context) : null,
+  );
 
   /// Below this card-to-page contrast a card needs a hairline to read as a
   /// plane. The reference design measures ~1.09:1 (#FFFFFF on #F5F5F5) and
@@ -602,10 +599,7 @@ class AppColors {
   /// worst stop. White when it clears [minContrast] on every stop, otherwise
   /// whichever of white or black holds up better. Never assumes a palette's
   /// deep stop is dark.
-  static Color inkOnGradient(
-    Gradient gradient, {
-    double minContrast = 4.5,
-  }) {
+  static Color inkOnGradient(Gradient gradient, {double minContrast = 4.5}) {
     double worst(Color ink) => gradient.colors
         .map((stop) => _contrast(ink, stop))
         .reduce((a, b) => a < b ? a : b);
@@ -628,10 +622,8 @@ class AppColors {
       navAccentFor(dark).withValues(alpha: dark ? 0.30 : 0.34);
 
   /// Opaque track colour as painted over the card, for contrast checks.
-  static Color switchTrackOnBackdropFor(bool dark) => Color.alphaBlend(
-        switchTrackOnFor(dark),
-        dark ? darkSurface : surface,
-      );
+  static Color switchTrackOnBackdropFor(bool dark) =>
+      Color.alphaBlend(switchTrackOnFor(dark), dark ? darkSurface : surface);
 
   /// Ink on [accentHeroGradient] (assistant avatars, the smart-tip glyph).
   static Color onAccentHero(BuildContext context) =>
@@ -662,10 +654,10 @@ class AppColors {
 
   /// Context-free form of [inkOnWash].
   static Color inkOnWashFor(bool dark, Color tone, {double? alpha}) => inkOn(
-        tone,
-        tone.withValues(alpha: alpha ?? washAlphaFor(dark)),
-        glassBase(dark),
-      );
+    tone,
+    tone.withValues(alpha: alpha ?? washAlphaFor(dark)),
+    glassBase(dark),
+  );
 
   /// Translucent chip or well drawn over a gradient card: a light wash in the
   /// gradient's own ink where that keeps the label at 4.5:1 on every stop, a
@@ -791,9 +783,9 @@ class AppColors {
   /// grey: it then reads correctly on a white card, a tinted dark card and a
   /// coloured hero without a second token per surface.
   static Color skeletonBase(BuildContext context) => Color.alphaBlend(
-        textPrimaryFor(isDark(context)).withValues(alpha: 0.08),
-        surfaceColor(context),
-      );
+    textPrimaryFor(isDark(context)).withValues(alpha: 0.08),
+    surfaceColor(context),
+  );
 
   static Color skeletonHighlight(BuildContext context) => isDark(context)
       ? Colors.white.withValues(alpha: 0.10)
@@ -818,9 +810,9 @@ class AppColors {
   /// Plate behind an idle destination: one quiet step into the bar (the
   /// tertiary recipe: the palette's ink at 5% / 8% over the card). Opaque.
   static Color navFillFor(bool dark) => Color.alphaBlend(
-        textPrimaryFor(dark).withValues(alpha: dark ? 0.08 : 0.05),
-        navBarFillFor(dark),
-      );
+    textPrimaryFor(dark).withValues(alpha: dark ? 0.08 : 0.05),
+    navBarFillFor(dark),
+  );
 
   /// Opaque, so the backdrop is the fill itself.
   static Color navBackdropFor(bool dark) => navFillFor(dark);
@@ -832,9 +824,11 @@ class AppColors {
 
   /// Glyph and label on the active pill: the page tone, measured against the
   /// pill so a light canvas tint can never weaken it.
-  static Color navActiveInkFor(bool dark) =>
-      resolveInk(dark ? darkBackground : background, navActiveFillFor(dark),
-          minContrast: 7);
+  static Color navActiveInkFor(bool dark) => resolveInk(
+    dark ? darkBackground : background,
+    navActiveFillFor(dark),
+    minContrast: 7,
+  );
 
   /// Kept for existing callers: the selected container *is* the active fill.
   static Color navSelectedFillFor(bool dark) => navActiveFillFor(dark);
@@ -962,10 +956,12 @@ class AppTokens {
     final raised = dark ? AppColors.darkSurfaceAlt : AppColors.surface;
 
     final accent = AppColors.brandInkFor(dark);
-    final container =
-        AppColors.navAccentFor(dark).withValues(alpha: dark ? 0.22 : 0.14);
-    final containerBase =
-        Color.alphaBlend(container, AppColors.glassBase(dark));
+    final container = AppColors.navAccentFor(dark)
+        .withValues(alpha: dark ? 0.22 : 0.14);
+    final containerBase = Color.alphaBlend(
+      container,
+      AppColors.glassBase(dark),
+    );
     final secondary = AppColors.resolveInk(
       dark ? AppColors.cyan : AppColors.azure,
       AppColors.glassBase(dark),
@@ -978,8 +974,7 @@ class AppTokens {
       surface: surface,
       surfaceElevated: raised,
       surfaceGlass: AppColors.glassFillFor(dark),
-      surfaceGlassElevated:
-          dark ? AppColors.darkSurfaceAlt : AppColors.surface,
+      surfaceGlassElevated: dark ? AppColors.darkSurfaceAlt : AppColors.surface,
       textPrimary: AppColors.textPrimaryFor(dark),
       textSecondary: AppColors.textSecondaryFor(dark),
       textMuted: textMuted,
@@ -1005,31 +1000,31 @@ class AppTokens {
 
   /// Every role by name, for diffing two snapshots.
   Map<String, Color> toMap() => {
-        'background': background,
-        'backgroundElevated': backgroundElevated,
-        'surface': surface,
-        'surfaceElevated': surfaceElevated,
-        'surfaceGlass': surfaceGlass,
-        'surfaceGlassElevated': surfaceGlassElevated,
-        'textPrimary': textPrimary,
-        'textSecondary': textSecondary,
-        'textMuted': textMuted,
-        'iconPrimary': iconPrimary,
-        'iconSecondary': iconSecondary,
-        'iconDisabled': iconDisabled,
-        'accentPrimary': accentPrimary,
-        'accentSecondary': accentSecondary,
-        'accentContainer': accentContainer,
-        'onAccent': onAccent,
-        'onAccentContainer': onAccentContainer,
-        'selected': selected,
-        'focus': focus,
-        'success': success,
-        'warning': warning,
-        'error': error,
-        'info': info,
-        'divider': divider,
-        'border': border,
-        'scrim': scrim,
-      };
+    'background': background,
+    'backgroundElevated': backgroundElevated,
+    'surface': surface,
+    'surfaceElevated': surfaceElevated,
+    'surfaceGlass': surfaceGlass,
+    'surfaceGlassElevated': surfaceGlassElevated,
+    'textPrimary': textPrimary,
+    'textSecondary': textSecondary,
+    'textMuted': textMuted,
+    'iconPrimary': iconPrimary,
+    'iconSecondary': iconSecondary,
+    'iconDisabled': iconDisabled,
+    'accentPrimary': accentPrimary,
+    'accentSecondary': accentSecondary,
+    'accentContainer': accentContainer,
+    'onAccent': onAccent,
+    'onAccentContainer': onAccentContainer,
+    'selected': selected,
+    'focus': focus,
+    'success': success,
+    'warning': warning,
+    'error': error,
+    'info': info,
+    'divider': divider,
+    'border': border,
+    'scrim': scrim,
+  };
 }

@@ -69,17 +69,17 @@ TransactionModel _tx(
 }
 
 List<TransactionModel> _demoLedger() => [
-      _tx('1', 420, 'Blue Tokai', 'Food', 0),
-      _tx('2', 78, 'Metro Card', 'Travel', 0),
-      _tx('3', 649, 'Netflix', 'Entertainment', 1),
-      _tx('4', 1240, 'Nature Basket', 'Food', 2),
-      _tx('5', 2199, 'FabIndia', 'Shopping', 3),
-      _tx('6', 500, 'HP Petrol', 'Fuel', 4),
-      _tx('7', 2850, 'Airtel Broadband', 'Bills', 6),
-      _tx('8', 12000, 'Rent', 'Bills', 9),
-      _tx('9', 4500, 'Zara', 'Shopping', 12),
-      _tx('10', 65000, 'Salary', 'Income', 2, type: TransactionType.income),
-    ];
+  _tx('1', 420, 'Blue Tokai', 'Food', 0),
+  _tx('2', 78, 'Metro Card', 'Travel', 0),
+  _tx('3', 649, 'Netflix', 'Entertainment', 1),
+  _tx('4', 1240, 'Nature Basket', 'Food', 2),
+  _tx('5', 2199, 'FabIndia', 'Shopping', 3),
+  _tx('6', 500, 'HP Petrol', 'Fuel', 4),
+  _tx('7', 2850, 'Airtel Broadband', 'Bills', 6),
+  _tx('8', 12000, 'Rent', 'Bills', 9),
+  _tx('9', 4500, 'Zara', 'Shopping', 12),
+  _tx('10', 65000, 'Salary', 'Income', 2, type: TransactionType.income),
+];
 
 typedef ScreenEntry = (String, Widget);
 
@@ -138,8 +138,9 @@ void main() {
 
   const permissions = MethodChannel('flutter.baseflow.com/permissions/methods');
   const connectivity = MethodChannel('dev.fluttercommunity.plus/connectivity');
-  const secureStorage =
-      MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+  const secureStorage = MethodChannel(
+    'plugins.it_nomads.com/flutter_secure_storage',
+  );
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -148,13 +149,13 @@ void main() {
         .setMockMethodCallHandler(connectivity, (call) async => 'wifi');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(secureStorage, (call) async {
-      return switch (call.method) {
-        'read' => null,
-        'readAll' => <String, String>{},
-        'containsKey' => false,
-        _ => null,
-      };
-    });
+          return switch (call.method) {
+            'read' => null,
+            'readAll' => <String, String>{},
+            'containsKey' => false,
+            _ => null,
+          };
+        });
   });
 
   tearDown(() {

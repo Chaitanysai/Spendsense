@@ -102,8 +102,8 @@ class AppTrend extends StatelessWidget {
   IconData get _icon => _rising
       ? Icons.arrow_upward_rounded
       : _falling
-          ? Icons.arrow_downward_rounded
-          : Icons.remove_rounded;
+      ? Icons.arrow_downward_rounded
+      : Icons.remove_rounded;
 
   String get _label {
     final v = value;
@@ -149,10 +149,8 @@ class AppTrend extends StatelessWidget {
                   child: Text(
                     'from $periodCaption',
                     maxLines: 1,
-                    style: AppText.caption(context).copyWith(
-                      fontSize: 11,
-                      color: muted,
-                    ),
+                    style: AppText.caption(context)
+                        .copyWith(fontSize: 11, color: muted),
                   ),
                 ),
               ],
@@ -168,10 +166,8 @@ class AppTrend extends StatelessWidget {
                   Text(
                     'from $periodCaption',
                     maxLines: 1,
-                    style: AppText.caption(context).copyWith(
-                      fontSize: 12,
-                      color: muted,
-                    ),
+                    style: AppText.caption(context)
+                        .copyWith(fontSize: 12, color: muted),
                   ),
                 ],
               ),
@@ -181,30 +177,27 @@ class AppTrend extends StatelessWidget {
 
   /// The filled arrow and the percentage, shared by both layouts.
   Widget _figure(BuildContext context, Color trendColor) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: trendColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(_icon, size: 9, color: Colors.white),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            _label,
-            maxLines: 1,
-            style: AppText.caption(context).copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: trendColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(color: trendColor, shape: BoxShape.circle),
+        child: Icon(_icon, size: 9, color: Colors.white),
+      ),
+      const SizedBox(width: 4),
+      Text(
+        _label,
+        maxLines: 1,
+        style: AppText.caption(context).copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: trendColor,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    ],
+  );
 }
 
 // ── AppKpiCard ────────────────────────────────────────────────────────────────

@@ -15,16 +15,16 @@ enum BillKind {
 
 extension BillKindX on BillKind {
   String get label => switch (this) {
-        BillKind.utility => 'Utility',
-        BillKind.broadband => 'Broadband',
-        BillKind.mobile => 'Mobile',
-        BillKind.loan => 'Loan / EMI',
-        BillKind.insurance => 'Insurance',
-        BillKind.rent => 'Rent / maintenance',
-        BillKind.subscription => 'Subscription',
-        BillKind.other => 'Bill',
-        BillKind.none => 'Ordinary',
-      };
+    BillKind.utility => 'Utility',
+    BillKind.broadband => 'Broadband',
+    BillKind.mobile => 'Mobile',
+    BillKind.loan => 'Loan / EMI',
+    BillKind.insurance => 'Insurance',
+    BillKind.rent => 'Rent / maintenance',
+    BillKind.subscription => 'Subscription',
+    BillKind.other => 'Bill',
+    BillKind.none => 'Ordinary',
+  };
 }
 
 /// Internal evidence label. Only [paidBill], [recurringBill] and (when a
@@ -100,11 +100,7 @@ class BillClassifier {
   /// Payment rails that are ordinary *unless* a specific bill keyword or
   /// biller is present. A utility bill paid by UPI/NEFT is still a bill; a
   /// generic transfer to a person is not.
-  static const Set<String> softOrdinaryCategories = {
-    'transfer',
-    'cash',
-    'upi',
-  };
+  static const Set<String> softOrdinaryCategories = {'transfer', 'cash', 'upi'};
 
   static const List<String> _foodAndGrocery = [
     'swiggy',
@@ -266,13 +262,7 @@ class BillClassifier {
       'policybazaar',
       'insurance',
     ],
-    BillKind.rent: [
-      'rent',
-      'maintenance',
-      'society',
-      'property tax',
-      'lease',
-    ],
+    BillKind.rent: ['rent', 'maintenance', 'society', 'property tax', 'lease'],
     BillKind.subscription: [
       'netflix',
       'spotify',
@@ -330,12 +320,7 @@ class BillClassifier {
       'policy no',
       'lic premium',
     ],
-    BillKind.rent: [
-      'rent',
-      'maintenance',
-      'society charges',
-      'property tax',
-    ],
+    BillKind.rent: ['rent', 'maintenance', 'society charges', 'property tax'],
     BillKind.subscription: [
       'subscription',
       'ott',
@@ -358,7 +343,9 @@ class BillClassifier {
     if (hint != null) {
       if (hint == BillKind.none) {
         return _ordinary(
-            transaction.merchant, 'Parser classified this as ordinary');
+          transaction.merchant,
+          'Parser classified this as ordinary',
+        );
       }
       if (transaction.billReminderHint) {
         return BillClassification(
@@ -446,7 +433,8 @@ class BillClassifier {
       return _ordinary(merchant, 'Prepaid recharge, not a bill');
     }
 
-    final reminderOnly = _containsAny(textNorm, _reminderMarkers) &&
+    final reminderOnly =
+        _containsAny(textNorm, _reminderMarkers) &&
         !_containsAny(textNorm, _confirmationMarkers);
     final confirmation = _containsAny(textNorm, _confirmationMarkers);
 
@@ -584,10 +572,10 @@ class BillClassifier {
 
   static bool _containsKeyword(String haystack, List<String> needles) {
     for (final needle in needles) {
-      final pattern =
-          _keywordPatterns.putIfAbsent(needle, () => RegExp(
-                '(?:^|[^a-z0-9])${RegExp.escape(needle)}(?:[^a-z0-9]|\$)',
-              ));
+      final pattern = _keywordPatterns.putIfAbsent(
+        needle,
+        () => RegExp('(?:^|[^a-z0-9])${RegExp.escape(needle)}(?:[^a-z0-9]|\$)'),
+      );
       if (pattern.hasMatch(haystack)) return true;
     }
     return false;

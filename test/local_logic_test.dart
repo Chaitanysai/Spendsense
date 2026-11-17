@@ -38,7 +38,7 @@ void main() {
       ];
 
       final history = [
-        AIChatMessage(role: 'user', content: 'What is my average per day?')
+        AIChatMessage(role: 'user', content: 'What is my average per day?'),
       ];
       final res = await ai.askAI(history, txs);
 

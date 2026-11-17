@@ -75,11 +75,13 @@ class CategoryBubble extends StatelessWidget {
             percentLabel!,
             style: AppText.weight(AppText.label(context), FontWeight.w700)
                 .copyWith(
-              fontSize: 11,
-              color:
-                  AppColors.resolveInk(color, AppColors.glassSurface(context)),
-              fontWeight: FontWeight.w700,
-            ),
+                  fontSize: 11,
+                  color: AppColors.resolveInk(
+                    color,
+                    AppColors.glassSurface(context),
+                  ),
+                  fontWeight: FontWeight.w700,
+                ),
           ),
       ],
     );

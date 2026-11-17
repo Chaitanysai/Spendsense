@@ -48,54 +48,67 @@ void main() {
   tearDown(() => provider.dispose());
 
   group('tracked lists', () {
-    test('are cached per ledger version and invalidated by every mutation',
-        () async {
-      provider.debugSeed([
-        _tx('a', 100, DateTime(2026, 10, 1)),
-        _tx('b', 200, DateTime(2026, 10, 2), excluded: true),
-      ]);
+    test(
+      'are cached per ledger version and invalidated by every mutation',
+      () async {
+        provider.debugSeed([
+          _tx('a', 100, DateTime(2026, 10, 1)),
+          _tx('b', 200, DateTime(2026, 10, 2), excluded: true),
+        ]);
 
-      final first = provider.trackedTransactions;
-      expect(identical(first, provider.trackedTransactions), isTrue,
-          reason: 'repeated reads without a change must hit the cache');
-      expect(identical(provider.trackedExpenses, provider.trackedExpenses),
-          isTrue);
-      expect(first.map((t) => t.id), ['a']);
-      expect(provider.trackedExpenses.map((t) => t.id), ['a']);
+        final first = provider.trackedTransactions;
+        expect(
+          identical(first, provider.trackedTransactions),
+          isTrue,
+          reason: 'repeated reads without a change must hit the cache',
+        );
+        expect(
+          identical(provider.trackedExpenses, provider.trackedExpenses),
+          isTrue,
+        );
+        expect(first.map((t) => t.id), ['a']);
+        expect(provider.trackedExpenses.map((t) => t.id), ['a']);
 
-      // Every mutation kind replaces the ledger list and must invalidate.
-      await provider.addTransaction(
-          _tx('c', 300, DateTime(2026, 10, 3)) as dynamic);
-      expect(identical(first, provider.trackedTransactions), isFalse);
-      // The ledger keeps date-descending order.
-      expect(provider.trackedTransactions.map((t) => t.id), ['c', 'a']);
+        // Every mutation kind replaces the ledger list and must invalidate.
+        await provider.addTransaction(
+          _tx('c', 300, DateTime(2026, 10, 3)) as dynamic,
+        );
+        expect(identical(first, provider.trackedTransactions), isFalse);
+        // The ledger keeps date-descending order.
+        expect(provider.trackedTransactions.map((t) => t.id), ['c', 'a']);
 
-      final afterAdd = provider.trackedExpenses;
-      await provider.toggleExclude('a');
-      expect(identical(afterAdd, provider.trackedExpenses), isFalse);
-      expect(provider.trackedExpenses.map((t) => t.id), ['c']);
+        final afterAdd = provider.trackedExpenses;
+        await provider.toggleExclude('a');
+        expect(identical(afterAdd, provider.trackedExpenses), isFalse);
+        expect(provider.trackedExpenses.map((t) => t.id), ['c']);
 
-      final afterExclude = provider.trackedTransactions;
-      await provider.deleteTransactionsByIds({'c'});
-      expect(identical(afterExclude, provider.trackedTransactions), isFalse);
-      expect(provider.trackedTransactions, isEmpty);
-    });
+        final afterExclude = provider.trackedTransactions;
+        await provider.deleteTransactionsByIds({'c'});
+        expect(identical(afterExclude, provider.trackedTransactions), isFalse);
+        expect(provider.trackedTransactions, isEmpty);
+      },
+    );
 
     test('contents always equal the naive computation', () async {
       provider.debugSeed([
         _tx('a', 100, DateTime(2026, 10, 1)),
-        _tx('b', 200, DateTime(2026, 10, 2),
-            excluded: true, type: TransactionType.income),
+        _tx(
+          'b',
+          200,
+          DateTime(2026, 10, 2),
+          excluded: true,
+          type: TransactionType.income,
+        ),
         _tx('c', 300, DateTime(2026, 10, 3), type: TransactionType.income),
       ]);
 
-      final naiveTracked =
-          provider.transactions.where((t) => !t.isExcluded).toList();
+      final naiveTracked = provider.transactions
+          .where((t) => !t.isExcluded)
+          .toList();
       expect(provider.trackedTransactions, naiveTracked);
 
       final naiveExpenses = provider.transactions
-          .where((t) =>
-              !t.isExcluded && t.type == TransactionType.expense)
+          .where((t) => !t.isExcluded && t.type == TransactionType.expense)
           .toList();
       expect(provider.trackedExpenses, naiveExpenses);
     });
@@ -112,8 +125,9 @@ void main() {
 
       provider.debugSeed([_tx('late', 100, DateTime(2026, 10, 1))]);
       expect(provider.trackedTransactions.map((t) => t.id), ['late']);
-      expect(provider.trackedExpenses.map((t) => t.id), ['late'],
-          reason: 'trackedExpenses must not serve the stale empty list');
+      expect(provider.trackedExpenses.map((t) => t.id), [
+        'late',
+      ], reason: 'trackedExpenses must not serve the stale empty list');
     });
 
     test('the derived lists follow an exclusion change', () async {
@@ -129,8 +143,11 @@ void main() {
 
       final changed = await provider.setExclusionForIds({'drop'}, true);
       expect(changed, 1);
-      expect(provider.totalTrackedExpenses, 50000,
-          reason: 'the memoized expense list must reflect the exclusion');
+      expect(
+        provider.totalTrackedExpenses,
+        50000,
+        reason: 'the memoized expense list must reflect the exclusion',
+      );
       expect(provider.trackedExpenses.map((t) => t.id), ['keep']);
 
       final restored = await provider.restoreExclusionStates({'drop': false});
@@ -150,8 +167,11 @@ void main() {
       ]);
 
       final first = provider.expensesInPeriod(period);
-      expect(identical(first, provider.expensesInPeriod(period)), isTrue,
-          reason: 'same period on the same ledger must hit the cache');
+      expect(
+        identical(first, provider.expensesInPeriod(period)),
+        isTrue,
+        reason: 'same period on the same ledger must hit the cache',
+      );
       // Boundary semantics unchanged: inclusive start, inclusive end day,
       // excluded rows and income never count.
       expect(first.map((t) => t.id), ['a', 'b']);
@@ -176,8 +196,11 @@ void main() {
       final now = DateTime.now();
       provider.debugSeed([
         _tx('this-month', 100, DateTime(now.year, now.month, 5)),
-        _tx('last-month', 200,
-            DateTime(now.year, now.month == 1 ? 12 : now.month - 1, 5)),
+        _tx(
+          'last-month',
+          200,
+          DateTime(now.year, now.month == 1 ? 12 : now.month - 1, 5),
+        ),
       ]);
 
       final first = provider.expensesInPeriod(null);
@@ -194,8 +217,10 @@ void main() {
       ]);
 
       final rows = provider.expensesInPeriod(period).toList();
-      expect(provider.spendingTotalForPeriod(period),
-          rows.fold<int>(0, (sum, t) => sum + t.amountMinor));
+      expect(
+        provider.spendingTotalForPeriod(period),
+        rows.fold<int>(0, (sum, t) => sum + t.amountMinor),
+      );
     });
   });
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import '../config/app_config.dart';
 import 'ai_sms_consent.dart';
 import 'sms_content_policy.dart';
@@ -23,16 +25,16 @@ class _ParseProvider {
   });
 
   Map<String, String> get headers => {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $apiKey',
+    'Content-Type': 'application/json',
+  };
 }
 
 class GeminiService {
   final AiSmsConsentStore _consentStore;
 
   GeminiService({AiSmsConsentStore? consentStore})
-      : _consentStore = consentStore ?? const AiSmsConsentStore();
+    : _consentStore = consentStore ?? const AiSmsConsentStore();
 
   static Future<List<_ParseProvider>> _getProviders() async {
     final groqKey = await AppConfig.getGroqKey();
@@ -55,8 +57,7 @@ class GeminiService {
       ),
       _ParseProvider(
         name: 'Gemini',
-        url:
-            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
         apiKey: geminiKey,
         model: 'gemini-2.5-flash',
       ),
@@ -100,25 +101,21 @@ class GeminiService {
     );
 
     // Card/account numbers with optional spaces or hyphens, 7-19 digits.
-    sanitized = sanitized.replaceAllMapped(
-      RegExp(r'\b\d(?:[ -]?\d){6,18}\b'),
-      (m) {
-        final raw = m.group(0)!;
-        final digits = raw.replaceAll(RegExp(r'\D'), '');
-        if (digits.length >= 10) {
-          return '****${digits.substring(digits.length - 4)}';
-        }
-        return '***';
-      },
-    );
+    sanitized = sanitized.replaceAllMapped(RegExp(r'\b\d(?:[ -]?\d){6,18}\b'), (
+      m,
+    ) {
+      final raw = m.group(0)!;
+      final digits = raw.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 10) {
+        return '****${digits.substring(digits.length - 4)}';
+      }
+      return '***';
+    });
 
     // Remaining 4-8 digit tokens: OTPs, short references, PINs. A digit run
     // immediately after '*' is the last four of a masked card/account and must
     // not be masked again.
-    sanitized = sanitized.replaceAll(
-      RegExp(r'(?<![*\w])\b\d{4,8}\b'),
-      '***',
-    );
+    sanitized = sanitized.replaceAll(RegExp(r'(?<![*\w])\b\d{4,8}\b'), '***');
 
     // UPI IDs / email-like payment addresses.
     sanitized = sanitized.replaceAll(
@@ -206,14 +203,8 @@ class GeminiService {
               'temperature': 0,
               'max_tokens': 200,
               'messages': [
-                {
-                  'role': 'system',
-                  'content': _systemPrompt,
-                },
-                {
-                  'role': 'user',
-                  'content': _buildPrompt(cleanSms),
-                },
+                {'role': 'system', 'content': _systemPrompt},
+                {'role': 'user', 'content': _buildPrompt(cleanSms)},
               ],
             }),
           )
@@ -262,7 +253,8 @@ class GeminiService {
       'Return ONLY a single valid JSON object — no markdown, no explanation, no extra text. '
       'If the SMS is not a financial transaction, return exactly: {"type":"not_financial"}';
 
-  String _buildPrompt(String sms) => '''
+  String _buildPrompt(String sms) =>
+      '''
 Parse this Indian bank/UPI SMS. Return ONLY this JSON:
 {
   "amount": "<decimal amount, no symbols>",
@@ -286,15 +278,19 @@ SMS: $sms
     }
   }
 
-  TransactionModel? _toModel(Map<String, dynamic> json, String originalSms,
-      String id, DateTime smsDate,
-      {required int confirmedAmountMinor}) {
+  TransactionModel? _toModel(
+    Map<String, dynamic> json,
+    String originalSms,
+    String id,
+    DateTime smsDate, {
+    required int confirmedAmountMinor,
+  }) {
     final rawAmount = json['amount'];
     final amountText = rawAmount is String
         ? rawAmount.replaceAll('₹', '').trim()
         : rawAmount is num
-            ? rawAmount.toString()
-            : null;
+        ? rawAmount.toString()
+        : null;
     if (amountText == null) return null;
 
     final amountMinor = switch (amountText) {
@@ -314,8 +310,9 @@ SMS: $sms
     }
 
     final typeStr = (json['type'] as String?)?.toLowerCase() ?? 'expense';
-    final type =
-        typeStr == 'income' ? TransactionType.income : TransactionType.expense;
+    final type = typeStr == 'income'
+        ? TransactionType.income
+        : TransactionType.expense;
 
     final validCategories = {
       'Food',

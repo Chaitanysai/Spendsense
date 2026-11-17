@@ -26,30 +26,26 @@ BalanceHero _hero({
   int? previousIncomeMinor,
   bool visible = true,
   bool ledgerError = false,
-}) =>
-    BalanceHero(
-      incomeMinor: 2500000,
-      expenseMinor: 250000,
-      previousExpenseMinor: previousExpenseMinor,
-      previousIncomeMinor: previousIncomeMinor,
-      budgetMinor: budgetMinor,
-      periodLabel: '1 Nov – 30 Nov',
-      periodEnd: DateTime(2026, 11, 30),
-      visible: visible,
-      onToggleVisibility: () {},
-      onSetBudget: () {},
-      ledgerError: ledgerError,
-    );
+}) => BalanceHero(
+  incomeMinor: 2500000,
+  expenseMinor: 250000,
+  previousExpenseMinor: previousExpenseMinor,
+  previousIncomeMinor: previousIncomeMinor,
+  budgetMinor: budgetMinor,
+  periodLabel: '1 Nov – 30 Nov',
+  periodEnd: DateTime(2026, 11, 30),
+  visible: visible,
+  onToggleVisibility: () {},
+  onSetBudget: () {},
+  ledgerError: ledgerError,
+);
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: child,
-          ),
+          child: Padding(padding: const EdgeInsets.all(20), child: child),
         ),
       ),
     ),
@@ -65,27 +61,30 @@ void _size(WidgetTester tester, Size size) {
 
 void main() {
   testWidgets(
-      'V2: landscape keeps the KPI row on one scrollable line and the meter linear',
-      (tester) async {
-    _size(tester, const Size(2400, 1080)); // 800 × 360 logical
-    await _pump(tester, _hero());
+    'V2: landscape keeps the KPI row on one scrollable line and the meter linear',
+    (tester) async {
+      _size(tester, const Size(2400, 1080)); // 800 × 360 logical
+      await _pump(tester, _hero());
 
-    // Solid surface: the spend label uses title case.
-    expect(find.text('Spend Amount'), findsOneWidget);
-    // KPI row is an AppKpiRow with AppKpiCard children.
-    expect(find.byType(AppKpiRow), findsOneWidget);
-    // The budget meter lives in the Monthly budget section, not the hero.
-    expect(find.byType(AnimatedProgressBar), findsNothing);
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter != null,
-      ),
-      findsNothing,
-    );
-    expect(tester.takeException(), isNull);
-  });
+      // Solid surface: the spend label uses title case.
+      expect(find.text('Spend Amount'), findsOneWidget);
+      // KPI row is an AppKpiRow with AppKpiCard children.
+      expect(find.byType(AppKpiRow), findsOneWidget);
+      // The budget meter lives in the Monthly budget section, not the hero.
+      expect(find.byType(AnimatedProgressBar), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is CustomPaint && widget.painter != null,
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('V2: a narrow phone still lays out the KPI cards', (tester) async {
+  testWidgets('V2: a narrow phone still lays out the KPI cards', (
+    tester,
+  ) async {
     _size(tester, const Size(1080, 2340)); // 360 × 780 logical
     await _pump(tester, _hero());
 
@@ -95,24 +94,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('V2: large text stacks the KPI cards instead of truncating them',
-      (tester) async {
-    _size(tester, const Size(1080, 2340));
-    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  testWidgets(
+    'V2: large text stacks the KPI cards instead of truncating them',
+    (tester) async {
+      _size(tester, const Size(1080, 2340));
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    await _pump(tester, _hero());
+      await _pump(tester, _hero());
 
-    // AppKpiRow collapses to vertical at scale ≥ 1.6, so all three cards
-    // should still be found.
-    expect(find.text('Income'), findsOneWidget);
-    expect(find.text('Expenses'), findsOneWidget);
-    expect(find.text('Net'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      // AppKpiRow collapses to vertical at scale ≥ 1.6, so all three cards
+      // should still be found.
+      expect(find.text('Income'), findsOneWidget);
+      expect(find.text('Expenses'), findsOneWidget);
+      expect(find.text('Net'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('V2: no budget offers the setup action',
-      (tester) async {
+  testWidgets('V2: no budget offers the setup action', (tester) async {
     _size(tester, const Size(1080, 2340));
     await _pump(tester, _hero(budgetMinor: 0));
 
@@ -123,8 +123,9 @@ void main() {
     expect(find.text('Net'), findsOneWidget);
   });
 
-  testWidgets('V2: a known previous period shows a trend indicator',
-      (tester) async {
+  testWidgets('V2: a known previous period shows a trend indicator', (
+    tester,
+  ) async {
     _size(tester, const Size(1080, 2340));
     // 250000 this period vs 125000 last period → 100% more (expense trend).
     await _pump(tester, _hero(previousExpenseMinor: 125000));
@@ -135,8 +136,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('V2: hiding the spend amount masks the KPI figures',
-      (tester) async {
+  testWidgets('V2: hiding the spend amount masks the KPI figures', (
+    tester,
+  ) async {
     _size(tester, const Size(1080, 2340));
     await _pump(tester, _hero(visible: false));
 
@@ -150,8 +152,9 @@ void main() {
     expect(find.text('Expenses'), findsOneWidget);
   });
 
-  testWidgets('V2: a failed ledger never reads as a zero balance',
-      (tester) async {
+  testWidgets('V2: a failed ledger never reads as a zero balance', (
+    tester,
+  ) async {
     _size(tester, const Size(1080, 2340));
     await _pump(tester, _hero(ledgerError: true));
 

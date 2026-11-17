@@ -27,21 +27,20 @@ TransactionModel _tx({
   TransactionType type = TransactionType.expense,
   String merchant = 'Test Merchant',
   String category = 'Food',
-}) =>
-    TransactionModel(
-      id: 'id-$amount-$type-$merchant',
-      amount: amount,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'UPI',
-      date: DateTime.now(),
-      time: '',
-      originalSms: '',
-      isExcluded: false,
-      bank: 'HDFC Bank',
-      source: 'Test',
-    );
+}) => TransactionModel(
+  id: 'id-$amount-$type-$merchant',
+  amount: amount,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'UPI',
+  date: DateTime.now(),
+  time: '',
+  originalSms: '',
+  isExcluded: false,
+  bank: 'HDFC Bank',
+  source: 'Test',
+);
 
 Future<TransactionProvider> _pumpShell(
   WidgetTester tester, {
@@ -78,8 +77,11 @@ Future<TransactionProvider> _pumpShell(
 /// that read replaces the seeded list. The extra pump is what lets the animated
 /// amount actually tick: `TweenAnimationBuilder` starts its controller on the
 /// next frame, so a single pump only ever shows the start value.
-Future<void> _seed(WidgetTester tester, List<TransactionModel> rows,
-    TransactionProvider provider) async {
+Future<void> _seed(
+  WidgetTester tester,
+  List<TransactionModel> rows,
+  TransactionProvider provider,
+) async {
   await tester.pump(const Duration(seconds: 1));
   provider.debugSeed(rows);
   await tester.pump();
@@ -97,8 +99,9 @@ void main() {
   tearDown(() => AppColors.applyPalette(AppPalette.emerald));
 
   group('home entry points share one form', () {
-    testWidgets('the dock Add opens the shared form as a modal sheet',
-        (tester) async {
+    testWidgets('the dock Add opens the shared form as a modal sheet', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       await tester.tap(find.byKey(const ValueKey('dock:Add')));
@@ -106,28 +109,32 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(AddTransactionScreen), findsOneWidget);
-      final form = tester
-          .widget<AddTransactionScreen>(find.byType(AddTransactionScreen));
+      final form = tester.widget<AddTransactionScreen>(
+        find.byType(AddTransactionScreen),
+      );
       expect(form.asSheet, isTrue);
       // The dashboard is still mounted behind the sheet, not replaced by it.
       expect(find.byType(HomeScreen), findsOneWidget);
     });
 
-    testWidgets('the quick-action tile opens the same form in income mode',
-        (tester) async {
+    testWidgets('the quick-action tile opens the same form in income mode', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       await tester.tap(find.text('Add income'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      final form = tester
-          .widget<AddTransactionScreen>(find.byType(AddTransactionScreen));
+      final form = tester.widget<AddTransactionScreen>(
+        find.byType(AddTransactionScreen),
+      );
       expect(form.initialType, TransactionType.income);
     });
 
-    testWidgets('a sheet entry persists through the shared provider',
-        (tester) async {
+    testWidgets('a sheet entry persists through the shared provider', (
+      tester,
+    ) async {
       final transactions = await _pumpShell(tester);
       await tester.pump(const Duration(seconds: 1));
 
@@ -154,8 +161,9 @@ void main() {
       expect(find.byType(AddTransactionScreen), findsNothing);
     });
 
-    testWidgets('the save action stays disabled until an amount is entered',
-        (tester) async {
+    testWidgets('the save action stays disabled until an amount is entered', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       await tester.tap(find.byKey(const ValueKey('dock:Add')));
@@ -185,8 +193,10 @@ void main() {
               child: SizedBox(
                 width: width,
                 child: BudgetSummary(
-                  progress:
-                      BudgetProgress(spentMinor: spent, budgetMinor: budget),
+                  progress: BudgetProgress(
+                    spentMinor: spent,
+                    budgetMinor: budget,
+                  ),
                   periodLabel: '1 Oct – 31 Oct',
                 ),
               ),
@@ -204,8 +214,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('zero spending shows 0% and the full amount left',
-        (tester) async {
+    testWidgets('zero spending shows 0% and the full amount left', (
+      tester,
+    ) async {
       await pump(tester, spent: 0, budget: 10000);
       expect(find.textContaining('0% used'), findsOneWidget);
       expect(find.textContaining('left'), findsOneWidget);
@@ -223,41 +234,47 @@ void main() {
       expect(find.textContaining('over budget'), findsNothing);
     });
 
-    testWidgets('overspend keeps the real percentage and no positive remainder',
-        (tester) async {
-      await pump(tester, spent: 15000, budget: 10000);
-      expect(find.textContaining('150% used'), findsOneWidget);
-      expect(find.textContaining('over budget (+50%)'), findsOneWidget);
-      expect(find.textContaining('left'), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'overspend keeps the real percentage and no positive remainder',
+      (tester) async {
+        await pump(tester, spent: 15000, budget: 10000);
+        expect(find.textContaining('150% used'), findsOneWidget);
+        expect(find.textContaining('over budget (+50%)'), findsOneWidget);
+        expect(find.textContaining('left'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('has no circular progress and survives large text',
-        (tester) async {
+    testWidgets('has no circular progress and survives large text', (
+      tester,
+    ) async {
       tester.platformDispatcher.textScaleFactorTestValue = 2.0;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await pump(tester, spent: 30000000000, budget: 10000, width: 220);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
-          find.byType(CustomPaint).evaluate().where((e) =>
-              e.widget is CustomPaint &&
-              (e.widget as CustomPaint).painter != null),
-          isEmpty);
+        find
+            .byType(CustomPaint)
+            .evaluate()
+            .where(
+              (e) =>
+                  e.widget is CustomPaint &&
+                  (e.widget as CustomPaint).painter != null,
+            ),
+        isEmpty,
+      );
       expect(tester.takeException(), isNull);
     });
   });
   group('balance card', () {
-    testWidgets('leads with Spend Amount and still reports the cycle',
-        (tester) async {
+    testWidgets('leads with Spend Amount and still reports the cycle', (
+      tester,
+    ) async {
       final transactions = await _pumpShell(tester);
-      await _seed(
-        tester,
-        [
-          _tx(amount: 1000, merchant: 'Groceries'),
-          _tx(amount: 4000, type: TransactionType.income, merchant: 'Salary'),
-        ],
-        transactions,
-      );
+      await _seed(tester, [
+        _tx(amount: 1000, merchant: 'Groceries'),
+        _tx(amount: 4000, type: TransactionType.income, merchant: 'Salary'),
+      ], transactions);
 
       // Hero and Expenses KPI both show the period's spend of ₹1,000. Scope
       // the count to the hero: the recent feed deliberately repeats the same
@@ -289,14 +306,13 @@ void main() {
       );
     });
 
-    testWidgets('the eye toggle masks the figure without touching the data',
-        (tester) async {
+    testWidgets('the eye toggle masks the figure without touching the data', (
+      tester,
+    ) async {
       final transactions = await _pumpShell(tester);
-      await _seed(
-        tester,
-        [_tx(amount: 1250, type: TransactionType.income, merchant: 'Refund')],
-        transactions,
-      );
+      await _seed(tester, [
+        _tx(amount: 1250, type: TransactionType.income, merchant: 'Refund'),
+      ], transactions);
 
       expect(find.text(Formatters.currency.format(0)), findsWidgets);
 
@@ -307,14 +323,11 @@ void main() {
       expect(transactions.transactions.single.amountMinor, 125000);
     });
 
-    testWidgets('never invents a cycle change without a prior window',
-        (tester) async {
+    testWidgets('never invents a cycle change without a prior window', (
+      tester,
+    ) async {
       final transactions = await _pumpShell(tester);
-      await _seed(
-        tester,
-        [_tx(amount: 900, merchant: 'Coffee')],
-        transactions,
-      );
+      await _seed(tester, [_tx(amount: 900, merchant: 'Coffee')], transactions);
 
       // No comparable previous spend means no chip at all — not a "+0%" chip
       // and not an invented direction.
@@ -325,8 +338,9 @@ void main() {
   });
 
   group('themes', () {
-    testWidgets('dark mode resolves on the active palette canvas',
-        (tester) async {
+    testWidgets('dark mode resolves on the active palette canvas', (
+      tester,
+    ) async {
       await _pumpShell(tester, dark: true);
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -339,30 +353,28 @@ void main() {
       expect(theme.scaffoldBackgroundColor, AppColors.darkBackground);
     });
 
-    testWidgets('light and dark both lay the dashboard out without errors',
-        (tester) async {
+    testWidgets('light and dark both lay the dashboard out without errors', (
+      tester,
+    ) async {
       for (final dark in [false, true]) {
         final transactions = await _pumpShell(tester, dark: dark);
-        await _seed(
-          tester,
-          [
-            _tx(amount: 1499, merchant: 'Bamboli Purefresh Veg And Fruits'),
-            _tx(
-                amount: 25000,
-                type: TransactionType.income,
-                merchant: 'Salary'),
-          ],
-          transactions,
+        await _seed(tester, [
+          _tx(amount: 1499, merchant: 'Bamboli Purefresh Veg And Fruits'),
+          _tx(amount: 25000, type: TransactionType.income, merchant: 'Salary'),
+        ], transactions);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'dark=$dark must not overflow',
         );
-        expect(tester.takeException(), isNull,
-            reason: 'dark=$dark must not overflow');
       }
     });
   });
 
   group('light and dark across every palette', () {
-    testWidgets('each accent renders the dashboard in both themes',
-        (tester) async {
+    testWidgets('each accent renders the dashboard in both themes', (
+      tester,
+    ) async {
       final seeded = [
         _tx(amount: 1499, merchant: 'Bamboli Purefresh Veg'),
         _tx(amount: 40000, type: TransactionType.income, merchant: 'Salary'),
@@ -378,7 +390,8 @@ void main() {
           expect(
             tester.takeException(),
             isNull,
-            reason: '${palette.id} ($palette.label) failed in '
+            reason:
+                '${palette.id} ($palette.label) failed in '
                 '${dark ? 'dark' : 'light'} mode',
           );
           // The token mirror is what every widget reads, so assert it holds for
@@ -395,22 +408,19 @@ void main() {
         tester,
         size: const Size(960, 1600), // 320 x 533 logical
       );
-      await _seed(
-        tester,
-        [
-          _tx(amount: 124999, merchant: 'An Extremely Long Merchant Name Ltd'),
-          _tx(amount: 500000, type: TransactionType.income, merchant: 'Salary'),
-        ],
-        transactions,
-      );
+      await _seed(tester, [
+        _tx(amount: 124999, merchant: 'An Extremely Long Merchant Name Ltd'),
+        _tx(amount: 500000, type: TransactionType.income, merchant: 'Salary'),
+      ], transactions);
 
       // The current-cycle expense is the primary Home metric.
       expect(find.text(Formatters.currency.format(12499900)), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the dashboard survives a large system text scale',
-        (tester) async {
+    testWidgets('the dashboard survives a large system text scale', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2340);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
@@ -451,73 +461,81 @@ void main() {
       expect(stack.duration, AppMotion.base);
     });
 
-    testWidgets('tab switches preserve child state and scroll position',
-        (tester) async {
+    testWidgets('tab switches preserve child state and scroll position', (
+      tester,
+    ) async {
       final firstScroll = ScrollController();
       addTearDown(firstScroll.dispose);
       final firstKey = GlobalKey();
 
-      await tester.pumpWidget(MaterialApp(
-        home: FadeIndexedStack(
-          index: 0,
-          children: [
-            ListView(
-              key: firstKey,
-              controller: firstScroll,
-              children: const [
-                SizedBox(height: 900, child: Text('FIRST CONTENT')),
-              ],
-            ),
-            const Center(child: Text('SECOND CONTENT')),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FadeIndexedStack(
+            index: 0,
+            children: [
+              ListView(
+                key: firstKey,
+                controller: firstScroll,
+                children: const [
+                  SizedBox(height: 900, child: Text('FIRST CONTENT')),
+                ],
+              ),
+              const Center(child: Text('SECOND CONTENT')),
+            ],
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       firstScroll.jumpTo(300);
       await tester.pump();
       expect(firstScroll.position.pixels, 300);
 
-      await tester.pumpWidget(MaterialApp(
-        home: FadeIndexedStack(
-          index: 1,
-          children: [
-            ListView(
-              key: firstKey,
-              controller: firstScroll,
-              children: const [
-                SizedBox(height: 900, child: Text('FIRST CONTENT')),
-              ],
-            ),
-            const Center(child: Text('SECOND CONTENT')),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FadeIndexedStack(
+            index: 1,
+            children: [
+              ListView(
+                key: firstKey,
+                controller: firstScroll,
+                children: const [
+                  SizedBox(height: 900, child: Text('FIRST CONTENT')),
+                ],
+              ),
+              const Center(child: Text('SECOND CONTENT')),
+            ],
+          ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.pumpWidget(MaterialApp(
-        home: FadeIndexedStack(
-          index: 0,
-          children: [
-            ListView(
-              key: firstKey,
-              controller: firstScroll,
-              children: const [
-                SizedBox(height: 900, child: Text('FIRST CONTENT')),
-              ],
-            ),
-            const Center(child: Text('SECOND CONTENT')),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FadeIndexedStack(
+            index: 0,
+            children: [
+              ListView(
+                key: firstKey,
+                controller: firstScroll,
+                children: const [
+                  SizedBox(height: 900, child: Text('FIRST CONTENT')),
+                ],
+              ),
+              const Center(child: Text('SECOND CONTENT')),
+            ],
+          ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(firstScroll.position.pixels, 300);
       expect(find.text('FIRST CONTENT'), findsOneWidget);
     });
 
-    testWidgets('tab switches keep both the tab state and the scroll state',
-        (tester) async {
+    testWidgets('tab switches keep both the tab state and the scroll state', (
+      tester,
+    ) async {
       await _pumpShell(tester);
 
       expect(
@@ -541,15 +559,17 @@ void main() {
       );
     });
 
-    testWidgets('reduced motion settles immediately with no transition',
-        (tester) async {
+    testWidgets('reduced motion settles immediately with no transition', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2340);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
-          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
 
       SharedPreferences.setMockInitialValues({
         'sms_scan_start_date': DateTime.now().toIso8601String(),

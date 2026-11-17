@@ -69,10 +69,9 @@ class SectionHeader extends StatelessWidget {
                         Text(
                           actionLabel!,
                           style: AppText.weight(
-                                  AppText.label(context), FontWeight.w700)
-                              .copyWith(
-                            color: AppColors.brandInk(context),
-                          ),
+                            AppText.label(context),
+                            FontWeight.w700,
+                          ).copyWith(color: AppColors.brandInk(context)),
                         ),
                       if (actionIcon != null) ...[
                         if (actionLabel != null)

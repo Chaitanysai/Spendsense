@@ -26,18 +26,19 @@ class _TypographyScreenState extends State<TypographyScreen> {
   FontPreset? _pending;
 
   static String scaleLabel(double s) => switch (s) {
-        <= 0.9 => 'Small',
-        <= 1.05 => 'Default',
-        <= 1.2 => 'Large',
-        _ => 'Largest',
-      };
+    <= 0.9 => 'Small',
+    <= 1.05 => 'Default',
+    <= 1.2 => 'Large',
+    _ => 'Largest',
+  };
 
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
     final selected = _pending ?? theme.fontPreset;
     final changed = selected.id != theme.fontPreset.id;
-    final atDefault = theme.fontPreset.id == FontPreset.standard.id &&
+    final atDefault =
+        theme.fontPreset.id == FontPreset.standard.id &&
         theme.fontScale == FontScale.standard;
 
     return Scaffold(
@@ -74,8 +75,9 @@ class _TypographyScreenState extends State<TypographyScreen> {
                           if (mounted) setState(() => _pending = null);
                         }
                       : null,
-                  child:
-                      Text(changed ? 'Apply "${selected.label}"' : 'Applied'),
+                  child: Text(
+                    changed ? 'Apply "${selected.label}"' : 'Applied',
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -88,7 +90,8 @@ class _TypographyScreenState extends State<TypographyScreen> {
                     for (final step in FontScale.steps)
                       ChoiceChip(
                         label: Text(
-                            '${scaleLabel(step)} · ${(step * 100).round()}%'),
+                          '${scaleLabel(step)} · ${(step * 100).round()}%',
+                        ),
                         selected: theme.fontScale == step,
                         onSelected: (_) => theme.setFontScale(step),
                       ),
@@ -108,11 +111,15 @@ class _TypographyScreenState extends State<TypographyScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Reset to default',
-                              style: AppText.title(context)),
+                          Text(
+                            'Reset to default',
+                            style: AppText.title(context),
+                          ),
                           const SizedBox(height: 2),
-                          Text('SpendSense Default · 100%',
-                              style: AppText.body(context)),
+                          Text(
+                            'SpendSense Default · 100%',
+                            style: AppText.body(context),
+                          ),
                         ],
                       ),
                     ),
@@ -184,8 +191,10 @@ class _PresetCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(preset.label,
-                        style: AppText.title(context).copyWith(fontSize: 14.5)),
+                    child: Text(
+                      preset.label,
+                      style: AppText.title(context).copyWith(fontSize: 14.5),
+                    ),
                   ),
                   if (active)
                     Padding(

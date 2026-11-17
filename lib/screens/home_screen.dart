@@ -174,8 +174,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final allExpenses = _sortedExpensesFor(provider);
     final trackedTransactions = showHistory
         ? allTransactions
-        : _cycleListFor(provider, period,
-            sorted: allTransactions, expenses: false);
+        : _cycleListFor(
+            provider,
+            period,
+            sorted: allTransactions,
+            expenses: false,
+          );
     final trackedExpenses = showHistory
         ? allExpenses
         : _cycleListFor(provider, period, sorted: allExpenses, expenses: true);
@@ -200,8 +204,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   balanceVisible: _balanceVisible,
                   onToggleBalance: () =>
                       setState(() => _balanceVisible = !_balanceVisible),
-                  onEditDashboard:
-                      prefs == null ? null : () => _startEditing(prefs),
+                  onEditDashboard: prefs == null
+                      ? null
+                      : () => _startEditing(prefs),
                 ),
               ),
             ),
@@ -399,8 +404,9 @@ class _HomeScreenState extends State<HomeScreen> {
             large: true,
             actionLabel: 'Manage',
             actionIcon: Icons.chevron_right_rounded,
-            onAction: () => Navigator.of(context)
-                .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
+            onAction: () =>
+                Navigator.of(context)
+                    .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
           ),
           const _BudgetCard(),
           const SizedBox(height: AppSpacing.homeSectionGap),
@@ -421,7 +427,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.weekly:
-        final loading = provider.isLoadingCache ||
+        final loading =
+            provider.isLoadingCache ||
             (provider.isSyncing && trackedExpenses.isEmpty);
         return [
           const SectionHeader(title: 'Spending trend', large: true),
@@ -480,7 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
         AppEmptyState(
           icon: Icons.gpp_maybe_rounded,
           title: "Couldn't load your ledger",
-          message: 'Your transactions are still saved and encrypted on '
+          message:
+              'Your transactions are still saved and encrypted on '
               'this device, but the ledger could not be read '
               '(${provider.ledgerInitErrorCode}). '
               'Nothing was deleted.',
@@ -493,8 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
         AppEmptyState(
           icon: Icons.sms_rounded,
           title: 'No transactions yet',
-          message:
-              'Pick an SMS start date and SpendSense will build your transactions automatically.',
+          message: 'Pick an SMS start date and SpendSense will build your transactions automatically.',
           actionLabel: 'Choose start date',
           onAction: () => SmsImportPrompt.show(context),
         )
@@ -506,11 +513,12 @@ class _HomeScreenState extends State<HomeScreen> {
               : 'Nothing this cycle',
           message: historyEnabled || ledgerEmpty
               ? 'No transactions were detected after your selected SMS start '
-                  'date.'
+                    'date.'
               : 'No transactions in your current salary cycle. Earlier '
-                  'transactions are hidden by the Home history setting.',
-          actionLabel:
-              historyEnabled || ledgerEmpty ? 'Sync now' : 'Show history',
+                    'transactions are hidden by the Home history setting.',
+          actionLabel: historyEnabled || ledgerEmpty
+              ? 'Sync now'
+              : 'Show history',
           onAction: historyEnabled || ledgerEmpty
               ? () => provider.syncFromSms(userInitiated: true)
               : () {
@@ -681,8 +689,9 @@ class _HeaderSection extends StatelessWidget {
                             excludeSemantics: true,
                             child: Pressable(
                               onTap: onEditDashboard,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                               child: SizedBox(
                                 width: 44,
                                 height: 44,
@@ -768,16 +777,18 @@ class _HeroSection extends StatelessWidget {
           previousExpenseMinor: previous == null
               ? null
               : provider.spendAmountForPeriod(previous),
-          previousIncomeMinor:
-              previous == null ? null : provider.totalIncomeForPeriod(previous),
+          previousIncomeMinor: previous == null
+              ? null
+              : provider.totalIncomeForPeriod(previous),
           budgetMinor: provider.monthlyBudgetMinor,
           periodLabel: period.periodLabel,
           periodEnd: current.end,
           visible: visible,
           onToggleVisibility: onToggleVisibility,
           ledgerError: provider.hasLedgerInitError,
-          onSetBudget: () => Navigator.of(context)
-              .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
+          onSetBudget: () =>
+              Navigator.of(context)
+                  .push(AppPageRoute(builder: (_) => const BudgetsScreen())),
         );
       },
     );
@@ -804,7 +815,7 @@ class _SyncStatusStrip extends StatelessWidget {
         final message = denied
             ? 'SMS permission is off, so new transactions cannot be imported.'
             : 'The last sync did not finish. Your saved transactions are '
-                'unchanged.';
+                  'unchanged.';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -853,10 +864,9 @@ class _SyncStatusStrip extends StatelessWidget {
                     child: Text(
                       denied ? 'Fix' : 'Retry',
                       style: AppText.weight(
-                              AppText.label(context), FontWeight.w700)
-                          .copyWith(
-                        color: AppColors.brandInk(context),
-                      ),
+                        AppText.label(context),
+                        FontWeight.w700,
+                      ).copyWith(color: AppColors.brandInk(context)),
                     ),
                   ),
                 ),
@@ -900,16 +910,16 @@ class _SyncButton extends StatelessWidget {
         final label = provider.isSyncing
             ? 'Syncing…'
             : last == null
-                ? 'Sync messages'
-                : 'Synced ${Formatters.relativeTime(last)}';
+            ? 'Sync messages'
+            : 'Synced ${Formatters.relativeTime(last)}';
 
         return Semantics(
           button: true,
           label: provider.isSyncing
               ? 'Syncing messages'
               : last == null
-                  ? 'Sync messages'
-                  : 'Synced ${Formatters.relativeTime(last)}. Sync again',
+              ? 'Sync messages'
+              : 'Synced ${Formatters.relativeTime(last)}. Sync again',
           excludeSemantics: true,
           child: Pressable(
             onTap: () => _onTap(context, provider),
@@ -944,11 +954,9 @@ class _SyncButton extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.weight(
-                              AppText.caption(context), FontWeight.w600)
-                          .copyWith(
-                        fontSize: 10.5,
-                        letterSpacing: 0.2,
-                      ),
+                        AppText.caption(context),
+                        FontWeight.w600,
+                      ).copyWith(fontSize: 10.5, letterSpacing: 0.2),
                     ),
                   ),
                 ],

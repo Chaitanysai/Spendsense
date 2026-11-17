@@ -81,16 +81,8 @@ void main() {
       final provider = TransactionProvider();
       provider.debugSeed([
         _tx(id: 'in-period', amountMinor: 100000),
-        _tx(
-          id: 'old-history',
-          amountMinor: 900000,
-          date: DateTime(2026, 8, 5),
-        ),
-        _tx(
-          id: 'income',
-          amountMinor: 700000,
-          type: TransactionType.income,
-        ),
+        _tx(id: 'old-history', amountMinor: 900000, date: DateTime(2026, 8, 5)),
+        _tx(id: 'income', amountMinor: 700000, type: TransactionType.income),
       ]);
 
       expect(provider.spendAmountForPeriod(period), 100000);
@@ -113,11 +105,7 @@ void main() {
           amountMinor: 250000,
           category: 'Investment transfer',
         ),
-        _tx(
-          id: 'income',
-          amountMinor: 900000,
-          type: TransactionType.income,
-        ),
+        _tx(id: 'income', amountMinor: 900000, type: TransactionType.income),
         _tx(id: 'excluded', amountMinor: 300000, excluded: true),
       ]);
 
@@ -131,18 +119,21 @@ void main() {
       expect(provider.spendAmountForPeriod(period), 0);
     });
 
-    test('canonical spend and instrument stats use the same transfer filter',
-        () {
+    test('canonical spend and instrument stats use the same transfer filter', () {
       final provider = TransactionProvider();
       provider.debugSeed([
         _tx(id: 'expense', amountMinor: 100000),
         _tx(id: 'transfer', amountMinor: 500000, category: 'Transfer'),
       ]);
 
-      final stats =
-          provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
-      final statsTotal =
-          stats.values.fold<int>(0, (sum, stat) => sum + stat.spent);
+      final stats = provider.spendingStatsForPeriod(
+        period,
+        (t) => t.paymentMethod,
+      );
+      final statsTotal = stats.values.fold<int>(
+        0,
+        (sum, stat) => sum + stat.spent,
+      );
 
       // The canonical figure, the alias and the roll-up agree by construction.
       expect(provider.spendAmountForPeriod(period), 100000);
@@ -151,17 +142,19 @@ void main() {
       expect(stats.values.fold<int>(0, (sum, stat) => sum + stat.count), 1);
     });
 
-    test('a negative expense reduces the period spend instead of being clamped',
-        () {
-      final provider = TransactionProvider();
-      provider.debugSeed([
-        _tx(id: 'spend', amountMinor: 100000),
-        _tx(id: 'refund', amountMinor: -30000),
-      ]);
+    test(
+      'a negative expense reduces the period spend instead of being clamped',
+      () {
+        final provider = TransactionProvider();
+        provider.debugSeed([
+          _tx(id: 'spend', amountMinor: 100000),
+          _tx(id: 'refund', amountMinor: -30000),
+        ]);
 
-      expect(provider.spendAmountForPeriod(period), 70000);
-      expect(provider.spendingTotalForPeriod(period), 70000);
-    });
+        expect(provider.spendAmountForPeriod(period), 70000);
+        expect(provider.spendingTotalForPeriod(period), 70000);
+      },
+    );
 
     test('the previous period applies the same transfer filter', () {
       final previous = DateTimeRange(
@@ -216,15 +209,18 @@ void main() {
         0,
       );
       // Per-category spent reconciles with the overall budget figure.
-      final categoryTotal =
-          statuses.fold<int>(0, (sum, s) => sum + s.progress.spentMinor);
+      final categoryTotal = statuses.fold<int>(
+        0,
+        (sum, s) => sum + s.progress.spentMinor,
+      );
       expect(categoryTotal, provider.spendAmountForPeriod(period));
     });
   });
 
   group('Spend Amount card', () {
-    testWidgets('shows Spend Amount and matches the Expenses KPI',
-        (tester) async {
+    testWidgets('shows Spend Amount and matches the Expenses KPI', (
+      tester,
+    ) async {
       await _pumpHero(tester);
 
       expect(find.text('Spend Amount'), findsOneWidget);
@@ -232,10 +228,7 @@ void main() {
       expect(find.text('Net across all transactions'), findsNothing);
       expect(find.text('1 Nov – 30 Nov'), findsWidgets);
       // Hero figure and the Expenses KPI use the same value.
-      expect(
-        find.text(Formatters.currency.format(125000)),
-        findsNWidgets(2),
-      );
+      expect(find.text(Formatters.currency.format(125000)), findsNWidgets(2));
     });
 
     testWidgets('the eye toggle still masks the figure', (tester) async {
@@ -272,18 +265,13 @@ void main() {
 
       // ₹50,000 income − ₹1,000 spend = ₹49,000. The ₹20,000 transfer is not
       // spending, so it cannot push Net down.
-      expect(
-        find.text(Formatters.currency.format(4900000)),
-        findsOneWidget,
-      );
-      expect(
-        find.text(Formatters.currency.format(2000000)),
-        findsNothing,
-      );
+      expect(find.text(Formatters.currency.format(4900000)), findsOneWidget);
+      expect(find.text(Formatters.currency.format(2000000)), findsNothing);
     });
 
-    testWidgets('shows the expense trend against the previous period',
-        (tester) async {
+    testWidgets('shows the expense trend against the previous period', (
+      tester,
+    ) async {
       await _pumpHero(
         tester,
         expenseMinor: 125000,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/app_sheet.dart';
+
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
@@ -94,9 +96,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         if (_saveError != null) _saveError = null;
       });
     });
-    _merchantController.addListener(() => setState(() {
-          if (_saveError != null) _saveError = null;
-        }));
+    _merchantController.addListener(
+      () => setState(() {
+        if (_saveError != null) _saveError = null;
+      }),
+    );
   }
 
   @override
@@ -356,8 +360,11 @@ class _SaveError extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 18, color: AppColors.danger),
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: AppColors.danger,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -385,8 +392,10 @@ class _SheetGrabber extends StatelessWidget {
         child: Container(
           width: 40,
           height: 4,
-          margin:
-              const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.sm),
+          margin: const EdgeInsets.only(
+            top: AppSpacing.md,
+            bottom: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             color: AppColors.border(context),
             borderRadius: BorderRadius.circular(2),

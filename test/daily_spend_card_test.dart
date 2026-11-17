@@ -31,9 +31,9 @@ TransactionModel _tx(String id, DateTime date, int amountMinor) =>
     );
 
 Finder _inCard(Finder matching) => find.descendant(
-      of: find.byKey(const Key('spending-trend-card')),
-      matching: matching,
-    );
+  of: find.byKey(const Key('spending-trend-card')),
+  matching: matching,
+);
 
 Future<TransactionProvider> _pumpHome(
   WidgetTester tester,
@@ -81,8 +81,9 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  testWidgets('defaults to today and switches to a tapped earlier day',
-      (tester) async {
+  testWidgets('defaults to today and switches to a tapped earlier day', (
+    tester,
+  ) async {
     final now = DateTime.now();
     final yesterday = DateTime(now.year, now.month, now.day - 1, 12);
     await _pumpHome(tester, [
@@ -94,28 +95,38 @@ void main() {
     expect(_inCard(find.text('₹250')), findsOneWidget);
 
     // Tap the sixth of seven day columns: yesterday's slice of the plot.
-    final chart =
-        tester.getRect(_inCard(find.byKey(const Key('spending-trend-chart'))));
-    await tester
-        .tapAt(Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy));
+    final chart = tester.getRect(
+      _inCard(find.byKey(const Key('spending-trend-chart'))),
+    );
+    await tester.tapAt(
+      Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy),
+    );
     // The first pump starts the newly created controllers; the second advances
     // them, which is what the real device does 16 ms later.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(_inCard(find.text(DateFormat('EEE d MMM').format(yesterday))),
-        findsOneWidget);
+    expect(
+      _inCard(find.text(DateFormat('EEE d MMM').format(yesterday))),
+      findsOneWidget,
+    );
     expect(_inCard(find.text('₹120')), findsOneWidget);
-    expect(_inCard(find.text('₹250')), findsNothing,
-        reason: 'the header must describe the selected day only');
+    expect(
+      _inCard(find.text('₹250')),
+      findsNothing,
+      reason: 'the header must describe the selected day only',
+    );
   });
 
-  testWidgets('a week with no spending says so, and fills in when data lands',
-      (tester) async {
+  testWidgets('a week with no spending says so, and fills in when data lands', (
+    tester,
+  ) async {
     final provider = await _pumpHome(tester, const []);
 
     expect(
-        _inCard(find.text('No spending in the last 7 days')), findsOneWidget);
+      _inCard(find.text('No spending in the last 7 days')),
+      findsOneWidget,
+    );
     expect(_inCard(find.text('Today')), findsOneWidget);
     // The card shows the selected day's total and the 7-day total; both are ₹0.
     expect(_inCard(find.text('₹0')), findsWidgets);

@@ -62,10 +62,7 @@ void main() {
       expect(AppPalette.byId('forest_green'), same(AppPalette.forestGreen));
       expect(AppPalette.byId('emerald'), same(AppPalette.emerald));
       expect(AppPalette.byId('premium_blue'), same(AppPalette.premiumBlue));
-      expect(
-        AppPalette.byId('does_not_exist'),
-        same(AppPalette.premiumBlue),
-      );
+      expect(AppPalette.byId('does_not_exist'), same(AppPalette.premiumBlue));
       expect(AppPalette.byId(null), same(AppPalette.premiumBlue));
     });
 
@@ -113,8 +110,11 @@ void main() {
       for (final p in premium) {
         expect(p.isAmoled, isFalse, reason: p.label);
         expect(p.glass, isTrue, reason: p.label);
-        expect(p.darkBackground, isNot(const Color(0xFF000000)),
-            reason: p.label);
+        expect(
+          p.darkBackground,
+          isNot(const Color(0xFF000000)),
+          reason: p.label,
+        );
       }
       // Premium Blue is the default identity and the reset target.
       expect(AppPalette.defaultPalette, AppPalette.premiumBlue);
@@ -130,10 +130,7 @@ void main() {
 
       expect(AppPalette.softPastelTeal.brand, const Color(0xFF5D6B6B));
       expect(AppPalette.softPastelTeal.limeAccent, const Color(0xFFF7CBCA));
-      expect(
-        AppPalette.softPastelTeal.background,
-        const Color(0xFFF1F7F7),
-      );
+      expect(AppPalette.softPastelTeal.background, const Color(0xFFF1F7F7));
 
       expect(AppPalette.plumBlush.brand, const Color(0xFF854F6C));
       expect(AppPalette.plumBlush.limeAccent, const Color(0xFFDFB6B2));
@@ -156,21 +153,25 @@ void main() {
       expect(AppPalette.oceanBlue.darkBackground, const Color(0xFF000000));
     });
 
-    test('the balance gradient runs its legible top stop into the deep stop',
-        () {
-      final colors = AppPalette.emerald.balanceGradient.colors;
-      expect(colors, hasLength(2));
-      expect(colors[0], AppPalette.emerald.balanceTop);
-      expect(colors[1], AppPalette.emerald.deep);
-    });
+    test(
+      'the balance gradient runs its legible top stop into the deep stop',
+      () {
+        final colors = AppPalette.emerald.balanceGradient.colors;
+        expect(colors, hasLength(2));
+        expect(colors[0], AppPalette.emerald.balanceTop);
+        expect(colors[1], AppPalette.emerald.deep);
+      },
+    );
 
     test('a palettes bright mid stop is darkened for the balance card', () {
       // Ocean Blue's raw mid is ~2.8:1 against white, so the derived top stop
       // must be darker than it while still being a real blend of mid and deep.
       expect(_contrast(AppPalette.oceanBlue.mid, Colors.white), lessThan(4.5));
       expect(AppPalette.oceanBlue.balanceTop, isNot(AppPalette.oceanBlue.mid));
-      expect(_contrast(AppPalette.oceanBlue.balanceTop, Colors.white),
-          greaterThanOrEqualTo(4.5));
+      expect(
+        _contrast(AppPalette.oceanBlue.balanceTop, Colors.white),
+        greaterThanOrEqualTo(4.5),
+      );
 
       // Emerald's mid already clears the threshold, so it is used unchanged.
       expect(AppPalette.emerald.balanceTop, AppPalette.emerald.mid);
@@ -185,7 +186,8 @@ void main() {
           expect(
             contrast,
             greaterThanOrEqualTo(4.5),
-            reason: '${palette.label} stop $stop is only '
+            reason:
+                '${palette.label} stop $stop is only '
                 '${contrast.toStringAsFixed(2)}:1 against white',
           );
         }
@@ -251,8 +253,11 @@ void main() {
           final r = (c.r * 255).round();
           final g = (c.g * 255).round();
           final b = (c.b * 255).round();
-          expect(r == g && g == b, isTrue,
-              reason: '${p.label} surface $c must be neutral grey, not tinted');
+          expect(
+            r == g && g == b,
+            isTrue,
+            reason: '${p.label} surface $c must be neutral grey, not tinted',
+          );
         }
         // Cards stay in the near-black band, never a coloured panel.
         expect(p.darkSurface.computeLuminance(), lessThan(0.02));
@@ -287,27 +292,35 @@ void main() {
       );
     });
 
-    testWidgets('dark text tiers are neutral and readable on black',
-        (tester) async {
+    testWidgets('dark text tiers are neutral and readable on black', (
+      tester,
+    ) async {
       late Color primary, secondary, tertiary, fill, border;
-      await tester.pumpWidget(MaterialApp(
-        theme: ThemeData(brightness: Brightness.dark),
-        home: Builder(builder: (c) {
-          primary = AppColors.textPrimary(c);
-          secondary = AppColors.textSecondary(c);
-          tertiary = AppColors.textTertiary(c);
-          fill = AppColors.glassFill(c);
-          border = AppColors.glassBorder(c);
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(brightness: Brightness.dark),
+          home: Builder(
+            builder: (c) {
+              primary = AppColors.textPrimary(c);
+              secondary = AppColors.textSecondary(c);
+              tertiary = AppColors.textTertiary(c);
+              fill = AppColors.glassFill(c);
+              border = AppColors.glassBorder(c);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
       const black = Color(0xFF000000);
       expect(_contrast(primary, black), greaterThanOrEqualTo(15));
       expect(_contrast(secondary, black), greaterThanOrEqualTo(7));
       expect(_contrast(tertiary, black), greaterThanOrEqualTo(4.5));
       for (final c in [primary, secondary, tertiary]) {
-        expect((c.r - c.g).abs() < 0.01 && (c.g - c.b).abs() < 0.01, isTrue,
-            reason: '$c must be neutral');
+        expect(
+          (c.r - c.g).abs() < 0.01 && (c.g - c.b).abs() < 0.01,
+          isTrue,
+          reason: '$c must be neutral',
+        );
       }
       // The card is a dark surface with the palette tint, not a white wash.
       expect(fill.computeLuminance(), lessThan(0.12));
@@ -332,10 +345,16 @@ void main() {
 
       for (final p in AppPalette.all) {
         AppColors.applyPalette(p);
-        expect(chroma(AppColors.darkSurface), greaterThan(0.02),
-            reason: p.label);
-        expect(chroma(AppColors.darkSurfaceAlt), greaterThan(0.02),
-            reason: p.label);
+        expect(
+          chroma(AppColors.darkSurface),
+          greaterThan(0.02),
+          reason: p.label,
+        );
+        expect(
+          chroma(AppColors.darkSurfaceAlt),
+          greaterThan(0.02),
+          reason: p.label,
+        );
         expect(AppColors.darkSurface.computeLuminance(), lessThan(0.20));
         expect(AppColors.darkSurfaceAlt.computeLuminance(), lessThan(0.25));
         expect(
@@ -358,11 +377,15 @@ void main() {
 
       // The raw brand green is too weak as small text on white, so light ink is
       // pulled toward the deep stop — measurably darker than the brand itself.
-      expect(lightInk.computeLuminance(),
-          lessThan(AppColors.brand.computeLuminance()));
+      expect(
+        lightInk.computeLuminance(),
+        lessThan(AppColors.brand.computeLuminance()),
+      );
       // Dark ink steps up to the bright stop — measurably lighter than brand.
-      expect(darkInk.computeLuminance(),
-          greaterThan(AppColors.brand.computeLuminance()));
+      expect(
+        darkInk.computeLuminance(),
+        greaterThan(AppColors.brand.computeLuminance()),
+      );
     });
 
     test('light-mode brand ink clears the AA threshold on white', () {
@@ -380,10 +403,7 @@ void main() {
     test('lime ink stays legible on every palette highlight', () {
       for (final p in AppPalette.all) {
         AppColors.applyPalette(p);
-        final contrast = _contrast(
-          AppColors.onLimeInk,
-          p.limeAccent,
-        );
+        final contrast = _contrast(AppColors.onLimeInk, p.limeAccent);
         expect(contrast, greaterThanOrEqualTo(4.5), reason: p.label);
       }
     });

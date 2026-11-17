@@ -16,30 +16,30 @@ import 'package:spendsense/widgets/quick_action_tile.dart';
 /// heights, equal icon tops, equal label tops — plus the 48dp touch target.
 void main() {
   List<QuickAction> actions() => [
-        QuickAction(
-          label: 'Add',
-          semanticLabel: 'Add transaction',
-          icon: Icons.add_rounded,
-          primary: true,
-          onTap: () {},
-        ),
-        QuickAction(
-          label: 'Add expense',
-          icon: Icons.south_west_rounded,
-          onTap: () {},
-        ),
-        QuickAction(
-          label: 'Add income',
-          icon: Icons.north_east_rounded,
-          onTap: () {},
-        ),
-        QuickAction(label: 'Sync SMS', icon: Icons.sync_rounded, onTap: () {}),
-        QuickAction(
-          label: 'Activity',
-          icon: Icons.receipt_long_rounded,
-          onTap: () {},
-        ),
-      ];
+    QuickAction(
+      label: 'Add',
+      semanticLabel: 'Add transaction',
+      icon: Icons.add_rounded,
+      primary: true,
+      onTap: () {},
+    ),
+    QuickAction(
+      label: 'Add expense',
+      icon: Icons.south_west_rounded,
+      onTap: () {},
+    ),
+    QuickAction(
+      label: 'Add income',
+      icon: Icons.north_east_rounded,
+      onTap: () {},
+    ),
+    QuickAction(label: 'Sync SMS', icon: Icons.sync_rounded, onTap: () {}),
+    QuickAction(
+      label: 'Activity',
+      icon: Icons.receipt_long_rounded,
+      onTap: () {},
+    ),
+  ];
 
   Future<void> pumpDock(
     WidgetTester tester, {
@@ -71,8 +71,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('every slot shares one height and one plate line',
-      (tester) async {
+  testWidgets('every slot shares one height and one plate line', (
+    tester,
+  ) async {
     // The facts the user can see: the slots are the same shape, and the plates
     // share one centre line even though "Add expense" wraps and "Activity" does not.
     //
@@ -97,14 +98,21 @@ void main() {
       // The plate is the icon's parent box. The Add disc is 44dp and the
       // outlined squares are 40dp, so their tops differ by design; what the eye
       // reads as "one line" is the centre.
-      final plate =
-          find.ancestor(of: icon, matching: find.byType(Container)).first;
+      final plate = find
+          .ancestor(of: icon, matching: find.byType(Container))
+          .first;
       plateCentres.add(tester.getCenter(plate).dy.roundToDouble());
     }
-    expect(slotHeights.length, 1,
-        reason: 'slots differ in height: $slotHeights');
-    expect(plateCentres.length, 1,
-        reason: 'plates are not on one line: $plateCentres');
+    expect(
+      slotHeights.length,
+      1,
+      reason: 'slots differ in height: $slotHeights',
+    );
+    expect(
+      plateCentres.length,
+      1,
+      reason: 'plates are not on one line: $plateCentres',
+    );
 
     // Two label lines are reserved in every slot, so the wrapped slot can never
     // be the taller one.

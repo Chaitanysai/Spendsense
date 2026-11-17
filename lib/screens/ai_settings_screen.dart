@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/ai_sms_consent.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/app_colors.dart';
@@ -107,9 +108,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     await _storage.deleteApiKey(keyName);
     if (!mounted) return;
     setState(() => setConfigured(false));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$providerName key cleared')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('$providerName key cleared')));
   }
 
   Future<void> _clearAllKeys() async {
@@ -142,9 +142,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       _geminiConfigured = false;
       _openRouterConfigured = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All API keys cleared')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('All API keys cleared')));
   }
 
   @override
@@ -173,13 +172,17 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                       color: AppColors.brand.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                          color: AppColors.brand.withValues(alpha: 0.25)),
+                        color: AppColors.brand.withValues(alpha: 0.25),
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.shield_outlined,
-                            color: AppColors.brand, size: 20),
+                        Icon(
+                          Icons.shield_outlined,
+                          color: AppColors.brand,
+                          size: 20,
+                        ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
@@ -228,11 +231,10 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'Provider Chain Order: Groq → Cerebras → Gemini → OpenRouter',
-                    style:
-                        AppText.weight(AppText.label(context), FontWeight.w700)
-                            .copyWith(
-                      color: AppColors.brand,
-                    ),
+                    style: AppText.weight(
+                      AppText.label(context),
+                      FontWeight.w700,
+                    ).copyWith(color: AppColors.brand),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _buildProviderSection(
@@ -241,12 +243,17 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     description: 'Fast inference with llama-3.3-70b-versatile',
                     controller: _groqController,
                     isConfigured: _groqConfigured,
-                    onSave: () => _saveKey('Groq', _groqController,
-                        _storage.setGroqKey, (v) => _groqConfigured = v),
+                    onSave: () => _saveKey(
+                      'Groq',
+                      _groqController,
+                      _storage.setGroqKey,
+                      (v) => _groqConfigured = v,
+                    ),
                     onClear: () => _clearKey(
-                        'Groq',
-                        SecureStorageService.groqKeyName,
-                        (v) => _groqConfigured = v),
+                      'Groq',
+                      SecureStorageService.groqKeyName,
+                      (v) => _groqConfigured = v,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildProviderSection(
@@ -256,14 +263,16 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     controller: _cerebrasController,
                     isConfigured: _cerebrasConfigured,
                     onSave: () => _saveKey(
-                        'Cerebras',
-                        _cerebrasController,
-                        _storage.setCerebrasKey,
-                        (v) => _cerebrasConfigured = v),
+                      'Cerebras',
+                      _cerebrasController,
+                      _storage.setCerebrasKey,
+                      (v) => _cerebrasConfigured = v,
+                    ),
                     onClear: () => _clearKey(
-                        'Cerebras',
-                        SecureStorageService.cerebrasKeyName,
-                        (v) => _cerebrasConfigured = v),
+                      'Cerebras',
+                      SecureStorageService.cerebrasKeyName,
+                      (v) => _cerebrasConfigured = v,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildProviderSection(
@@ -272,12 +281,17 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     description: 'High quality with gemini-2.5-flash',
                     controller: _geminiController,
                     isConfigured: _geminiConfigured,
-                    onSave: () => _saveKey('Gemini', _geminiController,
-                        _storage.setGeminiKey, (v) => _geminiConfigured = v),
+                    onSave: () => _saveKey(
+                      'Gemini',
+                      _geminiController,
+                      _storage.setGeminiKey,
+                      (v) => _geminiConfigured = v,
+                    ),
                     onClear: () => _clearKey(
-                        'Gemini',
-                        SecureStorageService.geminiKeyName,
-                        (v) => _geminiConfigured = v),
+                      'Gemini',
+                      SecureStorageService.geminiKeyName,
+                      (v) => _geminiConfigured = v,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildProviderSection(
@@ -287,14 +301,16 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     controller: _openRouterController,
                     isConfigured: _openRouterConfigured,
                     onSave: () => _saveKey(
-                        'OpenRouter',
-                        _openRouterController,
-                        _storage.setOpenRouterKey,
-                        (v) => _openRouterConfigured = v),
+                      'OpenRouter',
+                      _openRouterController,
+                      _storage.setOpenRouterKey,
+                      (v) => _openRouterConfigured = v,
+                    ),
                     onClear: () => _clearKey(
-                        'OpenRouter',
-                        SecureStorageService.openRouterKeyName,
-                        (v) => _openRouterConfigured = v),
+                      'OpenRouter',
+                      SecureStorageService.openRouterKeyName,
+                      (v) => _openRouterConfigured = v,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   OutlinedButton.icon(
@@ -304,7 +320,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.danger,
                       side: BorderSide(
-                          color: AppColors.danger.withValues(alpha: 0.4)),
+                        color: AppColors.danger.withValues(alpha: 0.4),
+                      ),
                       minimumSize: const Size.fromHeight(50),
                     ),
                   ),
@@ -334,8 +351,10 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
         children: [
           Row(
             children: [
-              Text(providerName,
-                  style: AppText.title(context).copyWith(fontSize: 15)),
+              Text(
+                providerName,
+                style: AppText.title(context).copyWith(fontSize: 15),
+              ),
               const SizedBox(width: AppSpacing.sm),
               _statusBadge(context, isConfigured),
             ],
@@ -368,8 +387,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                   onPressed: onClear,
                   icon: const Icon(Icons.delete, size: 18),
                   label: const Text('Clear'),
-                  style:
-                      TextButton.styleFrom(foregroundColor: AppColors.danger),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                  ),
                 ),
             ],
           ),
@@ -379,8 +399,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
   }
 
   Widget _statusBadge(BuildContext context, bool isConfigured) {
-    final color =
-        isConfigured ? AppColors.incomeGreen : AppColors.textTertiary(context);
+    final color = isConfigured
+        ? AppColors.incomeGreen
+        : AppColors.textTertiary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -390,10 +411,10 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       ),
       child: Text(
         isConfigured ? 'Configured' : 'Not configured',
-        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
-          fontSize: 10,
-          color: color,
-        ),
+        style: AppText.weight(
+          AppText.label(context),
+          FontWeight.w700,
+        ).copyWith(fontSize: 10, color: color),
       ),
     );
   }

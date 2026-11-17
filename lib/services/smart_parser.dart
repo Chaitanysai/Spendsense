@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
+
 import '../models/transaction_model.dart';
 import 'bill_classifier.dart';
 import 'sms_content_policy.dart';
 import '../utils/bank_recognizer.dart';
 import '../utils/money_parser.dart';
+
 import 'package:intl/intl.dart';
 
 /// SpendSense 2.0 Enhanced SmartParser
@@ -79,9 +81,10 @@ class SmartParser {
         _nonTransactionPatterns.any(lower.contains)) {
       return false;
     }
-    if (RegExp(r'\b(?:offer|promo(?:tional)?|limited time|cashback)\b',
-            caseSensitive: false)
-        .hasMatch(lower)) {
+    if (RegExp(
+      r'\b(?:offer|promo(?:tional)?|limited time|cashback)\b',
+      caseSensitive: false,
+    ).hasMatch(lower)) {
       return false;
     }
     return _hasDebitSignal(sms);
@@ -188,7 +191,8 @@ class SmartParser {
     // bank and reference are financial data and must not reach the device log
     // (only the confidence band is safe to emit).
     debugPrint(
-        'SMS FILTER: ACCEPT reason=DEBIT confidence=${confidence.toStringAsFixed(2)}');
+      'SMS FILTER: ACCEPT reason=DEBIT confidence=${confidence.toStringAsFixed(2)}',
+    );
     return result;
   }
 
@@ -214,17 +218,19 @@ class SmartParser {
       final start = match.start;
       final end = match.end;
       final leftContext = lower.substring((start - 100).clamp(0, start), start);
-      final rightContext =
-          lower.substring(end, (end + 45).clamp(end, transactionEnd));
-      final eventBefore = RegExp(
+      final rightContext = lower.substring(
+        end,
+        (end + 45).clamp(end, transactionEnd),
+      );
+      final eventBefore =
+          RegExp(
             r'\b(?:debited|debit|deducted|deduction|spent|paid|purchase|withdrawn|withdrawal|charged)\b|'
             r'\b(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
           ).hasMatch(leftContext) ||
-          RegExp(r'\bDR\b').hasMatch(sms.substring(
-            (start - 100).clamp(0, start),
-            start,
-          ));
-      final eventAfter = RegExp(
+          RegExp(r'\bDR\b')
+              .hasMatch(sms.substring((start - 100).clamp(0, start), start));
+      final eventAfter =
+          RegExp(
             // Bank mail writes the passive in many tenses: "Rs 100 debited",
             // "has been debited", "was debited", "is debited", "got debited".
             // Requiring just "has been" dropped the most common wording —
@@ -236,8 +242,9 @@ class SmartParser {
             r'^\s*(?:(?:has|have|had|was|were|is|are|been)\s+){0,2}'
             r'(?:sent\s+(?:to|from|via|through|using|towards)|transferred(?:\s+to)?)\b',
           ).hasMatch(rightContext) ||
-          RegExp(r'^\s*DR\b').hasMatch(
-              sms.substring(end, (end + 45).clamp(end, transactionEnd)));
+          RegExp(
+            r'^\s*DR\b',
+          ).hasMatch(sms.substring(end, (end + 45).clamp(end, transactionEnd)));
       if (!eventBefore && !eventAfter) continue;
       final rawAmount = match.group(1)!;
       if (rawAmount.replaceAll(',', '').length > 12) continue;
@@ -327,8 +334,10 @@ class SmartParser {
       caseSensitive: false,
     ).firstMatch(sms);
     if (towardsMatch != null) {
-      final value =
-          towardsMatch.group(1)!.trim().replaceAll(RegExp(r'[.,;]+$'), '');
+      final value = towardsMatch
+          .group(1)!
+          .trim()
+          .replaceAll(RegExp(r'[.,;]+$'), '');
       if (value.isNotEmpty && !value.contains('@')) {
         return _normalizeMerchantName(value);
       }
@@ -574,8 +583,13 @@ class SmartParser {
       return 'Travel';
     }
 
-    if (_anyOf(
-        merch, ['hpcl', 'bpcl', 'iocl', 'fuel station', 'reliance fuel'])) {
+    if (_anyOf(merch, [
+      'hpcl',
+      'bpcl',
+      'iocl',
+      'fuel station',
+      'reliance fuel',
+    ])) {
       return 'Fuel';
     }
     if (_anyOf(lower, ['petrol', 'diesel', 'fuel', 'gas station', 'pump'])) {
@@ -614,8 +628,14 @@ class SmartParser {
       return 'Bills';
     }
 
-    if (_anyOf(merch,
-        ['apollo', 'practo', 'netmeds', 'pharmeasy', '1mg', 'medplus'])) {
+    if (_anyOf(merch, [
+      'apollo',
+      'practo',
+      'netmeds',
+      'pharmeasy',
+      '1mg',
+      'medplus',
+    ])) {
       return 'Health';
     }
     if (_anyOf(lower, [
@@ -651,7 +671,7 @@ class SmartParser {
       'cinema',
       'ticket',
       'entertainment',
-      'gaming'
+      'gaming',
     ])) {
       return 'Entertainment';
     }
@@ -667,7 +687,7 @@ class SmartParser {
       'rtgs',
       'fund transfer',
       'transferred to',
-      'sent to'
+      'sent to',
     ])) {
       return 'Transfer';
     }
@@ -682,12 +702,11 @@ class SmartParser {
   /// name was classified as a phone bill category. Whole-word matching keeps
   /// the keyword table honest without renaming entries.
   bool _anyOf(String text, List<String> keywords) => keywords.any((k) {
-        final trimmed = k.trim();
-        if (trimmed.isEmpty) return false;
-        return RegExp(
-          '(?<![A-Za-z0-9])${RegExp.escape(trimmed)}(?![A-Za-z0-9])',
-        ).hasMatch(text);
-      });
+    final trimmed = k.trim();
+    if (trimmed.isEmpty) return false;
+    return RegExp('(?<![A-Za-z0-9])${RegExp.escape(trimmed)}(?![A-Za-z0-9])')
+        .hasMatch(text);
+  });
 
   String _capitalize(String s) {
     if (s.isEmpty) return s;
@@ -701,9 +720,13 @@ class SmartParser {
         RegExp(r'[A-Z]').hasMatch(cleaned)) {
       return cleaned;
     }
-    return cleaned.split(' ').where((part) => part.isNotEmpty).map((part) {
-      final lower = part.toLowerCase();
-      return lower[0].toUpperCase() + lower.substring(1);
-    }).join(' ');
+    return cleaned
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+          final lower = part.toLowerCase();
+          return lower[0].toUpperCase() + lower.substring(1);
+        })
+        .join(' ');
   }
 }

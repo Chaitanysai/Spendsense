@@ -126,8 +126,14 @@ class LocalIntentParser {
     }
 
     if (hasAny(const ['bill', 'bills', 'unpaid', 'due'])) {
-      if (hasAny(
-          const ['unpaid', 'due', 'overdue', 'upcoming', 'show', 'list'])) {
+      if (hasAny(const [
+        'unpaid',
+        'due',
+        'overdue',
+        'upcoming',
+        'show',
+        'list',
+      ])) {
         return const UnpaidBillsIntent();
       }
     }
@@ -138,15 +144,21 @@ class LocalIntentParser {
     }
 
     final brands = MerchantMatcher.detectInQuery(trimmed);
-    final duplicate =
-        hasAny(const ['duplicate', 'duplicates', 'same transaction']);
+    final duplicate = hasAny(const [
+      'duplicate',
+      'duplicates',
+      'same transaction',
+    ]);
     if (duplicate && hasAny(const ['delete', 'remove', 'clean'])) {
       return DeleteDuplicatesIntent(window);
     }
 
     if (brands.isNotEmpty) {
-      final asksDelete =
-          hasAny(const ['delete', 'permanently delete', 'erase']);
+      final asksDelete = hasAny(const [
+        'delete',
+        'permanently delete',
+        'erase',
+      ]);
       final asksExclude = hasAny(const ['exclude', 'ignore', 'hide']);
       final removal = hasAny(const ['remove', 'take out', 'leave out']);
       final spendingScope = hasAny(const [
@@ -184,7 +196,7 @@ class LocalIntentParser {
       'biggest',
       'highest',
       'top expense',
-      'top expenses'
+      'top expenses',
     ])) {
       return TopExpensesIntent(window);
     }
@@ -193,12 +205,16 @@ class LocalIntentParser {
       'top category',
       'category summary',
       'categories',
-      'by category'
+      'by category',
     ])) {
       return CategorySummaryIntent(window);
     }
-    if (hasAny(
-        const ['top merchant', 'top merchants', 'by merchant', 'merchants'])) {
+    if (hasAny(const [
+      'top merchant',
+      'top merchants',
+      'by merchant',
+      'merchants',
+    ])) {
       return MerchantSummaryIntent(window);
     }
 
@@ -230,7 +246,7 @@ class LocalIntentParser {
       'credited',
       'earned',
       'refund',
-      'refunds'
+      'refunds',
     ])) {
       return IncomeSummaryIntent(window);
     }
@@ -239,7 +255,7 @@ class LocalIntentParser {
       'recent transaction',
       'recent transactions',
       'latest transaction',
-      'latest transactions'
+      'latest transactions',
     ])) {
       return RecentTransactionsIntent(window);
     }
@@ -250,7 +266,7 @@ class LocalIntentParser {
       'how much have i spent',
       'spending summary',
       'my spending',
-      'total spending'
+      'total spending',
     ])) {
       return SpendingSummaryIntent(window);
     }
@@ -258,7 +274,7 @@ class LocalIntentParser {
     if (hasAny(const [
       'show my transactions',
       'list my transactions',
-      'all transactions'
+      'all transactions',
     ])) {
       return RecentTransactionsIntent(window);
     }

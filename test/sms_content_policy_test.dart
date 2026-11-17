@@ -34,10 +34,7 @@ void main() {
       // behaviour). Guarded so a future flip cannot silently bypass this
       // decision without a failing test here.
       expect(
-        SmsContentPolicy.bodyForNewRecord(
-          _bankDebit,
-          retainOverride: true,
-        ),
+        SmsContentPolicy.bodyForNewRecord(_bankDebit, retainOverride: true),
         _bankDebit,
       );
     });

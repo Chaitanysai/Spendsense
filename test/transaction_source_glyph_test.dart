@@ -27,15 +27,20 @@ TransactionModel _tx({required String source, String category = 'Food'}) =>
     );
 
 Widget _host(TransactionModel tx) => MaterialApp(
-      home: Scaffold(body: TransactionTile(transaction: tx)),
-    );
+  home: Scaffold(body: TransactionTile(transaction: tx)),
+);
 
 void main() {
   group('source glyph selection', () {
-    test('an email import is marked with the envelope the app already uses',
-        () {
-      expect(transactionSourceIcon('Email-Gmail'), Icons.mail_outline_rounded);
-    });
+    test(
+      'an email import is marked with the envelope the app already uses',
+      () {
+        expect(
+          transactionSourceIcon('Email-Gmail'),
+          Icons.mail_outline_rounded,
+        );
+      },
+    );
 
     test('a hand-entered row is marked with a pencil', () {
       expect(transactionSourceIcon('Manual'), Icons.edit_rounded);
@@ -50,8 +55,9 @@ void main() {
   });
 
   group('the tile renders it', () {
-    testWidgets('an email import draws exactly one source icon',
-        (tester) async {
+    testWidgets('an email import draws exactly one source icon', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(_tx(source: 'Email-Gmail')));
       await tester.pumpAndSettle();
 
@@ -61,8 +67,9 @@ void main() {
       expect(find.byIcon(Icons.edit_rounded), findsNothing);
     });
 
-    testWidgets('a manual row draws the pencil, not the envelope',
-        (tester) async {
+    testWidgets('a manual row draws the pencil, not the envelope', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(_tx(source: 'Manual')));
       await tester.pumpAndSettle();
 
@@ -78,8 +85,9 @@ void main() {
       expect(find.byIcon(Icons.edit_rounded), findsNothing);
     });
 
-    testWidgets('the meta text is still shown alongside the glyph',
-        (tester) async {
+    testWidgets('the meta text is still shown alongside the glyph', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(_tx(source: 'Email-Gmail')));
       await tester.pumpAndSettle();
 
@@ -89,8 +97,9 @@ void main() {
   });
 
   group('the glyph does not break the row on a narrow screen', () {
-    testWidgets('no overflow at 320 dp with a long merchant and bank',
-        (tester) async {
+    testWidgets('no overflow at 320 dp with a long merchant and bank', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(320 * 3, 640 * 3);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);

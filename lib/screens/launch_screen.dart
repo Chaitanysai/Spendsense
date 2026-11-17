@@ -155,10 +155,12 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
     // pushed dark enough that the white wordmark keeps its 4.5:1 on every stop
     // (the same `_holdWhite` idea the hero gradients use).
     final deep = _holdWhite(AppColors.darkBackground);
-    final mid =
-        _holdWhite(Color.lerp(AppColors.navyDeep, AppColors.azure, 0.30)!);
-    final light =
-        _holdWhite(Color.lerp(AppColors.brand, AppColors.navyDeep, 0.55)!);
+    final mid = _holdWhite(
+      Color.lerp(AppColors.navyDeep, AppColors.azure, 0.30)!,
+    );
+    final light = _holdWhite(
+      Color.lerp(AppColors.brand, AppColors.navyDeep, 0.55)!,
+    );
     final glow = AppColors.brandBright;
 
     return Scaffold(
@@ -226,13 +228,15 @@ class _SpendSenseLaunchScreenState extends State<SpendSenseLaunchScreen>
                         const SizedBox(height: AppSpacing.xl),
                         Text(
                           'SpendSense',
-                          style: AppText.weight(
-                                  AppText.display(context), FontWeight.w800)
-                              .copyWith(
-                            color: Colors.white,
-                            fontSize: 30,
-                            letterSpacing: -0.8,
-                          ),
+                          style:
+                              AppText.weight(
+                                AppText.display(context),
+                                FontWeight.w800,
+                              ).copyWith(
+                                color: Colors.white,
+                                fontSize: 30,
+                                letterSpacing: -0.8,
+                              ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -308,10 +312,7 @@ class _LaunchRingPainter extends CustomPainter {
   /// Ring colours read the active palette, so the launch ring is lit by the
   /// user's own world rather than a fixed ice-blue brand ramp. Held opaque
   /// enough to stay visible on the palette's darkest canvas stop.
-  const _LaunchRingPainter({
-    required this.arcColors,
-    required this.dotColor,
-  });
+  const _LaunchRingPainter({required this.arcColors, required this.dotColor});
 
   final List<Color> arcColors;
   final Color dotColor;
@@ -334,9 +335,7 @@ class _LaunchRingPainter extends CustomPainter {
       ..shader = SweepGradient(
         colors: arcColors,
         stops: const [0.0, 0.65, 1.0],
-      ).createShader(
-        Rect.fromCircle(center: center, radius: radius),
-      );
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi / 2,
@@ -349,11 +348,7 @@ class _LaunchRingPainter extends CustomPainter {
       center.dx + math.cos(-math.pi / 2 + math.pi * 1.25) * radius,
       center.dy + math.sin(-math.pi / 2 + math.pi * 1.25) * radius,
     );
-    canvas.drawCircle(
-      dot,
-      3.4,
-      Paint()..color = dotColor,
-    );
+    canvas.drawCircle(dot, 3.4, Paint()..color = dotColor);
   }
 
   @override

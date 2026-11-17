@@ -21,26 +21,44 @@ void main() {
 
     test('unknown, duplicate and wrong-type entries are dropped', () {
       expect(
-        DashboardSection.normalizeOrder(
-            ['recent', 'ghost', 'recent', 7, 'budget']),
+        DashboardSection.normalizeOrder([
+          'recent',
+          'ghost',
+          'recent',
+          7,
+          'budget',
+        ]),
         ['recent', 'budget', 'categories', 'weekly'],
       );
       expect(
-          DashboardSection.normalizeOrder('not a list'), DashboardSection.ids);
+        DashboardSection.normalizeOrder('not a list'),
+        DashboardSection.ids,
+      );
     });
 
     test('a section missing from an older saved order is appended', () {
-      expect(DashboardSection.normalizeOrder(['weekly', 'budget']),
-          ['weekly', 'budget', 'categories', 'recent']);
+      expect(DashboardSection.normalizeOrder(['weekly', 'budget']), [
+        'weekly',
+        'budget',
+        'categories',
+        'recent',
+      ]);
     });
 
     test('reordering visible sections never moves or reveals hidden ones', () {
       const order = ['budget', 'categories', 'weekly', 'recent'];
       final next = DashboardSection.reorderVisible(
-          order, {'categories'}, 0, 3); // budget to the end of visible
+        order,
+        {'categories'},
+        0,
+        3,
+      ); // budget to the end of visible
       expect(next, ['weekly', 'categories', 'recent', 'budget']);
-      expect(DashboardSection.visibleInOrder(next, {'categories'}),
-          ['weekly', 'recent', 'budget']);
+      expect(DashboardSection.visibleInOrder(next, {'categories'}), [
+        'weekly',
+        'recent',
+        'budget',
+      ]);
     });
 
     test('out-of-range moves are ignored', () {
@@ -55,18 +73,33 @@ void main() {
       expect(theme.sectionOrder, DashboardSection.ids);
     });
 
-    test('a saved order survives recreation and keeps hidden sections hidden',
-        () async {
-      final theme = await _loaded();
-      await theme.setSectionVisible('weekly', false);
-      await theme.setSectionOrder(['recent', 'weekly', 'budget', 'categories']);
+    test(
+      'a saved order survives recreation and keeps hidden sections hidden',
+      () async {
+        final theme = await _loaded();
+        await theme.setSectionVisible('weekly', false);
+        await theme.setSectionOrder([
+          'recent',
+          'weekly',
+          'budget',
+          'categories',
+        ]);
 
-      final reloaded = await _loaded();
-      expect(
-          reloaded.sectionOrder, ['recent', 'weekly', 'budget', 'categories']);
-      expect(reloaded.isSectionVisible('weekly'), isFalse);
-      expect(reloaded.visibleSectionOrder, ['recent', 'budget', 'categories']);
-    });
+        final reloaded = await _loaded();
+        expect(reloaded.sectionOrder, [
+          'recent',
+          'weekly',
+          'budget',
+          'categories',
+        ]);
+        expect(reloaded.isSectionVisible('weekly'), isFalse);
+        expect(reloaded.visibleSectionOrder, [
+          'recent',
+          'budget',
+          'categories',
+        ]);
+      },
+    );
 
     test('stale or malformed stored values fall back safely', () async {
       SharedPreferences.setMockInitialValues({

@@ -84,8 +84,9 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  testWidgets('history on shows the saved ledger, including earlier cycles',
-      (tester) async {
+  testWidgets('history on shows the saved ledger, including earlier cycles', (
+    tester,
+  ) async {
     final theme = await _pumpHome(tester, includeHistory: true);
     expect(theme.includeHistory, isTrue);
 
@@ -103,8 +104,9 @@ void main() {
     expect(find.text('Old Bazaar'), findsNothing);
   });
 
-  testWidgets('enabling history reveals earlier transactions on Home',
-      (tester) async {
+  testWidgets('enabling history reveals earlier transactions on Home', (
+    tester,
+  ) async {
     final theme = await _pumpHome(tester);
     await theme.setIncludeHistory(true);
     await tester.pump(const Duration(seconds: 1));

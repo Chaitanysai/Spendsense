@@ -39,28 +39,30 @@ void main() {
   });
 
   group('Home financial aggregates', () {
-    test('income-only, expense-only, and mixed transactions keep direction',
-        () {
-      final provider = TransactionProvider();
-      provider.debugSeed([
-        _tx(
-          id: 'income',
-          amount: 100000,
-          type: TransactionType.income,
-          date: DateTime(2026, 10, 10),
-        ),
-        _tx(
-          id: 'expense',
-          amount: 342737,
-          type: TransactionType.expense,
-          date: DateTime(2026, 10, 11),
-        ),
-      ]);
+    test(
+      'income-only, expense-only, and mixed transactions keep direction',
+      () {
+        final provider = TransactionProvider();
+        provider.debugSeed([
+          _tx(
+            id: 'income',
+            amount: 100000,
+            type: TransactionType.income,
+            date: DateTime(2026, 10, 10),
+          ),
+          _tx(
+            id: 'expense',
+            amount: 342737,
+            type: TransactionType.expense,
+            date: DateTime(2026, 10, 11),
+          ),
+        ]);
 
-      expect(provider.totalTrackedIncome, 10000000);
-      expect(provider.totalTrackedExpenses, 34273700);
-      expect(provider.availableBalance, -24273700);
-    });
+        expect(provider.totalTrackedIncome, 10000000);
+        expect(provider.totalTrackedExpenses, 34273700);
+        expect(provider.availableBalance, -24273700);
+      },
+    );
 
     test('empty and excluded transactions do not affect totals', () {
       final provider = TransactionProvider();

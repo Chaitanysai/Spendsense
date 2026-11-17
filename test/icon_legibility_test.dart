@@ -50,8 +50,9 @@ Future<void> _underBrightness(
 
 void main() {
   group('brandWellInk', () {
-    testWidgets('every palette clears AA on the icon capsule (light)',
-        (tester) async {
+    testWidgets('every palette clears AA on the icon capsule (light)', (
+      tester,
+    ) async {
       for (final palette in AppPalette.all) {
         AppColors.applyPalette(palette);
         await _underBrightness(tester, false, (context) {
@@ -68,8 +69,9 @@ void main() {
       }
     });
 
-    testWidgets('every palette clears AA on the icon capsule (dark)',
-        (tester) async {
+    testWidgets('every palette clears AA on the icon capsule (dark)', (
+      tester,
+    ) async {
       for (final palette in AppPalette.all) {
         AppColors.applyPalette(palette);
         await _underBrightness(tester, true, (context) {

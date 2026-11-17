@@ -80,8 +80,10 @@ void main() {
     });
 
     test('stored thresholds are validated, de-duplicated and sorted', () {
-      expect(normalizeBudgetThresholds([100, 50, 50, 70, null, 'x', -5]),
-          [50, 100]);
+      expect(normalizeBudgetThresholds([100, 50, 50, 70, null, 'x', -5]), [
+        50,
+        100,
+      ]);
       expect(normalizeBudgetThresholds(const []), isEmpty);
     });
   });

@@ -88,8 +88,8 @@ class GeminiProxyClient implements AssistantRemoteClient {
     http.Client? httpClient,
     this.timeout = const Duration(seconds: 25),
     DateTime Function()? clock,
-  })  : _http = httpClient ?? http.Client(),
-        _clock = clock ?? DateTime.now;
+  }) : _http = httpClient ?? http.Client(),
+       _clock = clock ?? DateTime.now;
 
   static GeminiProxyClient? fromBaseUrl(
     String baseUrl, {
@@ -286,10 +286,12 @@ class GeminiProxyClient implements AssistantRemoteClient {
               raw['args'] is! Map) {
             throw const FormatException('invalid call');
           }
-          calls.add(RemoteToolCall(
-            raw['name'] as String,
-            Map<String, dynamic>.from(raw['args'] as Map),
-          ));
+          calls.add(
+            RemoteToolCall(
+              raw['name'] as String,
+              Map<String, dynamic>.from(raw['args'] as Map),
+            ),
+          );
         }
       }
       if (text.isEmpty && calls.isEmpty) {

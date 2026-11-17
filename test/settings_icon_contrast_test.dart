@@ -60,7 +60,8 @@ void main() {
     expect(
       used.difference(SettingsScreen.tileRoles.toSet()),
       isEmpty,
-      reason: 'a Settings tile painted a role that is not in tileRoles — '
+      reason:
+          'a Settings tile painted a role that is not in tileRoles — '
           'audit its contrast and add it',
     );
   });
@@ -80,8 +81,10 @@ void main() {
           final ratio = _contrast(ink, blended);
           if (ratio < min) min = ratio;
           if (ratio < 4.5) {
-            failures.add('${dark ? "dark" : "light"}/${palette.id}/$name '
-                '${ratio.toStringAsFixed(2)}');
+            failures.add(
+              '${dark ? "dark" : "light"}/${palette.id}/$name '
+              '${ratio.toStringAsFixed(2)}',
+            );
           }
         }
       }

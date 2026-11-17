@@ -33,9 +33,7 @@ class RemoteTransaction {
 /// conflict resolution and local application live in the sync service, so this
 /// class stays easy to reason about and to fake in tests.
 class TransactionSyncRepository {
-  const TransactionSyncRepository({
-    this.timeout = const Duration(seconds: 20),
-  });
+  const TransactionSyncRepository({this.timeout = const Duration(seconds: 20)});
 
   /// Firestore batches are capped at 500 writes; stay well under it so a large
   /// ledger is pushed in a few bounded round trips instead of one huge call.
@@ -85,19 +83,19 @@ class TransactionSyncRepository {
     required String deviceId,
   }) {
     if (!isAvailable) return Future<void>.value();
-    return _collection(uid).doc(syncId).set(<String, Object?>{
-      'syncId': syncId,
-      'deletedAtMs': deletedAtMs,
-      'updatedAtMs': deletedAtMs,
-      'deviceId': deviceId,
-    }).timeout(timeout);
+    return _collection(uid)
+        .doc(syncId)
+        .set(<String, Object?>{
+          'syncId': syncId,
+          'deletedAtMs': deletedAtMs,
+          'updatedAtMs': deletedAtMs,
+          'deviceId': deviceId,
+        })
+        .timeout(timeout);
   }
 
   /// Removes a tombstone once both sides are past the retention window.
-  Future<void> deleteRecord({
-    required String uid,
-    required String syncId,
-  }) {
+  Future<void> deleteRecord({required String uid, required String syncId}) {
     if (!isAvailable) return Future<void>.value();
     return _collection(uid).doc(syncId).delete().timeout(timeout);
   }

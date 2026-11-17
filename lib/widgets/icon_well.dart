@@ -101,7 +101,8 @@ class IconWell extends StatelessWidget {
     // palette role that has to prove it separates from the card first.
     final tint = plateColor ?? plateTint(color, dark);
     final tinted = fill(tint, dark);
-    final glyph = glyphSize ??
+    final glyph =
+        glyphSize ??
         (size == AppSpacing.wellSize
             ? AppSpacing.wellGlyph
             : size * (AppSpacing.wellGlyph / AppSpacing.wellSize));

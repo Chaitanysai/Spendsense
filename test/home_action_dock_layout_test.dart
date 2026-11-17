@@ -8,8 +8,9 @@ import 'package:spendsense/widgets/quick_action_tile.dart';
 /// to the label, so the whole cluster sat at the left edge of its slot. The
 /// icon and label must share the slot's centre line.
 void main() {
-  testWidgets('dock icons are centred over their labels and slots',
-      (tester) async {
+  testWidgets('dock icons are centred over their labels and slots', (
+    tester,
+  ) async {
     final actions = <QuickAction>[
       QuickAction(
         label: 'Add',
@@ -28,11 +29,7 @@ void main() {
         icon: Icons.north_east_rounded,
         onTap: () {},
       ),
-      QuickAction(
-        label: 'Sync SMS',
-        icon: Icons.sync_rounded,
-        onTap: () {},
-      ),
+      QuickAction(label: 'Sync SMS', icon: Icons.sync_rounded, onTap: () {}),
       QuickAction(
         label: 'Activity',
         icon: Icons.receipt_long_rounded,

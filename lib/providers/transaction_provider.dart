@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/transaction_model.dart';
 import '../utils/bank_recognizer.dart';
 import '../utils/period_math.dart';
@@ -161,8 +162,8 @@ class TransactionProvider with ChangeNotifier {
   TransactionProvider({
     @visibleForTesting Future<List<SmsMessageModel>> Function()? resyncFetcher,
     @visibleForTesting SmsService? smsService,
-  })  : _resyncFetcher = resyncFetcher,
-        _smsServiceOverride = smsService {
+  }) : _resyncFetcher = resyncFetcher,
+       _smsServiceOverride = smsService {
     _initialization = _init();
   }
 
@@ -225,11 +226,7 @@ class TransactionProvider with ChangeNotifier {
     final now = DateTime.now().millisecondsSinceEpoch;
     await _tombstones.addAll([
       for (final tx in removed)
-        LedgerTombstone(
-          syncId: tx.syncId,
-          id: tx.id,
-          deletedAtMs: now,
-        )
+        LedgerTombstone(syncId: tx.syncId, id: tx.id, deletedAtMs: now),
     ]);
   }
 
@@ -245,7 +242,8 @@ class TransactionProvider with ChangeNotifier {
       // successful empty load.
       _ledgerInitError = error;
       debugPrint(
-          '🔒 Ledger init failed (${error.runtimeType}) — data preserved');
+        '🔒 Ledger init failed (${error.runtimeType}) — data preserved',
+      );
     }
     _isLoadingCache = false;
     _notifyIfAlive();
@@ -332,10 +330,7 @@ class TransactionProvider with ChangeNotifier {
     await setMonthlyBudgetMinor(parseRupeesToPaise(amount.toString()));
   }
 
-  Future<void> setSmsScanStartDate(
-    DateTime date, {
-    bool resync = true,
-  }) async {
+  Future<void> setSmsScanStartDate(DateTime date, {bool resync = true}) async {
     final normalized = DateTime(date.year, date.month, date.day);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_smsScanStartKey, normalized.toIso8601String());
@@ -372,26 +367,35 @@ class TransactionProvider with ChangeNotifier {
     } else {
       final startDay = PeriodMath.dateOnly(period.start);
       final endDay = PeriodMath.dateOnly(period.end);
-      key = 'range:${startDay.microsecondsSinceEpoch}'
+      key =
+          'range:${startDay.microsecondsSinceEpoch}'
           '-${endDay.microsecondsSinceEpoch}';
     }
     return _memoExpensesByPeriod.putIfAbsent(key, () {
       if (period == null) {
         final now = DateTime.now();
-        return List.unmodifiable(_transactions.where((t) =>
-            t.type == TransactionType.expense &&
-            !t.isExcluded &&
-            _isLocalMonth(t.date, now)));
+        return List.unmodifiable(
+          _transactions.where(
+            (t) =>
+                t.type == TransactionType.expense &&
+                !t.isExcluded &&
+                _isLocalMonth(t.date, now),
+          ),
+        );
       }
 
       final startDay = PeriodMath.dateOnly(period.start);
       final endDayExclusive = PeriodMath.addDays(period.end, 1);
 
-      return List.unmodifiable(_transactions.where((t) =>
-          t.type == TransactionType.expense &&
-          !t.isExcluded &&
-          !_localDate(t.date).isBefore(startDay) &&
-          _localDate(t.date).isBefore(endDayExclusive)));
+      return List.unmodifiable(
+        _transactions.where(
+          (t) =>
+              t.type == TransactionType.expense &&
+              !t.isExcluded &&
+              !_localDate(t.date).isBefore(startDay) &&
+              _localDate(t.date).isBefore(endDayExclusive),
+        ),
+      );
     });
   }
 
@@ -451,26 +455,35 @@ class TransactionProvider with ChangeNotifier {
     } else {
       final startDay = PeriodMath.dateOnly(period.start);
       final endDay = PeriodMath.dateOnly(period.end);
-      key = 'range:${startDay.microsecondsSinceEpoch}'
+      key =
+          'range:${startDay.microsecondsSinceEpoch}'
           '-${endDay.microsecondsSinceEpoch}';
     }
     return _memoIncomeByPeriod.putIfAbsent(key, () {
       if (period == null) {
         final now = DateTime.now();
-        return List.unmodifiable(_transactions.where((t) =>
-            t.type == TransactionType.income &&
-            !t.isExcluded &&
-            _isLocalMonth(t.date, now)));
+        return List.unmodifiable(
+          _transactions.where(
+            (t) =>
+                t.type == TransactionType.income &&
+                !t.isExcluded &&
+                _isLocalMonth(t.date, now),
+          ),
+        );
       }
 
       final startDay = PeriodMath.dateOnly(period.start);
       final endDayExclusive = PeriodMath.addDays(period.end, 1);
 
-      return List.unmodifiable(_transactions.where((t) =>
-          t.type == TransactionType.income &&
-          !t.isExcluded &&
-          !_localDate(t.date).isBefore(startDay) &&
-          _localDate(t.date).isBefore(endDayExclusive)));
+      return List.unmodifiable(
+        _transactions.where(
+          (t) =>
+              t.type == TransactionType.income &&
+              !t.isExcluded &&
+              !_localDate(t.date).isBefore(startDay) &&
+              _localDate(t.date).isBefore(endDayExclusive),
+        ),
+      );
     });
   }
 
@@ -521,8 +534,7 @@ class TransactionProvider with ChangeNotifier {
     }
     final source = _transactions;
     _memoTrackedSource = source;
-    return _memoTracked =
-        List.unmodifiable(source.where((t) => !t.isExcluded));
+    return _memoTracked = List.unmodifiable(source.where((t) => !t.isExcluded));
   }
 
   /// Tracked expenses, cached per ledger version. Guarded by its OWN source
@@ -584,7 +596,8 @@ class TransactionProvider with ChangeNotifier {
   /// amount as spending for a period must use [spendingStatsForPeriod] so the
   /// figure reconciles with [spendingTotalForPeriod].
   Map<String, InstrumentStat> statsBy(
-      String? Function(TransactionModel transaction) keyOf) {
+    String? Function(TransactionModel transaction) keyOf,
+  ) {
     final stats = <String, InstrumentStat>{};
     for (final t in trackedTransactions) {
       final key = _instrumentKey(keyOf(t));
@@ -733,9 +746,7 @@ class TransactionProvider with ChangeNotifier {
       final fetcher = _resyncFetcher;
       final messages = fetcher != null
           ? await fetcher()
-          : await smsService.fetchTransactionSms(
-              fromDate: _smsScanStartDate,
-            );
+          : await smsService.fetchTransactionSms(fromDate: _smsScanStartDate);
 
       final newMessages = messages
           .where((msg) => msg.id.isNotEmpty && !_cache.contains(msg.id))
@@ -813,14 +824,13 @@ class TransactionProvider with ChangeNotifier {
         await _cache.markRejectedAll(rejected);
       }
 
-      await Future.wait([
-        _cache.updateSyncMeta(),
-      ]);
+      await Future.wait([_cache.updateSyncMeta()]);
 
       _lastSynced = DateTime.now();
       _syncFailure = null;
       debugPrint(
-          '✅ Sync complete — ${newTxs.length} new transactions saved locally');
+        '✅ Sync complete — ${newTxs.length} new transactions saved locally',
+      );
     } catch (e) {
       // Never silent: a scan that threw did not update the ledger, so the UI
       // must not imply it did.
@@ -831,8 +841,10 @@ class TransactionProvider with ChangeNotifier {
       try {
         await _locked(() => _loadFromCache());
       } catch (reloadError) {
-        debugPrint('⚠️ Reload after failed sync failed '
-            '(${reloadError.runtimeType})');
+        debugPrint(
+          '⚠️ Reload after failed sync failed '
+          '(${reloadError.runtimeType})',
+        );
       }
     } finally {
       _isSyncing = false;
@@ -922,18 +934,21 @@ class TransactionProvider with ChangeNotifier {
         if (result != null) {
           result = _withBillHint(result, msg.body);
           // A rebuild must not discard a user's own edits to a known row.
-          final existing =
-              _transactions.where((t) => t.id == result!.id).firstOrNull;
-          staged.add(existing == null
-              ? _stampSyncMeta(result)
-              : result.copyWith(
-                  category: existing.category,
-                  isExcluded: existing.isExcluded,
-                  needsReview: false,
-                  bank: existing.bank,
-                  syncId: existing.syncId,
-                  updatedAtMs: existing.updatedAtMs,
-                ));
+          final existing = _transactions
+              .where((t) => t.id == result!.id)
+              .firstOrNull;
+          staged.add(
+            existing == null
+                ? _stampSyncMeta(result)
+                : result.copyWith(
+                    category: existing.category,
+                    isExcluded: existing.isExcluded,
+                    needsReview: false,
+                    bank: existing.bank,
+                    syncId: existing.syncId,
+                    updatedAtMs: existing.updatedAtMs,
+                  ),
+          );
         }
       }
 
@@ -995,9 +1010,11 @@ class TransactionProvider with ChangeNotifier {
     if (_ledgerInitError != null) return;
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) {
-      final updated = _stampSyncMeta(_transactions[index].copyWith(
-        isExcluded: !_transactions[index].isExcluded,
-      ));
+      final updated = _stampSyncMeta(
+        _transactions[index].copyWith(
+          isExcluded: !_transactions[index].isExcluded,
+        ),
+      );
       // Persist inside the shared lock before touching memory, so a concurrent
       // SMS/email activation cannot be dropped by this single-record write.
       await _locked(() => _cache.put(updated));
@@ -1012,10 +1029,7 @@ class TransactionProvider with ChangeNotifier {
   /// the encrypted write verifies, so a failed write cannot make the dashboard
   /// show a change that is not persisted. All dependent screens rebuild from
   /// this provider, preserving a single source of spending truth.
-  Future<int> setExclusionForIds(
-    Set<String> ids,
-    bool isExcluded,
-  ) async {
+  Future<int> setExclusionForIds(Set<String> ids, bool isExcluded) async {
     await _initialization;
     if (_ledgerInitError != null) {
       throw StateError('The ledger is unreadable; no change was made.');
@@ -1034,9 +1048,7 @@ class TransactionProvider with ChangeNotifier {
       // dashboard and Insights cache their filtered views keyed on the
       // ledger's list identity, so an in-place edit would keep that identity
       // and let them serve a stale copy after the exclusion flips (audit R4).
-      _transactions = [
-        for (final tx in _transactions) byId[tx.id] ?? tx,
-      ];
+      _transactions = [for (final tx in _transactions) byId[tx.id] ?? tx];
       _notifyIfAlive();
       return updated.length;
     });
@@ -1055,15 +1067,16 @@ class TransactionProvider with ChangeNotifier {
     return _locked(() async {
       final removed = [
         for (final tx in _transactions)
-          if (ids.contains(tx.id)) tx
+          if (ids.contains(tx.id)) tx,
       ];
       if (removed.isEmpty) return const <TransactionModel>[];
       await _cache.removeMany(ids);
       // Best-effort: a failed tombstone write must not prevent local deletion.
       await _recordTombstones(removed);
       final removedIds = {for (final tx in removed) tx.id};
-      _transactions =
-          _transactions.where((tx) => !removedIds.contains(tx.id)).toList();
+      _transactions = _transactions
+          .where((tx) => !removedIds.contains(tx.id))
+          .toList();
       _notifyIfAlive();
       return removed;
     });
@@ -1110,9 +1123,7 @@ class TransactionProvider with ChangeNotifier {
       // Copy-on-write, for the same reason as `setExclusionForIds`: an
       // in-place undo would keep the list identity and leave cached views
       // showing the pre-undo flags.
-      _transactions = [
-        for (final tx in _transactions) byId[tx.id] ?? tx,
-      ];
+      _transactions = [for (final tx in _transactions) byId[tx.id] ?? tx];
       _notifyIfAlive();
       return updated.length;
     });
@@ -1123,10 +1134,12 @@ class TransactionProvider with ChangeNotifier {
     if (_ledgerInitError != null) return;
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) {
-      final updated = _stampSyncMeta(_transactions[index].copyWith(
-        category: newCategory,
-        needsReview: false,
-      ));
+      final updated = _stampSyncMeta(
+        _transactions[index].copyWith(
+          category: newCategory,
+          needsReview: false,
+        ),
+      );
       await _locked(() => _cache.put(updated));
       _replaceAt(index, updated);
       _notifyIfAlive();
@@ -1147,17 +1160,19 @@ class TransactionProvider with ChangeNotifier {
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index == -1) return;
 
-    final updated = _stampSyncMeta(_transactions[index].copyWith(
-      amountMinor: amount,
-      merchant: merchant,
-      category: category,
-      type: type,
-      isExcluded: isExcluded,
-      needsReview: false,
-      // A supplied value (including an empty string, which clears the bank)
-      // wins; omitting it preserves whatever was already stored.
-      bank: bank,
-    ));
+    final updated = _stampSyncMeta(
+      _transactions[index].copyWith(
+        amountMinor: amount,
+        merchant: merchant,
+        category: category,
+        type: type,
+        isExcluded: isExcluded,
+        needsReview: false,
+        // A supplied value (including an empty string, which clears the bank)
+        // wins; omitting it preserves whatever was already stored.
+        bank: bank,
+      ),
+    );
     await _locked(() => _cache.put(updated));
     _replaceAt(index, updated);
     _notifyIfAlive();
@@ -1226,12 +1241,15 @@ class TransactionProvider with ChangeNotifier {
           retryable.add(id);
           continue;
         }
-        accepted.add(parsed.copyWith(
-          source: 'Email-Gmail',
-          originalSms: '',
-          paymentMethod:
-              parsed.paymentMethod == 'SMS' ? 'Email' : parsed.paymentMethod,
-        ));
+        accepted.add(
+          parsed.copyWith(
+            source: 'Email-Gmail',
+            originalSms: '',
+            paymentMethod: parsed.paymentMethod == 'SMS'
+                ? 'Email'
+                : parsed.paymentMethod,
+          ),
+        );
       }
 
       if (accepted.isNotEmpty) {
@@ -1259,8 +1277,9 @@ class TransactionProvider with ChangeNotifier {
       // count, so one parser miss moved the boundary past that message forever
       // and it could never be retried after a parser fix.
       if (alerts.isNotEmpty) {
-        final newest =
-            alerts.map((a) => a.date).reduce((a, b) => a.isAfter(b) ? a : b);
+        final newest = alerts
+            .map((a) => a.date)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
         final retryDates = alerts
             .where((a) => retryable.contains('gmail:${a.id}'))
             .map((a) => a.date)
@@ -1268,8 +1287,8 @@ class TransactionProvider with ChangeNotifier {
         final cursor = retryDates.isEmpty
             ? newest
             : retryDates
-                .reduce((a, b) => a.isBefore(b) ? a : b)
-                .subtract(const Duration(seconds: 1));
+                  .reduce((a, b) => a.isBefore(b) ? a : b)
+                  .subtract(const Duration(seconds: 1));
         await gmailSource.markImported(cursor);
       }
       // A sync that found nothing is still a completed sync, so the screen can
@@ -1289,8 +1308,10 @@ class TransactionProvider with ChangeNotifier {
       try {
         await _locked(() => _loadFromCache());
       } catch (reloadError) {
-        debugPrint('⚠️ Reload after failed email import failed '
-            '(${reloadError.runtimeType})');
+        debugPrint(
+          '⚠️ Reload after failed email import failed '
+          '(${reloadError.runtimeType})',
+        );
       }
       rethrow;
     } finally {
@@ -1400,16 +1421,18 @@ class TransactionProvider with ChangeNotifier {
 
   Future<String> exportBackupJson({bool includeSensitive = false}) async {
     await _initialization;
-    return await _cache.exportToJsonString(
-      includeSensitive: includeSensitive,
-    );
+    return await _cache.exportToJsonString(includeSensitive: includeSensitive);
   }
 
-  Future<int> importBackupJson(String jsonString,
-      {bool replace = false}) async {
+  Future<int> importBackupJson(
+    String jsonString, {
+    bool replace = false,
+  }) async {
     await _initialization;
-    final count =
-        await _cache.importFromJsonString(jsonString, replace: replace);
+    final count = await _cache.importFromJsonString(
+      jsonString,
+      replace: replace,
+    );
     await _loadFromCache();
     _notifyIfAlive();
     return count;

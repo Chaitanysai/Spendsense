@@ -19,7 +19,7 @@ class BudgetProgress {
   final int budgetMinor;
 
   const BudgetProgress({required int spentMinor, required this.budgetMinor})
-      : spentMinor = spentMinor < 0 ? 0 : spentMinor;
+    : spentMinor = spentMinor < 0 ? 0 : spentMinor;
 
   bool get hasBudget => budgetMinor > 0;
 

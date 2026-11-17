@@ -57,10 +57,10 @@ class AppPalette {
   /// the stop clears 4.5:1 keeps every palette legible without changing the
   /// brand ramp the charts and icons read.
   LinearGradient get balanceGradient => LinearGradient(
-        colors: [balanceTop, deep],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [balanceTop, deep],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// The lightest stop of [balanceGradient]: [mid] darkened toward [deep] until
   /// white text on it reaches the 4.5:1 AA threshold.
@@ -139,11 +139,11 @@ class AppPalette {
 
   /// Rich hero gradient used on balance cards, CTAs and the app logo.
   LinearGradient get brandGradient => LinearGradient(
-        colors: [brand, mid, deep],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        stops: const [0.0, 0.52, 1.0],
-      );
+    colors: [brand, mid, deep],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.0, 0.52, 1.0],
+  );
 
   /// Alias with an explicit, semantic name for the hero treatment.
   LinearGradient get heroGradient => brandGradient;
@@ -151,17 +151,17 @@ class AppPalette {
   /// Fill for primary actions. Runs from the palette's mid stop into the deep
   /// stop so a white label keeps a comfortable contrast on every palette.
   LinearGradient get actionGradient => LinearGradient(
-        colors: [actionTop, deep],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [actionTop, deep],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// Cool electric gradient for secondary highlights and small chips.
   LinearGradient get electricGradient => LinearGradient(
-        colors: [bright, mid],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [bright, mid],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// White text on a solid brand fill must clear 4.5:1. Most palettes
   /// already do; for the two shapes whose [brand] was under the bar this
@@ -190,30 +190,30 @@ class AppPalette {
 
   /// Warm accent gradient for small highlights.
   LinearGradient get amberGradient => LinearGradient(
-        colors: [Color.lerp(warm, Colors.white, 0.35)!, warm],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [Color.lerp(warm, Colors.white, 0.35)!, warm],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// Budget gauge arc.
   LinearGradient get gaugeGradient => LinearGradient(
-        colors: [brand, accent],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      );
+    colors: [brand, accent],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   /// Categorical palette for charts and bubbles. Hues are spaced around the
   /// wheel rather than staying in the brand ramp so adjacent slices stay
   /// separable for colour-blind viewers.
   List<Color> get chartPalette => [
-        bright,
-        accent,
-        mid,
-        incomeGreen,
-        warm,
-        expenseRed,
-        Color.lerp(mid, expenseRed, 0.45)!,
-      ];
+    bright,
+    accent,
+    mid,
+    incomeGreen,
+    warm,
+    expenseRed,
+    Color.lerp(mid, expenseRed, 0.45)!,
+  ];
 
   // ── Palette-invariant money semantics ───────────────────────────────────────
   // Declared here (rather than read from AppColors) so a palette can reference
@@ -712,8 +712,6 @@ class AppPalette {
     teal,
   ];
 
-  static AppPalette byId(String? id) => all.firstWhere(
-        (p) => p.id == id,
-        orElse: () => defaultPalette,
-      );
+  static AppPalette byId(String? id) =>
+      all.firstWhere((p) => p.id == id, orElse: () => defaultPalette);
 }

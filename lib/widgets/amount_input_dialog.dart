@@ -69,8 +69,9 @@ class _AmountInputDialog extends StatefulWidget {
 }
 
 class _AmountInputDialogState extends State<_AmountInputDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initialText ?? '');
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText ?? '',
+  );
   String? _error;
 
   @override
@@ -120,9 +121,7 @@ class _AmountInputDialogState extends State<_AmountInputDialog> {
         controller: _controller,
         autofocus: true,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         // Clearing the error as soon as the user edits means the message never
         // lingers against text that has already been corrected.
         onChanged: (_) {
@@ -141,10 +140,7 @@ class _AmountInputDialogState extends State<_AmountInputDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        TextButton(
-          onPressed: _submit,
-          child: Text(widget.saveLabel),
-        ),
+        TextButton(onPressed: _submit, child: Text(widget.saveLabel)),
       ],
     );
   }

@@ -45,9 +45,6 @@ void main() {
     expect(recurring, hasLength(1));
     expect(recurring.single.occurrenceCount, 2);
     expect(recurring.single.averageAmountMinor, 15000);
-    expect(
-      service.getEstimatedMonthlyCostMinor(recurring),
-      15000,
-    );
+    expect(service.getEstimatedMonthlyCostMinor(recurring), 15000);
   });
 }

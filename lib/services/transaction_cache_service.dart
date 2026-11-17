@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/ledger_encryption_service.dart';
 import '../models/transaction_model.dart';
 import 'ledger_tombstone_store.dart';
@@ -35,10 +36,10 @@ class RejectedMessage {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'reason': reason,
-        'firstSeen': firstSeen.toIso8601String(),
-      };
+    'id': id,
+    'reason': reason,
+    'firstSeen': firstSeen.toIso8601String(),
+  };
 
   /// Accepts the current map format and the legacy bare-string entry (an id
   /// with no metadata, treated as first seen now).
@@ -46,7 +47,10 @@ class RejectedMessage {
     if (raw is String) {
       if (raw.isEmpty) return null;
       return RejectedMessage(
-          id: raw, reason: 'UNKNOWN', firstSeen: now ?? DateTime.now());
+        id: raw,
+        reason: 'UNKNOWN',
+        firstSeen: now ?? DateTime.now(),
+      );
     }
     if (raw is Map) {
       final id = raw['id'];
@@ -56,7 +60,8 @@ class RejectedMessage {
       return RejectedMessage(
         id: id,
         reason: reason is String && reason.isNotEmpty ? reason : 'UNKNOWN',
-        firstSeen: (seen is String ? DateTime.tryParse(seen) : null) ??
+        firstSeen:
+            (seen is String ? DateTime.tryParse(seen) : null) ??
             now ??
             DateTime.now(),
       );
@@ -76,7 +81,8 @@ class LedgerImportException implements Exception {
   const LedgerImportException(this.code, this.message, {this.recordIndex});
 
   @override
-  String toString() => 'LedgerImportException($code'
+  String toString() =>
+      'LedgerImportException($code'
       '${recordIndex == null ? '' : ' @record $recordIndex'}): $message';
 }
 
@@ -184,10 +190,8 @@ class TransactionCacheService {
   @visibleForTesting
   set debugWriteHook(WriteHook? hook) => writeHook = hook;
 
-  TransactionCacheService({
-    this.writeHook,
-    LedgerEncryptionService? encryption,
-  }) : _encryption = encryption ?? LedgerEncryptionService();
+  TransactionCacheService({this.writeHook, LedgerEncryptionService? encryption})
+    : _encryption = encryption ?? LedgerEncryptionService();
 
   Future<void> init() async {
     if (_initialised) return;
@@ -217,8 +221,11 @@ class TransactionCacheService {
       await _migrateLegacyStore(legacyIds);
       // Only the ids that actually got an encrypted record join the ledger;
       // anything else is dropped or set aside by [_reconcileIndex].
-      _cachedIds.addAll(legacyIds
-          .where((id) => _prefs.getString('$_encryptedPrefix$id') != null));
+      _cachedIds.addAll(
+        legacyIds.where(
+          (id) => _prefs.getString('$_encryptedPrefix$id') != null,
+        ),
+      );
     }
 
     await _readRejected();
@@ -240,7 +247,8 @@ class TransactionCacheService {
     // returned immediately and the ledger stayed empty until a full resync.
     _initialised = true;
     debugPrint(
-        '📦 Local DB init — ${_cachedIds.length} txs, ${_rejected.length} rejected');
+      '📦 Local DB init — ${_cachedIds.length} txs, ${_rejected.length} rejected',
+    );
   }
 
   /// Loads the skipped-message list, tolerating damaged contents.
@@ -283,8 +291,9 @@ class TransactionCacheService {
       // each plaintext source is kept until its encrypted copy has been
       // verified, then retired by [_reconcileLegacyStore].
       ids = _decodeIds(raw);
-      final hasPayloads =
-          _prefs.getKeys().any((key) => key.startsWith(_encryptedPrefix));
+      final hasPayloads = _prefs.getKeys().any(
+        (key) => key.startsWith(_encryptedPrefix),
+      );
       if (hasPayloads) {
         await _encryption.requireExistingKey();
       } else {
@@ -299,12 +308,16 @@ class TransactionCacheService {
     final value = jsonDecode(raw);
     if (value is! List || value.any((id) => id is! String)) {
       throw const LedgerMigrationException(
-          'invalid_index', 'The ledger index is invalid.');
+        'invalid_index',
+        'The ledger index is invalid.',
+      );
     }
     final ids = value.cast<String>();
     if (ids.any((id) => id.isEmpty) || ids.toSet().length != ids.length) {
       throw const LedgerMigrationException(
-          'invalid_index', 'The ledger index contains duplicate or empty ids.');
+        'invalid_index',
+        'The ledger index contains duplicate or empty ids.',
+      );
     }
     return ids;
   }
@@ -390,11 +403,11 @@ class TransactionCacheService {
         .toSet();
     final missing = [
       for (final id in _cachedIds)
-        if (!payloadIds.contains(id)) id
+        if (!payloadIds.contains(id)) id,
     ];
     final orphans = [
       for (final id in payloadIds)
-        if (!_cachedIds.contains(id)) id
+        if (!_cachedIds.contains(id)) id,
     ]..sort();
     if (missing.isEmpty && orphans.isEmpty) return;
 
@@ -412,8 +425,10 @@ class TransactionCacheService {
         ..clear()
         ..addAll(next);
     }
-    debugPrint('🧩 Ledger index reconciled — ${missing.length} dropped, '
-        '${orphans.length} set aside');
+    debugPrint(
+      '🧩 Ledger index reconciled — ${missing.length} dropped, '
+      '${orphans.length} set aside',
+    );
   }
 
   /// Copies [key] aside and removes it from the live namespace.
@@ -488,30 +503,44 @@ class TransactionCacheService {
         );
         if (!await _prefs.setString('$_encryptedPrefix$id', encrypted)) {
           throw const LedgerMigrationException(
-              'write_failed', 'A migrated ledger record could not be saved.');
+            'write_failed',
+            'A migrated ledger record could not be saved.',
+          );
         }
         final check = await _readEncrypted(id);
         if (check == null || !_sameTransaction(check, tx)) {
           throw const LedgerMigrationException(
-              'verify_failed', 'A migrated ledger record failed verification.');
+            'verify_failed',
+            'A migrated ledger record failed verification.',
+          );
         }
         converted.add(id);
         await _writeMigrationProgress(
-            'legacy_money_migration', 'copying', legacyIds, converted);
+          'legacy_money_migration',
+          'copying',
+          legacyIds,
+          converted,
+        );
       }
 
       final ordered = [
         for (final id in legacyIds)
-          if (converted.contains(id)) id
+          if (converted.contains(id)) id,
       ];
       await _writeIndex(ordered);
       await _writeMigrationProgress(
-          'legacy_money_migration', 'committed', legacyIds, converted);
+        'legacy_money_migration',
+        'committed',
+        legacyIds,
+        converted,
+      );
     } on LedgerMigrationException {
       rethrow;
     } catch (_) {
       throw const LedgerMigrationException(
-          'encryption_failed', 'The ledger migration could not be completed.');
+        'encryption_failed',
+        'The ledger migration could not be completed.',
+      );
     }
   }
 
@@ -533,7 +562,9 @@ class TransactionCacheService {
       decoded = jsonDecode(trimmed);
     } catch (_) {
       throw const LedgerMigrationException(
-          'invalid_migration_journal', 'The migration journal is invalid.');
+        'invalid_migration_journal',
+        'The migration journal is invalid.',
+      );
     }
     final Map<String, dynamic> payload;
     if (decoded is Map &&
@@ -548,11 +579,15 @@ class TransactionCacheService {
         clearValue = jsonDecode(clear);
       } catch (_) {
         throw const LedgerMigrationException(
-            'invalid_migration_journal', 'The migration journal is invalid.');
+          'invalid_migration_journal',
+          'The migration journal is invalid.',
+        );
       }
       if (clearValue is! Map) {
         throw const LedgerMigrationException(
-            'invalid_migration_journal', 'The migration journal is invalid.');
+          'invalid_migration_journal',
+          'The migration journal is invalid.',
+        );
       }
       payload = Map<String, dynamic>.from(clearValue);
     } else if (decoded is Map &&
@@ -563,7 +598,9 @@ class TransactionCacheService {
       payload = Map<String, dynamic>.from(decoded);
     } else {
       throw const LedgerMigrationException(
-          'invalid_migration_journal', 'The migration journal is invalid.');
+        'invalid_migration_journal',
+        'The migration journal is invalid.',
+      );
     }
 
     final kind = payload['kind'] as String? ?? 'legacy_money_migration';
@@ -571,18 +608,24 @@ class TransactionCacheService {
     if ((kind != 'legacy_money_migration' && kind != 'legacy_reconciliation') ||
         (state != 'copying' && state != 'committed')) {
       throw const LedgerMigrationException(
-          'invalid_migration_journal', 'The migration journal is invalid.');
+        'invalid_migration_journal',
+        'The migration journal is invalid.',
+      );
     }
     Set<String> ids(Object? value, String field) {
       if (value == null) return {};
       if (value is! List || value.any((id) => id is! String)) {
-        throw LedgerMigrationException('invalid_migration_journal',
-            'The migration journal $field is invalid.');
+        throw LedgerMigrationException(
+          'invalid_migration_journal',
+          'The migration journal $field is invalid.',
+        );
       }
       final result = value.cast<String>().toSet();
       if (result.length != value.length || result.any((id) => id.isEmpty)) {
-        throw LedgerMigrationException('invalid_migration_journal',
-            'The migration journal $field is invalid.');
+        throw LedgerMigrationException(
+          'invalid_migration_journal',
+          'The migration journal $field is invalid.',
+        );
       }
       return result;
     }
@@ -592,7 +635,8 @@ class TransactionCacheService {
       state: state!,
       sourceIds: ids(payload['legacyIds'], 'sourceIds'),
       convertedIds: ids(payload['convertedIds'], 'convertedIds'),
-      explicitLists: payload.containsKey('legacyIds') ||
+      explicitLists:
+          payload.containsKey('legacyIds') ||
           payload.containsKey('convertedIds'),
     );
   }
@@ -618,7 +662,9 @@ class TransactionCacheService {
     );
     if (!await _prefs.setString(_migrationKey, encrypted)) {
       throw const LedgerMigrationException(
-          'journal_write_failed', 'The migration journal could not be saved.');
+        'journal_write_failed',
+        'The migration journal could not be saved.',
+      );
     }
   }
 
@@ -758,7 +804,9 @@ class TransactionCacheService {
     final result = ids.toList()..sort();
     if (result.any((id) => _reservedIds.contains(id))) {
       throw const LedgerMigrationException(
-          'invalid_legacy_id', 'The legacy ledger contains a reserved id.');
+        'invalid_legacy_id',
+        'The legacy ledger contains a reserved id.',
+      );
     }
     return result;
   }
@@ -777,15 +825,21 @@ class TransactionCacheService {
         await _prefs.remove(_migrationKey);
         return;
       }
-      throw const LedgerMigrationException('invalid_migration_journal',
-          'The migration journal has no recoverable source records.');
+      throw const LedgerMigrationException(
+        'invalid_migration_journal',
+        'The migration journal has no recoverable source records.',
+      );
     }
 
     await _encryption.requireExistingKey();
     final ordered = sourceIds.toList()..sort();
     final converted = <String>{...progress.convertedIds};
     await _writeMigrationProgress(
-        'legacy_reconciliation', 'copying', ordered, converted);
+      'legacy_reconciliation',
+      'copying',
+      ordered,
+      converted,
+    );
 
     for (final id in ordered) {
       final raw = _prefs.getString('$_prefix$id');
@@ -858,12 +912,20 @@ class TransactionCacheService {
         ..addAll(nextIds);
       converted.add(id);
       await _writeMigrationProgress(
-          'legacy_reconciliation', 'copying', ordered, converted);
+        'legacy_reconciliation',
+        'copying',
+        ordered,
+        converted,
+      );
       await _prefs.remove('$_prefix$id');
     }
 
     await _writeMigrationProgress(
-        'legacy_reconciliation', 'committed', ordered, converted);
+      'legacy_reconciliation',
+      'committed',
+      ordered,
+      converted,
+    );
     await _prefs.remove(_migrationKey);
     // The plaintext index has no role once the encrypted one owns the ledger;
     // leaving it behind made every later start re-walk a stale id list.
@@ -874,7 +936,9 @@ class TransactionCacheService {
     final unique = ids.toSet();
     if (unique.length != ids.length || ids.any((id) => id.isEmpty)) {
       throw const LedgerMigrationException(
-          'invalid_index', 'The ledger index contains duplicate or empty ids.');
+        'invalid_index',
+        'The ledger index contains duplicate or empty ids.',
+      );
     }
     final encoded = await _encryption.encryptText(
       jsonEncode(ids),
@@ -898,15 +962,18 @@ class TransactionCacheService {
         encoded,
         expectedRecordId: smsId,
       );
-      final tx =
-          TransactionModel.fromJson(jsonDecode(clear) as Map<String, dynamic>);
+      final tx = TransactionModel.fromJson(
+        jsonDecode(clear) as Map<String, dynamic>,
+      );
       if (tx.id != smsId) {
         throw const FormatException('record id mismatch');
       }
       return tx;
     } catch (_) {
       throw const LedgerMigrationException(
-          'decrypt_failed', 'A ledger record could not be authenticated.');
+        'decrypt_failed',
+        'A ledger record could not be authenticated.',
+      );
     }
   }
 
@@ -921,8 +988,10 @@ class TransactionCacheService {
     for (final id in _cachedIds) {
       final raw = _prefs.getString('$_encryptedPrefix$id');
       if (raw == null) {
-        throw const LedgerMigrationException('missing_encrypted_record',
-            'An encrypted ledger record is missing.');
+        throw const LedgerMigrationException(
+          'missing_encrypted_record',
+          'An encrypted ledger record is missing.',
+        );
       }
       raws[id] = raw;
     }
@@ -939,7 +1008,9 @@ class TransactionCacheService {
       // so the error card keeps saying the record could not be
       // authenticated rather than naming the key store.
       throw const LedgerMigrationException(
-          'decrypt_failed', 'A ledger record could not be authenticated.');
+        'decrypt_failed',
+        'A ledger record could not be authenticated.',
+      );
     }
     final records = await Isolate.run(() async {
       // The pure-Dart engine is deliberate: platform channels do not exist
@@ -956,7 +1027,8 @@ class TransactionCacheService {
             expectedRecordId: entry.key,
           );
           final tx = TransactionModel.fromJson(
-              jsonDecode(clear) as Map<String, dynamic>);
+            jsonDecode(clear) as Map<String, dynamic>,
+          );
           if (tx.id != entry.key) {
             throw const FormatException('record id mismatch');
           }
@@ -965,7 +1037,9 @@ class TransactionCacheService {
           // Same conversion _readEncrypted performs on the main isolate, so
           // callers see the identical failure shape either way.
           throw const LedgerMigrationException(
-              'decrypt_failed', 'A ledger record could not be authenticated.');
+            'decrypt_failed',
+            'A ledger record could not be authenticated.',
+          );
         }
       }
       return out;
@@ -985,7 +1059,7 @@ class TransactionCacheService {
     final all = await loadAll();
     return [
       for (final tx in all)
-        if (tx.updatedAtMs == 0 || tx.updatedAtMs > epochMs) tx
+        if (tx.updatedAtMs == 0 || tx.updatedAtMs > epochMs) tx,
     ];
   }
 
@@ -1004,15 +1078,18 @@ class TransactionCacheService {
       await _encryption.requireExistingKey();
     } catch (error) {
       debugPrint(
-          '⏭️ Sync metadata migration skipped (key unavailable, ${error.runtimeType})');
+        '⏭️ Sync metadata migration skipped (key unavailable, ${error.runtimeType})',
+      );
       return;
     }
     var migrated = 0;
     for (final id in List.of(_cachedIds)) {
       final tx = await _readEncrypted(id);
       if (tx == null) {
-        throw const LedgerMigrationException('missing_encrypted_record',
-            'A ledger record is missing during sync metadata migration.');
+        throw const LedgerMigrationException(
+          'missing_encrypted_record',
+          'A ledger record is missing during sync metadata migration.',
+        );
       }
       if (tx.syncId.isNotEmpty) continue;
       final stamped = tx.copyWith(syncId: TransactionModel.newSyncId());
@@ -1038,12 +1115,16 @@ class TransactionCacheService {
     );
     if (!await _prefs.setString('$_encryptedPrefix${tx.id}', encoded)) {
       throw const LedgerMigrationException(
-          'write_failed', 'The ledger record could not be saved.');
+        'write_failed',
+        'The ledger record could not be saved.',
+      );
     }
     final check = await _readEncrypted(tx.id);
     if (check == null || !_sameTransaction(check, tx)) {
       throw const LedgerMigrationException(
-          'write_verify_failed', 'The ledger record failed verification.');
+        'write_verify_failed',
+        'The ledger record failed verification.',
+      );
     }
   }
 
@@ -1054,7 +1135,9 @@ class TransactionCacheService {
     for (final tx in txs) {
       if (!ids.add(tx.id)) {
         throw const LedgerImportException(
-            'duplicate_id', 'The ledger contains the same id twice.');
+          'duplicate_id',
+          'The ledger contains the same id twice.',
+        );
       }
     }
     await _activationWrite(txs, replace: false);
@@ -1162,7 +1245,7 @@ class TransactionCacheService {
     final cutoff = (now ?? DateTime.now()).subtract(rejectedRetention);
     final expired = [
       for (final r in _rejected.values)
-        if (r.firstSeen.isBefore(cutoff)) r.id
+        if (r.firstSeen.isBefore(cutoff)) r.id,
     ];
     if (expired.isEmpty) return 0;
     for (final id in expired) {
@@ -1193,10 +1276,11 @@ class TransactionCacheService {
       await _prefs.remove('$_prefix$id');
     }
     // Quarantined bytes belong to this ledger too; a clear must not leave them.
-    for (final key in _prefs
-        .getKeys()
-        .where((k) => k.startsWith(_quarantinePrefix))
-        .toList()) {
+    for (final key
+        in _prefs
+            .getKeys()
+            .where((k) => k.startsWith(_quarantinePrefix))
+            .toList()) {
       await _prefs.remove(key);
     }
     _cachedIds.clear();
@@ -1259,8 +1343,9 @@ class TransactionCacheService {
                   'currency': 'INR',
                   'amountMinor': tx.amountMinor,
                   'id': tx.id,
-                  'type':
-                      tx.type == TransactionType.income ? 'income' : 'expense',
+                  'type': tx.type == TransactionType.income
+                      ? 'income'
+                      : 'expense',
                   'merchant': tx.merchant,
                   'category': tx.category,
                   'date': tx.date.toIso8601String(),
@@ -1291,12 +1376,16 @@ class TransactionCacheService {
     for (final t in transactions) {
       if (!ids.add(t.id)) {
         throw const LedgerImportException(
-            'duplicate_id', 'The ledger contains the same id twice.');
+          'duplicate_id',
+          'The ledger contains the same id twice.',
+        );
       }
     }
     if (ids.length != expectedIds.length || !ids.containsAll(expectedIds)) {
       throw const LedgerImportException(
-          'incomplete_scan', 'The scan did not produce the expected ledger.');
+        'incomplete_scan',
+        'The scan did not produce the expected ledger.',
+      );
     }
     await _activationWrite(transactions, replace: true);
   }
@@ -1312,7 +1401,7 @@ class TransactionCacheService {
     final removeIds = replace
         ? [
             for (final id in _cachedIds)
-              if (!newSet.contains(id)) id
+              if (!newSet.contains(id)) id,
           ]
         : <String>[];
 
@@ -1378,8 +1467,10 @@ class TransactionCacheService {
   /// [LedgerImportException] if the backup is rejected or cannot be saved; in
   /// every such case the existing ledger is unchanged (or, after a crash,
   /// completed on the next start).
-  Future<int> importFromJsonString(String jsonString,
-      {bool replace = false}) async {
+  Future<int> importFromJsonString(
+    String jsonString, {
+    bool replace = false,
+  }) async {
     _assertInit();
 
     // 1. Validate everything. No I/O happens before this returns.
@@ -1395,14 +1486,18 @@ class TransactionCacheService {
 
   // ─── IMPORT: VALIDATION ───────────────────────────────────────────────────
 
-  List<TransactionModel> _parseAndValidate(String jsonString,
-      {required bool replace}) {
+  List<TransactionModel> _parseAndValidate(
+    String jsonString, {
+    required bool replace,
+  }) {
     final Object? decoded;
     try {
       decoded = jsonDecode(jsonString);
     } on FormatException {
       throw const LedgerImportException(
-          'invalid_json', 'The backup is not valid JSON.');
+        'invalid_json',
+        'The backup is not valid JSON.',
+      );
     }
 
     final List<dynamic> list;
@@ -1410,18 +1505,24 @@ class TransactionCacheService {
       final txs = decoded['transactions'];
       if (txs is! List) {
         throw const LedgerImportException(
-            'invalid_format', 'The backup has no transaction list.');
+          'invalid_format',
+          'The backup has no transaction list.',
+        );
       }
       if (decoded.containsKey('version') &&
           !_isSupportedVersion(decoded['version'])) {
         throw const LedgerImportException(
-            'unsupported_version', 'This backup version is not supported.');
+          'unsupported_version',
+          'This backup version is not supported.',
+        );
       }
       if (decoded.containsKey('count')) {
         final count = decoded['count'];
         if (count is! int || count != txs.length) {
-          throw const LedgerImportException('count_mismatch',
-              'The backup is incomplete: its record count does not match.');
+          throw const LedgerImportException(
+            'count_mismatch',
+            'The backup is incomplete: its record count does not match.',
+          );
         }
       }
       list = txs;
@@ -1429,12 +1530,16 @@ class TransactionCacheService {
       list = decoded;
     } else {
       throw const LedgerImportException(
-          'invalid_format', 'The backup format is not recognised.');
+        'invalid_format',
+        'The backup format is not recognised.',
+      );
     }
 
     if (replace && list.isEmpty) {
-      throw const LedgerImportException('empty_replace',
-          'An empty backup cannot replace the existing transactions.');
+      throw const LedgerImportException(
+        'empty_replace',
+        'An empty backup cannot replace the existing transactions.',
+      );
     }
 
     final seen = <String>{};
@@ -1443,8 +1548,10 @@ class TransactionCacheService {
       final model = _validateRecord(list[i], i);
       if (!seen.add(model.id)) {
         throw LedgerImportException(
-            'duplicate_id', 'Two records share the same id.',
-            recordIndex: i);
+          'duplicate_id',
+          'Two records share the same id.',
+          recordIndex: i,
+        );
       }
       out.add(model);
     }
@@ -1490,11 +1597,15 @@ class TransactionCacheService {
         legacyAmount = rawAmount.toInt();
       } else {
         throw bad(
-            'invalid_amount', 'A record has a missing or invalid amount.');
+          'invalid_amount',
+          'A record has a missing or invalid amount.',
+        );
       }
       if (legacyAmount < 0 || legacyAmount > _maxAmountMinor ~/ 100) {
         throw bad(
-            'invalid_amount', 'A record amount is outside the allowed range.');
+          'invalid_amount',
+          'A record amount is outside the allowed range.',
+        );
       }
       json['schemaVersion'] = 2;
       json['currency'] = 'INR';
@@ -1503,7 +1614,9 @@ class TransactionCacheService {
     }
     if (amountMinor <= 0 || amountMinor > _maxAmountMinor) {
       throw bad(
-          'invalid_amount', 'A record amount is outside the allowed range.');
+        'invalid_amount',
+        'A record amount is outside the allowed range.',
+      );
     }
 
     final type = json['type'];
@@ -1534,11 +1647,7 @@ class TransactionCacheService {
         throw bad('invalid_field', 'A record has a field of the wrong type.');
       }
     }
-    for (final key in const [
-      'isExcluded',
-      'needsReview',
-      'billReminderHint',
-    ]) {
+    for (final key in const ['isExcluded', 'needsReview', 'billReminderHint']) {
       final v = json[key];
       if (v != null && v is! bool) {
         throw bad('invalid_field', 'A record has a field of the wrong type.');
@@ -1663,14 +1772,19 @@ class TransactionCacheService {
     final envelope = jsonDecode(raw);
     if (envelope is! Map || envelope['schemaVersion'] != 2) {
       throw const LedgerMigrationException(
-          'invalid_journal', 'The ledger migration journal is invalid.');
+        'invalid_journal',
+        'The ledger migration journal is invalid.',
+      );
     }
-    final clear =
-        await _encryption.decryptText(envelope['ciphertext'] as String);
+    final clear = await _encryption.decryptText(
+      envelope['ciphertext'] as String,
+    );
     final decoded = jsonDecode(clear);
     if (decoded is! Map) {
       throw const LedgerMigrationException(
-          'invalid_journal', 'The ledger migration journal is invalid.');
+        'invalid_journal',
+        'The ledger migration journal is invalid.',
+      );
     }
     return Map<String, dynamic>.from(decoded);
   }
@@ -1693,7 +1807,8 @@ class TransactionCacheService {
       // Reaching this point means the encryption key already opened the index,
       // so an unreadable journal is a damaged journal, not a key problem.
       debugPrint(
-          '⚠️ Ledger journal unreadable (${error.runtimeType}) — set aside');
+        '⚠️ Ledger journal unreadable (${error.runtimeType}) — set aside',
+      );
       await _quarantine(_journalKey);
       return;
     }
@@ -1710,8 +1825,9 @@ class TransactionCacheService {
             TransactionModel.fromJson(Map<String, dynamic>.from(e as Map)),
         ];
         await _applyPayloads(records);
-        await _commitIndex(
-            [for (final r in records) r.id], journal['replace'] == true);
+        await _commitIndex([
+          for (final r in records) r.id,
+        ], journal['replace'] == true);
       } else if (phase == 'delete_pending') {
         final removes = (journal['remove'] as List).cast<String>();
         // Journals written by older versions carry the exact post-delete
@@ -1721,7 +1837,7 @@ class TransactionCacheService {
             ? (journal['targetIds'] as List).cast<String>()
             : [
                 for (final id in _cachedIds)
-                  if (!removes.contains(id)) id
+                  if (!removes.contains(id)) id,
               ];
         await _commitExactIndex(targetIds);
         for (final id in removes) {
@@ -1747,8 +1863,10 @@ class TransactionCacheService {
       // finish, so keep it and let the next start retry.
       rethrow;
     } on StateError {
-      throw const LedgerMigrationException('journal_recovery_failed',
-          'The ledger activation could not recover.');
+      throw const LedgerMigrationException(
+        'journal_recovery_failed',
+        'The ledger activation could not recover.',
+      );
     } catch (_) {
       // The journal cannot be interpreted, so no activation can be completed
       // from it and nothing it lists was ever visible. Set it aside — the

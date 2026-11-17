@@ -19,26 +19,24 @@ import 'package:spendsense/widgets/theme_toggle.dart';
 /// closed circle — because its exact value depends on font metrics.
 
 TransactionModel _tx(DateTime date, int amountMinor) => TransactionModel(
-      id: 'tx-${date.millisecondsSinceEpoch}-$amountMinor',
-      amountMinor: amountMinor,
-      type: TransactionType.expense,
-      merchant: 'Merchant',
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: date,
-      time: '10:00',
-      originalSms: '',
-      isExcluded: false,
-    );
+  id: 'tx-${date.millisecondsSinceEpoch}-$amountMinor',
+  amountMinor: amountMinor,
+  type: TransactionType.expense,
+  merchant: 'Merchant',
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: date,
+  time: '10:00',
+  originalSms: '',
+  isExcluded: false,
+);
 
 void main() {
   group('expanding navigation pill', () {
     Future<void> pumpBar(WidgetTester tester, {required int index}) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            bottomNavigationBar: _NavHarness(initialIndex: index),
-          ),
+          home: Scaffold(bottomNavigationBar: _NavHarness(initialIndex: index)),
         ),
       );
     }
@@ -46,12 +44,16 @@ void main() {
     Finder slot(String label) => find.byKey(ValueKey('nav:$label'));
 
     double widthOf(WidgetTester tester, String label) => tester
-        .getSize(find.descendant(
-            of: slot(label), matching: find.byType(Container)).first)
+        .getSize(
+          find
+              .descendant(of: slot(label), matching: find.byType(Container))
+              .first,
+        )
         .width;
 
-    testWidgets('only the tapped destination opens to show its label',
-        (tester) async {
+    testWidgets('only the tapped destination opens to show its label', (
+      tester,
+    ) async {
       await pumpBar(tester, index: 0);
       await tester.pump();
 
@@ -67,14 +69,16 @@ void main() {
       }
       expect(
         find.descendant(
-            of: slot('Insights'),
-            matching: find.byKey(const Key('nav-selected-pill'))),
+          of: slot('Insights'),
+          matching: find.byKey(const Key('nav-selected-pill')),
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('opens on a curve that arrives once, with no overshoot',
-        (tester) async {
+    testWidgets('opens on a curve that arrives once, with no overshoot', (
+      tester,
+    ) async {
       await pumpBar(tester, index: 0);
       await tester.pump();
       final closed = widthOf(tester, 'Settings');
@@ -97,8 +101,9 @@ void main() {
       }
     });
 
-    testWidgets('a second tap mid-flight retargets instead of queueing',
-        (tester) async {
+    testWidgets('a second tap mid-flight retargets instead of queueing', (
+      tester,
+    ) async {
       await pumpBar(tester, index: 0);
       await tester.pump();
 
@@ -111,13 +116,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
 
       expect(widthOf(tester, 'Home'), greaterThan(48 + 20));
-      expect(widthOf(tester, 'Cards'), closeTo(48, 0.5),
-          reason: 'the half-open pill reverses from where it got to');
+      expect(
+        widthOf(tester, 'Cards'),
+        closeTo(48, 0.5),
+        reason: 'the half-open pill reverses from where it got to',
+      );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('reduced motion opens the pill without animating',
-        (tester) async {
+    testWidgets('reduced motion opens the pill without animating', (
+      tester,
+    ) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
@@ -136,8 +145,9 @@ void main() {
   });
 
   group('theme toggle', () {
-    testWidgets('writes an explicit, persisted dark preference',
-        (tester) async {
+    testWidgets('writes an explicit, persisted dark preference', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
       final theme = ThemeProvider();
       await tester.pumpWidget(
@@ -159,8 +169,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(theme.themeMode, ThemeMode.dark);
-      expect(Theme.of(tester.element(find.byType(ThemeToggle))).brightness,
-          Brightness.dark);
+      expect(
+        Theme.of(tester.element(find.byType(ThemeToggle))).brightness,
+        Brightness.dark,
+      );
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('theme_mode'), 'dark');
@@ -173,8 +185,8 @@ void main() {
 
   group('category breakdown card', () {
     Map<String, int> many(int count) => {
-          for (var i = 0; i < count; i++) 'Category $i': (count - i) * 1000,
-        };
+      for (var i = 0; i < count; i++) 'Category $i': (count - i) * 1000,
+    };
 
     Future<void> pumpCard(WidgetTester tester, Map<String, int> totals) async {
       await tester.pumpWidget(
@@ -195,8 +207,9 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    testWidgets('reveals every category on demand instead of hiding them',
-        (tester) async {
+    testWidgets('reveals every category on demand instead of hiding them', (
+      tester,
+    ) async {
       await pumpCard(tester, many(8));
 
       expect(find.text('+3 more categories'), findsOneWidget);
@@ -210,8 +223,9 @@ void main() {
       expect(find.text('+3 more categories'), findsNothing);
     });
 
-    testWidgets('selecting a category dims the other composition segments',
-        (tester) async {
+    testWidgets('selecting a category dims the other composition segments', (
+      tester,
+    ) async {
       await pumpCard(tester, many(3));
 
       await tester.tap(find.text('Category 2'));
@@ -227,8 +241,9 @@ void main() {
   });
 
   group('spending trend card', () {
-    testWidgets('reduced motion reports a tapped day without animating',
-        (tester) async {
+    testWidgets('reduced motion reports a tapped day without animating', (
+      tester,
+    ) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
@@ -249,10 +264,7 @@ void main() {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: SpendingTrendCard(
-                  expenses: [
-                    _tx(today, 25000),
-                    _tx(yesterday, 12000),
-                  ],
+                  expenses: [_tx(today, 25000), _tx(yesterday, 12000)],
                 ),
               ),
             ),
@@ -264,8 +276,9 @@ void main() {
       expect(find.text('Today'), findsOneWidget);
       expect(find.text('₹250'), findsWidgets);
 
-      final chart =
-          tester.getRect(find.byKey(const Key('spending-trend-chart')));
+      final chart = tester.getRect(
+        find.byKey(const Key('spending-trend-chart')),
+      );
       await tester.tapAt(
         Offset(chart.left + chart.width * 5.5 / 7, chart.center.dy),
       );
@@ -275,13 +288,12 @@ void main() {
       expect(find.text('₹250'), findsNothing);
     });
 
-    testWidgets('shows a real empty state rather than an empty plot',
-        (tester) async {
+    testWidgets('shows a real empty state rather than an empty plot', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: SpendingTrendCard(expenses: []),
-          ),
+          home: Scaffold(body: SpendingTrendCard(expenses: [])),
         ),
       );
       await tester.pump(const Duration(seconds: 1));

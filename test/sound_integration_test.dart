@@ -76,9 +76,9 @@ class _Launcher extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: TextButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => screen),
-          ),
+          onPressed: () =>
+              Navigator.of(context)
+                  .push(MaterialPageRoute<void>(builder: (_) => screen)),
           child: const Text('open'),
         ),
       ),
@@ -145,8 +145,9 @@ void main() {
   AppPrimaryButton saveButton(WidgetTester tester) =>
       tester.widget<AppPrimaryButton>(find.byType(AppPrimaryButton));
 
-  testWidgets('a saved transaction fires its cue once, after the write lands',
-      (tester) async {
+  testWidgets('a saved transaction fires its cue once, after the write lands', (
+    tester,
+  ) async {
     final provider = FakeTransactionProvider();
     await pumpScreen(
       tester,
@@ -159,91 +160,120 @@ void main() {
     await tester.tap(find.text('Add expense'));
 
     // The write is still in flight: a cue here would be a lie.
-    expect(player.played, isEmpty,
-        reason: 'nothing may be announced before the write completes');
+    expect(
+      player.played,
+      isEmpty,
+      reason: 'nothing may be announced before the write completes',
+    );
 
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
 
     expect(provider.added, hasLength(1));
     expect(provider.added.single.amountMinor, 25000);
+    expect(player.played, [
+      SoundService.assets[SoundEventType.transactionSaved],
+    ], reason: 'exactly one cue, and it is the saved cue');
     expect(
-      player.played,
-      [SoundService.assets[SoundEventType.transactionSaved]],
-      reason: 'exactly one cue, and it is the saved cue',
+      find.byType(AddTransactionScreen),
+      findsNothing,
+      reason: 'a successful save closes the screen',
     );
-    expect(find.byType(AddTransactionScreen), findsNothing,
-        reason: 'a successful save closes the screen');
-  });
-
-  testWidgets('a failed save is reported, recovers the button and stays silent',
-      (tester) async {
-    final provider = FakeTransactionProvider(failWrites: true);
-    await pumpScreen(
-      tester,
-      screen: const AddTransactionScreen(),
-      provider: provider,
-    );
-
-    await tester.enterText(find.byType(TextField).first, '250');
-    await tester.pump();
-    await tester.tap(find.text('Add expense'));
-    await tester.pump();
-
-    expect(saveButton(tester).loading, isTrue,
-        reason: 'the button shows progress while the write is in flight');
-
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pumpAndSettle();
-
-    expect(provider.added, isEmpty);
-    expect(player.played, isEmpty,
-        reason: 'a rejected write must never announce success');
-    expect(find.text('Could not save. Please try again.'), findsOneWidget);
-    expect(find.byType(AddTransactionScreen), findsOneWidget,
-        reason: 'the screen stays open so the entry can be retried');
-
-    final button = saveButton(tester);
-    expect(button.loading, isFalse,
-        reason:
-            'the loading state is always released, so the retry is possible');
-    expect(button.onPressed, isNotNull,
-        reason: 'save is interactive again after the failure');
-    expect(tester.takeException(), isNull,
-        reason: 'the storage error is handled, not left unhandled');
   });
 
   testWidgets(
-      'a failed edit is reported, keeps the route open and stays silent',
-      (tester) async {
-    final provider = FakeTransactionProvider(failWrites: true);
-    await pumpScreen(
-      tester,
-      screen: TransactionDetailsScreen(transaction: _transaction()),
-      provider: provider,
-    );
+    'a failed save is reported, recovers the button and stays silent',
+    (tester) async {
+      final provider = FakeTransactionProvider(failWrites: true);
+      await pumpScreen(
+        tester,
+        screen: const AddTransactionScreen(),
+        provider: provider,
+      );
 
-    await tester.tap(find.text('Save changes'));
-    await tester.pump();
-    expect(saveButton(tester).loading, isTrue);
+      await tester.enterText(find.byType(TextField).first, '250');
+      await tester.pump();
+      await tester.tap(find.text('Add expense'));
+      await tester.pump();
 
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pumpAndSettle();
+      expect(
+        saveButton(tester).loading,
+        isTrue,
+        reason: 'the button shows progress while the write is in flight',
+      );
 
-    expect(provider.updated, isEmpty);
-    expect(player.played, isEmpty,
-        reason: 'a rejected edit must never announce success');
-    expect(find.text('Could not save. Please try again.'), findsOneWidget);
-    expect(find.byType(TransactionDetailsScreen), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
 
-    final button = saveButton(tester);
-    expect(button.loading, isFalse);
-    expect(button.onPressed, isNotNull);
-    expect(tester.takeException(), isNull);
-  });
+      expect(provider.added, isEmpty);
+      expect(
+        player.played,
+        isEmpty,
+        reason: 'a rejected write must never announce success',
+      );
+      expect(find.text('Could not save. Please try again.'), findsOneWidget);
+      expect(
+        find.byType(AddTransactionScreen),
+        findsOneWidget,
+        reason: 'the screen stays open so the entry can be retried',
+      );
 
-  testWidgets('details picks the type with segments, not a dropdown overlay',
-      (tester) async {
+      final button = saveButton(tester);
+      expect(
+        button.loading,
+        isFalse,
+        reason:
+            'the loading state is always released, so the retry is possible',
+      );
+      expect(
+        button.onPressed,
+        isNotNull,
+        reason: 'save is interactive again after the failure',
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'the storage error is handled, not left unhandled',
+      );
+    },
+  );
+
+  testWidgets(
+    'a failed edit is reported, keeps the route open and stays silent',
+    (tester) async {
+      final provider = FakeTransactionProvider(failWrites: true);
+      await pumpScreen(
+        tester,
+        screen: TransactionDetailsScreen(transaction: _transaction()),
+        provider: provider,
+      );
+
+      await tester.tap(find.text('Save changes'));
+      await tester.pump();
+      expect(saveButton(tester).loading, isTrue);
+
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
+
+      expect(provider.updated, isEmpty);
+      expect(
+        player.played,
+        isEmpty,
+        reason: 'a rejected edit must never announce success',
+      );
+      expect(find.text('Could not save. Please try again.'), findsOneWidget);
+      expect(find.byType(TransactionDetailsScreen), findsOneWidget);
+
+      final button = saveButton(tester);
+      expect(button.loading, isFalse);
+      expect(button.onPressed, isNotNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('details picks the type with segments, not a dropdown overlay', (
+    tester,
+  ) async {
     final provider = FakeTransactionProvider();
     await pumpScreen(
       tester,
@@ -256,16 +286,20 @@ void main() {
 
     await tester.tap(find.text('Income'));
     await tester.pump();
-    expect(player.played, isNotEmpty,
-        reason: 'a real type change plays the selection cue');
+    expect(
+      player.played,
+      isNotEmpty,
+      reason: 'a real type change plays the selection cue',
+    );
 
     await tester.tap(find.text('Save changes'));
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
     expect(provider.updatedTypes, [TransactionType.income]);
   });
-  testWidgets('a rejected edit plays the failure cue, never the success cue',
-      (tester) async {
+  testWidgets('a rejected edit plays the failure cue, never the success cue', (
+    tester,
+  ) async {
     final provider = FakeTransactionProvider();
     await pumpScreen(
       tester,
@@ -281,19 +315,21 @@ void main() {
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
 
-    expect(provider.updated, isEmpty,
-        reason: 'validation failure must not reach the provider');
     expect(
-      player.played,
-      [SoundService.assets[SoundEventType.actionFailed]],
-      reason: 'the user is told, and the cue matches the outcome',
+      provider.updated,
+      isEmpty,
+      reason: 'validation failure must not reach the provider',
     );
+    expect(player.played, [
+      SoundService.assets[SoundEventType.actionFailed],
+    ], reason: 'the user is told, and the cue matches the outcome');
     expect(find.text('Enter a valid merchant and amount'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the sound settings switches render cleanly inside their card',
-      (tester) async {
+  testWidgets('the sound settings switches render cleanly inside their card', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       SoundScope(
         provider: sound,
@@ -317,8 +353,9 @@ void main() {
       return List<String>.of(player.played);
     }
 
-    testWidgets('AppPrimaryButton fires exactly one tap cue, not two',
-        (tester) async {
+    testWidgets('AppPrimaryButton fires exactly one tap cue, not two', (
+      tester,
+    ) async {
       // AppPrimaryButton nests Pressable *and* InkWell, each with an onTap.
       // Exactly one of them may announce the press.
       var taps = 0;
@@ -345,15 +382,14 @@ void main() {
       final played = await singleTap(tester, find.byType(AppPrimaryButton));
 
       expect(taps, 1, reason: 'the action itself still runs exactly once');
-      expect(
-        played,
-        [SoundService.assets[SoundEventType.buttonTap]],
-        reason: 'one press must produce exactly one cue',
-      );
+      expect(played, [
+        SoundService.assets[SoundEventType.buttonTap],
+      ], reason: 'one press must produce exactly one cue');
     });
 
-    testWidgets('an AppPrimaryButton with sound:null stays completely silent',
-        (tester) async {
+    testWidgets('an AppPrimaryButton with sound:null stays completely silent', (
+      tester,
+    ) async {
       var taps = 0;
       await tester.pumpWidget(
         SoundScope(
@@ -379,12 +415,16 @@ void main() {
       final played = await singleTap(tester, find.byType(AppPrimaryButton));
 
       expect(taps, 1);
-      expect(played, isEmpty,
-          reason: 'screens that own a state cue suppress the generic tick');
+      expect(
+        played,
+        isEmpty,
+        reason: 'screens that own a state cue suppress the generic tick',
+      );
     });
 
-    testWidgets('a Pressable with a cue fires once per tap and not on drag',
-        (tester) async {
+    testWidgets('a Pressable with a cue fires once per tap and not on drag', (
+      tester,
+    ) async {
       var taps = 0;
       await tester.pumpWidget(
         SoundScope(
@@ -421,8 +461,9 @@ void main() {
       expect(player.played, isEmpty, reason: 'a drag must stay silent');
     });
 
-    testWidgets('the saved cue is the only cue a successful save emits',
-        (tester) async {
+    testWidgets('the saved cue is the only cue a successful save emits', (
+      tester,
+    ) async {
       final provider = FakeTransactionProvider();
       await pumpScreen(
         tester,
@@ -437,11 +478,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pumpAndSettle();
 
-      expect(
-        player.played,
-        [SoundService.assets[SoundEventType.transactionSaved]],
-        reason: 'no generic tap tick is stacked on top of the saved cue',
-      );
+      expect(player.played, [
+        SoundService.assets[SoundEventType.transactionSaved],
+      ], reason: 'no generic tap tick is stacked on top of the saved cue');
     });
   });
 }

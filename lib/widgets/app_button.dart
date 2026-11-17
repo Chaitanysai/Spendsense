@@ -156,8 +156,8 @@ class AppIconButton extends StatelessWidget {
             AppColors.surfaceColor(context),
           )
         : (variant == AppIconButtonVariant.tonal
-            ? AppColors.surfaceAlt(context)
-            : Colors.transparent);
+              ? AppColors.surfaceAlt(context)
+              : Colors.transparent);
 
     final button = Semantics(
       button: true,
@@ -249,9 +249,7 @@ class AppDestructiveButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.wash(context, AppColors.danger),
             borderRadius: borderRadius,
-            border: Border.all(
-              color: AppColors.danger.withValues(alpha: 0.42),
-            ),
+            border: Border.all(color: AppColors.danger.withValues(alpha: 0.42)),
           ),
           child: Material(
             color: Colors.transparent,
@@ -297,7 +295,6 @@ class AppDestructiveButton extends StatelessWidget {
   }
 }
 
-
 /// Subtle secondary action — tinted fill, brand ink.
 class AppGhostButton extends StatelessWidget {
   final String label;
@@ -335,9 +332,7 @@ class AppGhostButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceAlt(context),
           borderRadius: borderRadius,
-          border: Border.all(
-            color: AppColors.border(context),
-          ),
+          border: Border.all(color: AppColors.border(context)),
         ),
         child: Material(
           color: Colors.transparent,
@@ -354,11 +349,10 @@ class AppGhostButton extends StatelessWidget {
                   ],
                   Text(
                     label,
-                    style:
-                        AppText.weight(AppText.label(context), FontWeight.w700)
-                            .copyWith(
-                      color: AppColors.brandInk(context),
-                    ),
+                    style: AppText.weight(
+                      AppText.label(context),
+                      FontWeight.w700,
+                    ).copyWith(color: AppColors.brandInk(context)),
                   ),
                 ],
               ),

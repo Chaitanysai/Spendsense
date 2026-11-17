@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../widgets/amount_input_dialog.dart';
 import '../widgets/animated_progress_bar.dart';
 import '../widgets/app_sheet.dart';
+
 import 'package:provider/provider.dart';
 
 import '../providers/period_provider.dart';
@@ -32,8 +33,10 @@ class BudgetsScreen extends StatelessWidget {
     final planner = context.watch<PlannerProvider>();
     final tx = context.watch<TransactionProvider>();
     final period = context.watch<PeriodProvider>();
-    final statuses =
-        planner.categoryStatuses(tx.transactions, period.currentPeriod);
+    final statuses = planner.categoryStatuses(
+      tx.transactions,
+      period.currentPeriod,
+    );
     final overall = BudgetProgress(
       spentMinor: tx.spendAmountForPeriod(period.currentPeriod),
       budgetMinor: tx.monthlyBudgetMinor,
@@ -63,7 +66,8 @@ class BudgetsScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                   child: _Notice(
                     icon: Icons.gpp_maybe_rounded,
-                    text: 'Saved budgets could not be read, so changes are '
+                    text:
+                        'Saved budgets could not be read, so changes are '
                         'paused. Nothing was deleted.',
                     tone: AppColors.expenseRed,
                   ),
@@ -113,13 +117,20 @@ class BudgetsScreen extends StatelessWidget {
                         thresholds: planner.thresholds,
                         onEdit: planner.hasLoadError
                             ? null
-                            : () => _editCategory(context, planner, tx,
+                            : () => _editCategory(
+                                context,
+                                planner,
+                                tx,
                                 category: s.category,
-                                current: s.progress.budgetMinor),
+                                current: s.progress.budgetMinor,
+                              ),
                         onDelete: planner.hasLoadError
                             ? null
                             : () => _confirmDeleteCategory(
-                                context, planner, s.category),
+                                context,
+                                planner,
+                                s.category,
+                              ),
                       ),
                     ),
                   ),
@@ -162,7 +173,9 @@ class BudgetsScreen extends StatelessWidget {
   }
 
   static Future<void> _guard(
-      BuildContext context, Future<void> Function() action) async {
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
     try {
       await action();
     } catch (_) {
@@ -174,7 +187,9 @@ class BudgetsScreen extends StatelessWidget {
   }
 
   Future<void> _editOverall(
-      BuildContext context, TransactionProvider tx) async {
+    BuildContext context,
+    TransactionProvider tx,
+  ) async {
     final minor = await _askAmount(
       context,
       title: 'Monthly budget',
@@ -196,8 +211,7 @@ class BudgetsScreen extends StatelessWidget {
       final names = {
         ...CategoryStyle.pickerCategories,
         ...tx.availableCategories,
-      }.where((c) => !planner.categoryBudgets.containsKey(c)).toList()
-        ..sort();
+      }.where((c) => !planner.categoryBudgets.containsKey(c)).toList()..sort();
       chosen = await showAppSheet<String>(
         context: context,
         builder: (ctx) => SafeArea(
@@ -211,8 +225,10 @@ class BudgetsScreen extends StatelessWidget {
                 const Text('Every category already has a budget.'),
               for (final n in names)
                 ListTile(
-                  leading: Icon(CategoryStyle.icon(n),
-                      color: CategoryStyle.color(n)),
+                  leading: Icon(
+                    CategoryStyle.icon(n),
+                    color: CategoryStyle.color(n),
+                  ),
                   title: Text(n),
                   onTap: () => Navigator.pop(ctx, n),
                 ),
@@ -340,17 +356,17 @@ class _BudgetRow extends StatelessWidget {
     final tone = !progress.hasBudget
         ? AppColors.textTertiary(context)
         : progress.isOver
-            ? AppColors.expenseRed
-            : (crossed != null && crossed >= 80)
-                ? AppColors.warning
-                : AppColors.incomeGreen;
+        ? AppColors.expenseRed
+        : (crossed != null && crossed >= 80)
+        ? AppColors.warning
+        : AppColors.incomeGreen;
     final status = !progress.hasBudget
         ? 'No budget set'
         : progress.isOver
-            ? '${Formatters.currency.format(progress.overMinor)} over '
-                '(${progress.percentUsed}% used)'
-            : '${Formatters.currency.format(progress.remainingMinor)} left '
-                '(${progress.percentUsed}% used)';
+        ? '${Formatters.currency.format(progress.overMinor)} over '
+              '(${progress.percentUsed}% used)'
+        : '${Formatters.currency.format(progress.remainingMinor)} left '
+              '(${progress.percentUsed}% used)';
 
     return GlassCard(
       child: Column(
@@ -361,10 +377,12 @@ class _BudgetRow extends StatelessWidget {
               Icon(icon, color: color, size: 20),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.title(context)),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.title(context),
+                ),
               ),
               if (onEdit != null)
                 IconButton(
@@ -384,7 +402,7 @@ class _BudgetRow extends StatelessWidget {
           Text(
             progress.hasBudget
                 ? '${Formatters.currency.format(progress.spentMinor)} of '
-                    '${Formatters.currency.format(progress.budgetMinor)}'
+                      '${Formatters.currency.format(progress.budgetMinor)}'
                 : 'Spent ${Formatters.currency.format(progress.spentMinor)}',
             style: AppText.amount(context, size: 15),
           ),
@@ -398,9 +416,10 @@ class _BudgetRow extends StatelessWidget {
             semanticLabel: '$name budget used',
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(status,
-              style:
-                  AppText.label(context).copyWith(color: tone, fontSize: 12.5)),
+          Text(
+            status,
+            style: AppText.label(context).copyWith(color: tone, fontSize: 12.5),
+          ),
         ],
       ),
     );

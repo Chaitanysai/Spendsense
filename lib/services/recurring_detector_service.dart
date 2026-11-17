@@ -46,7 +46,8 @@ enum RecurrenceFrequency { daily, weekly, biWeekly, monthly, irregular }
 class RecurringDetectorService {
   /// Detects recurring transactions from the transaction list
   List<RecurringTransaction> detectRecurring(
-      List<TransactionModel> transactions) {
+    List<TransactionModel> transactions,
+  ) {
     if (transactions.isEmpty) return [];
 
     // Group by merchant
@@ -73,8 +74,9 @@ class RecurringDetectorService {
       // Calculate intervals between transactions
       final intervals = <int>[];
       for (int i = 1; i < merchantTx.length; i++) {
-        final daysDiff =
-            merchantTx[i].date.difference(merchantTx[i - 1].date).inDays;
+        final daysDiff = merchantTx[i].date
+            .difference(merchantTx[i - 1].date)
+            .inDays;
         if (daysDiff > 0) intervals.add(daysDiff);
       }
 
@@ -100,28 +102,37 @@ class RecurringDetectorService {
       // Only include if it's a recognizable pattern (not irregular with many gaps)
       if (frequency == RecurrenceFrequency.irregular && intervals.length > 3) {
         // Check if intervals are somewhat consistent (within 50% variance)
-        final variance = intervals.fold<double>(
-                0, (sum, d) => sum + (d - avgInterval).abs()) /
+        final variance =
+            intervals.fold<double>(
+              0,
+              (sum, d) => sum + (d - avgInterval).abs(),
+            ) /
             intervals.length;
         if (variance > avgInterval * 0.5) continue;
       }
 
       // Calculate average amount
-      final totalAmountMinor =
-          merchantTx.fold<int>(0, (sum, tx) => sum + tx.amountMinor);
-      final avgAmountMinor =
-          roundPaiseDivision(totalAmountMinor, merchantTx.length);
+      final totalAmountMinor = merchantTx.fold<int>(
+        0,
+        (sum, tx) => sum + tx.amountMinor,
+      );
+      final avgAmountMinor = roundPaiseDivision(
+        totalAmountMinor,
+        merchantTx.length,
+      );
 
-      recurring.add(RecurringTransaction(
-        merchant: entry.key,
-        category: merchantTx.first.category,
-        averageAmountMinor: avgAmountMinor,
-        occurrenceCount: merchantTx.length,
-        firstOccurrence: merchantTx.first.date,
-        lastOccurrence: merchantTx.last.date,
-        frequency: frequency,
-        transactions: merchantTx,
-      ));
+      recurring.add(
+        RecurringTransaction(
+          merchant: entry.key,
+          category: merchantTx.first.category,
+          averageAmountMinor: avgAmountMinor,
+          occurrenceCount: merchantTx.length,
+          firstOccurrence: merchantTx.first.date,
+          lastOccurrence: merchantTx.last.date,
+          frequency: frequency,
+          transactions: merchantTx,
+        ),
+      );
     }
 
     // Sort by occurrence count (most frequent first)
@@ -160,12 +171,15 @@ class RecurringDetectorService {
 
   /// Find potential subscriptions (monthly recurring payments)
   List<RecurringTransaction> findSubscriptions(
-      List<RecurringTransaction> recurring) {
+    List<RecurringTransaction> recurring,
+  ) {
     return recurring
-        .where((r) =>
-            r.frequency == RecurrenceFrequency.monthly ||
-            (r.frequency == RecurrenceFrequency.irregular &&
-                r.occurrenceCount >= 3))
+        .where(
+          (r) =>
+              r.frequency == RecurrenceFrequency.monthly ||
+              (r.frequency == RecurrenceFrequency.irregular &&
+                  r.occurrenceCount >= 3),
+        )
         .toList();
   }
 }

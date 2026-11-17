@@ -37,8 +37,10 @@ class _FadeIndexedStackState extends State<FadeIndexedStack>
   );
 
   // Built once instead of on every rebuild.
-  late final Animation<double> _curve =
-      CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeOutCubic,
+  );
   late final Animation<Offset> _slide = Tween<Offset>(
     begin: const Offset(0, 0.015),
     end: Offset.zero,

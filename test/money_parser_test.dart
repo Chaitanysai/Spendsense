@@ -19,7 +19,9 @@ void main() {
   test('rejects ambiguous or unsafe amounts', () {
     for (final value in ['1.234', '1.234,56', '-1', '']) {
       expect(
-          () => parseRupeesToPaise(value), throwsA(isA<MoneyParseException>()));
+        () => parseRupeesToPaise(value),
+        throwsA(isA<MoneyParseException>()),
+      );
     }
   });
 }

@@ -19,8 +19,7 @@ void main() {
     for (final dark in [false, true]) {
       final mode = dark ? 'dark' : 'light';
 
-      test('${palette.label} · $mode: text, icons and nav keep their contrast',
-          () {
+      test('${palette.label} · $mode: text, icons and nav keep their contrast', () {
         AppColors.applyPalette(palette);
         final t = AppTokens.forBrightness(dark);
         final canvas = dark ? AppColors.darkBackground : AppColors.background;
@@ -39,11 +38,19 @@ void main() {
         for (final bg in {'surface': surface, 'glass': glass}.entries) {
           expectAtLeast('textPrimary/${bg.key}', t.textPrimary, bg.value, 4.5);
           expectAtLeast(
-              'textSecondary/${bg.key}', t.textSecondary, bg.value, 4.5);
+            'textSecondary/${bg.key}',
+            t.textSecondary,
+            bg.value,
+            4.5,
+          );
           // Icons: 3:1 non-text minimum.
           expectAtLeast('iconPrimary/${bg.key}', t.iconPrimary, bg.value, 3);
           expectAtLeast(
-              'iconSecondary/${bg.key}', t.iconSecondary, bg.value, 3);
+            'iconSecondary/${bg.key}',
+            t.iconSecondary,
+            bg.value,
+            3,
+          );
         }
 
         // Navigation: idle plates sit on the canvas, and the active pill is a
@@ -51,17 +58,27 @@ void main() {
         final bar = AppColors.navBackdropFor(dark);
         final selectedBackdrop = AppColors.navSelectedBackdropFor(dark);
         expectAtLeast('nav unselected', AppColors.navIdleInkFor(dark), bar, 3);
-        expectAtLeast('nav selected', AppColors.navSelectedInkFor(dark),
-            selectedBackdrop, 3);
+        expectAtLeast(
+          'nav selected',
+          AppColors.navSelectedInkFor(dark),
+          selectedBackdrop,
+          3,
+        );
         // The selected state must also be distinguishable from the bar itself.
         final lift = _contrast(selectedBackdrop, bar);
         if (lift < 1.08) {
-          failures.add('nav selected container barely visible '
-              '${lift.toStringAsFixed(2)}');
+          failures.add(
+            'nav selected container barely visible '
+            '${lift.toStringAsFixed(2)}',
+          );
         }
         // Accent roles on their containers.
-        expectAtLeast('onAccentContainer', t.onAccentContainer,
-            _over(t.accentContainer, glass), 4.5);
+        expectAtLeast(
+          'onAccentContainer',
+          t.onAccentContainer,
+          _over(t.accentContainer, glass),
+          4.5,
+        );
 
         expect(failures, isEmpty, reason: '${palette.label} $mode');
       });
@@ -96,14 +113,19 @@ void main() {
           atLeast(
             'fab glyph',
             _contrast(
-                AppColors.fabInkFor(dark), AppColors.fabBackdropFor(dark)),
+              AppColors.fabInkFor(dark),
+              AppColors.fabBackdropFor(dark),
+            ),
             4.5,
           );
 
           // Resolved inks always reach AA on their fill.
           atLeast('onBrand', _contrast(AppColors.onBrand, palette.brand), 4.5);
           atLeast(
-              'onDanger', _contrast(AppColors.onDanger, AppColors.danger), 4.5);
+            'onDanger',
+            _contrast(AppColors.onDanger, AppColors.danger),
+            4.5,
+          );
 
           // Icon wells: a plate is visible against the card and its glyph
           // holds AA, for every role Settings paints with.
@@ -115,8 +137,11 @@ void main() {
             final base = AppColors.glassBase(dark);
             final tint = IconWell.plateTint(role.value, dark);
             final plate = Color.alphaBlend(IconWell.fill(tint, dark), base);
-            atLeast('well plate/${role.key}', _contrast(plate, base),
-                IconWell.minPlateContrast(dark));
+            atLeast(
+              'well plate/${role.key}',
+              _contrast(plate, base),
+              IconWell.minPlateContrast(dark),
+            );
             atLeast(
               'well glyph/${role.key}',
               _contrast(
@@ -133,38 +158,53 @@ void main() {
     }
 
     for (final palette in AppPalette.all) {
-      testWidgets('${palette.label}: accent hero gradient holds white text',
-          (tester) async {
+      testWidgets('${palette.label}: accent hero gradient holds white text', (
+        tester,
+      ) async {
         AppColors.applyPalette(palette);
         for (final dark in [false, true]) {
           late LinearGradient g;
           late LinearGradient success;
           late Color onHero;
           late LinearGradient hero;
-          await tester.pumpWidget(MaterialApp(
-            theme: ThemeData(
-                brightness: dark ? Brightness.dark : Brightness.light),
-            home: Builder(builder: (context) {
-              g = AppColors.accentHeroGradient(context);
-              success = AppColors.successHeroGradient(context);
-              hero = AppColors.heroSurfaceGradient(context);
-              onHero = AppColors.onHero(context);
-              return const SizedBox();
-            }),
-          ));
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: ThemeData(
+                brightness: dark ? Brightness.dark : Brightness.light,
+              ),
+              home: Builder(
+                builder: (context) {
+                  g = AppColors.accentHeroGradient(context);
+                  success = AppColors.successHeroGradient(context);
+                  hero = AppColors.heroSurfaceGradient(context);
+                  onHero = AppColors.onHero(context);
+                  return const SizedBox();
+                },
+              ),
+            ),
+          );
           for (final stop in [...g.colors, ...success.colors]) {
-            expect(_contrast(Colors.white, stop), greaterThanOrEqualTo(4.5),
-                reason: '${palette.label} dark=$dark stop $stop');
+            expect(
+              _contrast(Colors.white, stop),
+              greaterThanOrEqualTo(4.5),
+              reason: '${palette.label} dark=$dark stop $stop',
+            );
           }
           // The hero ink is measured, so it holds on every hero stop even if
           // a palette ships a pale deep stop.
           for (final stop in hero.colors) {
-            expect(_contrast(onHero, stop), greaterThanOrEqualTo(4.5),
-                reason: '${palette.label} dark=$dark hero ink on $stop');
+            expect(
+              _contrast(onHero, stop),
+              greaterThanOrEqualTo(4.5),
+              reason: '${palette.label} dark=$dark hero ink on $stop',
+            );
             // Hero text is drawn with AppText.onGradient, which is always
             // white, so white itself has to hold, not just the resolved ink.
-            expect(_contrast(Colors.white, stop), greaterThanOrEqualTo(4.5),
-                reason: '${palette.label} dark=$dark white text on hero $stop');
+            expect(
+              _contrast(Colors.white, stop),
+              greaterThanOrEqualTo(4.5),
+              reason: '${palette.label} dark=$dark white text on hero $stop',
+            );
           }
         }
       });
@@ -206,8 +246,10 @@ void main() {
           for (final e in tones.entries) {
             for (final alpha in const [null, 0.18, 0.20, 0.32]) {
               final a = alpha ?? AppColors.washAlphaFor(dark);
-              final plate =
-                  Color.alphaBlend(e.value.withValues(alpha: a), base);
+              final plate = Color.alphaBlend(
+                e.value.withValues(alpha: a),
+                base,
+              );
               final ink = AppColors.inkOnWashFor(dark, e.value, alpha: alpha);
               final ratio = _contrast(ink, plate);
               if (ratio < 4.5) {
@@ -220,8 +262,9 @@ void main() {
       }
     }
 
-    testWidgets('hero chip fill keeps hero ink at AA on every stop',
-        (tester) async {
+    testWidgets('hero chip fill keeps hero ink at AA on every stop', (
+      tester,
+    ) async {
       for (final palette in AppPalette.all) {
         AppColors.applyPalette(palette);
         for (final dark in [false, true]) {
@@ -230,18 +273,26 @@ void main() {
           late LinearGradient success;
           late Color chip;
           late Color accentChip;
-          await tester.pumpWidget(MaterialApp(
-            theme: ThemeData(
-                brightness: dark ? Brightness.dark : Brightness.light),
-            home: Builder(builder: (context) {
-              hero = AppColors.heroSurfaceGradient(context);
-              accent = AppColors.accentHeroGradient(context);
-              success = AppColors.successHeroGradient(context);
-              chip = AppColors.heroChipFill(context);
-              accentChip = AppColors.heroChipFill(context, gradient: accent);
-              return const SizedBox();
-            }),
-          ));
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: ThemeData(
+                brightness: dark ? Brightness.dark : Brightness.light,
+              ),
+              home: Builder(
+                builder: (context) {
+                  hero = AppColors.heroSurfaceGradient(context);
+                  accent = AppColors.accentHeroGradient(context);
+                  success = AppColors.successHeroGradient(context);
+                  chip = AppColors.heroChipFill(context);
+                  accentChip = AppColors.heroChipFill(
+                    context,
+                    gradient: accent,
+                  );
+                  return const SizedBox();
+                },
+              ),
+            ),
+          );
           for (final (g, fill) in [(hero, chip), (accent, accentChip)]) {
             final ink = AppColors.inkOnGradient(g);
             for (final stop in g.colors) {
@@ -256,8 +307,11 @@ void main() {
           // hold the same ink.
           final ink = AppColors.inkOnGradient(success);
           for (final stop in success.colors) {
-            expect(_contrast(ink, stop), greaterThanOrEqualTo(4.5),
-                reason: '${palette.label} dark=$dark success $stop');
+            expect(
+              _contrast(ink, stop),
+              greaterThanOrEqualTo(4.5),
+              reason: '${palette.label} dark=$dark success $stop',
+            );
           }
         }
       }
@@ -270,14 +324,21 @@ void main() {
           // Mirrors _ValueBubble: white bubble in dark, deep stop in light.
           final bubble = dark ? Colors.white : AppColors.navyDeep;
           final ink = AppColors.resolveInk(
-              dark ? AppColors.navyDeep : Colors.white, bubble);
-          expect(_contrast(ink, bubble), greaterThanOrEqualTo(4.5),
-              reason: '${palette.label} dark=$dark value bubble');
+            dark ? AppColors.navyDeep : Colors.white,
+            bubble,
+          );
+          expect(
+            _contrast(ink, bubble),
+            greaterThanOrEqualTo(4.5),
+            reason: '${palette.label} dark=$dark value bubble',
+          );
         }
         // The selected-weekday pill: lime fill with its resolved ink.
-        expect(_contrast(AppColors.onLimeInk, AppColors.lime),
-            greaterThanOrEqualTo(4.5),
-            reason: '${palette.label} weekday pill');
+        expect(
+          _contrast(AppColors.onLimeInk, AppColors.lime),
+          greaterThanOrEqualTo(4.5),
+          reason: '${palette.label} weekday pill',
+        );
       }
     });
   });
@@ -296,39 +357,50 @@ void main() {
           'surfaceGlassElevated': t.surfaceGlassElevated,
           'overlay': AppColors.overlaySurfaceFor(dark),
         }.entries) {
-          expect(entry.value.a, 1.0,
-              reason: '${palette.label} dark=$dark ${entry.key}');
+          expect(
+            entry.value.a,
+            1.0,
+            reason: '${palette.label} dark=$dark ${entry.key}',
+          );
         }
       }
     }
   });
 
-  test('a light card keeps a hairline only where its tone step is too small',
-      () {
-    for (final palette in AppPalette.all) {
-      AppColors.applyPalette(palette);
-      final step = _contrast(AppColors.glassFillFor(false), palette.background);
-      expect(
-        AppColors.needsSurfaceEdgeFor(false),
-        step < AppColors.surfaceEdgeThreshold,
-        reason: '${palette.label} step ${step.toStringAsFixed(3)}',
-      );
-      // Dark mode has no shadow, so the hairline always carries the plane.
-      expect(AppColors.needsSurfaceEdgeFor(true), isTrue,
-          reason: palette.label);
-    }
-  });
+  test(
+    'a light card keeps a hairline only where its tone step is too small',
+    () {
+      for (final palette in AppPalette.all) {
+        AppColors.applyPalette(palette);
+        final step = _contrast(
+          AppColors.glassFillFor(false),
+          palette.background,
+        );
+        expect(
+          AppColors.needsSurfaceEdgeFor(false),
+          step < AppColors.surfaceEdgeThreshold,
+          reason: '${palette.label} step ${step.toStringAsFixed(3)}',
+        );
+        // Dark mode has no shadow, so the hairline always carries the plane.
+        expect(
+          AppColors.needsSurfaceEdgeFor(true),
+          isTrue,
+          reason: palette.label,
+        );
+      }
+    },
+  );
 
   test('switching palettes leaves no stale token', () {
     Map<String, Color> snapshot(bool dark) => {
-          ...AppTokens.forBrightness(dark).toMap(),
-          'navFill': AppColors.navFillFor(dark),
-          'navSelectedFill': AppColors.navSelectedFillFor(dark),
-          'navSelectedInk': AppColors.navSelectedInkFor(dark),
-          'navIdleInk': AppColors.navIdleInkFor(dark),
-          'glassFill': AppColors.glassFillFor(dark),
-          'glassBorder': AppColors.glassBorderFor(dark),
-        };
+      ...AppTokens.forBrightness(dark).toMap(),
+      'navFill': AppColors.navFillFor(dark),
+      'navSelectedFill': AppColors.navSelectedFillFor(dark),
+      'navSelectedInk': AppColors.navSelectedInkFor(dark),
+      'navIdleInk': AppColors.navIdleInkFor(dark),
+      'glassFill': AppColors.glassFillFor(dark),
+      'glassBorder': AppColors.glassBorderFor(dark),
+    };
 
     for (final a in AppPalette.all) {
       for (final b in AppPalette.all) {
@@ -338,8 +410,11 @@ void main() {
           AppColors.applyPalette(a);
           AppColors.applyPalette(b);
           final switched = snapshot(dark);
-          expect(switched, fresh,
-              reason: '${a.id} -> ${b.id} dark=$dark left a stale token');
+          expect(
+            switched,
+            fresh,
+            reason: '${a.id} -> ${b.id} dark=$dark left a stale token',
+          );
         }
       }
     }

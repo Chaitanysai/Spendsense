@@ -20,33 +20,45 @@ void main() {
     );
   }
 
-  test('a background sync never opens settings when permanently denied',
-      () async {
-    final service = serviceWith(PermissionStatus.permanentlyDenied);
-    expect(await service.requestPermissions(), isFalse);
-    expect(settingsOpened, 0);
-  });
+  test(
+    'a background sync never opens settings when permanently denied',
+    () async {
+      final service = serviceWith(PermissionStatus.permanentlyDenied);
+      expect(await service.requestPermissions(), isFalse);
+      expect(settingsOpened, 0);
+    },
+  );
 
-  test('an explicit user sync opens settings once when permanently denied',
-      () async {
-    final service = serviceWith(PermissionStatus.permanentlyDenied);
-    expect(
-        await service.requestPermissions(openSettingsIfBlocked: true), isFalse);
-    expect(settingsOpened, 1);
-  });
+  test(
+    'an explicit user sync opens settings once when permanently denied',
+    () async {
+      final service = serviceWith(PermissionStatus.permanentlyDenied);
+      expect(
+        await service.requestPermissions(openSettingsIfBlocked: true),
+        isFalse,
+      );
+      expect(settingsOpened, 1);
+    },
+  );
 
-  test('an ordinary denial never opens settings, even on a user sync',
-      () async {
-    final service = serviceWith(PermissionStatus.denied);
-    expect(
-        await service.requestPermissions(openSettingsIfBlocked: true), isFalse);
-    expect(settingsOpened, 0);
-  });
+  test(
+    'an ordinary denial never opens settings, even on a user sync',
+    () async {
+      final service = serviceWith(PermissionStatus.denied);
+      expect(
+        await service.requestPermissions(openSettingsIfBlocked: true),
+        isFalse,
+      );
+      expect(settingsOpened, 0);
+    },
+  );
 
   test('a granted permission passes and opens nothing', () async {
     final service = serviceWith(PermissionStatus.granted);
     expect(
-        await service.requestPermissions(openSettingsIfBlocked: true), isTrue);
+      await service.requestPermissions(openSettingsIfBlocked: true),
+      isTrue,
+    );
     expect(settingsOpened, 0);
   });
 }

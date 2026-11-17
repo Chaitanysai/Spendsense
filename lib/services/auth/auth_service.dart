@@ -90,8 +90,10 @@ class AuthService {
 
   /// Re-authenticates with the account's password, satisfying Firebase's
   /// recent-sign-in requirement before a destructive action.
-  Future<void> reauthenticate(
-      {required String email, required String password}) async {
+  Future<void> reauthenticate({
+    required String email,
+    required String password,
+  }) async {
     final user = currentUser;
     if (user == null) throw const AuthUnavailableException();
     final credential = EmailAuthProvider.credential(

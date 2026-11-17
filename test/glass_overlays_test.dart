@@ -38,42 +38,50 @@ void main() {
     testWidgets('near-opaque cards skip the blur layer', (tester) async {
       AppColors.applyPalette(AppPalette.emerald);
       for (final dark in [false, true]) {
-        await tester.pumpWidget(_app(
-          const GlassCard(child: Text('card')),
-          dark: dark,
-        ));
+        await tester.pumpWidget(
+          _app(const GlassCard(child: Text('card')), dark: dark),
+        );
         expect(_blurCount(tester), 0, reason: 'dark=$dark');
       }
     });
 
-    testWidgets('navy theme cards remain opaque without a blur layer',
-        (tester) async {
+    testWidgets('navy theme cards remain opaque without a blur layer', (
+      tester,
+    ) async {
       AppColors.applyPalette(AppPalette.midnight);
-      await tester.pumpWidget(_app(
-        const GlassCard(child: Text('card')),
-        dark: true,
-      ));
+      await tester.pumpWidget(
+        _app(const GlassCard(child: Text('card')), dark: true),
+      );
       expect(_blurCount(tester), 0);
     });
 
-    testWidgets('hero cards get a hairline on navy glass and none in light',
-        (tester) async {
+    testWidgets('hero cards get a hairline on navy glass and none in light', (
+      tester,
+    ) async {
       AppColors.applyPalette(AppPalette.midnight);
-      Border? heroBorder() => (tester
-              .widget<Container>(find
-                  .descendant(
-                      of: find.byType(GradientHeroCard),
-                      matching: find.byType(Container))
-                  .first)
-              .decoration as BoxDecoration)
-          .border as Border?;
+      Border? heroBorder() =>
+          (tester
+                          .widget<Container>(
+                            find
+                                .descendant(
+                                  of: find.byType(GradientHeroCard),
+                                  matching: find.byType(Container),
+                                )
+                                .first,
+                          )
+                          .decoration
+                      as BoxDecoration)
+                  .border
+              as Border?;
 
       await tester.pumpWidget(
-          _app(const GradientHeroCard(child: Text('hero')), dark: true));
+        _app(const GradientHeroCard(child: Text('hero')), dark: true),
+      );
       expect(heroBorder(), isNotNull);
 
-      await tester
-          .pumpWidget(_app(const GradientHeroCard(child: Text('hero'))));
+      await tester.pumpWidget(
+        _app(const GradientHeroCard(child: Text('hero'))),
+      );
       await tester.pumpAndSettle(); // let the theme cross-fade finish
       expect(heroBorder(), isNull);
     });
@@ -81,13 +89,17 @@ void main() {
     testWidgets('navy hero stops keep white figures legible', (tester) async {
       AppColors.applyPalette(AppPalette.midnight);
       late LinearGradient g;
-      await tester.pumpWidget(_app(
-        Builder(builder: (context) {
-          g = AppColors.heroSurfaceGradient(context);
-          return const SizedBox();
-        }),
-        dark: true,
-      ));
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) {
+              g = AppColors.heroSurfaceGradient(context);
+              return const SizedBox();
+            },
+          ),
+          dark: true,
+        ),
+      );
       for (final c in g.colors) {
         final contrast = 1.05 / (c.computeLuminance() + 0.05);
         expect(contrast, greaterThan(7), reason: '$c');
@@ -110,8 +122,9 @@ void main() {
       return box.decoration as BoxDecoration;
     }
 
-    testWidgets('legacy AMOLED canvases stay #000000 with no glow',
-        (tester) async {
+    testWidgets('legacy AMOLED canvases stay #000000 with no glow', (
+      tester,
+    ) async {
       for (final palette in AppPalette.all.where((p) => p.isAmoled)) {
         AppColors.applyPalette(palette);
         await tester.pumpWidget(
@@ -128,16 +141,19 @@ void main() {
         expect(decoration.color, black, reason: palette.label);
         expect(decoration.gradient, isNull, reason: palette.label);
         // No radial glow lights up the canvas.
-        final radial = find.byWidgetPredicate((w) =>
-            w is Container &&
-            w.decoration is BoxDecoration &&
-            (w.decoration! as BoxDecoration).gradient is RadialGradient);
+        final radial = find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).gradient is RadialGradient,
+        );
         expect(radial, findsNothing, reason: palette.label);
       }
     });
 
-    testWidgets('premium canvases use the palette tint without glows',
-        (tester) async {
+    testWidgets('premium canvases use the palette tint without glows', (
+      tester,
+    ) async {
       for (final palette in AppPalette.all.where((p) => !p.isAmoled)) {
         AppColors.applyPalette(palette);
         await tester.pumpWidget(
@@ -152,10 +168,12 @@ void main() {
         await tester.pumpAndSettle();
         final decoration = backgroundDecoration(tester);
         expect(decoration.color, palette.darkBackground, reason: palette.label);
-        final radial = find.byWidgetPredicate((w) =>
-            w is Container &&
-            w.decoration is BoxDecoration &&
-            (w.decoration! as BoxDecoration).gradient is RadialGradient);
+        final radial = find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).gradient is RadialGradient,
+        );
         expect(radial, findsNothing, reason: palette.label);
       }
     });
@@ -169,36 +187,44 @@ void main() {
       expect(backgroundDecoration(tester).color, isNot(black));
     });
 
-    testWidgets('Midnight keeps neutral charcoal cards on the black canvas',
-        (tester) async {
+    testWidgets('Midnight keeps neutral charcoal cards on the black canvas', (
+      tester,
+    ) async {
       AppColors.applyPalette(AppPalette.midnight);
       late Color fill;
       late Color border;
       late LinearGradient hero;
       late Color canvas;
-      await tester.pumpWidget(_app(
-        Builder(builder: (context) {
-          fill = AppColors.glassFill(context);
-          border = AppColors.glassBorder(context);
-          hero = AppColors.heroSurfaceGradient(context);
-          canvas = AppColors.scaffold(context);
-          return const SizedBox();
-        }),
-        dark: true,
-      ));
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) {
+              fill = AppColors.glassFill(context);
+              border = AppColors.glassBorder(context);
+              hero = AppColors.heroSurfaceGradient(context);
+              canvas = AppColors.scaffold(context);
+              return const SizedBox();
+            },
+          ),
+          dark: true,
+        ),
+      );
       expect(canvas, black);
       // Cards: solid charcoal, not black. Very low chroma: Midnight must not
       // read as the old navy or as paint.
       expect(fill.a, 1.0);
-      final spread = [fill.r, fill.g, fill.b].reduce((a, b) => a > b ? a : b) -
+      final spread =
+          [fill.r, fill.g, fill.b].reduce((a, b) => a > b ? a : b) -
           [fill.r, fill.g, fill.b].reduce((a, b) => a < b ? a : b);
       expect(spread * 255, lessThan(12), reason: 'neutral charcoal card');
       expect(fill, isNot(black));
       // Hero: emerald-lit gradient, brighter than the surface it sits on.
       expect(hero.colors.first.g, greaterThan(hero.colors.first.r));
       expect(hero.colors.first.g, greaterThan(hero.colors.first.b));
-      expect(hero.colors.first.computeLuminance(),
-          greaterThan(AppColors.darkSurface.computeLuminance()));
+      expect(
+        hero.colors.first.computeLuminance(),
+        greaterThan(AppColors.darkSurface.computeLuminance()),
+      );
       // Borders stay a light hairline.
       expect(border.a, lessThan(0.2));
     });
@@ -228,37 +254,55 @@ void main() {
       test('${palette.label}: text and outlined buttons stay readable', () {
         AppColors.applyPalette(palette);
         for (final brightness in Brightness.values) {
-          final theme =
-              const SpendSenseApp().themeFor(brightness, FontPreset.standard);
+          final theme = const SpendSenseApp().themeFor(
+            brightness,
+            FontPreset.standard,
+          );
           final surface = theme.dialogTheme.backgroundColor!;
-          final text = theme.textButtonTheme.style!.foregroundColor!
-              .resolve(<WidgetState>{})!;
+          final text = theme.textButtonTheme.style!.foregroundColor!.resolve(
+            <WidgetState>{},
+          )!;
           final outlined = theme.outlinedButtonTheme.style!.foregroundColor!
               .resolve(<WidgetState>{})!;
-          expect(contrast(text, surface), greaterThanOrEqualTo(4.5),
-              reason: '${palette.label} $brightness text button');
-          expect(contrast(outlined, surface), greaterThanOrEqualTo(4.5),
-              reason: '${palette.label} $brightness outlined button');
+          expect(
+            contrast(text, surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '${palette.label} $brightness text button',
+          );
+          expect(
+            contrast(outlined, surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '${palette.label} $brightness outlined button',
+          );
         }
       });
     }
 
     for (final palette in [AppPalette.oceanBlue, AppPalette.royalPurple]) {
       test(
-          '${palette.label}: dark ink keeps its hue and light mode is untouched',
-          () {
-        AppColors.applyPalette(palette);
-        final dark = AppColors.brandInkFor(true);
-        // Still the palette's own colour family, only lighter.
-        expect(HSLColor.fromColor(dark).hue,
-            closeTo(HSLColor.fromColor(palette.bright).hue, 12));
-        expect(dark.computeLuminance(),
-            greaterThan(palette.bright.computeLuminance()));
-        expect(
-            contrast(dark, palette.darkSurfaceAlt), greaterThanOrEqualTo(4.5));
-        expect(AppColors.brandInkFor(false),
-            Color.lerp(palette.brand, palette.deep, 0.45));
-      });
+        '${palette.label}: dark ink keeps its hue and light mode is untouched',
+        () {
+          AppColors.applyPalette(palette);
+          final dark = AppColors.brandInkFor(true);
+          // Still the palette's own colour family, only lighter.
+          expect(
+            HSLColor.fromColor(dark).hue,
+            closeTo(HSLColor.fromColor(palette.bright).hue, 12),
+          );
+          expect(
+            dark.computeLuminance(),
+            greaterThan(palette.bright.computeLuminance()),
+          );
+          expect(
+            contrast(dark, palette.darkSurfaceAlt),
+            greaterThanOrEqualTo(4.5),
+          );
+          expect(
+            AppColors.brandInkFor(false),
+            Color.lerp(palette.brand, palette.deep, 0.45),
+          );
+        },
+      );
     }
 
     test('bright ink stays raw when it clears the tinted dialog surface', () {
@@ -267,8 +311,11 @@ void main() {
         // The dialog surface is the palette-tinted card, not the neutral
         // source token.
         if (contrast(palette.bright, AppColors.darkSurfaceAlt) >= 4.5) {
-          expect(AppColors.brandInkFor(true), palette.bright,
-              reason: palette.label);
+          expect(
+            AppColors.brandInkFor(true),
+            palette.bright,
+            reason: palette.label,
+          );
         }
       }
     });
@@ -279,32 +326,39 @@ void main() {
       NavItem(Icons.receipt_long_rounded, 'Activity'),
     ];
 
-    testWidgets('selected slot is a solid ink pill with a measured glyph',
-        (tester) async {
+    testWidgets('selected slot is a solid ink pill with a measured glyph', (
+      tester,
+    ) async {
       for (final palette in [
         AppPalette.midnight,
         AppPalette.deepNavy,
         AppPalette.plumBlush,
       ]) {
         AppColors.applyPalette(palette);
-        await tester.pumpWidget(_app(
-          FloatingNavBar(
-            key: ValueKey(palette.id),
-            items: items,
-            currentIndex: 0,
-            onTap: (_) {},
+        await tester.pumpWidget(
+          _app(
+            FloatingNavBar(
+              key: ValueKey(palette.id),
+              items: items,
+              currentIndex: 0,
+              onTap: (_) {},
+            ),
+            dark: true,
           ),
-          dark: true,
-        ));
+        );
         await tester.pumpAndSettle();
         final context = tester.element(find.byType(FloatingNavBar));
         final home = tester.widget<Icon>(find.byIcon(Icons.home_rounded));
-        final idle =
-            tester.widget<Icon>(find.byIcon(Icons.receipt_long_rounded));
+        final idle = tester.widget<Icon>(
+          find.byIcon(Icons.receipt_long_rounded),
+        );
         // The glyph is resolved against the pill it actually sits on, and
         // differs from the idle glyph.
-        expect(home.color, AppColors.navSelectedInk(context),
-            reason: palette.label);
+        expect(
+          home.color,
+          AppColors.navSelectedInk(context),
+          reason: palette.label,
+        );
         expect(home.color, isNot(idle.color), reason: palette.label);
         final pill = tester.widget<Container>(
           find.byKey(const Key('nav-selected-pill')),
@@ -313,8 +367,11 @@ void main() {
         // Solid, flat ink: no gradient and no translucency (spec 11).
         expect(decoration.gradient, isNull, reason: palette.label);
         expect(decoration.color!.a, 1.0, reason: palette.label);
-        expect(decoration.color, AppColors.navActiveFill(context),
-            reason: palette.label);
+        expect(
+          decoration.color,
+          AppColors.navActiveFill(context),
+          reason: palette.label,
+        );
         expect(
           AppColors.contrastRatio(home.color!, decoration.color!),
           greaterThanOrEqualTo(7),
@@ -323,13 +380,16 @@ void main() {
       }
     });
 
-    testWidgets('idle destinations are opaque and nothing blurs',
-        (tester) async {
+    testWidgets('idle destinations are opaque and nothing blurs', (
+      tester,
+    ) async {
       AppColors.applyPalette(AppPalette.midnight);
-      await tester.pumpWidget(_app(
-        FloatingNavBar(items: items, currentIndex: 0, onTap: (_) {}),
-        dark: true,
-      ));
+      await tester.pumpWidget(
+        _app(
+          FloatingNavBar(items: items, currentIndex: 0, onTap: (_) {}),
+          dark: true,
+        ),
+      );
       await tester.pumpAndSettle();
       final context = tester.element(find.byType(FloatingNavBar));
       expect(AppColors.navFill(context).a, 1.0);
@@ -345,21 +405,23 @@ void main() {
       tester.view.padding = const FakeViewPadding(bottom: 24);
       tester.view.viewPadding = const FakeViewPadding(bottom: 24);
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(_app(
-        Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showAppSheet<void>(
-              context: context,
-              builder: (_) => const SizedBox(
-                height: 120,
-                child: Center(child: Text('sheet body')),
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showAppSheet<void>(
+                context: context,
+                builder: (_) => const SizedBox(
+                  height: 120,
+                  child: Center(child: Text('sheet body')),
+                ),
               ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
+          reduceMotion: reduceMotion,
         ),
-        reduceMotion: reduceMotion,
-      ));
+      );
       await tester.tap(find.text('open'));
     }
 
@@ -374,41 +436,46 @@ void main() {
     });
 
     testWidgets(
-        'a sheet that paints its own surface reaches the bottom of the screen',
-        (tester) async {
-      // Regression (found on a physical Android device): wrapping a
-      // transparent-background sheet in a SafeArea left a see-through strip
-      // under it, so the page behind showed through below the sheet.
-      tester.view.devicePixelRatio = 1;
-      tester.view.padding = const FakeViewPadding(bottom: 24);
-      tester.view.viewPadding = const FakeViewPadding(bottom: 24);
-      addTearDown(tester.view.reset);
+      'a sheet that paints its own surface reaches the bottom of the screen',
+      (tester) async {
+        // Regression (found on a physical Android device): wrapping a
+        // transparent-background sheet in a SafeArea left a see-through strip
+        // under it, so the page behind showed through below the sheet.
+        tester.view.devicePixelRatio = 1;
+        tester.view.padding = const FakeViewPadding(bottom: 24);
+        tester.view.viewPadding = const FakeViewPadding(bottom: 24);
+        addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(_app(
-        Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showAppSheet<void>(
-              context: context,
-              backgroundColor: Colors.transparent,
-              builder: (_) => Container(
-                key: const Key('own-surface'),
-                height: 120,
-                color: Colors.blue,
+        await tester.pumpWidget(
+          _app(
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showAppSheet<void>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => Container(
+                    key: const Key('own-surface'),
+                    height: 120,
+                    color: Colors.blue,
+                  ),
+                ),
+                child: const Text('open'),
               ),
             ),
-            child: const Text('open'),
           ),
-        ),
-      ));
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
 
-      final bottom =
-          tester.getBottomLeft(find.byKey(const Key('own-surface'))).dy;
-      expect(bottom, tester.view.physicalSize.height);
-    });
-    testWidgets('tapping the barrier dismisses with the reverse transition',
-        (tester) async {
+        final bottom = tester
+            .getBottomLeft(find.byKey(const Key('own-surface')))
+            .dy;
+        expect(bottom, tester.view.physicalSize.height);
+      },
+    );
+    testWidgets('tapping the barrier dismisses with the reverse transition', (
+      tester,
+    ) async {
       await open(tester);
       await tester.pumpAndSettle();
       await tester.tapAt(const Offset(10, 10));
@@ -419,8 +486,9 @@ void main() {
       expect(find.text('sheet body'), findsNothing);
     });
 
-    testWidgets('reduced motion shows the sheet without a transition',
-        (tester) async {
+    testWidgets('reduced motion shows the sheet without a transition', (
+      tester,
+    ) async {
       await open(tester, reduceMotion: true);
       await tester.pump();
       await tester.pump();
@@ -430,13 +498,15 @@ void main() {
   });
 
   group('type toggle', () {
-    testWidgets('reports the tapped side and marks the selection',
-        (tester) async {
+    testWidgets('reports the tapped side and marks the selection', (
+      tester,
+    ) async {
       TransactionType? picked;
-      await tester.pumpWidget(_app(TransactionTypeToggle(
-        isIncome: false,
-        onSelect: (t) => picked = t,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TransactionTypeToggle(isIncome: false, onSelect: (t) => picked = t),
+        ),
+      );
       await tester.tap(find.text('Income'));
       expect(picked, TransactionType.income);
 

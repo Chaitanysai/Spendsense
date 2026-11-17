@@ -64,7 +64,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _nameFocus,
       _emailFocus,
       _passwordFocus,
-      _confirmFocus
+      _confirmFocus,
     ]) {
       node.dispose();
     }
@@ -144,12 +144,12 @@ class _AuthScreenState extends State<AuthScreen> {
     final firstError = nameError != null
         ? _nameFocus
         : emailError != null
-            ? _emailFocus
-            : passwordError != null
-                ? _passwordFocus
-                : confirmError != null
-                    ? _confirmFocus
-                    : null;
+        ? _emailFocus
+        : passwordError != null
+        ? _passwordFocus
+        : confirmError != null
+        ? _confirmFocus
+        : null;
     if (firstError != null) {
       FocusScope.of(context).requestFocus(firstError);
       SoundScope.play(context, SoundEventType.actionFailed);
@@ -308,10 +308,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ? const SizedBox(width: double.infinity)
                 : Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.lg),
-                    child: AuthNotice(
-                      kind: AuthNoticeKind.error,
-                      text: error,
-                    ),
+                    child: AuthNotice(kind: AuthNoticeKind.error, text: error),
                   ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -373,9 +370,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
-            style: TextButton.styleFrom(
-              minimumSize: const Size(64, 48),
-            ),
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: busy ? null : _openResetDialog,
             child: const Text('Forgot password?'),
           ),

@@ -70,25 +70,32 @@ class SpendingInsights {
   SpendingInsights._();
 
   static Iterable<TransactionModel> _expenses(
-          Iterable<TransactionModel> all, DateTimeRange range) =>
-      all.where((t) =>
-          t.type == TransactionType.expense &&
-          !t.isExcluded &&
-          PeriodMath.containsLocalDate(range, t.date));
+    Iterable<TransactionModel> all,
+    DateTimeRange range,
+  ) => all.where(
+    (t) =>
+        t.type == TransactionType.expense &&
+        !t.isExcluded &&
+        PeriodMath.containsLocalDate(range, t.date),
+  );
 
   static int total(Iterable<TransactionModel> all, DateTimeRange range) =>
       _expenses(all, range).fold<int>(0, (s, t) => s + t.amountMinor);
 
   /// This week (Monday to today) against last week's same elapsed days.
   static PeriodComparison weekOverWeek(
-      Iterable<TransactionModel> all, DateTime now) {
+    Iterable<TransactionModel> all,
+    DateTime now,
+  ) {
     final today = PeriodMath.dateOnly(now);
     final start = PeriodMath.addDays(today, -(today.weekday - 1));
     final elapsed = today.weekday - 1; // days after Monday
     final prevStart = PeriodMath.addDays(start, -7);
     final current = DateTimeRange(start: start, end: today);
     final previous = DateTimeRange(
-        start: prevStart, end: PeriodMath.addDays(prevStart, elapsed));
+      start: prevStart,
+      end: PeriodMath.addDays(prevStart, elapsed),
+    );
     return PeriodComparison(
       label: 'Week to date vs last week',
       current: current,
@@ -101,13 +108,18 @@ class SpendingInsights {
   /// This month (1st to today) against last month's same elapsed days
   /// (clamped to last month's length, e.g. 31 Mar vs 28 Feb).
   static PeriodComparison monthOverMonth(
-      Iterable<TransactionModel> all, DateTime now) {
+    Iterable<TransactionModel> all,
+    DateTime now,
+  ) {
     final today = PeriodMath.dateOnly(now);
     final start = DateTime(today.year, today.month, 1);
     final prevStart = DateTime(today.year, today.month - 1, 1);
     final prevLast = DateTime(today.year, today.month, 0).day;
-    final prevEnd = DateTime(prevStart.year, prevStart.month,
-        today.day > prevLast ? prevLast : today.day);
+    final prevEnd = DateTime(
+      prevStart.year,
+      prevStart.month,
+      today.day > prevLast ? prevLast : today.day,
+    );
     final current = DateTimeRange(start: start, end: today);
     final previous = DateTimeRange(start: prevStart, end: prevEnd);
     return PeriodComparison(
@@ -121,7 +133,9 @@ class SpendingInsights {
 
   /// Spending by category in [range], largest first, with integer shares.
   static List<CategoryShare> categoryBreakdown(
-      Iterable<TransactionModel> all, DateTimeRange range) {
+    Iterable<TransactionModel> all,
+    DateTimeRange range,
+  ) {
     final totals = <String, int>{};
     for (final t in _expenses(all, range)) {
       totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
@@ -135,14 +149,19 @@ class SpendingInsights {
     return [
       for (final e in entries)
         CategoryShare(
-            e.key, e.value, sum == 0 ? 0 : (e.value * 1000 + sum ~/ 2) ~/ sum),
+          e.key,
+          e.value,
+          sum == 0 ? 0 : (e.value * 1000 + sum ~/ 2) ~/ sum,
+        ),
     ];
   }
 
   /// The [limit] largest single expenses in [range] (ties broken by newest).
   static List<TransactionModel> largestExpenses(
-      Iterable<TransactionModel> all, DateTimeRange range,
-      {int limit = 5}) {
+    Iterable<TransactionModel> all,
+    DateTimeRange range, {
+    int limit = 5,
+  }) {
     final list = _expenses(all, range).toList()
       ..sort((a, b) {
         final byAmount = b.amountMinor.compareTo(a.amountMinor);
@@ -154,8 +173,10 @@ class SpendingInsights {
   /// Calendar-month totals for the last [months] months, oldest first. The
   /// final entry is the month in progress and is flagged partial.
   static List<MonthTotal> monthlyTrend(
-      Iterable<TransactionModel> all, DateTime now,
-      {int months = 6}) {
+    Iterable<TransactionModel> all,
+    DateTime now, {
+    int months = 6,
+  }) {
     final list = all.toList();
     return [
       for (var i = months - 1; i >= 0; i--)

@@ -36,32 +36,33 @@ class BudgetSummary extends StatelessWidget {
     final Color tone = !hasBudget
         ? AppColors.textTertiary(context)
         : over
-            ? AppColors.expenseRed
-            : (full || nearLimit)
-                ? AppColors.warning
-                : AppColors.incomeGreen;
+        ? AppColors.expenseRed
+        : (full || nearLimit)
+        ? AppColors.warning
+        : AppColors.incomeGreen;
     final IconData icon = !hasBudget
         ? Icons.tune_rounded
         : over
-            ? Icons.error_outline_rounded
-            : (full || nearLimit)
-                ? Icons.warning_amber_rounded
-                : Icons.check_circle_outline_rounded;
+        ? Icons.error_outline_rounded
+        : (full || nearLimit)
+        ? Icons.warning_amber_rounded
+        : Icons.check_circle_outline_rounded;
     final String status = !hasBudget
         ? 'Set a budget'
         : over
-            ? '${Formatters.currency.format(progress.overMinor)} over budget '
-                '(+${progress.overPercent}%)'
-            : full
-                ? 'Budget fully used'
-                : '${Formatters.currency.format(progress.remainingMinor)} left';
+        ? '${Formatters.currency.format(progress.overMinor)} over budget '
+              '(+${progress.overPercent}%)'
+        : full
+        ? 'Budget fully used'
+        : '${Formatters.currency.format(progress.remainingMinor)} left';
 
     // The status text sits on a 14% wash of its own tone. Warning amber and
     // income green fall under AA there on a light card, so the ink is resolved
     // against the colour actually behind it.
     final pillInk = AppColors.inkOnWash(context, tone);
 
-    final spentText = 'Spent ${Formatters.currency.format(progress.spentMinor)}'
+    final spentText =
+        'Spent ${Formatters.currency.format(progress.spentMinor)}'
         '${hasBudget ? ' · ${progress.percentUsed}% used' : ''}';
 
     return Semantics(
@@ -69,7 +70,7 @@ class BudgetSummary extends StatelessWidget {
       label: !hasBudget
           ? 'No budget set. $spentText'
           : '$spentText of '
-              '${Formatters.currency.format(progress.budgetMinor)}. $status',
+                '${Formatters.currency.format(progress.budgetMinor)}. $status',
       excludeSemantics: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,11 +93,7 @@ class BudgetSummary extends StatelessWidget {
                   ? Formatters.currency.format(progress.budgetMinor)
                   : 'No budget set',
               maxLines: 1,
-              style: AppText.amount(
-                context,
-                size: 24,
-                weight: FontWeight.w600,
-              ),
+              style: AppText.amount(context, size: 24, weight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -104,10 +101,8 @@ class BudgetSummary extends StatelessWidget {
             '$spentText \u00b7 $periodLabel',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppText.caption(context).copyWith(
-              fontSize: 12,
-              color: AppColors.textTertiary(context),
-            ),
+            style: AppText.caption(context)
+                .copyWith(fontSize: 12, color: AppColors.textTertiary(context)),
           ),
           const SizedBox(height: AppSpacing.sm),
           _UsageBar(
@@ -115,8 +110,8 @@ class BudgetSummary extends StatelessWidget {
             tone: over
                 ? AppColors.expenseRed
                 : (full || nearLimit)
-                    ? AppColors.warning
-                    : AppColors.brandInk(context),
+                ? AppColors.warning
+                : AppColors.brandInk(context),
           ),
           const SizedBox(height: AppSpacing.md),
           DecoratedBox(

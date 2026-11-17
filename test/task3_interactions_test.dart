@@ -15,8 +15,9 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  testWidgets('transaction type and category selectors use press feedback',
-      (tester) async {
+  testWidgets('transaction type and category selectors use press feedback', (
+    tester,
+  ) async {
     final provider = TransactionProvider();
     await tester.pumpWidget(
       ChangeNotifierProvider<TransactionProvider>.value(

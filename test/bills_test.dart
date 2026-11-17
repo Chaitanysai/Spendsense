@@ -20,19 +20,18 @@ TransactionModel _tx({
   String category = 'Entertainment',
   TransactionType type = TransactionType.expense,
   bool excluded = false,
-}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: amountMinor,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'Card',
-      date: date,
-      time: '10:00',
-      originalSms: '',
-      isExcluded: excluded,
-    );
+}) => TransactionModel(
+  id: id,
+  amountMinor: amountMinor,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'Card',
+  date: date,
+  time: '10:00',
+  originalSms: '',
+  isExcluded: excluded,
+);
 
 RecurringPlan _plan({
   String id = 'p1',
@@ -41,15 +40,14 @@ RecurringPlan _plan({
   int amountMinor = 64900,
   PlanFrequency frequency = PlanFrequency.monthly,
   required DateTime nextDue,
-}) =>
-    RecurringPlan.create(
-      id: id,
-      title: title,
-      category: category,
-      amountMinor: amountMinor,
-      frequency: frequency,
-      nextDue: nextDue,
-    );
+}) => RecurringPlan.create(
+  id: id,
+  title: title,
+  category: category,
+  amountMinor: amountMinor,
+  frequency: frequency,
+  nextDue: nextDue,
+);
 
 /// Counts automatic SMS scans so a test can prove Bills never starts one.
 class _CountingProvider extends TransactionProvider {
@@ -133,15 +131,17 @@ void main() {
         plans: [_plan(nextDue: DateTime(2026, 10, 22))],
         transactions: [
           _tx(
-              id: 'in',
-              amountMinor: 64900,
-              date: DateTime(2026, 10, 19),
-              type: TransactionType.income),
+            id: 'in',
+            amountMinor: 64900,
+            date: DateTime(2026, 10, 19),
+            type: TransactionType.income,
+          ),
           _tx(
-              id: 'ex',
-              amountMinor: 64900,
-              date: DateTime(2026, 10, 19),
-              excluded: true),
+            id: 'ex',
+            amountMinor: 64900,
+            date: DateTime(2026, 10, 19),
+            excluded: true,
+          ),
         ],
         today: today,
       );
@@ -153,11 +153,7 @@ void main() {
         plans: [_plan(nextDue: DateTime(2026, 10, 22))],
         transactions: [
           for (var i = 0; i < 12; i++)
-            _tx(
-              id: 'p$i',
-              amountMinor: 64900,
-              date: DateTime(2026, 10, 1 + i),
-            ),
+            _tx(id: 'p$i', amountMinor: 64900, date: DateTime(2026, 10, 1 + i)),
         ],
         today: today,
       );
@@ -170,10 +166,10 @@ void main() {
 
   group('automatic detection', () {
     List<TransactionModel> recurring() => [
-          _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 7, 5)),
-          _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 8, 5)),
-          _tx(id: 'r3', amountMinor: 64900, date: DateTime(2026, 9, 5)),
-        ];
+      _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 7, 5)),
+      _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 8, 5)),
+      _tx(id: 'r3', amountMinor: 64900, date: DateTime(2026, 9, 5)),
+    ];
 
     test('a repeated subscription becomes an automatic bill', () {
       final views = _detector.detect(
@@ -188,21 +184,29 @@ void main() {
       expect(views.first.confidence, greaterThan(0.7));
     });
 
-    test('an automatic recurring bill is never marked paid without a match',
-        () {
-      final views = _detector.detect(
+    test(
+      'an automatic recurring bill is never marked paid without a match',
+      () {
+        final views = _detector.detect(
+          plans: const [],
+          transactions: recurring(),
+          today: today,
+        );
+        expect(views.where((v) => v.state == BillState.paid), isEmpty);
+      },
+    );
+
+    test('detection is idempotent across repeated runs', () {
+      final first = _detector.detect(
         plans: const [],
         transactions: recurring(),
         today: today,
       );
-      expect(views.where((v) => v.state == BillState.paid), isEmpty);
-    });
-
-    test('detection is idempotent across repeated runs', () {
-      final first = _detector
-          .detect(plans: const [], transactions: recurring(), today: today);
-      final second = _detector
-          .detect(plans: const [], transactions: recurring(), today: today);
+      final second = _detector.detect(
+        plans: const [],
+        transactions: recurring(),
+        today: today,
+      );
 
       expect(first.length, second.length);
       expect(
@@ -281,8 +285,11 @@ void main() {
 
     testWidgets('opening Bills never starts an SMS scan', (tester) async {
       await pump(tester);
-      expect(tx.syncs, 0,
-          reason: 'passive navigation must not trigger permission or a scan');
+      expect(
+        tx.syncs,
+        0,
+        reason: 'passive navigation must not trigger permission or a scan',
+      );
       await tester.pump(const Duration(seconds: 1));
       expect(tx.syncs, 0);
     });
@@ -292,8 +299,9 @@ void main() {
       expect(find.text('No bills detected yet'), findsOneWidget);
     });
 
-    testWidgets('marking paid advances the plan and offers undo',
-        (tester) async {
+    testWidgets('marking paid advances the plan and offers undo', (
+      tester,
+    ) async {
       final due = DateTime.now().add(const Duration(days: 2));
       await tester.runAsync(() => planner.addPlan(_plan(nextDue: due)));
       await pump(tester);
@@ -301,7 +309,8 @@ void main() {
       expect(find.text('Mark paid'), findsOneWidget);
       await tester.tap(find.text('Mark paid'));
       await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
@@ -317,13 +326,15 @@ void main() {
 
       await tester.tap(find.text('Mark paid'));
       await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
       await tester.tap(find.text('Undo'));
       await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
@@ -335,8 +346,9 @@ void main() {
       );
     });
 
-    testWidgets('a repeated bill appears automatically with no review prompt',
-        (tester) async {
+    testWidgets('a repeated bill appears automatically with no review prompt', (
+      tester,
+    ) async {
       tx.debugSeed([
         _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 8, 5)),
         _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 9, 5)),
@@ -347,8 +359,11 @@ void main() {
       expect(find.text('Netflix'), findsOneWidget);
       expect(find.text('Track as bill'), findsNothing);
       expect(find.text('Needs review'), findsNothing);
-      expect(planner.plans, isEmpty,
-          reason: 'automatic detection must not persist a plan by itself');
+      expect(
+        planner.plans,
+        isEmpty,
+        reason: 'automatic detection must not persist a plan by itself',
+      );
     });
   });
 
@@ -381,8 +396,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('detection runs once per data change, not once per rebuild',
-        (tester) async {
+    testWidgets('detection runs once per data change, not once per rebuild', (
+      tester,
+    ) async {
       tx.debugSeed([
         _tx(id: 'r1', amountMinor: 64900, date: DateTime(2026, 8, 5)),
         _tx(id: 'r2', amountMinor: 64900, date: DateTime(2026, 9, 5)),
@@ -400,8 +416,11 @@ void main() {
       await pump(tester);
 
       state = tester.state(find.byType(BillsScreen));
-      expect(state.debugDetectRuns as int, afterFirst,
-          reason: 'a rebuild without a data or plan change must reuse detection');
+      expect(
+        state.debugDetectRuns as int,
+        afterFirst,
+        reason: 'a rebuild without a data or plan change must reuse detection',
+      );
 
       // A ledger change invalidates.
       tx.debugSeed([
@@ -414,8 +433,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       state = tester.state(find.byType(BillsScreen));
-      expect(state.debugDetectRuns as int, greaterThan(afterFirst),
-          reason: 'a ledger change must re-run detection');
+      expect(
+        state.debugDetectRuns as int,
+        greaterThan(afterFirst),
+        reason: 'a ledger change must re-run detection',
+      );
     });
 
     testWidgets('a plan change re-runs detection', (tester) async {
@@ -424,13 +446,17 @@ void main() {
       final before = state.debugDetectRuns as int;
 
       await tester.runAsync(
-          () => planner.addPlan(_plan(nextDue: DateTime(2026, 10, 25))));
+        () => planner.addPlan(_plan(nextDue: DateTime(2026, 10, 25))),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       state = tester.state(find.byType(BillsScreen));
-      expect(state.debugDetectRuns as int, greaterThan(before),
-          reason: 'adding a plan changes the detection inputs');
+      expect(
+        state.debugDetectRuns as int,
+        greaterThan(before),
+        reason: 'adding a plan changes the detection inputs',
+      );
     });
   });
 }

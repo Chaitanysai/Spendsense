@@ -45,16 +45,18 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
     // another cycle) must not stay selected.
     final selected = _selected;
     if (selected != null &&
-        !widget.totalsMinor.entries
-            .any((e) => e.key == selected && e.value > 0)) {
+        !widget.totalsMinor.entries.any(
+          (e) => e.key == selected && e.value > 0,
+        )) {
       _selected = null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final entries =
-        widget.totalsMinor.entries.where((e) => e.value > 0).toList();
+    final entries = widget.totalsMinor.entries
+        .where((e) => e.value > 0)
+        .toList();
     final total = entries.fold<int>(0, (s, e) => s + e.value);
     final count = entries.length;
     final canExpand = count > widget.collapsedRows;
@@ -159,9 +161,9 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
                   'Show less',
                   style: AppText.weight(AppText.label(context), FontWeight.w700)
                       .copyWith(
-                    fontSize: 11.5,
-                    color: AppColors.brandInk(context),
-                  ),
+                        fontSize: 11.5,
+                        color: AppColors.brandInk(context),
+                      ),
                 ),
               ),
             ),

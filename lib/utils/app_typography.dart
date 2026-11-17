@@ -67,7 +67,8 @@ class FontPreset {
   static const FontPreset dotMatrix = FontPreset(
     id: 'dot_matrix',
     label: 'Dot-matrix (technical)',
-    description: 'DotGothic16 for headings, Space Grotesk for text. '
+    description:
+        'DotGothic16 for headings, Space Grotesk for text. '
         'An OFL approximation of the Nothing dot-matrix style.',
     displayFamily: 'DotGothic16',
     bodyFamily: 'Space Grotesk',

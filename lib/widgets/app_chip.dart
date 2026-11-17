@@ -44,7 +44,9 @@ class AppChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppColors.isDark(context);
-    final ink = selected ? AppColors.brandInk(context) : AppColors.textSecondary(context);
+    final ink = selected
+        ? AppColors.brandInk(context)
+        : AppColors.textSecondary(context);
     final fill = selected
         // Opaque blend rather than a translucent tint: a chip may sit on the
         // canvas, on a grouped surface or on a raised card, and its selected
@@ -59,7 +61,8 @@ class AppChip extends StatelessWidget {
         : AppColors.border(context);
 
     final glyph = leading ?? (selected ? Icons.check_rounded : null);
-    final announced = semanticLabel ??
+    final announced =
+        semanticLabel ??
         [label, if (count != null) count].whereType<String>().join(', ');
 
     final pill = AnimatedContainer(

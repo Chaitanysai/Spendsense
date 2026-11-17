@@ -38,35 +38,38 @@ class AssistantController extends ChangeNotifier {
     required AssistantConsentStore consentStore,
     AssistantRemoteClient? remoteClient,
     DateTime Function()? clock,
-  })  : _audit = audit,
-        _consentStore = consentStore,
-        _clock = clock ?? DateTime.now,
-        _orchestrator = AssistantOrchestrator(
-          ledger: ledger,
-          audit: audit,
-          consent: consentStore,
-          remoteClient: remoteClient,
-          clock: clock,
-        ) {
-    _messages.add(AssistantChatMessage(
-      id: 'welcome',
-      isUser: false,
-      text: 'Ask me about your transactions. I use deterministic local '
-          'calculations for totals, and I will show a preview before any '
-          'bulk change. Nothing is deleted or excluded without your explicit '
-          'confirmation.',
-      createdAt: _clock(),
-      reply: const AssistantReply(
-        text: '',
-        suggestions: [
-          'List my Groww and Zerodha transactions',
-          'How much did I spend on food last month?',
-          'Show my biggest expenses this year',
-          'Show my unpaid bills',
-          'Why is my spending higher this month?',
-        ],
+  }) : _audit = audit,
+       _consentStore = consentStore,
+       _clock = clock ?? DateTime.now,
+       _orchestrator = AssistantOrchestrator(
+         ledger: ledger,
+         audit: audit,
+         consent: consentStore,
+         remoteClient: remoteClient,
+         clock: clock,
+       ) {
+    _messages.add(
+      AssistantChatMessage(
+        id: 'welcome',
+        isUser: false,
+        text:
+            'Ask me about your transactions. I use deterministic local '
+            'calculations for totals, and I will show a preview before any '
+            'bulk change. Nothing is deleted or excluded without your explicit '
+            'confirmation.',
+        createdAt: _clock(),
+        reply: const AssistantReply(
+          text: '',
+          suggestions: [
+            'List my Groww and Zerodha transactions',
+            'How much did I spend on food last month?',
+            'Show my biggest expenses this year',
+            'Show my unpaid bills',
+            'Why is my spending higher this month?',
+          ],
+        ),
       ),
-    ));
+    );
     _loadConsent();
   }
 
@@ -76,7 +79,8 @@ class AssistantController extends ChangeNotifier {
   ]) {
     const appCheck = FirebaseAppCheckTokenProvider();
     const identity = FirebaseAssistantIdentityTokenProvider();
-    final remote = AssistantConfig.isCloudConfigured &&
+    final remote =
+        AssistantConfig.isCloudConfigured &&
             appCheck.isConfigured &&
             identity.isConfigured
         ? GeminiProxyClient.fromBaseUrl(
@@ -129,12 +133,14 @@ class AssistantController extends ChangeNotifier {
     final history = List<AssistantChatMessage>.of(_messages);
     _lastAttempt = cleaned;
     _lastHistory = history;
-    _messages.add(AssistantChatMessage(
-      id: _newId(),
-      isUser: true,
-      text: cleaned,
-      createdAt: _clock(),
-    ));
+    _messages.add(
+      AssistantChatMessage(
+        id: _newId(),
+        isUser: true,
+        text: cleaned,
+        createdAt: _clock(),
+      ),
+    );
     await _run(cleaned, history);
   }
 
@@ -156,34 +162,36 @@ class AssistantController extends ChangeNotifier {
     await retryLast();
   }
 
-  Future<void> _run(
-    String text,
-    List<AssistantChatMessage> history,
-  ) async {
+  Future<void> _run(String text, List<AssistantChatMessage> history) async {
     _setBusy(
-        true,
-        cloudConfigured
-            ? 'Checking your ledger and preparing a reply…'
-            : 'Searching your encrypted ledger…');
+      true,
+      cloudConfigured
+          ? 'Checking your ledger and preparing a reply…'
+          : 'Searching your encrypted ledger…',
+    );
     try {
       final reply = await _orchestrator.handle(text, history: history);
-      _messages.add(AssistantChatMessage(
-        id: _newId(),
-        isUser: false,
-        text: reply.text,
-        createdAt: _clock(),
-        reply: reply,
-        isError: reply.isError,
-      ));
+      _messages.add(
+        AssistantChatMessage(
+          id: _newId(),
+          isUser: false,
+          text: reply.text,
+          createdAt: _clock(),
+          reply: reply,
+          isError: reply.isError,
+        ),
+      );
       _armExpiry();
     } catch (_) {
-      _messages.add(AssistantChatMessage(
-        id: _newId(),
-        isUser: false,
-        text: 'Something went wrong. Nothing was changed. You can retry.',
-        createdAt: _clock(),
-        isError: true,
-      ));
+      _messages.add(
+        AssistantChatMessage(
+          id: _newId(),
+          isUser: false,
+          text: 'Something went wrong. Nothing was changed. You can retry.',
+          createdAt: _clock(),
+          isError: true,
+        ),
+      );
     } finally {
       _setBusy(false, '');
     }
@@ -194,24 +202,29 @@ class AssistantController extends ChangeNotifier {
     _setBusy(true, 'Applying the confirmed change…');
     try {
       final reply = await _orchestrator.confirmPending(actionId);
-      _messages.add(AssistantChatMessage(
-        id: _newId(),
-        isUser: false,
-        text: reply.text,
-        createdAt: _clock(),
-        reply: reply,
-        isError: reply.isError,
-      ));
+      _messages.add(
+        AssistantChatMessage(
+          id: _newId(),
+          isUser: false,
+          text: reply.text,
+          createdAt: _clock(),
+          reply: reply,
+          isError: reply.isError,
+        ),
+      );
       _armExpiry();
     } catch (_) {
-      _messages.add(AssistantChatMessage(
-        id: _newId(),
-        isUser: false,
-        text: 'The change could not be completed. Nothing is assumed to have '
-            'changed.',
-        createdAt: _clock(),
-        isError: true,
-      ));
+      _messages.add(
+        AssistantChatMessage(
+          id: _newId(),
+          isUser: false,
+          text:
+              'The change could not be completed. Nothing is assumed to have '
+              'changed.',
+          createdAt: _clock(),
+          isError: true,
+        ),
+      );
     } finally {
       _setBusy(false, '');
     }
@@ -219,37 +232,43 @@ class AssistantController extends ChangeNotifier {
 
   Future<void> cancelPending(String actionId) async {
     final reply = await _orchestrator.cancelPending(actionId);
-    _messages.add(AssistantChatMessage(
-      id: _newId(),
-      isUser: false,
-      text: reply.text,
-      createdAt: _clock(),
-      reply: reply,
-      isError: reply.isError,
-    ));
-    _armExpiry();
-    _notify();
-  }
-
-  Future<void> undoLast() async {
-    if (_busy) return;
-    _messages.add(AssistantChatMessage(
-      id: _newId(),
-      isUser: true,
-      text: 'Undo the last change',
-      createdAt: _clock(),
-    ));
-    _setBusy(true, 'Restoring the previous ledger state…');
-    try {
-      final reply = await _orchestrator.undoLast();
-      _messages.add(AssistantChatMessage(
+    _messages.add(
+      AssistantChatMessage(
         id: _newId(),
         isUser: false,
         text: reply.text,
         createdAt: _clock(),
         reply: reply,
         isError: reply.isError,
-      ));
+      ),
+    );
+    _armExpiry();
+    _notify();
+  }
+
+  Future<void> undoLast() async {
+    if (_busy) return;
+    _messages.add(
+      AssistantChatMessage(
+        id: _newId(),
+        isUser: true,
+        text: 'Undo the last change',
+        createdAt: _clock(),
+      ),
+    );
+    _setBusy(true, 'Restoring the previous ledger state…');
+    try {
+      final reply = await _orchestrator.undoLast();
+      _messages.add(
+        AssistantChatMessage(
+          id: _newId(),
+          isUser: false,
+          text: reply.text,
+          createdAt: _clock(),
+          reply: reply,
+          isError: reply.isError,
+        ),
+      );
       _armExpiry();
     } finally {
       _setBusy(false, '');

@@ -55,8 +55,10 @@ class RecurringScreen extends StatelessWidget {
           children: [
             Text('Recurring', style: AppText.h1(context)),
             const SizedBox(height: 4),
-            Text('Subscriptions and repeating payments',
-                style: AppText.body(context)),
+            Text(
+              'Subscriptions and repeating payments',
+              style: AppText.body(context),
+            ),
             const SizedBox(height: AppSpacing.xl),
             _PlannedBills(planner: planner),
             const SizedBox(height: AppSpacing.xxl),
@@ -66,13 +68,19 @@ class RecurringScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.subscriptions_rounded,
-                          color: AppColors.onHero(context, alpha: 0.85),
-                          size: 20),
+                      Icon(
+                        Icons.subscriptions_rounded,
+                        color: AppColors.onHero(context, alpha: 0.85),
+                        size: 20,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
-                      Text('Subscription overview',
-                          style: AppText.onGradient(
-                              size: 13, weight: FontWeight.w600)),
+                      Text(
+                        'Subscription overview',
+                        style: AppText.onGradient(
+                          size: 13,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -82,26 +90,39 @@ class RecurringScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Monthly cost',
-                                style: AppText.onGradient(
-                                    size: 12, opacity: 0.85)),
+                            Text(
+                              'Monthly cost',
+                              style: AppText.onGradient(
+                                size: 12,
+                                opacity: 0.85,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(Formatters.currency.format(monthlyCost),
-                                style: AppText.onGradient(
-                                    size: 28, weight: FontWeight.w800)),
+                            Text(
+                              Formatters.currency.format(monthlyCost),
+                              style: AppText.onGradient(
+                                size: 28,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('Active subs',
-                              style:
-                                  AppText.onGradient(size: 12, opacity: 0.85)),
+                          Text(
+                            'Active subs',
+                            style: AppText.onGradient(size: 12, opacity: 0.85),
+                          ),
                           const SizedBox(height: 4),
-                          Text('${subscriptions.length}',
-                              style: AppText.onGradient(
-                                  size: 28, weight: FontWeight.w800)),
+                          Text(
+                            '${subscriptions.length}',
+                            style: AppText.onGradient(
+                              size: 28,
+                              weight: FontWeight.w800,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -164,8 +185,10 @@ class _SubscriptionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(sub.merchant,
-                        style: AppText.title(context).copyWith(fontSize: 15)),
+                    Text(
+                      sub.merchant,
+                      style: AppText.title(context).copyWith(fontSize: 15),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       '${sub.frequencyLabel} • ${Formatters.currency.format(sub.averageAmountMinor)} avg',
@@ -177,12 +200,19 @@ class _SubscriptionCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(Formatters.currency.format(sub.averageAmountMinor),
-                      style: AppText.amount(context,
-                          size: 18, color: AppColors.brand)),
+                  Text(
+                    Formatters.currency.format(sub.averageAmountMinor),
+                    style: AppText.amount(
+                      context,
+                      size: 18,
+                      color: AppColors.brand,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text('${sub.occurrenceCount} payments',
-                      style: AppText.caption(context)),
+                  Text(
+                    '${sub.occurrenceCount} payments',
+                    style: AppText.caption(context),
+                  ),
                 ],
               ),
             ],
@@ -202,10 +232,14 @@ class _SubscriptionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('First: ${DateFormat('dd MMM').format(sub.firstOccurrence)}',
-                  style: AppText.caption(context)),
-              Text('Last: ${DateFormat('dd MMM').format(sub.lastOccurrence)}',
-                  style: AppText.caption(context)),
+              Text(
+                'First: ${DateFormat('dd MMM').format(sub.firstOccurrence)}',
+                style: AppText.caption(context),
+              ),
+              Text(
+                'Last: ${DateFormat('dd MMM').format(sub.lastOccurrence)}',
+                style: AppText.caption(context),
+              ),
             ],
           ),
         ],
@@ -249,8 +283,10 @@ class _RecurringCard extends StatelessWidget {
             tooltip: 'Plan this as a bill',
             onPressed: () =>
                 showPlanEditor(context, from: recurring.transactions.last),
-            icon: Icon(Icons.event_available_rounded,
-                color: AppColors.textTertiary(context)),
+            icon: Icon(
+              Icons.event_available_rounded,
+              color: AppColors.textTertiary(context),
+            ),
           ),
         ],
       ),
@@ -287,8 +323,10 @@ class _PlannedBills extends StatelessWidget {
           onAction: planner.hasLoadError ? null : () => showPlanEditor(context),
         ),
         if (planner.hasLoadError)
-          Text('Saved bills could not be read, so changes are paused.',
-              style: AppText.body(context))
+          Text(
+            'Saved bills could not be read, so changes are paused.',
+            style: AppText.body(context),
+          )
         else if (plans.isEmpty)
           GlassCard(
             child: Text(
@@ -308,8 +346,9 @@ class _PlannedBills extends StatelessWidget {
                       Text('Planned per month', style: AppText.label(context)),
                       const SizedBox(height: 2),
                       Text(
-                        Formatters.currency
-                            .format(planner.plannedMonthlyCommitmentMinor),
+                        Formatters.currency.format(
+                          planner.plannedMonthlyCommitmentMinor,
+                        ),
                         style: AppText.amount(context, size: 22),
                       ),
                     ],
@@ -340,8 +379,11 @@ class _PlanTile extends StatelessWidget {
   final PlannerProvider planner;
   final DateTime today;
 
-  const _PlanTile(
-      {required this.plan, required this.planner, required this.today});
+  const _PlanTile({
+    required this.plan,
+    required this.planner,
+    required this.today,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -349,8 +391,8 @@ class _PlanTile extends StatelessWidget {
     final tone = days < 0
         ? AppColors.expenseRed
         : days <= 3
-            ? AppColors.warning
-            : AppColors.textSecondary(context);
+        ? AppColors.warning
+        : AppColors.textSecondary(context);
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -369,10 +411,12 @@ class _PlanTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(plan.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.title(context).copyWith(fontSize: 14.5)),
+                    Text(
+                      plan.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.title(context).copyWith(fontSize: 14.5),
+                    ),
                     Text(
                       '${plan.frequency.label} · PLANNED',
                       style: AppText.caption(context),
@@ -380,8 +424,10 @@ class _PlanTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(Formatters.currency.format(plan.amountMinor),
-                  style: AppText.amount(context, size: 16)),
+              Text(
+                Formatters.currency.format(plan.amountMinor),
+                style: AppText.amount(context, size: 16),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -415,7 +461,9 @@ class _PlanTile extends StatelessWidget {
   }
 
   Future<void> _run(
-      BuildContext context, Future<void> Function() action) async {
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
     try {
       await action();
     } catch (_) {

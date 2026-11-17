@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../utils/budget_math.dart';
 import '../utils/formatters.dart';
 import '../providers/transaction_provider.dart';
@@ -15,8 +16,9 @@ class BudgetMonitorService {
     if (_isInitialized) return;
 
     // Android initialization
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -33,7 +35,8 @@ class BudgetMonitorService {
     // Request permissions
     await _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
 
     _isInitialized = true;
@@ -59,9 +62,10 @@ class BudgetMonitorService {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList('budget_alert_thresholds');
     if (stored != null) {
-      final crossed = BudgetProgress(spentMinor: spent, budgetMinor: budget)
-          .crossedThreshold(
-              normalizeBudgetThresholds(stored.map(int.tryParse)));
+      final crossed = BudgetProgress(
+        spentMinor: spent,
+        budgetMinor: budget,
+      ).crossedThreshold(normalizeBudgetThresholds(stored.map(int.tryParse)));
       if (crossed == null) return;
       final spentLabel = Formatters.currency.format(spent);
       final budgetLabel = Formatters.currency.format(budget);
@@ -69,14 +73,17 @@ class BudgetMonitorService {
       // was configured. Checking only `crossed` printed "money left" whenever
       // the 100% threshold was disabled.
       if (spent >= budget) {
-        await _showNotification('Budget Exceeded!',
-            'You have spent $spentLabel out of $budgetLabel. Consider reducing expenses.');
+        await _showNotification(
+          'Budget Exceeded!',
+          'You have spent $spentLabel out of $budgetLabel. Consider reducing expenses.',
+        );
       } else {
         await _showNotification(
-            crossed >= 80 ? 'Budget Warning' : 'Budget Check-in',
-            'You have spent $spentLabel out of $budgetLabel '
-            '(${percentage.toStringAsFixed(0)}%). '
-            '${Formatters.currency.format(budget - spent)} left.');
+          crossed >= 80 ? 'Budget Warning' : 'Budget Check-in',
+          'You have spent $spentLabel out of $budgetLabel '
+          '(${percentage.toStringAsFixed(0)}%). '
+          '${Formatters.currency.format(budget - spent)} left.',
+        );
       }
       return;
     }
@@ -89,17 +96,20 @@ class BudgetMonitorService {
 
     if (percentage >= 100) {
       title = 'Budget Exceeded!';
-      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+      body =
+          'You have spent ${Formatters.currency.format(spent)} out of '
           '${Formatters.currency.format(budget)}. Consider reducing expenses.';
     } else if (percentage >= 80) {
       title = 'Budget Warning';
-      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+      body =
+          'You have spent ${Formatters.currency.format(spent)} out of '
           '${Formatters.currency.format(budget)} '
           '(${percentage.toStringAsFixed(0)}%). Only '
           '${Formatters.currency.format(budget - spent)} left!';
     } else if (percentage >= 60) {
       title = 'Budget Check-in';
-      body = 'You have spent ${Formatters.currency.format(spent)} out of '
+      body =
+          'You have spent ${Formatters.currency.format(spent)} out of '
           '${Formatters.currency.format(budget)}. You are doing well!';
     }
 

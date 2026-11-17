@@ -23,8 +23,10 @@ void main() {
   setUp(() => AppColors.applyPalette(AppPalette.emerald));
   tearDown(() => AppColors.applyPalette(AppPalette.emerald));
 
-  Future<ThemeProvider> pumpAppearance(WidgetTester tester,
-      {required bool dark}) async {
+  Future<ThemeProvider> pumpAppearance(
+    WidgetTester tester, {
+    required bool dark,
+  }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final theme = ThemeProvider();
     // `AppColors.isDark` reads `ThemeData.brightness`, so the harness must set
@@ -34,8 +36,9 @@ void main() {
       ChangeNotifierProvider<ThemeProvider>.value(
         value: theme,
         child: MaterialApp(
-          theme:
-              ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+          theme: ThemeData(
+            brightness: dark ? Brightness.dark : Brightness.light,
+          ),
           home: const AppearanceScreen(),
         ),
       ),
@@ -60,8 +63,9 @@ void main() {
   for (final dark in [true, false]) {
     final mode = dark ? 'dark' : 'light';
 
-    testWidgets('$mode selected pill has a fill, neighbours do not',
-        (tester) async {
+    testWidgets('$mode selected pill has a fill, neighbours do not', (
+      tester,
+    ) async {
       await pumpAppearance(tester, dark: dark);
       final theme = Provider.of<ThemeProvider>(
         tester.element(find.byType(AppearanceScreen)),
@@ -73,24 +77,39 @@ void main() {
       final selected = fillOf(tester, 'Dark');
       final unselected = fillOf(tester, 'System');
       // ignore: avoid_print
-      print('$mode selected=${selected?.toARGB32().toRadixString(16)} '
-          'unselected=${unselected?.toARGB32().toRadixString(16)}');
+      print(
+        '$mode selected=${selected?.toARGB32().toRadixString(16)} '
+        'unselected=${unselected?.toARGB32().toRadixString(16)}',
+      );
 
       expect(selected, isNotNull);
       expect(unselected, isNotNull);
-      expect(selected!.a, greaterThan(0.0),
-          reason: '$mode selected pill has no fill');
-      expect(unselected!.a, 0.0,
-          reason: '$mode unselected pill must stay transparent');
+      expect(
+        selected!.a,
+        greaterThan(0.0),
+        reason: '$mode selected pill has no fill',
+      );
+      expect(
+        unselected!.a,
+        0.0,
+        reason: '$mode unselected pill must stay transparent',
+      );
 
       if (dark) {
         // On a dark card the selected fill must lift, so it has to be a
         // neutral white overlay rather than a brand tint.
-        expect(selected.r, closeTo(selected.b, 0.02),
-            reason: 'dark selected fill is tinted, which pulls it below the '
-                'card: r=${selected.r} b=${selected.b}');
-        expect(selected.r, greaterThan(0.5),
-            reason: 'dark selected fill should be near-white');
+        expect(
+          selected.r,
+          closeTo(selected.b, 0.02),
+          reason:
+              'dark selected fill is tinted, which pulls it below the '
+              'card: r=${selected.r} b=${selected.b}',
+        );
+        expect(
+          selected.r,
+          greaterThan(0.5),
+          reason: 'dark selected fill should be near-white',
+        );
       }
     });
   }

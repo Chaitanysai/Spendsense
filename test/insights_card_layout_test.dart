@@ -79,8 +79,9 @@ void main() {
       expect(text.overflow, TextOverflow.ellipsis);
     });
 
-    testWidgets('does not set a line height that overruns the line budget',
-        (tester) async {
+    testWidgets('does not set a line height that overruns the line budget', (
+      tester,
+    ) async {
       await _pumpInsights(tester);
 
       final text = tester.widget<Text>(_subtitleFinder());
@@ -91,15 +92,22 @@ void main() {
       // vertical space for two lines and overran the card. The shared
       // `AppText.onGradient` default is 1.2; anything tighter than that default
       // is drift, and 1.4 is the specific value that regressed.
-      expect(style!.height, lessThanOrEqualTo(1.2),
-          reason: 'a line height above the type default overran the card');
+      expect(
+        style!.height,
+        lessThanOrEqualTo(1.2),
+        reason: 'a line height above the type default overran the card',
+      );
       expect(style.height, isNot(1.4), reason: 'the exact regressing value');
-      expect(style.fontSize, 13,
-          reason: 'the intended type size must not change');
+      expect(
+        style.fontSize,
+        13,
+        reason: 'the intended type size must not change',
+      );
     });
 
-    testWidgets('the whole card fits inside the viewport width',
-        (tester) async {
+    testWidgets('the whole card fits inside the viewport width', (
+      tester,
+    ) async {
       await _pumpInsights(tester);
 
       final card = _subtitleFinder();
@@ -113,8 +121,9 @@ void main() {
       expect(box.right, lessThanOrEqualTo(screen + 0.5));
     });
 
-    testWidgets('the title above it is still the full, unordered headline',
-        (tester) async {
+    testWidgets('the title above it is still the full, unordered headline', (
+      tester,
+    ) async {
       await _pumpInsights(tester);
       expect(find.text('Ask SpendSense AI'), findsOneWidget);
       expect(find.text('Tap to open'), findsOneWidget);

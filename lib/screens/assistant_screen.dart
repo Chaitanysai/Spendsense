@@ -178,8 +178,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   gradient: AppColors.accentHeroGradient(context),
                   borderRadius: BorderRadius.circular(AppRadius.tile),
                 ),
-                child: Icon(Icons.auto_awesome_rounded,
-                    color: AppColors.onAccentHero(context), size: 20),
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.onAccentHero(context),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -187,10 +190,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('SpendSense Assistant',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.title(context)),
+                    Text(
+                      'SpendSense Assistant',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.title(context),
+                    ),
                     AnimatedBuilder(
                       animation: controller,
                       builder: (context, _) => Text(
@@ -271,7 +276,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                 onRetry: controller.isBusy
                                     ? null
                                     : controller.retryLast,
-                                onEnableCloud: controller.isBusy ||
+                                onEnableCloud:
+                                    controller.isBusy ||
                                         !controller.cloudConfigured
                                     ? null
                                     : controller.enableCloudAndRetry,
@@ -319,11 +325,15 @@ class _PrivacyStrip extends StatelessWidget {
     final text = !controller.cloudConfigured
         ? 'On-device only. Gemini is not configured in this build.'
         : cloudOn
-            ? 'Gemini may receive only the minimum context you ask for.'
-            : 'Local only. Cloud assistance is off — data is not sent.';
+        ? 'Gemini may receive only the minimum context you ask for.'
+        : 'Local only. Cloud assistance is off — data is not sent.';
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.page, 0, AppSpacing.page, AppSpacing.sm),
+        AppSpacing.page,
+        0,
+        AppSpacing.page,
+        AppSpacing.sm,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -331,7 +341,9 @@ class _PrivacyStrip extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: 9),
+              horizontal: AppSpacing.md,
+              vertical: 9,
+            ),
             decoration: BoxDecoration(
               color: AppColors.surfaceAlt(context),
               borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -342,12 +354,17 @@ class _PrivacyStrip extends StatelessWidget {
                 Icon(Icons.shield_outlined, size: 16, color: color),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Text(text,
-                      style: AppText.body(context).copyWith(fontSize: 10.5)),
+                  child: Text(
+                    text,
+                    style: AppText.body(context).copyWith(fontSize: 10.5),
+                  ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded,
-                    size: 18, color: AppColors.textTertiary(context)),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.textTertiary(context),
+                ),
               ],
             ),
           ),
@@ -417,7 +434,9 @@ class _MessageBlock extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.md, left: 40),
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           decoration: BoxDecoration(
             color: AppColors.deepFill(context),
             borderRadius: const BorderRadius.only(
@@ -433,7 +452,9 @@ class _MessageBlock extends StatelessWidget {
               // deepFill is a blend of brand and the deep stop, so white is
               // not guaranteed on it; the ink is measured against the fill.
               color: AppColors.resolveInk(
-                  Colors.white, AppColors.deepFill(context)),
+                Colors.white,
+                AppColors.deepFill(context),
+              ),
               fontSize: 13.5,
               height: 1.4,
             ),
@@ -455,8 +476,11 @@ class _MessageBlock extends StatelessWidget {
               gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(AppRadius.icon),
             ),
-            child: Icon(Icons.auto_awesome_rounded,
-                color: AppColors.onAccentHero(context), size: 16),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.onAccentHero(context),
+              size: 16,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -466,7 +490,9 @@ class _MessageBlock extends StatelessWidget {
                 if (message.text.trim().isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
                     decoration: BoxDecoration(
                       color: message.isError
                           ? AppColors.danger.withValues(alpha: 0.08)
@@ -606,13 +632,18 @@ class _ThinkingBubble extends StatelessWidget {
               gradient: AppColors.accentHeroGradient(context),
               borderRadius: BorderRadius.circular(AppRadius.icon),
             ),
-            child: Icon(Icons.auto_awesome_rounded,
-                color: AppColors.onAccentHero(context), size: 16),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.onAccentHero(context),
+              size: 16,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             decoration: BoxDecoration(
               color: AppColors.surfaceColor(context),
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -654,11 +685,16 @@ class _LocalCapabilityNote extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.offline_bolt_rounded,
-                  size: 18, color: AppColors.brandInk(context)),
+              Icon(
+                Icons.offline_bolt_rounded,
+                size: 18,
+                color: AppColors.brandInk(context),
+              ),
               const SizedBox(width: AppSpacing.sm),
-              Text('Works without Gemini',
-                  style: AppText.title(context).copyWith(fontSize: 13)),
+              Text(
+                'Works without Gemini',
+                style: AppText.title(context).copyWith(fontSize: 13),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -718,11 +754,12 @@ class _Composer extends StatelessWidget {
                       minLines: 1,
                       maxLines: 5,
                       maxLength: 1000,
-                      buildCounter: (context,
-                              {required currentLength,
-                              required isFocused,
-                              maxLength}) =>
-                          null,
+                      buildCounter: (
+                        context, {
+                        required currentLength,
+                        required isFocused,
+                        maxLength,
+                      }) => null,
                       textInputAction: TextInputAction.send,
                       onSubmitted: canSend ? onSend : null,
                       decoration: const InputDecoration(

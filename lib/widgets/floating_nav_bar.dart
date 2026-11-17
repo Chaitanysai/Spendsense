@@ -175,9 +175,9 @@ class _NavSlotState extends State<_NavSlot>
   }
 
   TextStyle _labelStyle(Color color) => AppText.onGradient(
-        size: 13,
-        weight: FontWeight.w600,
-      ).copyWith(color: color, letterSpacing: -0.1, height: 1.1);
+    size: 13,
+    weight: FontWeight.w600,
+  ).copyWith(color: color, letterSpacing: -0.1, height: 1.1);
 
   /// The label's intrinsic width, measured once per style and text scale.
   ///

@@ -32,17 +32,17 @@ TransactionModel _tx(String id, int amountMinor, DateTime date) =>
     );
 
 Map<String, dynamic> _legacy(String id, int amount) => {
-      'id': id,
-      'amount': amount,
-      'type': 'expense',
-      'merchant': 'Legacy merchant',
-      'category': 'Food',
-      'paymentMethod': 'UPI',
-      'date': '2026-10-23T10:00:00.000',
-      'time': '10:00',
-      'originalSms': '',
-      'isExcluded': false,
-    };
+  'id': id,
+  'amount': amount,
+  'type': 'expense',
+  'merchant': 'Legacy merchant',
+  'category': 'Food',
+  'paymentMethod': 'UPI',
+  'date': '2026-10-23T10:00:00.000',
+  'time': '10:00',
+  'originalSms': '',
+  'isExcluded': false,
+};
 
 class _FakeKeyStore implements LedgerKeyStore {
   String? value;
@@ -81,10 +81,7 @@ Future<Map<String, String>> _seedEncryptedLedger(String id) async {
     jsonEncode([id]),
     recordId: '__ledger_index__',
   );
-  return {
-    'tx_cache_ids_v2': index,
-    'txe_$id': payload,
-  };
+  return {'tx_cache_ids_v2': index, 'txe_$id': payload};
 }
 
 void main() {
@@ -104,18 +101,17 @@ void main() {
       );
       // Fail closed: nothing was wiped or replaced.
       expect(prefs.getString('txe_protected'), seed['txe_protected']);
-      expect(
-        prefs.getString('tx_cache_ids_v2'),
-        seed['tx_cache_ids_v2'],
-      );
+      expect(prefs.getString('tx_cache_ids_v2'), seed['tx_cache_ids_v2']);
     }
 
-    test('invalid base64 key value fails closed and preserves records',
-        () async {
-      await expectKeyFailurePreservesRecords(
-        _FakeKeyStore(value: 'not-valid-base64!!!'),
-      );
-    });
+    test(
+      'invalid base64 key value fails closed and preserves records',
+      () async {
+        await expectKeyFailurePreservesRecords(
+          _FakeKeyStore(value: 'not-valid-base64!!!'),
+        );
+      },
+    );
 
     test('wrong-length key fails closed and preserves records', () async {
       await expectKeyFailurePreservesRecords(
@@ -128,9 +124,7 @@ void main() {
     });
 
     group('algorithm seam', () {
-      test(
-          'explicit and default algorithms round-trip and cross-decrypt each other',
-          () async {
+      test('explicit and default algorithms round-trip and cross-decrypt each other', () async {
         final keyValue = base64UrlEncode(List<int>.filled(32, 0x77));
         final explicit = LedgerEncryptionService(
           keyStore: _FakeKeyStore(value: keyValue),
@@ -141,13 +135,14 @@ void main() {
         );
 
         const payload = '{"schemaVersion":2,"amountMinor":123}';
-        final fromExplicit =
-            await explicit.encryptText(payload, recordId: 'r1');
+        final fromExplicit = await explicit.encryptText(
+          payload,
+          recordId: 'r1',
+        );
         final fromDefault = await deflt.encryptText(payload, recordId: 'r1');
 
         for (final envelope in [fromExplicit, fromDefault]) {
-          final decoded =
-              jsonDecode(envelope) as Map<String, dynamic>;
+          final decoded = jsonDecode(envelope) as Map<String, dynamic>;
           expect(decoded['schemaVersion'], 2);
           expect(decoded['algorithm'], 'AES-256-GCM');
           expect(decoded['recordId'], 'r1');
@@ -167,38 +162,44 @@ void main() {
         );
       });
 
-      test('the Flutter algorithm implementation reads Dart envelopes',
-          () async {
-        // Pins the ENVELOPE CONTRACT through the FlutterAesGcm class. In the
-        // test VM (and for payloads under the plugin's 2000-byte dispatch
-        // threshold) FlutterAesGcm routes to its Dart fallback, so this is
-        // not engine-interop evidence — the on-device integration test
-        // (integration_test/ledger_crypto_device_test.dart) pins the real
-        // platform-channel path above the threshold.
-        final keyValue = base64UrlEncode(List<int>.filled(32, 0x78));
-        final dartService = LedgerEncryptionService(
-          keyStore: _FakeKeyStore(value: keyValue),
-          algorithm: AesGcm.with256bits(),
-        );
-        final flutterService = LedgerEncryptionService(
-          keyStore: _FakeKeyStore(value: keyValue),
-          algorithm: FlutterAesGcm.with256bits(),
-        );
+      test(
+        'the Flutter algorithm implementation reads Dart envelopes',
+        () async {
+          // Pins the ENVELOPE CONTRACT through the FlutterAesGcm class. In the
+          // test VM (and for payloads under the plugin's 2000-byte dispatch
+          // threshold) FlutterAesGcm routes to its Dart fallback, so this is
+          // not engine-interop evidence — the on-device integration test
+          // (integration_test/ledger_crypto_device_test.dart) pins the real
+          // platform-channel path above the threshold.
+          final keyValue = base64UrlEncode(List<int>.filled(32, 0x78));
+          final dartService = LedgerEncryptionService(
+            keyStore: _FakeKeyStore(value: keyValue),
+            algorithm: AesGcm.with256bits(),
+          );
+          final flutterService = LedgerEncryptionService(
+            keyStore: _FakeKeyStore(value: keyValue),
+            algorithm: FlutterAesGcm.with256bits(),
+          );
 
-        const payload = '{"amountMinor":42}';
-        final envelope =
-            await dartService.encryptText(payload, recordId: 'r2');
-        expect(
-          await flutterService.decryptText(envelope, expectedRecordId: 'r2'),
-          payload,
-        );
-        final envelopeBack =
-            await flutterService.encryptText(payload, recordId: 'r2');
-        expect(
-          await dartService.decryptText(envelopeBack, expectedRecordId: 'r2'),
-          payload,
-        );
-      });
+          const payload = '{"amountMinor":42}';
+          final envelope = await dartService.encryptText(
+            payload,
+            recordId: 'r2',
+          );
+          expect(
+            await flutterService.decryptText(envelope, expectedRecordId: 'r2'),
+            payload,
+          );
+          final envelopeBack = await flutterService.encryptText(
+            payload,
+            recordId: 'r2',
+          );
+          expect(
+            await dartService.decryptText(envelopeBack, expectedRecordId: 'r2'),
+            payload,
+          );
+        },
+      );
     });
 
     test('createKeyIfMissing does not overwrite an existing key', () async {
@@ -237,8 +238,9 @@ void main() {
       await encryption.createKeyIfMissing();
       final encoded = await encryption.encryptText('payload', recordId: 'r1');
       final envelope = jsonDecode(encoded) as Map<String, dynamic>;
-      envelope['mac'] =
-          base64UrlEncode(List<int>.filled(16, 0)); // valid base64, wrong tag
+      envelope['mac'] = base64UrlEncode(
+        List<int>.filled(16, 0),
+      ); // valid base64, wrong tag
 
       await expectLater(
         encryption.decryptText(jsonEncode(envelope), expectedRecordId: 'r1'),
@@ -272,54 +274,54 @@ void main() {
       );
     });
 
-    test('tampered encrypted index fails closed and preserves payloads',
-        () async {
-      final seed = await _seedEncryptedLedger('indexed');
-      final indexEnvelope =
-          jsonDecode(seed['tx_cache_ids_v2']!) as Map<String, dynamic>;
-      indexEnvelope['ciphertext'] =
-          _flipFirstChar(indexEnvelope['ciphertext'] as String);
-      SharedPreferences.setMockInitialValues({
-        ...seed,
-        'tx_cache_ids_v2': jsonEncode(indexEnvelope),
-      });
-      final prefs = await SharedPreferences.getInstance();
+    test(
+      'tampered encrypted index fails closed and preserves payloads',
+      () async {
+        final seed = await _seedEncryptedLedger('indexed');
+        final indexEnvelope =
+            jsonDecode(seed['tx_cache_ids_v2']!) as Map<String, dynamic>;
+        indexEnvelope['ciphertext'] = _flipFirstChar(
+          indexEnvelope['ciphertext'] as String,
+        );
+        SharedPreferences.setMockInitialValues({
+          ...seed,
+          'tx_cache_ids_v2': jsonEncode(indexEnvelope),
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      await expectLater(
-        TransactionCacheService().init(),
-        throwsA(isA<LedgerKeyUnavailableException>()),
-      );
-      expect(prefs.getString('txe_indexed'), seed['txe_indexed']);
-    });
+        await expectLater(
+          TransactionCacheService().init(),
+          throwsA(isA<LedgerKeyUnavailableException>()),
+        );
+        expect(prefs.getString('txe_indexed'), seed['txe_indexed']);
+      },
+    );
 
-    test('tampered record payload fails closed and preserves the ledger',
-        () async {
-      final seed = await _seedEncryptedLedger('record-1');
-      final payloadEnvelope =
-          jsonDecode(seed['txe_record-1']!) as Map<String, dynamic>;
-      payloadEnvelope['ciphertext'] =
-          _flipFirstChar(payloadEnvelope['ciphertext'] as String);
-      SharedPreferences.setMockInitialValues({
-        ...seed,
-        'txe_record-1': jsonEncode(payloadEnvelope),
-      });
-      final prefs = await SharedPreferences.getInstance();
+    test(
+      'tampered record payload fails closed and preserves the ledger',
+      () async {
+        final seed = await _seedEncryptedLedger('record-1');
+        final payloadEnvelope =
+            jsonDecode(seed['txe_record-1']!) as Map<String, dynamic>;
+        payloadEnvelope['ciphertext'] = _flipFirstChar(
+          payloadEnvelope['ciphertext'] as String,
+        );
+        SharedPreferences.setMockInitialValues({
+          ...seed,
+          'txe_record-1': jsonEncode(payloadEnvelope),
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      final cache = TransactionCacheService();
-      // Sync metadata migration reads payloads during init, so the tamper may
-      // surface there or on loadAll; both are fail-closed.
-      await expectLater(
-        () async {
+        final cache = TransactionCacheService();
+        // Sync metadata migration reads payloads during init, so the tamper may
+        // surface there or on loadAll; both are fail-closed.
+        await expectLater(() async {
           await cache.init();
           await cache.loadAll();
-        },
-        throwsA(isA<LedgerMigrationException>()),
-      );
-      expect(
-        prefs.getString('tx_cache_ids_v2'),
-        seed['tx_cache_ids_v2'],
-      );
-    });
+        }, throwsA(isA<LedgerMigrationException>()));
+        expect(prefs.getString('tx_cache_ids_v2'), seed['tx_cache_ids_v2']);
+      },
+    );
   });
 
   group('import journal robustness', () {
@@ -339,7 +341,8 @@ void main() {
       expect(prefs.getString('txj_import_journal'), isNull);
       expect(
         prefs.getKeys().where(
-            (k) => k.startsWith('txq_') && k.endsWith('_txj_import_journal')),
+          (k) => k.startsWith('txq_') && k.endsWith('_txj_import_journal'),
+        ),
         isNotEmpty,
       );
     }
@@ -393,40 +396,42 @@ void main() {
   });
 
   group('interrupted migration and recovery', () {
-    test('migration resumes from a journal that over-reports converted records',
-        () async {
-      final encryption = LedgerEncryptionService();
-      await encryption.createKeyIfMissing();
-      // The journal claims 'mid-mig' was already converted, but its encrypted
-      // payload is missing: an interruption between journal write and payload
-      // verification.
-      final journal = await encryption.encryptText(
-        jsonEncode({
-          'journalVersion': 3,
-          'kind': 'legacy_money_migration',
-          'state': 'copying',
-          'legacyIds': ['mid-mig'],
-          'convertedIds': ['mid-mig'],
-        }),
-        recordId: '__migration_progress__',
-      );
-      SharedPreferences.setMockInitialValues({
-        'tx_cache_ids': jsonEncode(['mid-mig']),
-        'tx_mid-mig': jsonEncode(_legacy('mid-mig', 239)),
-        'tx_money_migration_v2': journal,
-      });
-      final prefs = await SharedPreferences.getInstance();
+    test(
+      'migration resumes from a journal that over-reports converted records',
+      () async {
+        final encryption = LedgerEncryptionService();
+        await encryption.createKeyIfMissing();
+        // The journal claims 'mid-mig' was already converted, but its encrypted
+        // payload is missing: an interruption between journal write and payload
+        // verification.
+        final journal = await encryption.encryptText(
+          jsonEncode({
+            'journalVersion': 3,
+            'kind': 'legacy_money_migration',
+            'state': 'copying',
+            'legacyIds': ['mid-mig'],
+            'convertedIds': ['mid-mig'],
+          }),
+          recordId: '__migration_progress__',
+        );
+        SharedPreferences.setMockInitialValues({
+          'tx_cache_ids': jsonEncode(['mid-mig']),
+          'tx_mid-mig': jsonEncode(_legacy('mid-mig', 239)),
+          'tx_money_migration_v2': journal,
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      final cache = TransactionCacheService();
-      await cache.init();
-      final records = await cache.loadAll();
+        final cache = TransactionCacheService();
+        await cache.init();
+        final records = await cache.loadAll();
 
-      // Exactly once, correct paise conversion, journal cleared.
-      expect(records.length, 1);
-      expect(records.single.id, 'mid-mig');
-      expect(records.single.amountMinor, 23900);
-      expect(prefs.getString('tx_money_migration_v2'), isNull);
-    });
+        // Exactly once, correct paise conversion, journal cleared.
+        expect(records.length, 1);
+        expect(records.single.id, 'mid-mig');
+        expect(records.single.amountMinor, 23900);
+        expect(prefs.getString('tx_money_migration_v2'), isNull);
+      },
+    );
 
     test('plaintext reconciliation journal claims are revalidated', () async {
       final seedCache = TransactionCacheService();
@@ -453,43 +458,44 @@ void main() {
       final records = await restarted.loadAll();
 
       expect(records.map((tx) => tx.id).toSet(), {'v2-live', 'stale'});
-      expect(
-        records.singleWhere((tx) => tx.id == 'stale').amountMinor,
-        23900,
-      );
+      expect(records.singleWhere((tx) => tx.id == 'stale').amountMinor, 23900);
       expect(prefs.getString('tx_money_migration_v2'), isNull);
     });
 
-    test('interrupted activation at index commit is completed on restart',
-        () async {
-      final cache = TransactionCacheService();
-      await cache.init();
-      await cache.put(_tx('base', 10000, DateTime(2026, 10, 1)));
+    test(
+      'interrupted activation at index commit is completed on restart',
+      () async {
+        final cache = TransactionCacheService();
+        await cache.init();
+        await cache.put(_tx('base', 10000, DateTime(2026, 10, 1)));
 
-      cache.writeHook = (op, key) async {
-        if (op == 'set' && key == 'tx_cache_ids_v2') {
-          throw StateError('index commit interrupted');
-        }
-      };
-      await expectLater(
-        cache.put(_tx('arrived', 23950, DateTime(2026, 10, 2))),
-        throwsA(isA<LedgerImportException>()),
-      );
+        cache.writeHook = (op, key) async {
+          if (op == 'set' && key == 'tx_cache_ids_v2') {
+            throw StateError('index commit interrupted');
+          }
+        };
+        await expectLater(
+          cache.put(_tx('arrived', 23950, DateTime(2026, 10, 2))),
+          throwsA(isA<LedgerImportException>()),
+        );
 
-      final restarted = TransactionCacheService();
-      await restarted.init();
-      final records = await restarted.loadAll();
+        final restarted = TransactionCacheService();
+        await restarted.init();
+        final records = await restarted.loadAll();
 
-      expect(records.map((tx) => tx.id).toSet(), {'base', 'arrived'});
-      expect(
-        records.singleWhere((tx) => tx.id == 'arrived').amountMinor,
-        23950,
-      );
-      expect(
-        (await SharedPreferences.getInstance()).getString('txj_import_journal'),
-        isNull,
-      );
-    });
+        expect(records.map((tx) => tx.id).toSet(), {'base', 'arrived'});
+        expect(
+          records.singleWhere((tx) => tx.id == 'arrived').amountMinor,
+          23950,
+        );
+        expect(
+          (await SharedPreferences.getInstance()).getString(
+            'txj_import_journal',
+          ),
+          isNull,
+        );
+      },
+    );
 
     test('repeated initialization is idempotent', () async {
       SharedPreferences.setMockInitialValues({

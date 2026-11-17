@@ -62,7 +62,8 @@ class HomeActionDock extends StatelessWidget {
     required int count,
   }) {
     if (count <= 0) return 1;
-    final fits = width / count >= minSlotWidth * (textScale > 1 ? textScale : 1);
+    final fits =
+        width / count >= minSlotWidth * (textScale > 1 ? textScale : 1);
     return fits && textScale <= 1.3 ? count : (count / 2).ceil();
   }
 
@@ -191,11 +192,12 @@ class _DockSlot extends StatelessWidget {
     // than its neighbours and the icons sat at different heights. The box is
     // measured at the *effective* text scale so it still grows under
     // accessibility font settings instead of clipping.
-    final labelHeight = (2 *
-            labelStyle.fontSize! *
-            labelStyle.height! *
-            MediaQuery.textScalerOf(context).scale(1))
-        .ceilToDouble();
+    final labelHeight =
+        (2 *
+                labelStyle.fontSize! *
+                labelStyle.height! *
+                MediaQuery.textScalerOf(context).scale(1))
+            .ceilToDouble();
 
     final plate = primary
         ? Container(

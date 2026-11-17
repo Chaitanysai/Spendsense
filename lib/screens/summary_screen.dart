@@ -124,8 +124,12 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     const SizedBox(height: AppSpacing.md),
                     _row(context, 'Income', summary.incomeMinor),
                     _row(context, 'Spent', summary.expenseMinor),
-                    _row(context, 'Transactions', summary.transactionCount,
-                        isMoney: false),
+                    _row(
+                      context,
+                      'Transactions',
+                      summary.transactionCount,
+                      isMoney: false,
+                    ),
                   ],
                 ),
               ),
@@ -133,29 +137,39 @@ class _SummaryScreenState extends State<SummaryScreen> {
               const SectionHeader(title: 'Top categories'),
               GlassCard(
                 child: summary.topCategories.isEmpty
-                    ? Text('No spending in this period.',
-                        style: AppText.body(context))
+                    ? Text(
+                        'No spending in this period.',
+                        style: AppText.body(context),
+                      )
                     : Column(
                         children: [
                           for (final c in summary.topCategories)
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: AppSpacing.sm),
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
                               child: Row(
                                 children: [
-                                  Icon(CategoryStyle.icon(c.category),
-                                      size: 16,
-                                      color: CategoryStyle.color(c.category)),
+                                  Icon(
+                                    CategoryStyle.icon(c.category),
+                                    size: 16,
+                                    color: CategoryStyle.color(c.category),
+                                  ),
                                   const SizedBox(width: AppSpacing.sm),
                                   Expanded(
-                                      child: Text(c.category,
-                                          style: AppText.label(context))),
+                                    child: Text(
+                                      c.category,
+                                      style: AppText.label(context),
+                                    ),
+                                  ),
                                   Text(
-                                      '${(c.shareTenths / 10).toStringAsFixed(1)}%  ',
-                                      style: AppText.label(context)),
+                                    '${(c.shareTenths / 10).toStringAsFixed(1)}%  ',
+                                    style: AppText.label(context),
+                                  ),
                                   Text(
-                                      Formatters.currency.format(c.amountMinor),
-                                      style: AppText.amount(context, size: 13)),
+                                    Formatters.currency.format(c.amountMinor),
+                                    style: AppText.amount(context, size: 13),
+                                  ),
                                 ],
                               ),
                             ),
@@ -172,12 +186,12 @@ class _SummaryScreenState extends State<SummaryScreen> {
                       !summary.budget.hasBudget
                           ? 'No monthly budget set.'
                           : summary.budget.isOver
-                              ? '${Formatters.currency.format(summary.budget.overMinor)} over your '
-                                  '${Formatters.currency.format(summary.budget.budgetMinor)} budget '
-                                  '(${summary.budget.percentUsed}% used)'
-                              : '${Formatters.currency.format(summary.budget.remainingMinor)} left of your '
-                                  '${Formatters.currency.format(summary.budget.budgetMinor)} budget '
-                                  '(${summary.budget.percentUsed}% used)',
+                          ? '${Formatters.currency.format(summary.budget.overMinor)} over your '
+                                '${Formatters.currency.format(summary.budget.budgetMinor)} budget '
+                                '(${summary.budget.percentUsed}% used)'
+                          : '${Formatters.currency.format(summary.budget.remainingMinor)} left of your '
+                                '${Formatters.currency.format(summary.budget.budgetMinor)} budget '
+                                '(${summary.budget.percentUsed}% used)',
                       style: AppText.body(context)
                           .copyWith(color: AppColors.textPrimary(context)),
                     ),
@@ -213,15 +227,21 @@ class _SummaryScreenState extends State<SummaryScreen> {
     );
   }
 
-  Widget _row(BuildContext context, String label, int value,
-      {bool isMoney = true}) {
+  Widget _row(
+    BuildContext context,
+    String label,
+    int value, {
+    bool isMoney = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
         children: [
           Expanded(child: Text(label, style: AppText.label(context))),
-          Text(isMoney ? Formatters.currency.format(value) : '$value',
-              style: AppText.amount(context, size: 15)),
+          Text(
+            isMoney ? Formatters.currency.format(value) : '$value',
+            style: AppText.amount(context, size: 15),
+          ),
         ],
       ),
     );
@@ -235,10 +255,12 @@ class _SummaryScreenState extends State<SummaryScreen> {
       final file = File(path.join(dir.path, 'spendsense-summary-$stamp.txt'));
       await file.writeAsString(summary.toText(), flush: true);
       messenger.showSnackBar(
-          const SnackBar(content: Text('Summary saved in app storage.')));
+        const SnackBar(content: Text('Summary saved in app storage.')),
+      );
     } catch (_) {
       messenger.showSnackBar(
-          const SnackBar(content: Text('Summary could not be saved.')));
+        const SnackBar(content: Text('Summary could not be saved.')),
+      );
     }
   }
 }

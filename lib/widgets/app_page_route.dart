@@ -14,35 +14,34 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
     this.duration = AppMotion.base,
     super.settings,
   }) : super(
-          transitionDuration: duration,
-          reverseTransitionDuration: AppMotion.fast,
-          // Every pushed page owns its entry lifecycle: the first build plays
-          // its content entrance, and `didPopNext` replays it when the user
-          // returns from a deeper route. The page is never remounted.
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              PageEntryHost(child: builder(context)),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final reduced =
-                MediaQuery.maybeDisableAnimationsOf(context) == true;
-            if (reduced) return child;
+         transitionDuration: duration,
+         reverseTransitionDuration: AppMotion.fast,
+         // Every pushed page owns its entry lifecycle: the first build plays
+         // its content entrance, and `didPopNext` replays it when the user
+         // returns from a deeper route. The page is never remounted.
+         pageBuilder: (context, animation, secondaryAnimation) =>
+             PageEntryHost(child: builder(context)),
+         transitionsBuilder: (context, animation, secondaryAnimation, child) {
+           final reduced = MediaQuery.maybeDisableAnimationsOf(context) == true;
+           if (reduced) return child;
 
-            final curved = CurvedAnimation(
-              parent: animation,
-              curve: AppMotion.emphasized,
-              reverseCurve: Curves.easeIn,
-            );
-            return FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.04),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: child,
-              ),
-            );
-          },
-        );
+           final curved = CurvedAnimation(
+             parent: animation,
+             curve: AppMotion.emphasized,
+             reverseCurve: Curves.easeIn,
+           );
+           return FadeTransition(
+             opacity: curved,
+             child: SlideTransition(
+               position: Tween<Offset>(
+                 begin: const Offset(0, 0.04),
+                 end: Offset.zero,
+               ).animate(curved),
+               child: child,
+             ),
+           );
+         },
+       );
 
   static Route<T> push<T>(WidgetBuilder builder) =>
       AppPageRoute<T>(builder: builder);
@@ -63,10 +62,12 @@ class AppPageRoute<T> extends PageRouteBuilder<T> {
   }) {
     if (!_inFlight.add(name)) return null;
     return Navigator.of(context)
-        .push<T>(AppPageRoute<T>(
-          builder: builder,
-          settings: RouteSettings(name: name),
-        ))
+        .push<T>(
+          AppPageRoute<T>(
+            builder: builder,
+            settings: RouteSettings(name: name),
+          ),
+        )
         .whenComplete(() => _inFlight.remove(name));
   }
 

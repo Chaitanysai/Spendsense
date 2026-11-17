@@ -162,15 +162,21 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
     };
     for (final t in expenses) {
       final local = t.date.toLocal();
-      final key =
-          DateTime(local.year, local.month, local.day).microsecondsSinceEpoch;
+      final key = DateTime(
+        local.year,
+        local.month,
+        local.day,
+      ).microsecondsSinceEpoch;
       final i = index[key];
       if (i != null) points[i].expenseMinor += t.amountMinor;
     }
     for (final t in income) {
       final local = t.date.toLocal();
-      final key =
-          DateTime(local.year, local.month, local.day).microsecondsSinceEpoch;
+      final key = DateTime(
+        local.year,
+        local.month,
+        local.day,
+      ).microsecondsSinceEpoch;
       final i = index[key];
       if (i != null) points[i].incomeMinor += t.amountMinor;
     }
@@ -209,7 +215,7 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
     final from = _selection.value >= 1
         ? _selectionTo
         : (_selectionFrom + (_selectionTo - _selectionFrom) * _selection.value)
-            .round();
+              .round();
     setState(() {
       _selectionFrom = from;
       _selectionTo = index;
@@ -275,10 +281,8 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
                           : DateFormat('EEE d MMM').format(selected.day),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.overline(context).copyWith(
-                        fontSize: 10,
-                        letterSpacing: 1.1,
-                      ),
+                      style: AppText.overline(context)
+                          .copyWith(fontSize: 10, letterSpacing: 1.1),
                     ),
                     const SizedBox(height: 4),
                     FittedBox(
@@ -341,10 +345,12 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
               final values = _visibleAmounts();
               final entrance = _reduceMotion
                   ? 1.0
-                  : AppMotion.emphasized
-                      .transform(_entrance.value.clamp(0.0, 1.0));
-              final t =
-                  AppMotion.easeOut.transform(_selection.value.clamp(0.0, 1.0));
+                  : AppMotion.emphasized.transform(
+                      _entrance.value.clamp(0.0, 1.0),
+                    );
+              final t = AppMotion.easeOut.transform(
+                _selection.value.clamp(0.0, 1.0),
+              );
               final geometry = _TrendGeometry(
                 size: Size(width, 150),
                 values: values,
@@ -353,7 +359,8 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
               final from = geometry.pointAt(_selectionFrom);
               final to = geometry.pointAt(_selectionTo);
               final marker = Offset.lerp(from, to, t) ?? to;
-              final bubbleValue = values[_selectionFrom] +
+              final bubbleValue =
+                  values[_selectionFrom] +
                   (values[_selectionTo] - values[_selectionFrom]) * t;
 
               return Stack(
@@ -400,11 +407,8 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: _ValueBubble(
-                              label: '${DateFormat('d MMM').format(
-                                t < 0.5
-                                    ? _days[_selectionFrom].day
-                                    : _days[_selectionTo].day,
-                              )} · ${Formatters.currency.format(bubbleValue)}',
+                              label:
+                                  '${DateFormat('d MMM').format(t < 0.5 ? _days[_selectionFrom].day : _days[_selectionTo].day)} · ${Formatters.currency.format(bubbleValue)}',
                             ),
                           ),
                         ),
@@ -464,8 +468,9 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
                         color: i == _selected
                             ? AppColors.textPrimary(context)
                             : AppColors.textTertiary(context),
-                        fontWeight:
-                            i == _selected ? FontWeight.w800 : FontWeight.w500,
+                        fontWeight: i == _selected
+                            ? FontWeight.w800
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -495,9 +500,8 @@ class _SpendingTrendCardState extends State<SpendingTrendCard>
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        color: AppColors.surfaceAlt(context).withValues(
-          alpha: AppColors.isDark(context) ? 0.35 : 0.55,
-        ),
+        color: AppColors.surfaceAlt(context)
+            .withValues(alpha: AppColors.isDark(context) ? 0.35 : 0.55),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -568,29 +572,32 @@ class _WindowToggle extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: AppMotion.respect(context, AppMotion.fast),
                   curve: AppMotion.easeOut,
-                  constraints:
-                      const BoxConstraints(minHeight: 32, minWidth: 40),
+                  constraints: const BoxConstraints(
+                    minHeight: 32,
+                    minWidth: 40,
+                  ),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     color: option == days
                         ? (dark
-                            ? Colors.white.withValues(alpha: 0.12)
-                            : AppColors.brand.withValues(alpha: 0.14))
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : AppColors.brand.withValues(alpha: 0.14))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Text(
                     '${option}D',
-                    style: AppText.weight(
-                      AppText.label(context),
-                      option == days ? FontWeight.w800 : FontWeight.w600,
-                    ).copyWith(
-                      fontSize: 11,
-                      color: option == days
-                          ? AppColors.textPrimary(context)
-                          : AppColors.textTertiary(context),
-                    ),
+                    style:
+                        AppText.weight(
+                          AppText.label(context),
+                          option == days ? FontWeight.w800 : FontWeight.w600,
+                        ).copyWith(
+                          fontSize: 11,
+                          color: option == days
+                              ? AppColors.textPrimary(context)
+                              : AppColors.textTertiary(context),
+                        ),
                   ),
                 ),
               ),
@@ -798,11 +805,7 @@ class _TrendPainter extends CustomPainter {
     if (reveal > 0.01 && reveal < 1) {
       final headX = rect.left + rect.width * progress;
       final head = _pointOnCurve(points, headX);
-      canvas.drawCircle(
-        head,
-        9,
-        Paint()..color = line.withValues(alpha: 0.16),
-      );
+      canvas.drawCircle(head, 9, Paint()..color = line.withValues(alpha: 0.16));
       canvas.drawCircle(head, 3.2, Paint()..color = line);
     }
 
@@ -860,9 +863,10 @@ class _TrendPainter extends CustomPainter {
     if (x <= points.first.dx) return points.first;
     for (var i = 0; i < points.length - 1; i++) {
       if (x <= points[i + 1].dx) {
-        final t = ((x - points[i].dx) /
-                (points[i + 1].dx - points[i].dx).clamp(1, double.infinity))
-            .clamp(0.0, 1.0);
+        final t =
+            ((x - points[i].dx) /
+                    (points[i + 1].dx - points[i].dx).clamp(1, double.infinity))
+                .clamp(0.0, 1.0);
         return Offset.lerp(points[i], points[i + 1], t)!;
       }
     }

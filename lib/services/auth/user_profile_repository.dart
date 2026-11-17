@@ -22,9 +22,7 @@ class UserProfile {
 }
 
 class UserProfileRepository {
-  const UserProfileRepository({
-    this.timeout = const Duration(seconds: 10),
-  });
+  const UserProfileRepository({this.timeout = const Duration(seconds: 10)});
 
   /// Bounds every network call so an offline device never leaves the UI
   /// spinning; callers treat a timeout as "cloud copy unavailable".
@@ -96,10 +94,12 @@ class UserProfileRepository {
   }) async {
     if (!isAvailable) return false;
     try {
-      await _doc(uid).set(<String, Object?>{
-        'displayName': displayName.trim(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)).timeout(timeout);
+      await _doc(uid)
+          .set(<String, Object?>{
+            'displayName': displayName.trim(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true))
+          .timeout(timeout);
       return true;
     } catch (_) {
       return false;

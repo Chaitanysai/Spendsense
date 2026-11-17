@@ -28,10 +28,7 @@ void main() {
 
     test('masks nine- and seventeen-digit account numbers', () {
       expect(service.sanitizeSms('acct 123456789'), 'acct ***');
-      expect(
-        service.sanitizeSms('acct 12345678901234567'),
-        'acct ****4567',
-      );
+      expect(service.sanitizeSms('acct 12345678901234567'), 'acct ****4567');
     });
 
     test('masks UPI, IFSC and explicit references', () {
@@ -43,10 +40,7 @@ void main() {
         service.sanitizeSms('IFSC HDFC0001234 used'),
         'IFSC IFSC *** used',
       );
-      expect(
-        service.sanitizeSms('UTR: ABC123XYZ'),
-        'UTR ***',
-      );
+      expect(service.sanitizeSms('UTR: ABC123XYZ'), 'UTR ***');
     });
 
     test('masks CVV/PIN values', () {

@@ -175,17 +175,17 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                         Text(
                           _configured
                               ? 'The Gemini API key is held by the SpendSense '
-                                  'backend, never in this app. Requests carry a '
-                                  'short-lived Firebase App Check token proving '
-                                  'this app installation plus a short-lived '
-                                  'Firebase sign-in ID token for your account. '
-                                  'SpendSense sends only the minimum context '
-                                  'described below.'
+                                    'backend, never in this app. Requests carry a '
+                                    'short-lived Firebase App Check token proving '
+                                    'this app installation plus a short-lived '
+                                    'Firebase sign-in ID token for your account. '
+                                    'SpendSense sends only the minimum context '
+                                    'described below.'
                               : 'This build is missing the secure backend URL '
-                                  'and/or Firebase authentication configuration, '
-                                  'so no cloud request is sent. Deterministic '
-                                  'local commands remain fully available. See the '
-                                  'setup report for the required configuration.',
+                                    'and/or Firebase authentication configuration, '
+                                    'so no cloud request is sent. Deterministic '
+                                    'local commands remain fully available. See the '
+                                    'setup report for the required configuration.',
                           style: AppText.body(context).copyWith(height: 1.4),
                         ),
                       ],
@@ -193,8 +193,12 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   GlassCard(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                        AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                    ),
                     child: SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _consent,
@@ -207,8 +211,10 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                                 await _setConsent(false);
                               }
                             },
-                      title: Text('Allow Gemini cloud assistance',
-                          style: AppText.bodyStrong(context)),
+                      title: Text(
+                        'Allow Gemini cloud assistance',
+                        style: AppText.bodyStrong(context),
+                      ),
                       subtitle: Text(
                         'Off by default. Local commands never need this.',
                         style: AppText.caption(context),
@@ -240,9 +246,10 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Financial data stays local by default.',
-                            style:
-                                AppText.title(context).copyWith(fontSize: 13)),
+                        Text(
+                          'Financial data stays local by default.',
+                          style: AppText.title(context).copyWith(fontSize: 13),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Server-side rate limits, request caps, a maximum of '
@@ -255,11 +262,15 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
                         const SizedBox(height: AppSpacing.md),
                         OutlinedButton.icon(
                           onPressed: _clearingAudit ? null : _clearAudit,
-                          icon:
-                              const Icon(Icons.delete_sweep_outlined, size: 18),
-                          label: Text(_clearingAudit
-                              ? 'Clearing…'
-                              : 'Clear encrypted assistant audit trail'),
+                          icon: const Icon(
+                            Icons.delete_sweep_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            _clearingAudit
+                                ? 'Clearing…'
+                                : 'Clear encrypted assistant audit trail',
+                          ),
                         ),
                       ],
                     ),
@@ -270,10 +281,8 @@ class _AssistantPrivacyScreenState extends State<AssistantPrivacyScreen> {
     );
   }
 
-  Widget _sectionLabel(String text) => Text(
-        text.toUpperCase(),
-        style: AppText.overline(context),
-      );
+  Widget _sectionLabel(String text) =>
+      Text(text.toUpperCase(), style: AppText.overline(context));
 }
 
 class _BulletCard extends StatelessWidget {
@@ -315,9 +324,11 @@ class _BulletCard extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: Text(item,
-                        style: AppText.body(context)
-                            .copyWith(fontSize: 11.5, height: 1.35)),
+                    child: Text(
+                      item,
+                      style: AppText.body(context)
+                          .copyWith(fontSize: 11.5, height: 1.35),
+                    ),
                   ),
                 ],
               ),

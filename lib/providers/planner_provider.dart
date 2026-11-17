@@ -54,7 +54,7 @@ class PlannerProvider with ChangeNotifier {
   late final Future<void> _initialization;
 
   PlannerProvider({LedgerEncryptionService? encryption})
-      : _encryption = encryption ?? LedgerEncryptionService() {
+    : _encryption = encryption ?? LedgerEncryptionService() {
     _initialization = _load();
   }
 
@@ -94,15 +94,21 @@ class PlannerProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _thresholds = _readThresholds(prefs);
 
-      final budgets =
-          await _readRecord(prefs, _budgetsPrefsKey, budgetsRecordId);
+      final budgets = await _readRecord(
+        prefs,
+        _budgetsPrefsKey,
+        budgetsRecordId,
+      );
       if (budgets != null) _categoryBudgets = _decodeBudgets(budgets);
 
       final plans = await _readRecord(prefs, _plansPrefsKey, plansRecordId);
       if (plans != null) _plans = _decodePlans(plans);
 
-      final hidden =
-          await _readRecord(prefs, _hiddenBillsPrefsKey, hiddenBillsRecordId);
+      final hidden = await _readRecord(
+        prefs,
+        _hiddenBillsPrefsKey,
+        hiddenBillsRecordId,
+      );
       if (hidden != null) _hiddenBillKeys = _decodeHiddenBills(hidden);
     } catch (error) {
       // Leave in-memory state empty but LOCKED: nothing on disk is touched.
@@ -126,8 +132,10 @@ class PlannerProvider with ChangeNotifier {
   ) async {
     final raw = prefs.getString(prefsKey);
     if (raw == null) return null;
-    final clear =
-        await _encryption.decryptText(raw, expectedRecordId: recordId);
+    final clear = await _encryption.decryptText(
+      raw,
+      expectedRecordId: recordId,
+    );
     return jsonDecode(clear);
   }
 
@@ -195,15 +203,21 @@ class PlannerProvider with ChangeNotifier {
   void _requireWritable() {
     if (_loadError != null) {
       throw StateError(
-          'Planner data could not be read, so changes are disabled to avoid '
-          'overwriting it.');
+        'Planner data could not be read, so changes are disabled to avoid '
+        'overwriting it.',
+      );
     }
   }
 
   Future<void> _writeRecord(
-      String prefsKey, String recordId, Object json) async {
-    final encrypted =
-        await _encryption.encryptText(jsonEncode(json), recordId: recordId);
+    String prefsKey,
+    String recordId,
+    Object json,
+  ) async {
+    final encrypted = await _encryption.encryptText(
+      jsonEncode(json),
+      recordId: recordId,
+    );
     final prefs = await SharedPreferences.getInstance();
     if (!await prefs.setString(prefsKey, encrypted)) {
       throw StateError('Planner data could not be saved.');
@@ -211,21 +225,21 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Object _budgetsJson(Map<String, int> budgets) => {
-        'schemaVersion': 1,
-        'currency': 'INR',
-        'budgets': budgets,
-      };
+    'schemaVersion': 1,
+    'currency': 'INR',
+    'budgets': budgets,
+  };
 
   Object _plansJson(List<RecurringPlan> plans) => {
-        'schemaVersion': 1,
-        'currency': 'INR',
-        'plans': [for (final p in plans) p.toJson()],
-      };
+    'schemaVersion': 1,
+    'currency': 'INR',
+    'plans': [for (final p in plans) p.toJson()],
+  };
 
   Object _hiddenBillsJson(Set<String> keys) => {
-        'schemaVersion': 1,
-        'keys': keys.toList()..sort(),
-      };
+    'schemaVersion': 1,
+    'keys': keys.toList()..sort(),
+  };
 
   /// Sets or replaces the budget for [category]. Persist first, then commit
   /// in memory, so a failed write leaves the visible state unchanged.
@@ -240,21 +254,23 @@ class PlannerProvider with ChangeNotifier {
         }
         final next = {..._categoryBudgets, name: amountMinor};
         await _writeRecord(
-            _budgetsPrefsKey, budgetsRecordId, _budgetsJson(next));
+          _budgetsPrefsKey,
+          budgetsRecordId,
+          _budgetsJson(next),
+        );
         _categoryBudgets = next;
         _notify();
       });
 
   Future<void> removeCategoryBudget(String category) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        if (!_categoryBudgets.containsKey(category)) return;
-        final next = {..._categoryBudgets}..remove(category);
-        await _writeRecord(
-            _budgetsPrefsKey, budgetsRecordId, _budgetsJson(next));
-        _categoryBudgets = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    if (!_categoryBudgets.containsKey(category)) return;
+    final next = {..._categoryBudgets}..remove(category);
+    await _writeRecord(_budgetsPrefsKey, budgetsRecordId, _budgetsJson(next));
+    _categoryBudgets = next;
+    _notify();
+  });
 
   /// Warning thresholds are percentages, not amounts, so they live in ordinary
   /// preferences. Only the supported choices are accepted.
@@ -262,72 +278,79 @@ class PlannerProvider with ChangeNotifier {
     await _initialization;
     final next = normalizeBudgetThresholds(values);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-        _thresholdsPrefsKey, [for (final t in next) t.toString()]);
+    await prefs.setStringList(_thresholdsPrefsKey, [
+      for (final t in next) t.toString(),
+    ]);
     _thresholds = next;
     _notify();
   }
 
   Future<void> addPlan(RecurringPlan plan) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        plan.validate();
-        if (_plans.any((p) => p.id == plan.id)) {
-          throw ArgumentError.value(plan.id, 'plan.id', 'already exists');
-        }
-        final next = [..._plans, plan];
-        await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
-        _plans = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    plan.validate();
+    if (_plans.any((p) => p.id == plan.id)) {
+      throw ArgumentError.value(plan.id, 'plan.id', 'already exists');
+    }
+    final next = [..._plans, plan];
+    await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
+    _plans = next;
+    _notify();
+  });
 
   Future<void> updatePlan(RecurringPlan plan) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        plan.validate();
-        final index = _plans.indexWhere((p) => p.id == plan.id);
-        if (index == -1) return;
-        final next = [..._plans]..[index] = plan;
-        await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
-        _plans = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    plan.validate();
+    final index = _plans.indexWhere((p) => p.id == plan.id);
+    if (index == -1) return;
+    final next = [..._plans]..[index] = plan;
+    await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
+    _plans = next;
+    _notify();
+  });
 
   Future<void> removePlan(String id) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        if (!_plans.any((p) => p.id == id)) return;
-        final next = _plans.where((p) => p.id != id).toList();
-        await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
-        _plans = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    if (!_plans.any((p) => p.id == id)) return;
+    final next = _plans.where((p) => p.id != id).toList();
+    await _writeRecord(_plansPrefsKey, plansRecordId, _plansJson(next));
+    _plans = next;
+    _notify();
+  });
 
   /// Hides one automatically detected bill. No transaction, plan or payment
   /// history is modified; only the derived row is suppressed.
   Future<void> hideAutoBill(String billerKey) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        final key = billerKey.trim();
-        if (key.isEmpty) return;
-        final next = {..._hiddenBillKeys, key};
-        await _writeRecord(
-            _hiddenBillsPrefsKey, hiddenBillsRecordId, _hiddenBillsJson(next));
-        _hiddenBillKeys = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    final key = billerKey.trim();
+    if (key.isEmpty) return;
+    final next = {..._hiddenBillKeys, key};
+    await _writeRecord(
+      _hiddenBillsPrefsKey,
+      hiddenBillsRecordId,
+      _hiddenBillsJson(next),
+    );
+    _hiddenBillKeys = next;
+    _notify();
+  });
 
   /// Restores a previously hidden auto-detected bill (the undo path).
   Future<void> unhideAutoBill(String billerKey) => _serialized(() async {
-        await _initialization;
-        _requireWritable();
-        if (!_hiddenBillKeys.contains(billerKey)) return;
-        final next = {..._hiddenBillKeys}..remove(billerKey);
-        await _writeRecord(
-            _hiddenBillsPrefsKey, hiddenBillsRecordId, _hiddenBillsJson(next));
-        _hiddenBillKeys = next;
-        _notify();
-      });
+    await _initialization;
+    _requireWritable();
+    if (!_hiddenBillKeys.contains(billerKey)) return;
+    final next = {..._hiddenBillKeys}..remove(billerKey);
+    await _writeRecord(
+      _hiddenBillsPrefsKey,
+      hiddenBillsRecordId,
+      _hiddenBillsJson(next),
+    );
+    _hiddenBillKeys = next;
+    _notify();
+  });
 
   /// Moves a plan to its following due date. This only reschedules the plan;
   /// it never creates a ledger transaction.
@@ -349,9 +372,9 @@ class PlannerProvider with ChangeNotifier {
 
   /// Plans due within [days] days of [today] (overdue included).
   List<RecurringPlan> dueWithin(DateTime today, int days) => [
-        for (final p in upcomingPlans)
-          if (p.daysUntilDue(today) <= days) p,
-      ];
+    for (final p in upcomingPlans)
+      if (p.daysUntilDue(today) <= days) p,
+  ];
 
   /// Per-category budget progress for expenses in [period]. Excluded
   /// transactions never count; categories with a budget but no spending still
@@ -359,8 +382,7 @@ class PlannerProvider with ChangeNotifier {
   List<CategoryBudgetStatus> categoryStatuses(
     Iterable<TransactionModel> transactions,
     DateTimeRange period,
-  ) =>
-      computeCategoryStatuses(_categoryBudgets, transactions, period);
+  ) => computeCategoryStatuses(_categoryBudgets, transactions, period);
 }
 
 /// Pure, testable budget-vs-spend computation (integer paise only).

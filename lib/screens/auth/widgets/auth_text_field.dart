@@ -65,8 +65,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final passwordManager =
-        widget.autofillHint == null ? null : <String>[widget.autofillHint!];
+    final passwordManager = widget.autofillHint == null
+        ? null
+        : <String>[widget.autofillHint!];
 
     return TextField(
       controller: widget.controller,

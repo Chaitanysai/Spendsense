@@ -25,10 +25,10 @@ class AppearanceScreen extends StatelessWidget {
   const AppearanceScreen({super.key});
 
   static String modeLabel(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => 'System',
-        ThemeMode.light => 'Light',
-        ThemeMode.dark => 'Dark',
-      };
+    ThemeMode.system => 'System',
+    ThemeMode.light => 'Light',
+    ThemeMode.dark => 'Dark',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +121,10 @@ class AppearanceScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(theme.fontPreset.label,
-                              style: AppText.title(context)),
+                          Text(
+                            theme.fontPreset.label,
+                            style: AppText.title(context),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             'Text size ${(theme.fontScale * 100).round()}% · '
@@ -132,8 +134,10 @@ class AppearanceScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textTertiary(context)),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textTertiary(context),
+                    ),
                   ],
                 ),
               ),
@@ -152,9 +156,12 @@ class AppearanceScreen extends StatelessWidget {
                       for (final id in DashboardSection.ids)
                         SwitchListTile(
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg),
-                          title: Text(DashboardSection.label(id),
-                              style: AppText.bodyStrong(context)),
+                            horizontal: AppSpacing.lg,
+                          ),
+                          title: Text(
+                            DashboardSection.label(id),
+                            style: AppText.bodyStrong(context),
+                          ),
                           value: theme.isSectionVisible(id),
                           onChanged: (on) => theme.setSectionVisible(id, on),
                         ),
@@ -170,8 +177,10 @@ class AppearanceScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Reset to default',
-                              style: AppText.title(context)),
+                          Text(
+                            'Reset to default',
+                            style: AppText.title(context),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             '${AppPalette.defaultPalette.label} · Light',
@@ -399,8 +408,9 @@ class _PaletteRow extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.brand.withValues(alpha: 0.12),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.sm / 2),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.sm / 2,
+                            ),
                           ),
                           child: Text(
                             'DEFAULT',
@@ -408,13 +418,15 @@ class _PaletteRow extends StatelessWidget {
                             softWrap: false,
                             // 8.5 was below the legibility floor at font scale
                             // 1.0 and unreadable once the system scales text.
-                            style: AppText.weight(
-                                    AppText.label(context), FontWeight.w800)
-                                .copyWith(
-                              fontSize: 11,
-                              letterSpacing: 0.5,
-                              color: AppColors.brandWellInk(context),
-                            ),
+                            style:
+                                AppText.weight(
+                                  AppText.label(context),
+                                  FontWeight.w800,
+                                ).copyWith(
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                  color: AppColors.brandWellInk(context),
+                                ),
                           ),
                         ),
                       ],
@@ -422,11 +434,17 @@ class _PaletteRow extends StatelessWidget {
                   ),
                 ),
                 if (selected)
-                  Icon(Icons.check_circle_rounded,
-                      size: 22, color: AppColors.navSelected(context))
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 22,
+                    color: AppColors.navSelected(context),
+                  )
                 else
-                  Icon(Icons.circle_outlined,
-                      size: 22, color: AppColors.textTertiary(context)),
+                  Icon(
+                    Icons.circle_outlined,
+                    size: 22,
+                    color: AppColors.textTertiary(context),
+                  ),
               ],
             ),
           ),

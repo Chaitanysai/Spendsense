@@ -32,17 +32,17 @@ void main() {
   });
 
   BalanceHero hero({int income = 450000, int expense = 339400}) => BalanceHero(
-        incomeMinor: income,
-        expenseMinor: expense,
-        previousExpenseMinor: 300000,
-        previousIncomeMinor: 400000,
-        budgetMinor: 2000000,
-        periodLabel: '1 Nov – 30 Nov',
-        periodEnd: DateTime(2026, 11, 30),
-        visible: true,
-        onToggleVisibility: () {},
-        onSetBudget: () {},
-      );
+    incomeMinor: income,
+    expenseMinor: expense,
+    previousExpenseMinor: 300000,
+    previousIncomeMinor: 400000,
+    budgetMinor: 2000000,
+    periodLabel: '1 Nov – 30 Nov',
+    periodEnd: DateTime(2026, 11, 30),
+    visible: true,
+    onToggleVisibility: () {},
+    onSetBudget: () {},
+  );
 
   Future<void> pump(
     WidgetTester tester,
@@ -55,13 +55,15 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: Padding(padding: const EdgeInsets.all(16), child: child),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(padding: const EdgeInsets.all(16), child: child),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(seconds: 2));
   }
 
@@ -113,31 +115,41 @@ void main() {
     (360.0, 1.0),
     (360.0, 1.3),
   ]) {
-    testWidgets('all three Overview figures are whole at ${width}dp, ${scale}x',
-        (tester) async {
-      await pump(tester, hero(), width: width, scale: scale);
-      final v = viewport(tester);
-      expect(
+    testWidgets(
+      'all three Overview figures are whole at ${width}dp, ${scale}x',
+      (tester) async {
+        await pump(tester, hero(), width: width, scale: scale);
+        final v = viewport(tester);
+        expect(
           find.descendant(
             of: find.byType(AppKpiRow),
             matching: find.byType(SingleChildScrollView),
           ),
           findsNothing,
-          reason: 'three cards fit at ${width}dp: nothing to scroll');
-      for (final value in [income, expenses, net]) {
-        final p = painted(tester, value);
-        expect(inside(p.rect, v), isTrue,
-            reason: '$value ${p.rect} is not wholly inside the row $v');
-        expect(p.scale, greaterThanOrEqualTo(0.7),
-            reason: '$value is scaled to ${p.scale.toStringAsFixed(2)}');
-      }
-      expect(tester.takeException(), isNull);
-    });
+          reason: 'three cards fit at ${width}dp: nothing to scroll',
+        );
+        for (final value in [income, expenses, net]) {
+          final p = painted(tester, value);
+          expect(
+            inside(p.rect, v),
+            isTrue,
+            reason: '$value ${p.rect} is not wholly inside the row $v',
+          );
+          expect(
+            p.scale,
+            greaterThanOrEqualTo(0.7),
+            reason: '$value is scaled to ${p.scale.toStringAsFixed(2)}',
+          );
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   for (final scale in const [1.0, 1.3]) {
-    testWidgets('320dp, ${scale}x: no figure is half-cut, Net is reachable',
-        (tester) async {
+    testWidgets('320dp, ${scale}x: no figure is half-cut, Net is reachable', (
+      tester,
+    ) async {
       await pump(tester, hero(), width: 320, scale: scale);
       final v = viewport(tester);
       final scroller = find.descendant(
@@ -150,46 +162,56 @@ void main() {
       expect(inside(painted(tester, income).rect, v), isTrue);
       expect(inside(painted(tester, expenses).rect, v), isTrue);
       final restNet = painted(tester, net).rect;
-      expect(outside(restNet, v), isTrue,
-          reason: 'Net $restNet is partly visible in $v: a sliced figure');
+      expect(
+        outside(restNet, v),
+        isTrue,
+        reason: 'Net $restNet is partly visible in $v: a sliced figure',
+      );
 
       // Scrolled to the end: Net is whole.
       final position = tester
-          .state<ScrollableState>(find.descendant(
-            of: scroller,
-            matching: find.byType(Scrollable),
-          ))
+          .state<ScrollableState>(
+            find.descendant(of: scroller, matching: find.byType(Scrollable)),
+          )
           .position;
       position.jumpTo(position.maxScrollExtent);
       await tester.pump(const Duration(milliseconds: 300));
-      expect(inside(painted(tester, net).rect, v), isTrue,
-          reason: 'Net is not whole after scrolling to the end');
+      expect(
+        inside(painted(tester, net).rect, v),
+        isTrue,
+        reason: 'Net is not whole after scrolling to the end',
+      );
       expect(tester.takeException(), isNull);
     });
   }
 
   for (final width in const [320.0, 390.0]) {
-    testWidgets('a large figure scales down instead of clipping at ${width}dp',
-        (tester) async {
-      // ₹12,34,567 income, ₹9,87,654 expenses -> net ₹2,46,913.
-      await pump(
-        tester,
-        hero(income: 123456700, expense: 98765400),
-        width: width,
-      );
-      final v = viewport(tester);
-      final big = Formatters.currency.format(123456700);
-      final p = painted(tester, big);
-      if (width >= 360) {
-        expect(inside(p.rect, v), isTrue, reason: '$big ${p.rect} in $v');
-      } else {
-        // Scrolling row: Income is the first card, so it must be whole.
-        expect(inside(p.rect, v), isTrue, reason: '$big ${p.rect} in $v');
-      }
-      expect(p.scale, greaterThanOrEqualTo(0.7),
-          reason: '$big is scaled to ${p.scale.toStringAsFixed(2)}');
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'a large figure scales down instead of clipping at ${width}dp',
+      (tester) async {
+        // ₹12,34,567 income, ₹9,87,654 expenses -> net ₹2,46,913.
+        await pump(
+          tester,
+          hero(income: 123456700, expense: 98765400),
+          width: width,
+        );
+        final v = viewport(tester);
+        final big = Formatters.currency.format(123456700);
+        final p = painted(tester, big);
+        if (width >= 360) {
+          expect(inside(p.rect, v), isTrue, reason: '$big ${p.rect} in $v');
+        } else {
+          // Scrolling row: Income is the first card, so it must be whole.
+          expect(inside(p.rect, v), isTrue, reason: '$big ${p.rect} in $v');
+        }
+        expect(
+          p.scale,
+          greaterThanOrEqualTo(0.7),
+          reason: '$big is scaled to ${p.scale.toStringAsFixed(2)}',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('the trend stays readable in a narrow card', (tester) async {
@@ -202,8 +224,11 @@ void main() {
     for (final e in caption.evaluate()) {
       final ro = e.renderObject! as RenderParagraph;
       final scale = ro.getTransformTo(null).getMaxScaleOnAxis();
-      expect(scale, greaterThanOrEqualTo(0.8),
-          reason: 'the trend caption is scaled to ${scale.toStringAsFixed(2)}');
+      expect(
+        scale,
+        greaterThanOrEqualTo(0.8),
+        reason: 'the trend caption is scaled to ${scale.toStringAsFixed(2)}',
+      );
     }
   });
 }

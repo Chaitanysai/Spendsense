@@ -55,9 +55,7 @@ void main() {
     );
     final result = await client.send(
       message: 'How much did I spend?',
-      history: const [
-        RemoteHistoryTurn(role: 'user', text: 'Earlier'),
-      ],
+      history: const [RemoteHistoryTurn(role: 'user', text: 'Earlier')],
       toolExchanges: const [
         RemoteToolExchange(
           calls: [
@@ -66,7 +64,7 @@ void main() {
           responses: [
             {
               'name': 'search_transactions',
-              'response': {'matchedCount': 1}
+              'response': {'matchedCount': 1},
             },
           ],
         ),
@@ -94,18 +92,20 @@ void main() {
       endpoint: endpoint,
       authTokenProvider: auth,
       identityTokenProvider: identity,
-      httpClient: MockClient((_) async => http.Response(
-            jsonEncode({
-              'text': '',
-              'functionCalls': [
-                {
-                  'name': 'search_transactions',
-                  'args': {'brand': 'groww', 'limit': 10},
-                },
-              ],
-            }),
-            200,
-          )),
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'text': '',
+            'functionCalls': [
+              {
+                'name': 'search_transactions',
+                'args': {'brand': 'groww', 'limit': 10},
+              },
+            ],
+          }),
+          200,
+        ),
+      ),
     );
     final result = await valid.send(
       message: 'Groww?',
@@ -119,15 +119,17 @@ void main() {
       endpoint: endpoint,
       authTokenProvider: auth,
       identityTokenProvider: identity,
-      httpClient: MockClient((_) async => http.Response(
-            jsonEncode({
-              'text': '',
-              'functionCalls': [
-                {'name': 'apply_transaction_deletion', 'args': {}},
-              ],
-            }),
-            200,
-          )),
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'text': '',
+            'functionCalls': [
+              {'name': 'apply_transaction_deletion', 'args': {}},
+            ],
+          }),
+          200,
+        ),
+      ),
     );
     await expectLater(
       invalid.send(message: 'x', history: const [], toolExchanges: const []),
@@ -166,8 +168,11 @@ void main() {
       httpClient: MockClient((_) async => http.Response('{}', 503)),
     );
     await expectLater(
-      serverError
-          .send(message: 'x', history: const [], toolExchanges: const []),
+      serverError.send(
+        message: 'x',
+        history: const [],
+        toolExchanges: const [],
+      ),
       throwsA(
         isA<AssistantRemoteException>()
             .having((e) => e.code, 'code', 'server_error')
@@ -183,19 +188,24 @@ void main() {
       authTokenProvider: auth,
       identityTokenProvider: identity,
       clock: () => now,
-      httpClient: MockClient((_) async => http.Response(
-            jsonEncode({'text': 'ok'}),
-            200,
-          )),
+      httpClient: MockClient(
+        (_) async => http.Response(jsonEncode({'text': 'ok'}), 200),
+      ),
     );
     for (var i = 0; i < GeminiProxyClient.requestsPerMinute; i++) {
-      await client
-          .send(message: 'q$i', history: const [], toolExchanges: const []);
+      await client.send(
+        message: 'q$i',
+        history: const [],
+        toolExchanges: const [],
+      );
     }
     now = now.add(const Duration(seconds: 10));
     await expectLater(
       client.send(
-          message: 'one too many', history: const [], toolExchanges: const []),
+        message: 'one too many',
+        history: const [],
+        toolExchanges: const [],
+      ),
       throwsA(
         isA<AssistantRemoteException>().having(
           (e) => e.code,
@@ -267,37 +277,41 @@ void main() {
     expect(requests, 0);
   });
 
-  test('unconfigured identity provider fails closed without plugin calls',
-      () async {
-    const provider = FirebaseAssistantIdentityTokenProvider();
-    expect(provider.isConfigured, false);
-    await expectLater(
-      provider.getIdToken(),
-      throwsA(
-        isA<AssistantAuthException>().having(
-          (e) => e.code,
-          'code',
-          'auth_not_configured',
+  test(
+    'unconfigured identity provider fails closed without plugin calls',
+    () async {
+      const provider = FirebaseAssistantIdentityTokenProvider();
+      expect(provider.isConfigured, false);
+      await expectLater(
+        provider.getIdToken(),
+        throwsA(
+          isA<AssistantAuthException>().having(
+            (e) => e.code,
+            'code',
+            'auth_not_configured',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
-  test('unconfigured App Check provider fails closed without plugin calls',
-      () async {
-    const provider = FirebaseAppCheckTokenProvider();
-    expect(provider.isConfigured, false);
-    await expectLater(
-      provider.getToken(),
-      throwsA(
-        isA<AssistantAuthException>().having(
-          (e) => e.code,
-          'code',
-          'auth_not_configured',
+  test(
+    'unconfigured App Check provider fails closed without plugin calls',
+    () async {
+      const provider = FirebaseAppCheckTokenProvider();
+      expect(provider.isConfigured, false);
+      await expectLater(
+        provider.getToken(),
+        throwsA(
+          isA<AssistantAuthException>().having(
+            (e) => e.code,
+            'code',
+            'auth_not_configured',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   test('timeouts and oversized context fail safely', () async {
     final slow = GeminiProxyClient(

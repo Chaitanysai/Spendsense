@@ -62,8 +62,9 @@ class CategoryChipPicker extends StatelessWidget {
               duration: AppMotion.respect(context, AppMotion.fast),
               curve: AppMotion.easeOut,
               // A chip is tappable, so it meets the 48dp minimum everywhere.
-              constraints:
-                  const BoxConstraints(minHeight: AppSpacing.wellTouchTarget),
+              constraints: const BoxConstraints(
+                minHeight: AppSpacing.wellTouchTarget,
+              ),
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
                 vertical: AppSpacing.sm,
@@ -88,8 +89,9 @@ class CategoryChipPicker extends StatelessWidget {
                   Text(
                     c,
                     style: AppText.label(context).copyWith(
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                       color: isSelected
                           ? AppColors.textPrimary(context)
                           : AppColors.textSecondary(context),

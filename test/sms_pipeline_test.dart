@@ -92,7 +92,9 @@ void main() {
 
     test('returns null when no bank is named', () {
       expect(
-          BankRecognizer.detectFromSms('Your bill of Rs 500 is due'), isNull);
+        BankRecognizer.detectFromSms('Your bill of Rs 500 is due'),
+        isNull,
+      );
     });
 
     test('normalize rejects degenerate and unknown values', () {
@@ -129,10 +131,7 @@ void main() {
         parser.parse(sms, id, at);
 
     test('reads a debit with merchant, bank and amount', () async {
-      final tx = await parse(
-        'HDFC Bank INR 450.00 debited at Zomato',
-        'sms-1',
-      );
+      final tx = await parse('HDFC Bank INR 450.00 debited at Zomato', 'sms-1');
       expect(tx, isNotNull);
       expect(tx!.type, TransactionType.expense);
       expect(tx.amountMinor, 45000);
@@ -144,13 +143,15 @@ void main() {
       // the dashboard never silently double-counts an inflow the user also
       // records manually.
       expect(
-          SmartParser.isDebitExpenseSms(
-              'HDFC Bank INR 25000.00 credited to your account'),
-          isFalse);
+        SmartParser.isDebitExpenseSms(
+          'HDFC Bank INR 25000.00 credited to your account',
+        ),
+        isFalse,
+      );
       expect(
-          await parse(
-              'HDFC Bank INR 25000.00 credited to your account', 'sms-2'),
-          isNull);
+        await parse('HDFC Bank INR 25000.00 credited to your account', 'sms-2'),
+        isNull,
+      );
     });
 
     test('ignores OTP, promotional and balance-only messages', () async {
@@ -196,18 +197,18 @@ void main() {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
     TransactionModel tx(String id, {double amount = 100}) => TransactionModel(
-          id: id,
-          amount: amount.toInt(),
-          type: TransactionType.expense,
-          merchant: 'Test',
-          category: 'Food',
-          paymentMethod: 'UPI',
-          date: DateTime(2026, 10, 12),
-          time: '12:00',
-          originalSms: 'raw $id',
-          isExcluded: false,
-          source: 'SMS',
-        );
+      id: id,
+      amount: amount.toInt(),
+      type: TransactionType.expense,
+      merchant: 'Test',
+      category: 'Food',
+      paymentMethod: 'UPI',
+      date: DateTime(2026, 10, 12),
+      time: '12:00',
+      originalSms: 'raw $id',
+      isExcluded: false,
+      source: 'SMS',
+    );
 
     test('contains() is false before anything is stored', () async {
       final cache = TransactionCacheService();

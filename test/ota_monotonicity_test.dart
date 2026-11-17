@@ -38,8 +38,10 @@ int _compare(String a, String b) {
   final x = split(a);
   final y = split(b);
   for (var i = 0; i < 3; i++) {
-    final cmp = parsePart(x.core.join('.'), i)
-        .compareTo(parsePart(y.core.join('.'), i));
+    final cmp = parsePart(
+      x.core.join('.'),
+      i,
+    ).compareTo(parsePart(y.core.join('.'), i));
     if (cmp != 0) return cmp;
   }
   if (x.pre == null && y.pre == null) return x.build.compareTo(y.build);
@@ -50,8 +52,9 @@ int _compare(String a, String b) {
   for (var i = 0; i < pa.length && i < pb.length; i++) {
     final na = int.tryParse(pa[i]);
     final nb = int.tryParse(pb[i]);
-    final cmp =
-        (na != null && nb != null) ? na.compareTo(nb) : pa[i].compareTo(pb[i]);
+    final cmp = (na != null && nb != null)
+        ? na.compareTo(nb)
+        : pa[i].compareTo(pb[i]);
     if (cmp != 0) return cmp;
   }
   final lengthCmp = pa.length.compareTo(pb.length);
@@ -96,8 +99,11 @@ void main() {
 
     for (final c in cases) {
       test('${c[0]} vs ${c[1]}', () {
-        expect(_compare(c[0], c[1]), _real(c[0]).compareTo(_real(c[1])),
-            reason: 'pre-flight and AppVersion disagree on ${c[0]} vs ${c[1]}');
+        expect(
+          _compare(c[0], c[1]),
+          _real(c[0]).compareTo(_real(c[1])),
+          reason: 'pre-flight and AppVersion disagree on ${c[0]} vs ${c[1]}',
+        );
       });
     }
 

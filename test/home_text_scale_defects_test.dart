@@ -27,16 +27,19 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Padding(padding: const EdgeInsets.all(16), child: child),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(padding: const EdgeInsets.all(16), child: child),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(seconds: 2));
   }
 
-  testWidgets('a dashboard section title is not cut off at 2x text',
-      (tester) async {
+  testWidgets('a dashboard section title is not cut off at 2x text', (
+    tester,
+  ) async {
     await pump(
       tester,
       SectionHeader(
@@ -50,13 +53,17 @@ void main() {
     final paragraph = tester.renderObject<RenderParagraph>(
       find.text('Monthly budget'),
     );
-    expect(paragraph.didExceedMaxLines, isFalse,
-        reason: 'the title was truncated with an ellipsis');
+    expect(
+      paragraph.didExceedMaxLines,
+      isFalse,
+      reason: 'the title was truncated with an ellipsis',
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the category percentage keeps its % sign inside its box at 2x',
-      (tester) async {
+  testWidgets('the category percentage keeps its % sign inside its box at 2x', (
+    tester,
+  ) async {
     await pump(
       tester,
       const CategorySpendingBars(
@@ -96,10 +103,14 @@ void main() {
       final applied = painted.width / ro.size.width;
       final glyphs = ro.getMaxIntrinsicWidth(double.infinity) * applied;
       final slotWidth = box!.size.width;
-      expect(glyphs, lessThanOrEqualTo(slotWidth + 0.5),
-          reason: '${ro.text.toPlainText()} paints '
-              '${glyphs.toStringAsFixed(1)}dp of glyphs in a '
-              '${slotWidth.toStringAsFixed(0)}dp box and is clipped');
+      expect(
+        glyphs,
+        lessThanOrEqualTo(slotWidth + 0.5),
+        reason:
+            '${ro.text.toPlainText()} paints '
+            '${glyphs.toStringAsFixed(1)}dp of glyphs in a '
+            '${slotWidth.toStringAsFixed(0)}dp box and is clipped',
+      );
     }
     expect(checked, 3, reason: 'expected three percentage labels');
     expect(tester.takeException(), isNull);

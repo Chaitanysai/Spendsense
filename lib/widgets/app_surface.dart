@@ -98,7 +98,8 @@ class AppSurface extends StatelessWidget {
     final resolvedPadding =
         padding ?? const EdgeInsets.all(AppSpacing.cardPadding);
     final resolvedShadow = shadow ?? level == AppSurfaceLevel.raised;
-    final resolvedBordered = bordered ??
+    final resolvedBordered =
+        bordered ??
         switch (level) {
           AppSurfaceLevel.canvas => false,
           AppSurfaceLevel.raised => AppColors.needsSurfaceEdge(context),
@@ -130,15 +131,16 @@ class AppSurface extends StatelessWidget {
       case AppSurfaceLevel.raised:
         // The palette's measured panel tone: the same fill, hairline and
         // shadow contract every existing card already uses.
-        decoration = AppColors.panelDecoration(
-          context,
-          borderRadius: borderRadius,
-          shadow: resolvedShadow,
-        ).copyWith(
-          border: resolvedBordered
-              ? Border.all(color: AppColors.glassBorder(context))
-              : null,
-        );
+        decoration =
+            AppColors.panelDecoration(
+              context,
+              borderRadius: borderRadius,
+              shadow: resolvedShadow,
+            ).copyWith(
+              border: resolvedBordered
+                  ? Border.all(color: AppColors.glassBorder(context))
+                  : null,
+            );
     }
 
     final resolved = decoration.copyWith(
@@ -184,10 +186,10 @@ class AppSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Divider(
-        height: 1,
-        thickness: 1,
-        indent: indent,
-        endIndent: endIndent,
-        color: AppColors.border(context).withValues(alpha: 0.72),
-      );
+    height: 1,
+    thickness: 1,
+    indent: indent,
+    endIndent: endIndent,
+    color: AppColors.border(context).withValues(alpha: 0.72),
+  );
 }

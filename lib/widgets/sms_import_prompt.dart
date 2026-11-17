@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'app_sheet.dart';
+
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -51,8 +53,9 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.overlaySurface(context),
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xl),
+        ),
         border: Border.fromBorderSide(
           AppColors.overlayEdgeFor(AppColors.isDark(context)),
         ),
@@ -60,7 +63,11 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.page, AppSpacing.md, AppSpacing.page, AppSpacing.xxl),
+            AppSpacing.page,
+            AppSpacing.md,
+            AppSpacing.page,
+            AppSpacing.xxl,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,13 +92,18 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                       gradient: AppColors.brandGradient,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: const Icon(Icons.sms_rounded,
-                        color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.sms_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Text('Check SMS from when?',
-                        style: AppText.h2(context)),
+                    child: Text(
+                      'Check SMS from when?',
+                      style: AppText.h2(context),
+                    ),
                   ),
                 ],
               ),
@@ -120,25 +132,34 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
                           color: AppColors.brand.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
-                        child: Icon(Icons.calendar_month_rounded,
-                            color: AppColors.brand),
+                        child: Icon(
+                          Icons.calendar_month_rounded,
+                          color: AppColors.brand,
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('START DATE',
-                                style: AppText.overline(context)),
+                            Text(
+                              'START DATE',
+                              style: AppText.overline(context),
+                            ),
                             const SizedBox(height: 2),
-                            Text(label,
-                                style: AppText.title(context)
-                                    .copyWith(fontSize: 15)),
+                            Text(
+                              label,
+                              style: AppText.title(context)
+                                  .copyWith(fontSize: 15),
+                            ),
                           ],
                         ),
                       ),
-                      Icon(Icons.edit_rounded,
-                          size: 20, color: AppColors.textSecondary(context)),
+                      Icon(
+                        Icons.edit_rounded,
+                        size: 20,
+                        color: AppColors.textSecondary(context),
+                      ),
                     ],
                   ),
                 ),
@@ -179,9 +200,9 @@ class _SmsImportPromptSheetState extends State<_SmsImportPromptSheet> {
     // Resolved before the await: this sheet pops itself once the write lands.
     final sound = SoundScope.maybeOf(context);
     try {
-      await context
-          .read<TransactionProvider>()
-          .setSmsScanStartDate(_selectedDate);
+      await context.read<TransactionProvider>().setSmsScanStartDate(
+        _selectedDate,
+      );
     } catch (error) {
       // The scan window was not stored, so nothing succeeded and nothing may
       // announce success. Leave the sheet open so the date can be retried.

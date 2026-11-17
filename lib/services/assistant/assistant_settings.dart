@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Build-time backend endpoint. This is a URL, never an API key.
 abstract final class AssistantConfig {
-  static const String proxyUrl =
-      String.fromEnvironment('SPENDSENSE_AI_PROXY_URL');
+  static const String proxyUrl = String.fromEnvironment(
+    'SPENDSENSE_AI_PROXY_URL',
+  );
 
   /// HTTPS is required. The only HTTP exception is a loopback development
   /// endpoint used by unit tests; nothing here ever reads a Gemini key.
@@ -13,7 +14,8 @@ abstract final class AssistantConfig {
     final uri = Uri.tryParse(value.trim());
     if (uri == null || uri.host.isEmpty) return false;
     if (uri.scheme == 'https') return true;
-    final loopback = uri.host == 'localhost' ||
+    final loopback =
+        uri.host == 'localhost' ||
         uri.host == '127.0.0.1' ||
         uri.host == '10.0.2.2';
     return uri.scheme == 'http' && loopback;

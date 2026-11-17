@@ -17,21 +17,20 @@ TransactionModel tx({
   String originalSms = '',
   String? reference,
   String source = 'SMS-Parser',
-}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: amountMinor,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'UPI',
-      date: date,
-      time: '10:00',
-      originalSms: originalSms,
-      isExcluded: excluded,
-      reference: reference,
-      source: source,
-    );
+}) => TransactionModel(
+  id: id,
+  amountMinor: amountMinor,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'UPI',
+  date: date,
+  time: '10:00',
+  originalSms: originalSms,
+  isExcluded: excluded,
+  reference: reference,
+  source: source,
+);
 
 class MemoryLedger implements AssistantLedger {
   final List<TransactionModel> _transactions;
@@ -44,9 +43,9 @@ class MemoryLedger implements AssistantLedger {
     List<TransactionModel>? transactions,
     List<RecurringPlan>? plans,
     Set<String>? hidden,
-  })  : _transactions = [...?transactions],
-        _plans = [...?plans],
-        _hidden = {...?hidden};
+  }) : _transactions = [...?transactions],
+       _plans = [...?plans],
+       _hidden = {...?hidden};
 
   @override
   List<TransactionModel> get transactions => List.unmodifiable(_transactions);
@@ -72,11 +71,12 @@ class MemoryLedger implements AssistantLedger {
 
   @override
   Future<List<TransactionModel>> deleteTransactionsByIds(
-      Set<String> ids) async {
+    Set<String> ids,
+  ) async {
     deletionWrites++;
     final removed = [
       for (final item in _transactions)
-        if (ids.contains(item.id)) item
+        if (ids.contains(item.id)) item,
     ];
     _transactions.removeWhere((item) => ids.contains(item.id));
     return removed;
@@ -203,7 +203,7 @@ class ScriptedRemote implements AssistantRemoteClient {
   Object? error;
 
   ScriptedRemote({List<RemoteAssistantTurn>? turns, this.error})
-      : turns = [...?turns];
+    : turns = [...?turns];
 
   @override
   Future<RemoteAssistantTurn> send({
@@ -211,11 +211,13 @@ class ScriptedRemote implements AssistantRemoteClient {
     required List<RemoteHistoryTurn> history,
     required List<RemoteToolExchange> toolExchanges,
   }) async {
-    calls.add(RemoteCall(
-      message: message,
-      history: List.of(history),
-      toolExchanges: List.of(toolExchanges),
-    ));
+    calls.add(
+      RemoteCall(
+        message: message,
+        history: List.of(history),
+        toolExchanges: List.of(toolExchanges),
+      ),
+    );
     if (error != null) throw error!;
     if (index >= turns.length) {
       return const RemoteAssistantTurn(text: 'Done.');

@@ -87,8 +87,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _merchantController =
-        TextEditingController(text: widget.transaction.merchant);
+    _merchantController = TextEditingController(
+      text: widget.transaction.merchant,
+    );
     _amountController = TextEditingController(
       text: formatPaise(widget.transaction.amountMinor, trimZeroPaise: true),
     );
@@ -247,8 +248,10 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         const SizedBox(height: AppSpacing.xl),
                         Semantics(
                           header: true,
-                          child: Text('Original SMS',
-                              style: AppText.title(context)),
+                          child: Text(
+                            'Original SMS',
+                            style: AppText.title(context),
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         AppSurface(
@@ -265,14 +268,15 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                                   // storing the raw text. Stored bodies (older
                                   // records) still display unchanged.
                                   ? (widget.transaction.source == 'Manual'
-                                      ? 'No source message (manually added).'
-                                      : 'The source message is not stored. '
-                                          'Amount, merchant and date were read '
-                                          'from your bank SMS.')
+                                        ? 'No source message (manually added).'
+                                        : 'The source message is not stored. '
+                                              'Amount, merchant and date were read '
+                                              'from your bank SMS.')
                                   : SmsContentPolicy.preserve(
-                                      widget.transaction.originalSms),
-                              style:
-                                  AppText.body(context).copyWith(height: 1.5),
+                                      widget.transaction.originalSms,
+                                    ),
+                              style: AppText.body(context)
+                                  .copyWith(height: 1.5),
                             ),
                           ),
                         ),
@@ -310,8 +314,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
                         // the action lights up.
                         onPressed:
                             _amountController.text.trim().isEmpty || _saving
-                                ? null
-                                : _save,
+                            ? null
+                            : _save,
                       ),
                     ],
                   ),
@@ -380,8 +384,9 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
         Material(
           type: MaterialType.transparency,
           child: SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
             // The same 40dp plate and 12dp gap the rows above use
             // (AppListRow), so all three titles start on one line.
             secondary: IconWell(
@@ -389,8 +394,10 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
               color: AppColors.textSecondary(context),
             ),
             horizontalTitleGap: AppSpacing.md,
-            title: Text('Exclude from Insights',
-                style: AppText.bodyStrong(context)),
+            title: Text(
+              'Exclude from Insights',
+              style: AppText.bodyStrong(context),
+            ),
             subtitle: Text(
               "Don't count this in totals",
               style: AppText.bodySmall(context),
@@ -494,8 +501,11 @@ class _FormError extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 18, color: AppColors.danger),
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: AppColors.danger,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(

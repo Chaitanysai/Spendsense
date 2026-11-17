@@ -73,8 +73,9 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isExpense = transaction.type == TransactionType.expense;
-    final amountColor =
-        isExpense ? AppColors.expenseRed : AppColors.incomeGreen;
+    final amountColor = isExpense
+        ? AppColors.expenseRed
+        : AppColors.incomeGreen;
     final amountPrefix = isExpense ? '−' : '+';
     final catColor = CategoryStyle.color(transaction.category);
     final radius = BorderRadius.circular(AppRadius.md);
@@ -103,7 +104,8 @@ class TransactionTile extends StatelessWidget {
         sound: SoundEventType.buttonTap,
         child: Semantics(
           button: true,
-          label: '${transaction.merchant}, ${transaction.category}, '
+          label:
+              '${transaction.merchant}, ${transaction.category}, '
               '$amountPrefix ${Formatters.currency.format(transaction.amountMinor)}'
               '${transaction.isExcluded ? ', excluded from totals' : ''}',
           excludeSemantics: true,
@@ -156,29 +158,33 @@ class TransactionTile extends StatelessWidget {
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.warning.withValues(alpha: 0.18),
+                                color: AppColors.warning.withValues(
+                                  alpha: 0.18,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 'REVIEW',
-                                style: AppText.weight(
-                                  AppText.label(context),
-                                  FontWeight.w700,
-                                ).copyWith(
-                                  fontSize: 10,
-                                  // A fixed brown was unreadable on dark cards;
-                                  // the ink is resolved against the badge as
-                                  // it is actually composited.
-                                  color: AppColors.inkOnWash(
-                                    context,
-                                    AppColors.warning,
-                                    alpha: 0.18,
-                                  ),
-                                  letterSpacing: 0.4,
-                                ),
+                                style:
+                                    AppText.weight(
+                                      AppText.label(context),
+                                      FontWeight.w700,
+                                    ).copyWith(
+                                      fontSize: 10,
+                                      // A fixed brown was unreadable on dark cards;
+                                      // the ink is resolved against the badge as
+                                      // it is actually composited.
+                                      color: AppColors.inkOnWash(
+                                        context,
+                                        AppColors.warning,
+                                        alpha: 0.18,
+                                      ),
+                                      letterSpacing: 0.4,
+                                    ),
                               ),
                             ),
                           ],
@@ -242,10 +248,8 @@ class _MetaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = AppText.body(context).copyWith(
-      fontSize: 11.5,
-      color: AppColors.textTertiary(context),
-    );
+    final style = AppText.body(context)
+        .copyWith(fontSize: 11.5, color: AppColors.textTertiary(context));
     final icon = transactionSourceIcon(source);
     if (icon == null) {
       return Text(

@@ -7,11 +7,7 @@ class SmsMessageModel {
   final String body;
   final DateTime date;
 
-  SmsMessageModel({
-    required this.id,
-    required this.body,
-    required this.date,
-  });
+  SmsMessageModel({required this.id, required this.body, required this.date});
 }
 
 class SmsService {
@@ -20,9 +16,9 @@ class SmsService {
   SmsService({
     Future<PermissionStatus> Function()? requestSmsPermission,
     Future<bool> Function()? openSettings,
-  })  : _requestSmsPermission =
-            requestSmsPermission ?? (() => Permission.sms.request()),
-        _openSettings = openSettings ?? openAppSettings;
+  }) : _requestSmsPermission =
+           requestSmsPermission ?? (() => Permission.sms.request()),
+       _openSettings = openSettings ?? openAppSettings;
 
   final SmsQuery _query = SmsQuery();
   final Future<PermissionStatus> Function() _requestSmsPermission;
@@ -53,30 +49,36 @@ class SmsService {
     try {
       final messages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
-        count:
-            800, // Process larger chunk so we don't miss past sms due to inbox limit
+        count: 800, // Process larger chunk so we don't miss past sms due to inbox limit
       );
 
       final normalizedFromDate = fromDate == null
           ? null
           : DateTime(fromDate.year, fromDate.month, fromDate.day);
 
-      return messages.map((msg) {
-        // ─── FIX: msg.date from flutter_sms_inbox is DateTime?, NOT int ───
-        // The previous `msg.date is int` check was always false, causing
-        // every transaction to use DateTime.now() instead of the real date.
-        final DateTime resolvedDate = _safeDate(msg.date);
+      return messages
+          .map((msg) {
+            // ─── FIX: msg.date from flutter_sms_inbox is DateTime?, NOT int ───
+            // The previous `msg.date is int` check was always false, causing
+            // every transaction to use DateTime.now() instead of the real date.
+            final DateTime resolvedDate = _safeDate(msg.date);
 
-        return SmsMessageModel(
-          id: msg.id?.toString() ?? "",
-          body: msg.body ?? "",
-          date: resolvedDate,
-        );
-      }).where((msg) {
-        if (normalizedFromDate == null) return true;
-        final smsDay = DateTime(msg.date.year, msg.date.month, msg.date.day);
-        return !smsDay.isBefore(normalizedFromDate);
-      }).toList();
+            return SmsMessageModel(
+              id: msg.id?.toString() ?? "",
+              body: msg.body ?? "",
+              date: resolvedDate,
+            );
+          })
+          .where((msg) {
+            if (normalizedFromDate == null) return true;
+            final smsDay = DateTime(
+              msg.date.year,
+              msg.date.month,
+              msg.date.day,
+            );
+            return !smsDay.isBefore(normalizedFromDate);
+          })
+          .toList();
     } catch (e) {
       debugPrint("❌ SMS fetch error: $e");
       return [];

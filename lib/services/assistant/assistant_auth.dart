@@ -45,8 +45,9 @@ abstract final class AssistantAuthConfig {
   /// The startup bootstrap (`AppCheckBootstrap`) reads this same
   /// `FIREBASE_APP_CHECK_DEBUG_TOKEN` define and only uses it in debug builds.
   /// Never commit it.
-  static const String debugToken =
-      String.fromEnvironment('FIREBASE_APP_CHECK_DEBUG_TOKEN');
+  static const String debugToken = String.fromEnvironment(
+    'FIREBASE_APP_CHECK_DEBUG_TOKEN',
+  );
 
   static bool get isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

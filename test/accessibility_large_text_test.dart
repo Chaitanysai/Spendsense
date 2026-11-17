@@ -17,19 +17,22 @@ import 'package:spendsense/utils/app_palette.dart';
 /// layout overflow errors at elevated text scales, with data and empty.
 
 TransactionModel _tx(
-        String id, int amountMinor, DateTime date, String merchant) =>
-    TransactionModel(
-      id: id,
-      amountMinor: amountMinor,
-      type: TransactionType.expense,
-      merchant: merchant,
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: date,
-      time: '10:00',
-      originalSms: '',
-      isExcluded: false,
-    );
+  String id,
+  int amountMinor,
+  DateTime date,
+  String merchant,
+) => TransactionModel(
+  id: id,
+  amountMinor: amountMinor,
+  type: TransactionType.expense,
+  merchant: merchant,
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: date,
+  time: '10:00',
+  originalSms: '',
+  isExcluded: false,
+);
 
 void main() {
   setUpAll(() {
@@ -37,15 +40,16 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  const permissionsChannel =
-      MethodChannel('flutter.baseflow.com/permissions/methods');
+  const permissionsChannel = MethodChannel(
+    'flutter.baseflow.com/permissions/methods',
+  );
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(permissionsChannel, (call) async {
-      // An empty status map: every requested permission reads as denied.
-      return <int, int>{};
-    });
+          // An empty status map: every requested permission reads as denied.
+          return <int, int>{};
+        });
     AppColors.applyPalette(AppPalette.emerald);
   });
   tearDown(() {
@@ -54,9 +58,11 @@ void main() {
     AppColors.applyPalette(AppPalette.emerald);
   });
 
-  Future<TransactionProvider> pumpDashboard(WidgetTester tester,
-      {required double textScale,
-      List<TransactionModel> seed = const []}) async {
+  Future<TransactionProvider> pumpDashboard(
+    WidgetTester tester, {
+    required double textScale,
+    List<TransactionModel> seed = const [],
+  }) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
@@ -88,20 +94,21 @@ void main() {
   }
 
   List<TransactionModel> sampleTransactions() => [
-        for (var i = 0; i < 8; i++)
-          _tx(
-            'tx-$i',
-            12500 + i * 7,
-            DateTime(2026, 10, 1 + i),
-            i.isEven
-                ? 'SyntheticShop'
-                : 'A Very Long Merchant Name That Stresses Line Wrapping $i',
-          ),
-      ];
+    for (var i = 0; i < 8; i++)
+      _tx(
+        'tx-$i',
+        12500 + i * 7,
+        DateTime(2026, 10, 1 + i),
+        i.isEven
+            ? 'SyntheticShop'
+            : 'A Very Long Merchant Name That Stresses Line Wrapping $i',
+      ),
+  ];
 
   for (final scale in [1.3, 2.0]) {
-    testWidgets('dashboard with data has no overflow at ${scale}x text',
-        (tester) async {
+    testWidgets('dashboard with data has no overflow at ${scale}x text', (
+      tester,
+    ) async {
       await pumpDashboard(tester, textScale: scale, seed: sampleTransactions());
       // The dashboard's own marker. This used to assert the auth screen's
       // "Welcome back", which this harness never renders (the app opens on
@@ -111,8 +118,9 @@ void main() {
       // reported by the binding with the full widget chain.
     });
 
-    testWidgets('empty dashboard has no overflow at ${scale}x text',
-        (tester) async {
+    testWidgets('empty dashboard has no overflow at ${scale}x text', (
+      tester,
+    ) async {
       await pumpDashboard(tester, textScale: scale);
       expect(find.text('Spend Amount'), findsOneWidget);
       expect(tester.takeException(), isNull);

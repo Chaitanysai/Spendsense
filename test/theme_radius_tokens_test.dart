@@ -33,8 +33,11 @@ void main() {
         AppRadius.xl,
       ];
       for (var i = 1; i < steps.length; i++) {
-        expect(steps[i], greaterThan(steps[i - 1]),
-            reason: 'step $i is not larger than the one below it');
+        expect(
+          steps[i],
+          greaterThan(steps[i - 1]),
+          reason: 'step $i is not larger than the one below it',
+        );
       }
     });
   });
@@ -50,25 +53,33 @@ void main() {
     });
 
     test('freeze card and plate — 100+ call sites depend on these numbers', () {
-      expect(AppRadius.card, 16,
-          reason: 'AppSpacing.cardPadding pairs with it');
+      expect(
+        AppRadius.card,
+        16,
+        reason: 'AppSpacing.cardPadding pairs with it',
+      );
       expect(AppRadius.plate, 10);
     });
 
-    test('stay ordered from the innermost plate to the outermost container',
-        () {
-      final scale = <double>[
-        AppRadius.icon,
-        AppRadius.tile,
-        AppRadius.card,
-        AppRadius.panel,
-        AppRadius.container,
-      ];
-      for (var i = 1; i < scale.length; i++) {
-        expect(scale[i], greaterThanOrEqualTo(scale[i - 1]),
-            reason: 'a plane cannot be rounder than the one inside it');
-      }
-    });
+    test(
+      'stay ordered from the innermost plate to the outermost container',
+      () {
+        final scale = <double>[
+          AppRadius.icon,
+          AppRadius.tile,
+          AppRadius.card,
+          AppRadius.panel,
+          AppRadius.container,
+        ];
+        for (var i = 1; i < scale.length; i++) {
+          expect(
+            scale[i],
+            greaterThanOrEqualTo(scale[i - 1]),
+            reason: 'a plane cannot be rounder than the one inside it',
+          );
+        }
+      },
+    );
   });
 
   group('nested', () {
@@ -103,8 +114,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body:
-                IconWell(icon: Icons.receipt_long_rounded, color: Colors.blue),
+            body: IconWell(
+              icon: Icons.receipt_long_rounded,
+              color: Colors.blue,
+            ),
           ),
         ),
       );
@@ -115,8 +128,9 @@ void main() {
       expect(container.constraints!.maxWidth, AppSpacing.wellSize);
     });
 
-    testWidgets('honours a scaled plate and keeps the glyph proportional',
-        (tester) async {
+    testWidgets('honours a scaled plate and keeps the glyph proportional', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -133,8 +147,10 @@ void main() {
       final container = tester.widget<Container>(find.byType(Container));
       expect(container.constraints!.maxWidth, 48);
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.borderRadius,
-          const BorderRadius.all(Radius.circular(AppRadius.card)));
+      expect(
+        decoration.borderRadius,
+        const BorderRadius.all(Radius.circular(AppRadius.card)),
+      );
 
       final icon = tester.widget<Icon>(find.byType(Icon));
       // 48 * (20 / 40) — the glyph keeps the standard well's proportion.
@@ -154,25 +170,27 @@ void main() {
         ),
       );
 
-      final decoration = tester
-          .widget<Container>(find.byType(Container))
-          .decoration! as BoxDecoration;
+      final decoration =
+          tester.widget<Container>(find.byType(Container)).decoration!
+              as BoxDecoration;
       expect(decoration.shape, BoxShape.circle);
       expect(decoration.borderRadius, isNull);
     });
   });
 
   group('stations that adopt the tokens agree with their container', () {
-    testWidgets('the home drag ghost matches the GlassCard it lifts',
-        (tester) async {
+    testWidgets('the home drag ghost matches the GlassCard it lifts', (
+      tester,
+    ) async {
       // A lifted row is the same card, so a shadow drawn at a different radius
       // reads as the card changing shape mid-drag.
       const card = GlassCard(child: SizedBox.shrink());
       expect(card.radius, AppRadius.card);
     });
 
-    testWidgets('an inner plate can sit concentrically in a card',
-        (tester) async {
+    testWidgets('an inner plate can sit concentrically in a card', (
+      tester,
+    ) async {
       final inner = AppRadius.nested(AppRadius.card, AppSpacing.md);
       expect(inner, lessThan(AppRadius.card));
       expect(inner, 4);

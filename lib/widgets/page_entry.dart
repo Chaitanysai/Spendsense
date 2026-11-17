@@ -104,8 +104,10 @@ class PageEntryHost extends StatefulWidget {
   /// entrance every time the user came back from a pushed route, which is
   /// motion in front of the user rather than a response to them. Kept so
   /// existing call sites keep compiling.
-  @Deprecated('Route-return replay was removed; this flag no longer does '
-      'anything.')
+  @Deprecated(
+    'Route-return replay was removed; this flag no longer does '
+    'anything.',
+  )
   final bool replayOnRouteReturn;
 
   const PageEntryHost({
@@ -207,8 +209,10 @@ class _PageEntranceState extends State<PageEntrance>
     vsync: this,
     duration: widget.duration,
   );
-  late Animation<double> _curved =
-      CurvedAnimation(parent: _controller, curve: widget.curve);
+  late Animation<double> _curved = CurvedAnimation(
+    parent: _controller,
+    curve: widget.curve,
+  );
   Timer? _delayTimer;
   int? _generation;
   bool _initialised = false;

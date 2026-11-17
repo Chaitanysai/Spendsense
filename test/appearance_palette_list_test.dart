@@ -61,13 +61,17 @@ void main() {
     await pumpScreen(tester);
 
     for (final heading in ['PREMIUM', 'ADDITIONAL', 'CLASSIC']) {
-      expect(find.text(heading), findsOneWidget,
-          reason: 'missing section "$heading"');
+      expect(
+        find.text(heading),
+        findsOneWidget,
+        reason: 'missing section "$heading"',
+      );
     }
   });
 
-  testWidgets('tapping a supplied palette applies and persists it',
-      (tester) async {
+  testWidgets('tapping a supplied palette applies and persists it', (
+    tester,
+  ) async {
     final provider = await pumpScreen(tester);
 
     final target = AppPalette.all.firstWhere((p) => p.id == 'wine_sand');
@@ -91,8 +95,11 @@ void main() {
     for (final id in ['midnight_indigo_vanilla', 'royal_blue_cream']) {
       final palette = AppPalette.all.firstWhere((p) => p.id == id);
       final text = tester.widget<Text>(find.text(palette.label));
-      expect(text.maxLines, greaterThanOrEqualTo(2),
-          reason: '${palette.label} is capped to one line');
+      expect(
+        text.maxLines,
+        greaterThanOrEqualTo(2),
+        reason: '${palette.label} is capped to one line',
+      );
 
       final paragraph = tester.renderObject<RenderParagraph>(
         find.descendant(
@@ -100,37 +107,49 @@ void main() {
           matching: find.text(palette.label),
         ),
       );
-      expect(paragraph.didExceedMaxLines, isFalse,
-          reason: '${palette.label} is clipped at text scale 1.0');
+      expect(
+        paragraph.didExceedMaxLines,
+        isFalse,
+        reason: '${palette.label} is clipped at text scale 1.0',
+      );
     }
   });
 
-  testWidgets('the longest names still render at a common text scale',
-      (tester) async {
+  testWidgets('the longest names still render at a common text scale', (
+    tester,
+  ) async {
     await pumpScreen(tester, textScale: 1.3);
 
-    final palette =
-        AppPalette.all.firstWhere((p) => p.id == 'midnight_indigo_vanilla');
+    final palette = AppPalette.all.firstWhere(
+      (p) => p.id == 'midnight_indigo_vanilla',
+    );
     final paragraph = tester.renderObject<RenderParagraph>(
       find.descendant(
         of: find.byType(AppearanceScreen),
         matching: find.text(palette.label),
       ),
     );
-    expect(paragraph.didExceedMaxLines, isFalse,
-        reason: '${palette.label} is clipped at text scale 1.3');
+    expect(
+      paragraph.didExceedMaxLines,
+      isFalse,
+      reason: '${palette.label} is clipped at text scale 1.3',
+    );
   });
 
-  testWidgets('rows survive a large text scale without overflowing',
-      (tester) async {
+  testWidgets('rows survive a large text scale without overflowing', (
+    tester,
+  ) async {
     await pumpScreen(tester, textScale: 1.6);
 
     final scrollable = find.byType(Scrollable).first;
     for (var i = 0; i < 24; i++) {
       await tester.drag(scrollable, const Offset(0, -260));
       await tester.pump();
-      expect(tester.takeException(), isNull,
-          reason: 'overflowed at scroll step $i');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'overflowed at scroll step $i',
+      );
     }
   });
 }

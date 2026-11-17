@@ -42,10 +42,12 @@ void main() {
           textScaler: TextScaler.linear(scale),
         ),
         child: MaterialApp(
-          home: Builder(builder: (c) {
-            hostContext = c;
-            return const Scaffold(body: SizedBox());
-          }),
+          home: Builder(
+            builder: (c) {
+              hostContext = c;
+              return const Scaffold(body: SizedBox());
+            },
+          ),
         ),
       ),
     );
@@ -55,24 +57,31 @@ void main() {
   }
 
   for (final scale in [1.0, 1.3]) {
-    testWidgets('lowest content clears the keyboard at ${scale}x',
-        (tester) async {
+    testWidgets('lowest content clears the keyboard at ${scale}x', (
+      tester,
+    ) async {
       await pumpSheet(tester, scale: scale);
       // `AddTransactionScreen` fills the sheet *route*, which itself runs to the
       // screen bottom. What must clear the IME is the painted surface and the
       // last interactive element, so those are what is measured here.
       final submit = tester.getRect(find.text('Add expense').last);
       // ignore: avoid_print
-      print('scale $scale submit=${submit.top.toStringAsFixed(1)}..'
-          '${submit.bottom.toStringAsFixed(1)} keyboardTop=$keyboardTop');
-      expect(submit.bottom, lessThanOrEqualTo(keyboardTop + 0.5),
-          reason:
-              'submit label sits ${(submit.bottom - keyboardTop).toStringAsFixed(1)}dp '
-              'behind the keyboard at ${scale}x');
+      print(
+        'scale $scale submit=${submit.top.toStringAsFixed(1)}..'
+        '${submit.bottom.toStringAsFixed(1)} keyboardTop=$keyboardTop',
+      );
+      expect(
+        submit.bottom,
+        lessThanOrEqualTo(keyboardTop + 0.5),
+        reason:
+            'submit label sits ${(submit.bottom - keyboardTop).toStringAsFixed(1)}dp '
+            'behind the keyboard at ${scale}x',
+      );
     });
 
-    testWidgets('fields are scrollable, not clipped at ${scale}x',
-        (tester) async {
+    testWidgets('fields are scrollable, not clipped at ${scale}x', (
+      tester,
+    ) async {
       await pumpSheet(tester, scale: scale);
       // Merchant and Category are below the amount card; with the keyboard up
       // they must be reachable by scrolling rather than cut off.

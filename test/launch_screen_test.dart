@@ -19,9 +19,7 @@ void main() {
   tearDown(() => AppColors.applyPalette(AppPalette.defaultPalette));
 
   testWidgets('launch screen paints the mark and wordmark', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: SpendSenseLaunchScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: SpendSenseLaunchScreen()));
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('SpendSense'), findsOneWidget);
@@ -42,17 +40,16 @@ void main() {
     expect(find.byType(SpendSenseLaunchScreen), findsNothing);
   });
 
-  testWidgets('forced gate holds the launch screen then reveals the app',
-      (tester) async {
+  testWidgets('forced gate holds the launch screen then reveals the app', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final transactions = TransactionProvider();
     await transactions.ready;
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: transactions),
-        ],
+        providers: [ChangeNotifierProvider.value(value: transactions)],
         child: const MaterialApp(
           home: AppLaunchGate(
             forceShow: true,
@@ -71,8 +68,9 @@ void main() {
     expect(find.byType(SpendSenseLaunchScreen), findsNothing);
   });
 
-  testWidgets('launch canvas follows the active palette for every theme',
-      (tester) async {
+  testWidgets('launch canvas follows the active palette for every theme', (
+    tester,
+  ) async {
     // The launch screen used to paint Premium Blue's ramp literally, so every
     // other theme flashed navy before its own world appeared. This locks the
     // canvas to the selected palette and keeps the white wordmark legible on
@@ -83,9 +81,7 @@ void main() {
       // A unique key per palette forces a fresh element: without it the first
       // build is reused and the canvas would be read from the previous theme.
       await tester.pumpWidget(
-        MaterialApp(
-          home: SpendSenseLaunchScreen(key: ValueKey(palette.id)),
-        ),
+        MaterialApp(home: SpendSenseLaunchScreen(key: ValueKey(palette.id))),
       );
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -94,20 +90,27 @@ void main() {
       seen.add(canvas.toARGB32().toRadixString(16));
 
       // White copy sits on this canvas, so it has to clear AA.
-      expect(AppColors.contrastRatio(Colors.white, canvas),
-          greaterThanOrEqualTo(4.5),
-          reason: '${palette.id}: wordmark is unreadable on the launch canvas');
+      expect(
+        AppColors.contrastRatio(Colors.white, canvas),
+        greaterThanOrEqualTo(4.5),
+        reason: '${palette.id}: wordmark is unreadable on the launch canvas',
+      );
 
       // Each palette must paint its own canvas, not a shared fixed one.
-      expect(AppColors.contrastRatio(canvas, palette.darkBackground),
-          lessThan(4.5),
-          reason: '${palette.id}: launch canvas ignores the palette');
+      expect(
+        AppColors.contrastRatio(canvas, palette.darkBackground),
+        lessThan(4.5),
+        reason: '${palette.id}: launch canvas ignores the palette',
+      );
 
       expect(tester.takeException(), isNull, reason: palette.id);
     }
 
     // Distinct themes must produce distinct launch canvases.
-    expect(seen.length, greaterThan(10),
-        reason: 'launch canvas collapsed to a handful of fixed colours');
+    expect(
+      seen.length,
+      greaterThan(10),
+      reason: 'launch canvas collapsed to a handful of fixed colours',
+    );
   });
 }

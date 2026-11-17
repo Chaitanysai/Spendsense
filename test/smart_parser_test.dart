@@ -64,20 +64,22 @@ void main() {
       expect(result.merchant, 'Bank Debit');
     });
 
-    test('rejects credit, balance-only, OTP and promotional messages',
-        () async {
-      for (final sms in [
-        'Your account has been credited with Rs 5000',
-        'Available balance Rs 5000',
-        'OTP for transaction is 123456',
-        'Get cashback of Rs 100',
-        'Rs 178.09 credited ... Bal Rs 9618.86',
-        'Your payment of Rs 250 was declined and not debited',
-        'Dr Sharma balance is Rs 5000',
-      ]) {
-        expect(await parse(sms), isNull, reason: sms);
-      }
-    });
+    test(
+      'rejects credit, balance-only, OTP and promotional messages',
+      () async {
+        for (final sms in [
+          'Your account has been credited with Rs 5000',
+          'Available balance Rs 5000',
+          'OTP for transaction is 123456',
+          'Get cashback of Rs 100',
+          'Rs 178.09 credited ... Bal Rs 9618.86',
+          'Your payment of Rs 250 was declined and not debited',
+          'Dr Sharma balance is Rs 5000',
+        ]) {
+          expect(await parse(sms), isNull, reason: sms);
+        }
+      },
+    );
 
     test('uses debit amount before balance and reference sections', () async {
       final withBalance = await parse(
@@ -139,13 +141,17 @@ void main() {
       expect(result!.amountMinor, 120000);
     });
 
-    test('money arriving is still rejected — "sent you" is not spending',
-        () async {
-      expect(
-        SmartParser.isDebitExpenseSms('Rahul has sent you Rs 600 on 01-11-26'),
-        isFalse,
-      );
-      expect(await parse('Rahul has sent you Rs 600 on 01-11-26'), isNull);
-    });
+    test(
+      'money arriving is still rejected — "sent you" is not spending',
+      () async {
+        expect(
+          SmartParser.isDebitExpenseSms(
+            'Rahul has sent you Rs 600 on 01-11-26',
+          ),
+          isFalse,
+        );
+        expect(await parse('Rahul has sent you Rs 600 on 01-11-26'), isNull);
+      },
+    );
   });
 }

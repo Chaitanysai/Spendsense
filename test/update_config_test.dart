@@ -21,24 +21,29 @@ void main() {
   const appId = 'com.example.spendsense';
 
   UpdateConfig configWith(Uri manifestUri) => UpdateConfig(
-        manifestUri: manifestUri,
-        appId: appId,
-        pinnedCertSha256: cert,
-        approvedHosts: {manifestUri.host.toLowerCase()},
-      );
+    manifestUri: manifestUri,
+    appId: appId,
+    pinnedCertSha256: cert,
+    approvedHosts: {manifestUri.host.toLowerCase()},
+  );
 
   group('manifest transport security', () {
     test('a cleartext manifest URI is refused before any request', () async {
       // Defence in depth: constructing UpdateConfig directly bypasses the
       // factory, so the service itself must refuse http.
       final service = UpdateService(
-        config:
-            configWith(Uri.parse('http://updates.example.com/manifest.json')),
+        config: configWith(
+          Uri.parse('http://updates.example.com/manifest.json'),
+        ),
       );
 
       final result = await service.checkForUpdates(
-        installed:
-            const AppVersion(major: 1, minor: 0, patch: 0, buildNumber: 1),
+        installed: const AppVersion(
+          major: 1,
+          minor: 0,
+          patch: 0,
+          buildNumber: 1,
+        ),
       );
 
       expect(result.status, UpdateCheckStatus.notConfigured);
@@ -47,24 +52,29 @@ void main() {
   });
 
   group('provider survives an unexpected failure', () {
-    test('a throwing service does not leave the provider permanently busy',
-        () async {
-      final provider = UpdateProvider(
-        service: _ThrowingService(),
-        installedVersionLoader: () async =>
-            const AppVersion(major: 1, minor: 0, patch: 0, buildNumber: 1),
-      );
+    test(
+      'a throwing service does not leave the provider permanently busy',
+      () async {
+        final provider = UpdateProvider(
+          service: _ThrowingService(),
+          installedVersionLoader: () async =>
+              const AppVersion(major: 1, minor: 0, patch: 0, buildNumber: 1),
+        );
 
-      await provider.check();
+        await provider.check();
 
-      expect(provider.isBusy, isFalse,
-          reason: 'a stranded _busy would block every future check');
-      expect(provider.state, UpdateUiState.error);
+        expect(
+          provider.isBusy,
+          isFalse,
+          reason: 'a stranded _busy would block every future check',
+        );
+        expect(provider.state, UpdateUiState.error);
 
-      // And a subsequent check must be able to run again.
-      await provider.check();
-      expect(provider.isBusy, isFalse);
-    });
+        // And a subsequent check must be able to run again.
+        await provider.check();
+        expect(provider.isBusy, isFalse);
+      },
+    );
   });
 
   group('download cleanup on unexpected failure', () {
@@ -85,8 +95,9 @@ void main() {
       );
 
       final service = UpdateService(
-        config:
-            configWith(Uri.parse('https://updates.example.com/manifest.json')),
+        config: configWith(
+          Uri.parse('https://updates.example.com/manifest.json'),
+        ),
         platform: const _ThrowingPlatform(),
         clientFactory: _ThrowingClient.new,
       );
@@ -99,8 +110,11 @@ void main() {
       final updatesDir = Directory('${dir.path}/updates');
       if (await updatesDir.exists()) {
         final leftovers = updatesDir.listSync();
-        expect(leftovers, isEmpty,
-            reason: 'a failed download must not leave an APK behind');
+        expect(
+          leftovers,
+          isEmpty,
+          reason: 'a failed download must not leave an APK behind',
+        );
       }
     });
   });
@@ -108,15 +122,14 @@ void main() {
 
 class _ThrowingService extends UpdateService {
   _ThrowingService()
-      : super(
-          config: UpdateConfig(
-            manifestUri: Uri.parse('https://updates.example.com/manifest.json'),
-            appId: 'com.example.spendsense',
-            pinnedCertSha256:
-                '42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367',
-            approvedHosts: const {'updates.example.com'},
-          ),
-        );
+    : super(
+        config: UpdateConfig(
+          manifestUri: Uri.parse('https://updates.example.com/manifest.json'),
+          appId: 'com.example.spendsense',
+          pinnedCertSha256: '42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367',
+          approvedHosts: const {'updates.example.com'},
+        ),
+      );
 
   @override
   Future<UpdateCheckResult> checkForUpdates({

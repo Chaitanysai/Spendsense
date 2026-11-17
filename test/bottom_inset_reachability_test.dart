@@ -68,21 +68,20 @@ void main() {
       String account = 'XX1234',
       String method = 'UPI',
       TransactionType type = TransactionType.expense,
-    }) =>
-        TransactionModel(
-          id: 'r${n++}',
-          amountMinor: minor,
-          type: type,
-          merchant: merchant,
-          category: category,
-          paymentMethod: method,
-          date: date,
-          time: '10:00',
-          originalSms: '',
-          isExcluded: false,
-          bank: bank,
-          account: account,
-        );
+    }) => TransactionModel(
+      id: 'r${n++}',
+      amountMinor: minor,
+      type: type,
+      merchant: merchant,
+      category: category,
+      paymentMethod: method,
+      date: date,
+      time: '10:00',
+      originalSms: '',
+      isExcluded: false,
+      bank: bank,
+      account: account,
+    );
 
     final rows = <TransactionModel>[];
     // Monthly subscriptions, so Bills has something to detect.
@@ -95,8 +94,9 @@ void main() {
       ('Insurance', 420000, 'Insurance'),
     ]) {
       for (var k = 0; k < 4; k++) {
-        rows.add(row(
-            day.subtract(Duration(days: 30 * k + 3)), minor, name, category));
+        rows.add(
+          row(day.subtract(Duration(days: 30 * k + 3)), minor, name, category),
+        );
       }
     }
     // Everyday spend across banks, accounts and payment methods.
@@ -112,19 +112,27 @@ void main() {
       'Education',
     ];
     for (var i = 0; i < 40; i++) {
-      rows.add(row(
-        day.subtract(Duration(days: i % 28)),
-        15000 + i * 900,
-        'Store $i',
-        categories[i % categories.length],
-        bank: banks[i % banks.length],
-        account: 'XX${1000 + i % 6}',
-        method: methods[i % methods.length],
-      ));
+      rows.add(
+        row(
+          day.subtract(Duration(days: i % 28)),
+          15000 + i * 900,
+          'Store $i',
+          categories[i % categories.length],
+          bank: banks[i % banks.length],
+          account: 'XX${1000 + i % 6}',
+          method: methods[i % methods.length],
+        ),
+      );
     }
-    rows.add(row(
-        day.subtract(const Duration(days: 8)), 8500000, 'Salary', 'Income',
-        type: TransactionType.income));
+    rows.add(
+      row(
+        day.subtract(const Duration(days: 8)),
+        8500000,
+        'Salary',
+        'Income',
+        type: TransactionType.income,
+      ),
+    );
     return rows;
   }
 
@@ -188,11 +196,12 @@ void main() {
     double screenHeight,
   ) async {
     ScrollPosition? page;
-    for (final s in tester
-        .stateList<ScrollableState>(
-          find.descendant(of: screen, matching: find.byType(Scrollable)),
-        )
-        .where((s) => s.widget.axis == Axis.vertical)) {
+    for (final s
+        in tester
+            .stateList<ScrollableState>(
+              find.descendant(of: screen, matching: find.byType(Scrollable)),
+            )
+            .where((s) => s.widget.axis == Axis.vertical)) {
       if (page == null ||
           s.position.viewportDimension > page.viewportDimension) {
         page = s.position;
@@ -211,16 +220,19 @@ void main() {
     var lowest = 0.0;
     var last = '';
     var cutOff = 0;
-    for (final e in find
-        .descendant(of: screen, matching: find.byType(RichText))
-        .evaluate()) {
+    for (final e
+        in find
+            .descendant(of: screen, matching: find.byType(RichText))
+            .evaluate()) {
       final ro = e.renderObject;
       if (ro is! RenderParagraph || !ro.attached || !ro.hasSize) continue;
       if (ro.size.isEmpty) continue;
       final text = ro.text.toPlainText().trim();
       if (text.isEmpty) continue;
       final r = MatrixUtils.transformRect(
-          ro.getTransformTo(null), Offset.zero & ro.size);
+        ro.getTransformTo(null),
+        Offset.zero & ro.size,
+      );
       // Built ahead of the viewport, or scrolled off the top: not on screen.
       if (r.top >= screenHeight || r.bottom <= 0) continue;
       if (r.bottom > screenHeight + 0.5) {
@@ -259,8 +271,9 @@ void main() {
       ('Cards', CardsScreen),
       ('Settings', SettingsScreen),
     ]) {
-      testWidgets('$label end of scroll clears the navigation bar: $name',
-          (tester) async {
+      testWidgets('$label end of scroll clears the navigation bar: $name', (
+        tester,
+      ) async {
         final errors = collectErrors();
         final tx = await pump(tester, w: w, h: h, scale: scale, inset: inset);
         await tester.tap(find.byKey(ValueKey('nav:$label')));
@@ -276,31 +289,41 @@ void main() {
         final barTop = tester.getRect(find.byType(FloatingNavBar)).top;
         // ignore: avoid_print
         print(
-            'REACH $label | $name | scrollMax=${result.max.toStringAsFixed(0)} '
-            'barTop=${barTop.toStringAsFixed(1)} '
-            'lowestText=${result.lowest.toStringAsFixed(1)} '
-            '(${result.last.length > 28 ? result.last.substring(0, 28) : result.last}) '
-            'gap=${(barTop - result.lowest).toStringAsFixed(1)} '
-            'cutOff=${result.cutOff} overflowIn=${errors.join(',')}');
+          'REACH $label | $name | scrollMax=${result.max.toStringAsFixed(0)} '
+          'barTop=${barTop.toStringAsFixed(1)} '
+          'lowestText=${result.lowest.toStringAsFixed(1)} '
+          '(${result.last.length > 28 ? result.last.substring(0, 28) : result.last}) '
+          'gap=${(barTop - result.lowest).toStringAsFixed(1)} '
+          'cutOff=${result.cutOff} overflowIn=${errors.join(',')}',
+        );
         expect(result.lowest, greaterThan(0), reason: 'no text found');
-        expect(result.lowest, lessThanOrEqualTo(barTop),
-            reason: '$label ends under the bar at $name');
-        expect(result.cutOff, 0,
-            reason: '$label has text cut off by the screen at $name');
-        expect(errors, knownOverflows['$label|$name'] ?? <String>{},
-            reason: '$label layout errors at $name differ from the known set');
+        expect(
+          result.lowest,
+          lessThanOrEqualTo(barTop),
+          reason: '$label ends under the bar at $name',
+        );
+        expect(
+          result.cutOff,
+          0,
+          reason: '$label has text cut off by the screen at $name',
+        );
+        expect(
+          errors,
+          knownOverflows['$label|$name'] ?? <String>{},
+          reason: '$label layout errors at $name differ from the known set',
+        );
       });
     }
 
-    testWidgets('Activity end of scroll is fully on screen: $name',
-        (tester) async {
+    testWidgets('Activity end of scroll is fully on screen: $name', (
+      tester,
+    ) async {
       final errors = collectErrors();
       final tx = await pump(tester, w: w, h: h, scale: scale, inset: inset);
       tx.debugSeed(ledger(DateTime.now()));
       await tester.pump(const Duration(seconds: 1));
-      Navigator.of(tester.element(find.byType(MainNavigationShell))).push(
-        AppPageRoute<void>(builder: (_) => const ActivityScreen()),
-      );
+      Navigator.of(tester.element(find.byType(MainNavigationShell)))
+          .push(AppPageRoute<void>(builder: (_) => const ActivityScreen()));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       tx.debugSeed(ledger(DateTime.now()));
@@ -311,17 +334,21 @@ void main() {
       final bottom = h - inset;
       // ignore: avoid_print
       print(
-          'REACH Activity | $name | scrollMax=${result.max.toStringAsFixed(0)} '
-          'screenBottom=${bottom.toStringAsFixed(1)} '
-          'lowestText=${result.lowest.toStringAsFixed(1)} '
-          '(${result.last.length > 28 ? result.last.substring(0, 28) : result.last}) '
-          'gap=${(bottom - result.lowest).toStringAsFixed(1)} '
-          'cutOff=${result.cutOff} overflowIn=${errors.join(',')}');
+        'REACH Activity | $name | scrollMax=${result.max.toStringAsFixed(0)} '
+        'screenBottom=${bottom.toStringAsFixed(1)} '
+        'lowestText=${result.lowest.toStringAsFixed(1)} '
+        '(${result.last.length > 28 ? result.last.substring(0, 28) : result.last}) '
+        'gap=${(bottom - result.lowest).toStringAsFixed(1)} '
+        'cutOff=${result.cutOff} overflowIn=${errors.join(',')}',
+      );
       expect(result.max, greaterThan(0), reason: 'Activity did not scroll');
       expect(result.lowest, lessThanOrEqualTo(bottom));
       expect(result.cutOff, 0);
-      expect(errors, knownOverflows['Activity|$name'] ?? <String>{},
-          reason: 'Activity layout errors at $name differ from the known set');
+      expect(
+        errors,
+        knownOverflows['Activity|$name'] ?? <String>{},
+        reason: 'Activity layout errors at $name differ from the known set',
+      );
     });
   }
 }

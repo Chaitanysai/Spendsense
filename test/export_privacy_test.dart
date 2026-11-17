@@ -11,30 +11,39 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final cache = TransactionCacheService();
     await cache.init();
-    await cache.put(TransactionModel(
-      id: 'tx-1',
-      amount: 100,
-      type: TransactionType.expense,
-      merchant: 'Shop',
-      category: 'Shopping',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 23),
-      time: '10:00',
-      originalSms: 'raw bank message',
-      isExcluded: false,
-      bank: 'Bank',
-      account: '1234',
-      reference: 'UTR-1',
-    ));
+    await cache.put(
+      TransactionModel(
+        id: 'tx-1',
+        amount: 100,
+        type: TransactionType.expense,
+        merchant: 'Shop',
+        category: 'Shopping',
+        paymentMethod: 'UPI',
+        date: DateTime(2026, 10, 23),
+        time: '10:00',
+        originalSms: 'raw bank message',
+        isExcluded: false,
+        bank: 'Bank',
+        account: '1234',
+        reference: 'UTR-1',
+      ),
+    );
 
     final safe =
         jsonDecode(await cache.exportToJsonString()) as Map<String, dynamic>;
     final record = (safe['transactions'] as List).single as Map;
 
     expect(
-        record.keys,
-        containsAll(
-            ['id', 'amountMinor', 'type', 'merchant', 'category', 'date']));
+      record.keys,
+      containsAll([
+        'id',
+        'amountMinor',
+        'type',
+        'merchant',
+        'category',
+        'date',
+      ]),
+    );
     expect(record, isNot(contains('originalSms')));
     expect(record, isNot(contains('account')));
     expect(record, isNot(contains('reference')));
@@ -44,20 +53,22 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final cache = TransactionCacheService();
     await cache.init();
-    await cache.put(TransactionModel(
-      id: 'tx-2',
-      amount: 100,
-      type: TransactionType.expense,
-      merchant: 'Shop',
-      category: 'Shopping',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 23),
-      time: '10:00',
-      originalSms: 'raw bank message',
-      isExcluded: false,
-      account: '1234',
-      reference: 'UTR-1',
-    ));
+    await cache.put(
+      TransactionModel(
+        id: 'tx-2',
+        amount: 100,
+        type: TransactionType.expense,
+        merchant: 'Shop',
+        category: 'Shopping',
+        paymentMethod: 'UPI',
+        date: DateTime(2026, 10, 23),
+        time: '10:00',
+        originalSms: 'raw bank message',
+        isExcluded: false,
+        account: '1234',
+        reference: 'UTR-1',
+      ),
+    );
 
     final sensitive = jsonDecode(
       await cache.exportToJsonString(includeSensitive: true),

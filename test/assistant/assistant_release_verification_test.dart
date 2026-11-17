@@ -111,19 +111,23 @@ void main() {
     expect(audit.entries, isEmpty);
   });
 
-  test('2 — this month spending uses calendar bounds and non-excluded rows',
-      () async {
-    final reply = await orchestrator.handle('How much did I spend this month?');
-    expect(reply.isError, false);
-    expect(reply.summary, isNotNull);
-    expect(reply.summary!.spendingMinor, 330000);
-    expect(reply.summary!.start, DateTime(2026, 10, 1));
-    expect(reply.summary!.end, DateTime(2026, 10, 25));
-    expect(reply.summary!.expenseCount, 3);
-    expect(reply.summary!.excludedCount, 1);
-    expect(ledger.exclusionWrites, 0);
-    expect(ledger.deletionWrites, 0);
-  });
+  test(
+    '2 — this month spending uses calendar bounds and non-excluded rows',
+    () async {
+      final reply = await orchestrator.handle(
+        'How much did I spend this month?',
+      );
+      expect(reply.isError, false);
+      expect(reply.summary, isNotNull);
+      expect(reply.summary!.spendingMinor, 330000);
+      expect(reply.summary!.start, DateTime(2026, 10, 1));
+      expect(reply.summary!.end, DateTime(2026, 10, 25));
+      expect(reply.summary!.expenseCount, 3);
+      expect(reply.summary!.excludedCount, 1);
+      expect(ledger.exclusionWrites, 0);
+      expect(ledger.deletionWrites, 0);
+    },
+  );
 
   test('3 — biggest expenses are ranked deterministically', () async {
     final reply = await orchestrator.handle('Show my biggest expenses.');
@@ -139,58 +143,61 @@ void main() {
     expect(ledger.deletionWrites, 0);
   });
 
-  test('4/5 — exclusion requires confirmation; undo restores original state',
-      () async {
-    final preview =
-        await orchestrator.handle('Exclude Groww from my spending.');
-    expect(preview.isError, false);
-    expect(preview.pendingAction, isNotNull);
-    final action = preview.pendingAction!;
-    expect(action.type, AssistantChangeType.exclusion);
-    expect(action.expectedCount, 2);
-    expect(action.expectedTotalMinor, 150000);
-    expect(action.spendingBeforeMinor, 450000);
-    expect(action.spendingAfterMinor, 300000);
-    expect(preview.sections.single.transactions, hasLength(2));
-    expect(ledger.transactions.length, 7);
-    expect(ledger.exclusionWrites, 0);
-    expect(audit.entries, isEmpty);
+  test(
+    '4/5 — exclusion requires confirmation; undo restores original state',
+    () async {
+      final preview = await orchestrator.handle(
+        'Exclude Groww from my spending.',
+      );
+      expect(preview.isError, false);
+      expect(preview.pendingAction, isNotNull);
+      final action = preview.pendingAction!;
+      expect(action.type, AssistantChangeType.exclusion);
+      expect(action.expectedCount, 2);
+      expect(action.expectedTotalMinor, 150000);
+      expect(action.spendingBeforeMinor, 450000);
+      expect(action.spendingAfterMinor, 300000);
+      expect(preview.sections.single.transactions, hasLength(2));
+      expect(ledger.transactions.length, 7);
+      expect(ledger.exclusionWrites, 0);
+      expect(audit.entries, isEmpty);
 
-    final applied = await orchestrator.confirmPending(action.id);
-    expect(applied.isError, false);
-    expect(applied.summary!.spendingMinor, 300000);
-    expect(ledger.exclusionWrites, 1);
-    expect(
-      ledger.transactions
-          .where((t) => t.id == 'groww-sep' || t.id == 'groww-oct')
-          .every((t) => t.isExcluded),
-      true,
-    );
-    // Exclusion preserves records, bills/plans and an already-excluded row.
-    expect(ledger.transactions.length, 7);
-    expect(
-      ledger.transactions
-          .singleWhere((t) => t.id == 'groww-excluded')
-          .isExcluded,
-      true,
-    );
-    expect(ledger.plans, hasLength(1));
-    expect(ledger.plans.single.title, 'Netflix');
-    expect(ledger.plans.single.amountMinor, 64900);
-    expect(audit.entries, hasLength(1));
+      final applied = await orchestrator.confirmPending(action.id);
+      expect(applied.isError, false);
+      expect(applied.summary!.spendingMinor, 300000);
+      expect(ledger.exclusionWrites, 1);
+      expect(
+        ledger.transactions
+            .where((t) => t.id == 'groww-sep' || t.id == 'groww-oct')
+            .every((t) => t.isExcluded),
+        true,
+      );
+      // Exclusion preserves records, bills/plans and an already-excluded row.
+      expect(ledger.transactions.length, 7);
+      expect(
+        ledger.transactions
+            .singleWhere((t) => t.id == 'groww-excluded')
+            .isExcluded,
+        true,
+      );
+      expect(ledger.plans, hasLength(1));
+      expect(ledger.plans.single.title, 'Netflix');
+      expect(ledger.plans.single.amountMinor, 64900);
+      expect(audit.entries, hasLength(1));
 
-    final undo = await orchestrator.handle('Undo that change.');
-    expect(undo.isError, false);
-    expect(undo.text, contains('Undone'));
-    expect(ledger.transactions.length, 7);
-    expect(
-      ledger.transactions
-          .where((t) => t.id == 'groww-sep' || t.id == 'groww-oct')
-          .every((t) => !t.isExcluded),
-      true,
-    );
-    expect(audit.entries.single.undone, true);
-  });
+      final undo = await orchestrator.handle('Undo that change.');
+      expect(undo.isError, false);
+      expect(undo.text, contains('Undone'));
+      expect(ledger.transactions.length, 7);
+      expect(
+        ledger.transactions
+            .where((t) => t.id == 'groww-sep' || t.id == 'groww-oct')
+            .every((t) => !t.isExcluded),
+        true,
+      );
+      expect(audit.entries.single.undone, true);
+    },
+  );
 
   test('6 — unpaid bills come from the planner and ledger', () async {
     final reply = await orchestrator.handle('Show my unpaid bills.');
@@ -203,8 +210,9 @@ void main() {
   });
 
   test('repeated confirmation cannot apply twice', () async {
-    final preview =
-        await orchestrator.handle('Exclude Groww from my spending.');
+    final preview = await orchestrator.handle(
+      'Exclude Groww from my spending.',
+    );
     final id = preview.pendingAction!.id;
     final first = await orchestrator.confirmPending(id);
     final second = await orchestrator.confirmPending(id);
@@ -215,8 +223,9 @@ void main() {
   });
 
   test('overlapping confirmations cannot apply twice', () async {
-    final preview =
-        await orchestrator.handle('Exclude Groww from my spending.');
+    final preview = await orchestrator.handle(
+      'Exclude Groww from my spending.',
+    );
     final id = preview.pendingAction!.id;
     final results = await Future.wait([
       orchestrator.confirmPending(id),

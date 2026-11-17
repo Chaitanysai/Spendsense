@@ -18,8 +18,10 @@ class _CountingGate implements AppCheckGate {
 }
 
 void main() {
-  FirebaseAppCheckTokenProvider providerWith(AppCheckGate gate,
-      {bool configured = true}) {
+  FirebaseAppCheckTokenProvider providerWith(
+    AppCheckGate gate, {
+    bool configured = true,
+  }) {
     return FirebaseAppCheckTokenProvider(
       appCheckGate: gate,
       configured: configured,
@@ -52,7 +54,10 @@ void main() {
       throwsA(
         isA<AssistantAuthException>()
             .having(
-                (error) => error.code, 'code', 'app_check_activation_failed')
+              (error) => error.code,
+              'code',
+              'app_check_activation_failed',
+            )
             .having(
               (error) => error.message,
               'message',
@@ -69,8 +74,11 @@ void main() {
     await expectLater(
       providerWith(gate, configured: false).getToken(),
       throwsA(
-        isA<AssistantAuthException>()
-            .having((error) => error.code, 'code', 'auth_not_configured'),
+        isA<AssistantAuthException>().having(
+          (error) => error.code,
+          'code',
+          'auth_not_configured',
+        ),
       ),
     );
     expect(gate.calls, 0);

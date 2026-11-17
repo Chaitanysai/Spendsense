@@ -52,7 +52,8 @@ class QuickActionGrid extends StatelessWidget {
   }) {
     if (count <= 0) return 1;
     final gaps = AppSpacing.tileGap * (count - 1);
-    final fitsOneRow = (width - gaps) / count >=
+    final fitsOneRow =
+        (width - gaps) / count >=
         AppSpacing.tileMinWidth * (textScale > 1 ? textScale : 1);
     if (fitsOneRow && textScale <= 1.3) return count;
     return (count / 2).ceil();
@@ -109,17 +110,17 @@ class QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle =
-        AppText.weight(AppText.label(context), FontWeight.w600).copyWith(
-      fontSize: 11.5,
-      height: 1.15,
-      color: AppColors.textPrimary(context),
-    );
+    final labelStyle = AppText.weight(AppText.label(context), FontWeight.w600)
+        .copyWith(
+          fontSize: 11.5,
+          height: 1.15,
+          color: AppColors.textPrimary(context),
+        );
     // Two lines at the effective text scale, rounded up to whole pixels.
     final labelHeight =
         (2 * 11.5 * 1.15 * MediaQuery.textScalerOf(context).scale(1))
-                .ceilToDouble() +
-            1;
+            .ceilToDouble() +
+        1;
     return Semantics(
       button: true,
       label: action.label,
@@ -129,8 +130,9 @@ class QuickActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         sound: SoundEventType.buttonTap,
         child: Container(
-          constraints:
-              const BoxConstraints(minHeight: AppSpacing.tileMinHeight),
+          constraints: const BoxConstraints(
+            minHeight: AppSpacing.tileMinHeight,
+          ),
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,

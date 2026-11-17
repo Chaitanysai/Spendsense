@@ -90,10 +90,7 @@ class PeriodMath {
   /// `start` is midnight of the cycle's first day; `end` is the end day at
   /// 23:59:59 (kept for callers that render or compare a DateTimeRange).
   /// Comparisons must use [containsLocalDate], which ignores the time-of-day.
-  static DateTimeRange salaryCycle({
-    required int salaryDay,
-    DateTime? now,
-  }) {
+  static DateTimeRange salaryCycle({required int salaryDay, DateTime? now}) {
     final today = dateOnly(now ?? DateTime.now());
     final thisMonthStart = clampStartDay(today.year, today.month, salaryDay);
 
@@ -122,19 +119,22 @@ class PeriodMath {
     DateTime? now,
   }) {
     final current = salaryCycle(salaryDay: salaryDay, now: now);
-    return salaryCycle(
-      salaryDay: salaryDay,
-      now: addDays(current.start, -1),
-    );
+    return salaryCycle(salaryDay: salaryDay, now: addDays(current.start, -1));
   }
 
   /// The calendar month containing [day] — a deliberately DIFFERENT period
   /// from the salary cycle, used for reporting labelled "This month".
   static DateTimeRange calendarMonth(DateTime day) => DateTimeRange(
-        start: DateTime(day.year, day.month, 1),
-        end: DateTime(
-            day.year, day.month, daysInMonth(day.year, day.month), 23, 59, 59),
-      );
+    start: DateTime(day.year, day.month, 1),
+    end: DateTime(
+      day.year,
+      day.month,
+      daysInMonth(day.year, day.month),
+      23,
+      59,
+      59,
+    ),
+  );
 
   /// The next calendar date on which salary arrives at or after [now].
   static DateTime nextSalaryDate(int salaryDay, {DateTime? now}) {

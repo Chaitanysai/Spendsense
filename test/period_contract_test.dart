@@ -60,9 +60,13 @@ void main() {
 
       test('the result is always midnight', () {
         expect(
-            PeriodMath.addDays(DateTime(2026, 10, 12, 18, 45, 30), 1).hour, 0);
-        expect(PeriodMath.addDays(DateTime(2026, 10, 12, 18, 45, 30), 1).minute,
-            0);
+          PeriodMath.addDays(DateTime(2026, 10, 12, 18, 45, 30), 1).hour,
+          0,
+        );
+        expect(
+          PeriodMath.addDays(DateTime(2026, 10, 12, 18, 45, 30), 1).minute,
+          0,
+        );
       });
 
       test('addDays(x, 0) equals dateOnly(x)', () {
@@ -78,41 +82,59 @@ void main() {
       );
 
       test('first instant of the start day is inside', () {
-        expect(PeriodMath.containsLocalDate(range, DateTime(2026, 10, 31)),
-            isTrue);
+        expect(
+          PeriodMath.containsLocalDate(range, DateTime(2026, 10, 31)),
+          isTrue,
+        );
       });
 
       test('one second before the start day is outside', () {
         expect(
-            PeriodMath.containsLocalDate(
-                range, DateTime(2026, 10, 30, 23, 59, 59)),
-            isFalse);
+          PeriodMath.containsLocalDate(
+            range,
+            DateTime(2026, 10, 30, 23, 59, 59),
+          ),
+          isFalse,
+        );
       });
 
       test('last second of the end day is inside', () {
         expect(
-            PeriodMath.containsLocalDate(
-                range, DateTime(2026, 11, 29, 23, 59, 59)),
-            isTrue);
+          PeriodMath.containsLocalDate(
+            range,
+            DateTime(2026, 11, 29, 23, 59, 59),
+          ),
+          isTrue,
+        );
       });
 
       test('midnight after the end day is outside', () {
-        expect(PeriodMath.containsLocalDate(range, DateTime(2026, 11, 30)),
-            isFalse);
+        expect(
+          PeriodMath.containsLocalDate(range, DateTime(2026, 11, 30)),
+          isFalse,
+        );
       });
 
-      test('the whole end day is included even when the range end is midnight',
-          () {
-        final r = DateTimeRange(
-            start: DateTime(2026, 10, 1), end: DateTime(2026, 10, 31));
-        expect(PeriodMath.containsLocalDate(r, DateTime(2026, 10, 31, 18)),
-            isTrue);
-      });
+      test(
+        'the whole end day is included even when the range end is midnight',
+        () {
+          final r = DateTimeRange(
+            start: DateTime(2026, 10, 1),
+            end: DateTime(2026, 10, 31),
+          );
+          expect(
+            PeriodMath.containsLocalDate(r, DateTime(2026, 10, 31, 18)),
+            isTrue,
+          );
+        },
+      );
 
       test('a UTC instant is judged by its local calendar day', () {
         expect(
           PeriodMath.containsLocalDate(
-              range, DateTime(2026, 11, 29, 12).toUtc()),
+            range,
+            DateTime(2026, 11, 29, 12).toUtc(),
+          ),
           isTrue,
         );
       });
@@ -131,9 +153,13 @@ void main() {
 
       test('a salary day outside 1..31 throws instead of normalising', () {
         expect(
-            () => PeriodMath.clampStartDay(2026, 10, 0), throwsArgumentError);
+          () => PeriodMath.clampStartDay(2026, 10, 0),
+          throwsArgumentError,
+        );
         expect(
-            () => PeriodMath.clampStartDay(2026, 10, 32), throwsArgumentError);
+          () => PeriodMath.clampStartDay(2026, 10, 32),
+          throwsArgumentError,
+        );
       });
     });
 
@@ -149,49 +175,69 @@ void main() {
   });
 
   group('PeriodProvider follows the approved salary-cycle rule', () {
-    test('salaryAlignedPeriod defaults to calendar months for salary day 1',
-        () {
-      final p = PeriodProvider.salaryAlignedPeriod(now: DateTime(2026, 10, 12));
-      expect(p.start, DateTime(2026, 10, 1));
-      expect(p.end, DateTime(2026, 10, 31, 23, 59, 59));
-    });
+    test(
+      'salaryAlignedPeriod defaults to calendar months for salary day 1',
+      () {
+        final p = PeriodProvider.salaryAlignedPeriod(
+          now: DateTime(2026, 10, 12),
+        );
+        expect(p.start, DateTime(2026, 10, 1));
+        expect(p.end, DateTime(2026, 10, 31, 23, 59, 59));
+      },
+    );
 
     test('salaryAlignedPeriod honours an explicit salary day', () {
       final p = PeriodProvider.salaryAlignedPeriod(
-          salaryDay: 31, now: DateTime(2027, 2, 28));
+        salaryDay: 31,
+        now: DateTime(2027, 2, 28),
+      );
       expect(p.start, DateTime(2027, 2, 28));
       expect(p.end, DateTime(2027, 3, 30, 23, 59, 59));
     });
 
     test('the rule holds for every day 2026-01-01..2028-12-31', () {
-      for (var day = DateTime(2026, 1, 1);
-          !day.isAfter(DateTime(2028, 12, 31));
-          day = PeriodMath.addDays(day, 1)) {
+      for (
+        var day = DateTime(2026, 1, 1);
+        !day.isAfter(DateTime(2028, 12, 31));
+        day = PeriodMath.addDays(day, 1)
+      ) {
         for (final salaryDay in [1, 15, 28, 29, 30, 31]) {
           final p = PeriodProvider.salaryAlignedPeriod(
-              salaryDay: salaryDay, now: day);
-          expect(PeriodMath.containsLocalDate(p, day), isTrue,
-              reason: 'salary=$salaryDay now=$day -> ${p.start}..${p.end}');
-          expect(p.start.isBefore(p.end), isTrue,
-              reason: 'salary=$salaryDay now=$day');
+            salaryDay: salaryDay,
+            now: day,
+          );
+          expect(
+            PeriodMath.containsLocalDate(p, day),
+            isTrue,
+            reason: 'salary=$salaryDay now=$day -> ${p.start}..${p.end}',
+          );
+          expect(
+            p.start.isBefore(p.end),
+            isTrue,
+            reason: 'salary=$salaryDay now=$day',
+          );
         }
       }
     });
 
-    test('changing the salary day changes currentPeriod (audit F1 resolved)',
-        () async {
-      SharedPreferences.setMockInitialValues({'salary_day': 1});
-      final p = PeriodProvider();
-      await p.init();
-      final dayOne = p.currentPeriod.start;
-      await p.setSalaryDay(25);
-      expect(p.salaryDay, 25);
-      expect(p.currentPeriod.start, isNot(dayOne));
-    });
+    test(
+      'changing the salary day changes currentPeriod (audit F1 resolved)',
+      () async {
+        SharedPreferences.setMockInitialValues({'salary_day': 1});
+        final p = PeriodProvider();
+        await p.init();
+        final dayOne = p.currentPeriod.start;
+        await p.setSalaryDay(25);
+        expect(p.salaryDay, 25);
+        expect(p.currentPeriod.start, isNot(dayOne));
+      },
+    );
 
     test('custom mode still wins over the salary cycle', () {
       final custom = DateTimeRange(
-          start: DateTime(2026, 3, 1), end: DateTime(2026, 3, 15));
+        start: DateTime(2026, 3, 1),
+        end: DateTime(2026, 3, 15),
+      );
       final p = PeriodProvider.fixedForTest(
         salaryDay: 25,
         now: DateTime(2026, 10, 12),

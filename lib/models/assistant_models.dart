@@ -11,22 +11,16 @@ import 'transaction_model.dart';
 /// whose description uses refund language; a transfer is a Transfer-category
 /// row (or an investment rail such as Groww / Zerodha). Excluded is a separate
 /// flag, not a kind, so an excluded transfer can still be labelled correctly.
-enum AssistantTransactionKind {
-  expense,
-  income,
-  refund,
-  transfer,
-  investment,
-}
+enum AssistantTransactionKind { expense, income, refund, transfer, investment }
 
 extension AssistantTransactionKindX on AssistantTransactionKind {
   String get label => switch (this) {
-        AssistantTransactionKind.expense => 'Expense',
-        AssistantTransactionKind.income => 'Income',
-        AssistantTransactionKind.refund => 'Refund / credit',
-        AssistantTransactionKind.transfer => 'Transfer',
-        AssistantTransactionKind.investment => 'Investment transfer',
-      };
+    AssistantTransactionKind.expense => 'Expense',
+    AssistantTransactionKind.income => 'Income',
+    AssistantTransactionKind.refund => 'Refund / credit',
+    AssistantTransactionKind.transfer => 'Transfer',
+    AssistantTransactionKind.investment => 'Investment transfer',
+  };
 }
 
 /// A safe, display-only projection of a stored transaction.
@@ -78,24 +72,21 @@ class AssistantTransactionView {
 
   bool get isIncome => type == TransactionType.income;
 
-  String get signedLabel => '${isIncome ? '+' : '−'} ${NumberFormat.currency(
-        locale: 'en_IN',
-        symbol: '₹',
-        decimalDigits: amountMinor % 100 == 0 ? 0 : 2,
-      ).format(amountMinor / 100)}';
+  String get signedLabel =>
+      '${isIncome ? '+' : '−'} ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: amountMinor % 100 == 0 ? 0 : 2).format(amountMinor / 100)}';
 
   String get dateLabel => DateFormat('d MMM yyyy').format(date.toLocal());
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'merchant': merchant,
-        'category': category,
-        'date': DateFormat('yyyy-MM-dd').format(date.toLocal()),
-        'amountMinor': amountMinor,
-        'type': type == TransactionType.income ? 'income' : 'expense',
-        'isExcluded': isExcluded,
-        'kind': kind.name,
-      };
+    'id': id,
+    'merchant': merchant,
+    'category': category,
+    'date': DateFormat('yyyy-MM-dd').format(date.toLocal()),
+    'amountMinor': amountMinor,
+    'type': type == TransactionType.income ? 'income' : 'expense',
+    'isExcluded': isExcluded,
+    'kind': kind.name,
+  };
 
   /// Minimal projection sent to Gemini when a tool result is needed.
   /// Bank, payment method, references and raw SMS are deliberately absent.
@@ -139,8 +130,10 @@ AssistantTransactionKind classifyTransaction(TransactionModel tx) {
 }
 
 bool _containsTerm(String haystack, String term) {
-  final normalized =
-      haystack.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+  final normalized = haystack.toLowerCase().replaceAll(
+    RegExp(r'[^a-z0-9]+'),
+    ' ',
+  );
   return ' $normalized '.contains(' $term ');
 }
 

@@ -16,8 +16,7 @@ class _EmptyMailSource extends GmailEmailSource {
   Future<List<GmailAlert>> fetchBankAlerts({
     required Set<String> seenIds,
     DateTime? since,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<DateTime?> lastSyncAt() async => null;

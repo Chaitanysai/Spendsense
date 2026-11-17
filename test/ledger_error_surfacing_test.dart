@@ -22,25 +22,26 @@ import 'package:spendsense/utils/app_palette.dart';
 const _tamperedIndex = {
   // A well-formed envelope whose payload cannot authenticate: any base64
   // garbage with the right envelope shape fails closed in decryptText.
-  'tx_cache_ids_v2':
-      '{"schemaVersion":2,"algorithm":"AES-256-GCM","nonce":"AAAA","ciphertext":"AAAA","mac":"AAAA"}',
+  'tx_cache_ids_v2': '{"schemaVersion":2,"algorithm":"AES-256-GCM","nonce":"AAAA","ciphertext":"AAAA","mac":"AAAA"}',
 };
 
 TransactionModel _tx(String id) => TransactionModel(
-      id: id,
-      amountMinor: 23950,
-      type: TransactionType.expense,
-      merchant: 'Merchant',
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 1),
-      time: '10:00',
-      originalSms: '',
-      isExcluded: false,
-    );
+  id: id,
+  amountMinor: 23950,
+  type: TransactionType.expense,
+  merchant: 'Merchant',
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: DateTime(2026, 10, 1),
+  time: '10:00',
+  originalSms: '',
+  isExcluded: false,
+);
 
-Future<void> _pumpApp(WidgetTester tester,
-    {Size size = const Size(1080, 2340)}) async {
+Future<void> _pumpApp(
+  WidgetTester tester, {
+  Size size = const Size(1080, 2340),
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
@@ -73,13 +74,14 @@ void main() {
   // startup SMS sync. Without a mocked permissions channel that sync never
   // settles in the test environment and the dashboard stays on skeletons.
   // Answering "denied" terminates the sync deterministically.
-  const permissionsChannel =
-      MethodChannel('flutter.baseflow.com/permissions/methods');
+  const permissionsChannel = MethodChannel(
+    'flutter.baseflow.com/permissions/methods',
+  );
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(permissionsChannel, (call) async {
-      return <int, int>{108: 0}; // sms permission: denied
-    });
+          return <int, int>{108: 0}; // sms permission: denied
+        });
     AppColors.applyPalette(AppPalette.emerald);
   });
   tearDown(() {
@@ -88,53 +90,65 @@ void main() {
     AppColors.applyPalette(AppPalette.emerald);
   });
 
-  test('provider records a ledger init failure as an error, not empty success',
-      () async {
-    SharedPreferences.setMockInitialValues(_tamperedIndex);
+  test(
+    'provider records a ledger init failure as an error, not empty success',
+    () async {
+      SharedPreferences.setMockInitialValues(_tamperedIndex);
 
-    final provider = TransactionProvider();
-    await provider.ready;
+      final provider = TransactionProvider();
+      await provider.ready;
 
-    expect(provider.hasLedgerInitError, isTrue,
-        reason: 'a failed ledger read must not look like a successful load');
-    expect(provider.ledgerInitError, isA<LedgerKeyUnavailableException>());
-    expect(provider.ledgerInitErrorCode, 'ledger_key_unavailable',
-        reason: 'the card must name the cause, not the runtime type');
-    expect(provider.transactions, isEmpty);
-    expect(provider.isLoadingCache, isFalse);
+      expect(
+        provider.hasLedgerInitError,
+        isTrue,
+        reason: 'a failed ledger read must not look like a successful load',
+      );
+      expect(provider.ledgerInitError, isA<LedgerKeyUnavailableException>());
+      expect(
+        provider.ledgerInitErrorCode,
+        'ledger_key_unavailable',
+        reason: 'the card must name the cause, not the runtime type',
+      );
+      expect(provider.transactions, isEmpty);
+      expect(provider.isLoadingCache, isFalse);
 
-    // A save into an unavailable ledger must fail loudly. Returning normally
-    // made the Add form announce "Expense added" and then discard the entry.
-    await expectLater(
-      provider.addTransaction(_tx('blocked')),
-      throwsA(isA<LedgerUnavailableException>()),
-    );
-    expect(provider.transactions, isEmpty);
-    await provider.syncFromSms();
-    expect(provider.hasLedgerInitError, isTrue);
-  });
+      // A save into an unavailable ledger must fail loudly. Returning normally
+      // made the Add form announce "Expense added" and then discard the entry.
+      await expectLater(
+        provider.addTransaction(_tx('blocked')),
+        throwsA(isA<LedgerUnavailableException>()),
+      );
+      expect(provider.transactions, isEmpty);
+      await provider.syncFromSms();
+      expect(provider.hasLedgerInitError, isTrue);
+    },
+  );
 
-  test('retrying after the store is repaired clears the error and loads',
-      () async {
-    SharedPreferences.setMockInitialValues(_tamperedIndex);
-    final provider = TransactionProvider();
-    await provider.ready;
-    expect(provider.hasLedgerInitError, isTrue);
+  test(
+    'retrying after the store is repaired clears the error and loads',
+    () async {
+      SharedPreferences.setMockInitialValues(_tamperedIndex);
+      final provider = TransactionProvider();
+      await provider.ready;
+      expect(provider.hasLedgerInitError, isTrue);
 
-    // Repair the store (a fresh, valid, empty ledger) and retry.
-    SharedPreferences.setMockInitialValues({
-      'sms_scan_start_date': DateTime(2026, 10, 1).toIso8601String(),
-    });
-    await provider.retryLedgerInit();
+      // Repair the store (a fresh, valid, empty ledger) and retry.
+      SharedPreferences.setMockInitialValues({
+        'sms_scan_start_date': DateTime(2026, 10, 1).toIso8601String(),
+      });
+      await provider.retryLedgerInit();
 
-    expect(provider.hasLedgerInitError, isFalse);
-    expect(provider.transactions, isEmpty,
-        reason: 'a repaired empty ledger is genuinely empty, not an error');
-    expect(provider.isLoadingCache, isFalse);
-  });
+      expect(provider.hasLedgerInitError, isFalse);
+      expect(
+        provider.transactions,
+        isEmpty,
+        reason: 'a repaired empty ledger is genuinely empty, not an error',
+      );
+      expect(provider.isLoadingCache, isFalse);
+    },
+  );
 
-  testWidgets(
-      'an init failure renders the ledger error, never the empty '
+  testWidgets('an init failure renders the ledger error, never the empty '
       'dashboard', (tester) async {
     SharedPreferences.setMockInitialValues({
       ..._tamperedIndex,
@@ -145,12 +159,21 @@ void main() {
     // A tall viewport builds the whole lazy sliver list in one frame.
     await _pumpApp(tester, size: const Size(1080, 8000));
 
-    expect(find.text("Couldn't load your ledger"), findsWidgets,
-        reason: 'the error must be visible on the dashboard');
-    expect(find.textContaining('ledger_key_unavailable'), findsWidgets,
-        reason: 'the card names the cause so the fix is diagnosable');
-    expect(find.text('Nothing found'), findsNothing,
-        reason: 'an error state must not reuse the empty-ledger copy');
+    expect(
+      find.text("Couldn't load your ledger"),
+      findsWidgets,
+      reason: 'the error must be visible on the dashboard',
+    );
+    expect(
+      find.textContaining('ledger_key_unavailable'),
+      findsWidgets,
+      reason: 'the card names the cause so the fix is diagnosable',
+    );
+    expect(
+      find.text('Nothing found'),
+      findsNothing,
+      reason: 'an error state must not reuse the empty-ledger copy',
+    );
     expect(find.text('No transactions yet'), findsNothing);
     expect(find.text('Try again'), findsOneWidget);
 
@@ -161,8 +184,9 @@ void main() {
     expect(find.text("Couldn't load your ledger"), findsWidgets);
   });
 
-  testWidgets('a genuinely empty ledger still renders the empty state',
-      (tester) async {
+  testWidgets('a genuinely empty ledger still renders the empty state', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'sms_scan_start_date': DateTime(2026, 10, 1).toIso8601String(),
       'name': 'Asha',
@@ -175,8 +199,9 @@ void main() {
     expect(find.text('Try again'), findsNothing);
   });
 
-  testWidgets('a loaded ledger with transactions renders neither state',
-      (tester) async {
+  testWidgets('a loaded ledger with transactions renders neither state', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'sms_scan_start_date': DateTime(2026, 10, 1).toIso8601String(),
       'name': 'Asha',

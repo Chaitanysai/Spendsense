@@ -44,15 +44,19 @@ void main() {
       expect(march.start, DateTime(2026, 3, 1));
       expect(march.end, DateTime(2026, 3, 31));
 
-      final december =
-          AssistantDateResolver.resolve('spent in December', now: now);
+      final december = AssistantDateResolver.resolve(
+        'spent in December',
+        now: now,
+      );
       expect(december.start, DateTime(2025, 12, 1));
       expect(december.end, DateTime(2025, 12, 31));
     });
 
     test('punctuation does not hide a period', () {
-      final window =
-          AssistantDateResolver.resolve('food last month?', now: now);
+      final window = AssistantDateResolver.resolve(
+        'food last month?',
+        now: now,
+      );
       expect(window.start, DateTime(2026, 9, 1));
     });
   });
@@ -66,62 +70,49 @@ void main() {
         'UPI/Groww Securities',
       ]) {
         expect(
-          MerchantMatcher.matchTransaction(tx(
-            id: merchant,
-            amountMinor: 1,
-            date: now,
-            merchant: merchant,
-          )),
+          MerchantMatcher.matchTransaction(
+            tx(id: merchant, amountMinor: 1, date: now, merchant: merchant),
+          ),
           MerchantMatcher.groww,
           reason: merchant,
         );
       }
       expect(
-        MerchantMatcher.matchTransaction(tx(
-          id: 'x',
-          amountMinor: 1,
-          date: now,
-          merchant: 'Growwth Capital',
-        )),
+        MerchantMatcher.matchTransaction(
+          tx(id: 'x', amountMinor: 1, date: now, merchant: 'Growwth Capital'),
+        ),
         isNull,
       );
       expect(
-        MerchantMatcher.matchTransaction(tx(
-          id: 'y',
-          amountMinor: 1,
-          date: now,
-          merchant: 'NotGroww',
-        )),
+        MerchantMatcher.matchTransaction(
+          tx(id: 'y', amountMinor: 1, date: now, merchant: 'NotGroww'),
+        ),
         isNull,
       );
     });
 
     test('Zerodha aliases do not treat a bare Kite as Zerodha', () {
       expect(
-        MerchantMatcher.matchTransaction(tx(
-          id: 'z',
-          amountMinor: 1,
-          date: now,
-          merchant: 'Zerodha Broking Ltd',
-        )),
+        MerchantMatcher.matchTransaction(
+          tx(
+            id: 'z',
+            amountMinor: 1,
+            date: now,
+            merchant: 'Zerodha Broking Ltd',
+          ),
+        ),
         MerchantMatcher.zerodha,
       );
       expect(
-        MerchantMatcher.matchTransaction(tx(
-          id: 'k',
-          amountMinor: 1,
-          date: now,
-          merchant: 'Kite Club',
-        )),
+        MerchantMatcher.matchTransaction(
+          tx(id: 'k', amountMinor: 1, date: now, merchant: 'Kite Club'),
+        ),
         isNull,
       );
       expect(
-        MerchantMatcher.matchTransaction(tx(
-          id: 'kz',
-          amountMinor: 1,
-          date: now,
-          merchant: 'Kite by Zerodha',
-        )),
+        MerchantMatcher.matchTransaction(
+          tx(id: 'kz', amountMinor: 1, date: now, merchant: 'Kite by Zerodha'),
+        ),
         MerchantMatcher.zerodha,
       );
     });
@@ -216,8 +207,10 @@ void main() {
 
     test('duplicates, undo, unpaid bills and why-higher', () {
       expect(
-        LocalIntentParser.parse('Delete these duplicate transactions.',
-            now: now),
+        LocalIntentParser.parse(
+          'Delete these duplicate transactions.',
+          now: now,
+        ),
         isA<DeleteDuplicatesIntent>(),
       );
       expect(

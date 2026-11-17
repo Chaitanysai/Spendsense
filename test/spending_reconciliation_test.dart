@@ -56,51 +56,57 @@ void main() {
     provider.debugSeed([
       // In period, two instruments.
       _tx(
-          id: 'a',
-          amountMinor: 10050,
-          date: DateTime(2026, 10, 1),
-          method: 'UPI',
-          bank: 'HDFC',
-          account: 'Savings'),
+        id: 'a',
+        amountMinor: 10050,
+        date: DateTime(2026, 10, 1),
+        method: 'UPI',
+        bank: 'HDFC',
+        account: 'Savings',
+      ),
       // Last day of the period is included (inclusive boundary).
       _tx(
-          id: 'b',
-          amountMinor: 20000,
-          date: DateTime(2026, 10, 31, 23, 30),
-          method: 'Card',
-          bank: 'ICICI',
-          account: 'Credit card'),
+        id: 'b',
+        amountMinor: 20000,
+        date: DateTime(2026, 10, 31, 23, 30),
+        method: 'Card',
+        bank: 'ICICI',
+        account: 'Credit card',
+      ),
       // Missing instrument attributes land in "Other".
       _tx(
-          id: 'c',
-          amountMinor: 5000,
-          date: DateTime(2026, 10, 12),
-          method: '',
-          bank: null,
-          account: '  '),
+        id: 'c',
+        amountMinor: 5000,
+        date: DateTime(2026, 10, 12),
+        method: '',
+        bank: null,
+        account: '  ',
+      ),
       // Same merchant and amount as 'c' but a distinct id: a real second row.
       _tx(
-          id: 'd',
-          amountMinor: 5000,
-          date: DateTime(2026, 10, 20),
-          method: '',
-          merchant: 'Shop'),
+        id: 'd',
+        amountMinor: 5000,
+        date: DateTime(2026, 10, 20),
+        method: '',
+        merchant: 'Shop',
+      ),
       // Outside the period on both sides.
       _tx(id: 'before', amountMinor: 88800, date: DateTime(2026, 9, 30)),
       _tx(id: 'after', amountMinor: 99900, date: DateTime(2026, 11, 1)),
       // Income must never be counted as spending.
       _tx(
-          id: 'income',
-          amountMinor: 500000,
-          date: DateTime(2026, 10, 5),
-          type: TransactionType.income,
-          method: 'UPI'),
+        id: 'income',
+        amountMinor: 500000,
+        date: DateTime(2026, 10, 5),
+        type: TransactionType.income,
+        method: 'UPI',
+      ),
       // Excluded by the user (the supported way to mark a transfer).
       _tx(
-          id: 'excluded',
-          amountMinor: 77700,
-          date: DateTime(2026, 10, 10),
-          excluded: true),
+        id: 'excluded',
+        amountMinor: 77700,
+        date: DateTime(2026, 10, 10),
+        excluded: true,
+      ),
     ]);
   }
 
@@ -130,8 +136,10 @@ void main() {
       // the canonical spend coincide. With a transfer they deliberately differ
       // (the transfer is cash out but not spend); that case is covered by
       // spend_amount_card_test.dart.
-      expect(provider.totalExpensesForPeriod(period),
-          provider.spendingTotalForPeriod(period));
+      expect(
+        provider.totalExpensesForPeriod(period),
+        provider.spendingTotalForPeriod(period),
+      );
     });
   });
 
@@ -153,8 +161,10 @@ void main() {
 
     test('income never appears in instrument spending', () {
       seedCanonicalFixture();
-      final stats =
-          provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+      final stats = provider.spendingStatsForPeriod(
+        period,
+        (t) => t.paymentMethod,
+      );
 
       // The 5,000.00 income row is on UPI; UPI must only carry spending.
       expect(stats['UPI']!.spent, 10050);
@@ -166,10 +176,11 @@ void main() {
         _tx(id: '1', amountMinor: 100, date: DateTime(2026, 10, 2), method: ''),
         _tx(id: '2', amountMinor: 200, date: DateTime(2026, 10, 3), bank: null),
         _tx(
-            id: '3',
-            amountMinor: 300,
-            date: DateTime(2026, 10, 4),
-            bank: 'Others'),
+          id: '3',
+          amountMinor: 300,
+          date: DateTime(2026, 10, 4),
+          bank: 'Others',
+        ),
       ]);
 
       final byBank = provider.spendingStatsForPeriod(period, (t) => t.bank);
@@ -184,15 +195,19 @@ void main() {
       final allTime = provider.statsBy((t) => t.paymentMethod);
       // Deliberately different from the period total: this is the old,
       // all-time figure the Instruments screen used to display.
-      expect(allTime.values.fold<int>(0, (s, e) => s + e.spent),
-          isNot(provider.spendingTotalForPeriod(period)));
+      expect(
+        allTime.values.fold<int>(0, (s, e) => s + e.spent),
+        isNot(provider.spendingTotalForPeriod(period)),
+      );
       expect(allTime['UPI']!.received, 500000);
     });
 
     test('shares are computed from the scoped denominator', () {
       seedCanonicalFixture();
-      final stats =
-          provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+      final stats = provider.spendingStatsForPeriod(
+        period,
+        (t) => t.paymentMethod,
+      );
       final total = provider.spendingTotalForPeriod(period);
 
       final shares = stats.values.map((s) => s.spent / total);

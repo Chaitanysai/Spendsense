@@ -44,20 +44,19 @@ TransactionModel _tx(
   TransactionType type = TransactionType.expense,
   String category = 'Food',
   bool excluded = false,
-}) =>
-    TransactionModel(
-      id: id,
-      amountMinor: minor,
-      type: type,
-      merchant: merchant,
-      category: category,
-      paymentMethod: 'UPI',
-      date: date,
-      time: '10:00',
-      originalSms: '',
-      isExcluded: excluded,
-      bank: 'HDFC Bank',
-    );
+}) => TransactionModel(
+  id: id,
+  amountMinor: minor,
+  type: type,
+  merchant: merchant,
+  category: category,
+  paymentMethod: 'UPI',
+  date: date,
+  time: '10:00',
+  originalSms: '',
+  isExcluded: excluded,
+  bank: 'HDFC Bank',
+);
 
 /// Lets animations that start on a frame (fades, sheet slides) play out.
 Future<void> settle(WidgetTester tester) async {
@@ -103,8 +102,9 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    SharedPreferences.setMockInitialValues(
-        {'sms_scan_start_date': DateTime.now().toIso8601String()});
+    SharedPreferences.setMockInitialValues({
+      'sms_scan_start_date': DateTime.now().toIso8601String(),
+    });
     final provider = _Provider(ledgerError: ledgerError);
     await tester.runAsync(() => provider.ready);
     provider.debugSeed(rows);
@@ -123,33 +123,49 @@ void main() {
   final ledger = [
     _tx('a', today, 24900, 'Swiggy'),
     _tx('b', today, 4500, 'Chai Point'),
-    _tx('c', ago(1), 450000, 'Salary',
-        type: TransactionType.income, category: 'Income'),
+    _tx(
+      'c',
+      ago(1),
+      450000,
+      'Salary',
+      type: TransactionType.income,
+      category: 'Income',
+    ),
     _tx('d', ago(1), 12000, 'Uber', category: 'Travel'),
     _tx('e', ago(2), 99900, 'Hidden purchase', excluded: true),
   ];
 
   group('summary line', () {
-    testWidgets('counts every row but sums only the ones that count',
-        (tester) async {
+    testWidgets('counts every row but sums only the ones that count', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       expect(find.text('5 transactions'), findsOneWidget);
       // income 4,500; expenses 249 + 45 + 120 = 414. The excluded ₹999 is in
       // neither.
-      expect(find.text('${Formatters.currency.format(450000)} in'),
-          findsOneWidget);
-      expect(find.text('${Formatters.currency.format(41400)} out'),
-          findsOneWidget);
+      expect(
+        find.text('${Formatters.currency.format(450000)} in'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('${Formatters.currency.format(41400)} out'),
+        findsOneWidget,
+      );
       expect(find.text('1 excluded'), findsOneWidget);
     });
 
-    testWidgets('announces itself as one sentence, including exclusions',
-        (tester) async {
+    testWidgets('announces itself as one sentence, including exclusions', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       await pump(tester, ledger);
       expect(
-        find.bySemanticsLabel(RegExp(r'5 transactions\. .* in, .* out\. '
-            r'1 excluded from totals')),
+        find.bySemanticsLabel(
+          RegExp(
+            r'5 transactions\. .* in, .* out\. '
+            r'1 excluded from totals',
+          ),
+        ),
         findsOneWidget,
       );
       handle.dispose();
@@ -162,13 +178,16 @@ void main() {
       await settle(tester);
       expect(find.text('1 transaction'), findsOneWidget);
       expect(
-          find.text('${Formatters.currency.format(41400)} out'), findsNothing);
+        find.text('${Formatters.currency.format(41400)} out'),
+        findsNothing,
+      );
     });
   });
 
   group('day grouping', () {
-    testWidgets('titles are Today / Yesterday / a date, in order',
-        (tester) async {
+    testWidgets('titles are Today / Yesterday / a date, in order', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       expect(find.text('Today'), findsOneWidget);
       expect(find.text('Yesterday'), findsOneWidget);
@@ -177,15 +196,20 @@ void main() {
       expect(today_, lessThan(yesterday));
     });
 
-    testWidgets('a day shows its net; an all-excluded day says so',
-        (tester) async {
+    testWidgets('a day shows its net; an all-excluded day says so', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       // Today: -249 - 45.
       expect(
-          find.text('− ${Formatters.currency.format(29400)}'), findsOneWidget);
+        find.text('− ${Formatters.currency.format(29400)}'),
+        findsOneWidget,
+      );
       // Yesterday: +4,500 - 120.
       expect(
-          find.text('+ ${Formatters.currency.format(438000)}'), findsOneWidget);
+        find.text('+ ${Formatters.currency.format(438000)}'),
+        findsOneWidget,
+      );
       // Two days ago holds only the excluded row: no misleading ₹0.
       expect(find.text('Excluded'), findsWidgets);
       expect(find.text(Formatters.currency.format(0)), findsNothing);
@@ -208,8 +232,9 @@ void main() {
   });
 
   group('filter chips', () {
-    testWidgets('a chip reports selected once its filter is on',
-        (tester) async {
+    testWidgets('a chip reports selected once its filter is on', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       await pump(tester, ledger);
       expect(find.bySemanticsLabel('Filter by type'), findsOneWidget);
@@ -218,8 +243,9 @@ void main() {
       await settle(tester);
       // The chip now carries the chosen value, reports selected, and says what
       // it filters (not just "Expense").
-      final chip =
-          tester.widget<AppChip>(find.widgetWithText(AppChip, 'Expense'));
+      final chip = tester.widget<AppChip>(
+        find.widgetWithText(AppChip, 'Expense'),
+      );
       expect(chip.selected, isTrue);
       expect(chip.semanticLabel, 'Type filter: Expense');
       handle.dispose();
@@ -246,8 +272,9 @@ void main() {
   });
 
   group('the four empty situations', () {
-    testWidgets('no matches names the filters and offers to clear them',
-        (tester) async {
+    testWidgets('no matches names the filters and offers to clear them', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       await tester.enterText(find.byType(TextField).first, 'zzzz');
       await tester.pump(const Duration(milliseconds: 400));
@@ -265,8 +292,9 @@ void main() {
       expect(find.text('No matching transactions'), findsNothing);
     });
 
-    testWidgets('an unreadable ledger is an error with Retry, never "empty"',
-        (tester) async {
+    testWidgets('an unreadable ledger is an error with Retry, never "empty"', (
+      tester,
+    ) async {
       final provider = await pump(tester, const [], ledgerError: true);
       expect(find.text("Couldn't load your transactions"), findsOneWidget);
       expect(find.text('Nothing here yet'), findsNothing);
@@ -276,8 +304,7 @@ void main() {
       expect(provider.retries, 1);
     });
 
-    testWidgets(
-        'a short viewport scrolls the empty state instead of'
+    testWidgets('a short viewport scrolls the empty state instead of'
         ' overflowing', (tester) async {
       await pump(tester, const [], height: 360, scale: 2);
       expect(tester.takeException(), isNull);
@@ -334,8 +361,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('an amount range with min above max is refused, aloud',
-        (tester) async {
+    testWidgets('an amount range with min above max is refused, aloud', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       await pump(tester, ledger);
       await tapChip(tester, 'Amount');
@@ -350,8 +378,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets(
-        'Apply throws nothing (the original sheet disposed live'
+    testWidgets('Apply throws nothing (the original sheet disposed live'
         ' controllers)', (tester) async {
       await pump(tester, ledger);
       await tapChip(tester, 'Amount');
@@ -368,8 +395,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('an applied range is shown again when the sheet reopens',
-        (tester) async {
+    testWidgets('an applied range is shown again when the sheet reopens', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       await tapChip(tester, 'Amount');
       final fields = find.byType(TextField);
@@ -380,15 +408,17 @@ void main() {
       await tester.tap(find.text('Apply'));
       await settle(tester);
       await tapChip(
-          tester,
-          '${Formatters.currency.format(10000)} – '
-          '${Formatters.currency.format(30000)}');
+        tester,
+        '${Formatters.currency.format(10000)} – '
+        '${Formatters.currency.format(30000)}',
+      );
       expect(find.widgetWithText(TextField, '100'), findsOneWidget);
       expect(find.widgetWithText(TextField, '300'), findsOneWidget);
     });
 
-    testWidgets('a valid amount range filters by integer paise',
-        (tester) async {
+    testWidgets('a valid amount range filters by integer paise', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       await tapChip(tester, 'Amount');
       final fields = find.byType(TextField);
@@ -419,8 +449,9 @@ void main() {
       expect(find.text('Swiggy'), findsOneWidget);
     });
 
-    testWidgets('special characters are literal text, never a pattern',
-        (tester) async {
+    testWidgets('special characters are literal text, never a pattern', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       for (final q in ['(', '[a-', r'\', '.*', '₹']) {
         await tester.enterText(field(), q);
@@ -429,12 +460,16 @@ void main() {
       }
       await tester.enterText(field(), '.*');
       await tester.pump();
-      expect(find.text('No matching transactions'), findsOneWidget,
-          reason: '".*" must not match everything');
+      expect(
+        find.text('No matching transactions'),
+        findsOneWidget,
+        reason: '".*" must not match everything',
+      );
     });
 
-    testWidgets('no results names the search, and Clear restores the list',
-        (tester) async {
+    testWidgets('no results names the search, and Clear restores the list', (
+      tester,
+    ) async {
       await pump(tester, ledger);
       await tester.enterText(field(), 'zzzz');
       await tester.pump();
@@ -445,8 +480,9 @@ void main() {
       expect(find.text('5 transactions'), findsOneWidget);
     });
 
-    testWidgets('the field clear button empties the query and keeps results',
-        (tester) async {
+    testWidgets('the field clear button empties the query and keeps results', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       await pump(tester, ledger);
       await tester.enterText(field(), 'uber');
@@ -462,9 +498,12 @@ void main() {
     testWidgets('dragging the results dismisses the keyboard', (tester) async {
       await pump(tester, ledger);
       final scroll = tester.widget<CustomScrollView>(
-          find.byType(CustomScrollView).first);
-      expect(scroll.keyboardDismissBehavior,
-          ScrollViewKeyboardDismissBehavior.onDrag);
+        find.byType(CustomScrollView).first,
+      );
+      expect(
+        scroll.keyboardDismissBehavior,
+        ScrollViewKeyboardDismissBehavior.onDrag,
+      );
     });
   });
 }

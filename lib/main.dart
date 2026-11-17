@@ -1,4 +1,3 @@
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -191,26 +190,30 @@ class SpendSenseApp extends StatelessWidget {
       preset: preset,
     );
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.brand,
-      brightness: brightness,
-    ).copyWith(
-      primary: AppColors.brand,
-      // FilledButton draws its label with onPrimary on `filledBrand`, not on
-      // `brand`, so the ink is resolved against the fill the button really has.
-      // (Resolving against `brand` flipped the label to dark ink on a dark
-      // fill for palettes whose brand is bright.)
-      onPrimary: AppColors.resolveInk(Colors.white, AppColors.filledBrand),
-      secondary: AppColors.brandBright,
-      onSecondary: AppColors.resolveInk(Colors.white, AppColors.brandBright),
-      tertiary: AppColors.lime,
-      onTertiary: AppColors.onLimeInk,
-      error: AppColors.danger,
-      onError: AppColors.onDanger,
-      surface: isDark ? AppColors.darkSurface : AppColors.surface,
-      onSurface: AppColors.textPrimaryFor(isDark),
-      outlineVariant: AppColors.borderDarkOrLight(isDark),
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.brand,
+          brightness: brightness,
+        ).copyWith(
+          primary: AppColors.brand,
+          // FilledButton draws its label with onPrimary on `filledBrand`, not on
+          // `brand`, so the ink is resolved against the fill the button really has.
+          // (Resolving against `brand` flipped the label to dark ink on a dark
+          // fill for palettes whose brand is bright.)
+          onPrimary: AppColors.resolveInk(Colors.white, AppColors.filledBrand),
+          secondary: AppColors.brandBright,
+          onSecondary: AppColors.resolveInk(
+            Colors.white,
+            AppColors.brandBright,
+          ),
+          tertiary: AppColors.lime,
+          onTertiary: AppColors.onLimeInk,
+          error: AppColors.danger,
+          onError: AppColors.onDanger,
+          surface: isDark ? AppColors.darkSurface : AppColors.surface,
+          onSurface: AppColors.textPrimaryFor(isDark),
+          outlineVariant: AppColors.borderDarkOrLight(isDark),
+        );
 
     final fieldBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -230,8 +233,9 @@ class SpendSenseApp extends StatelessWidget {
         bodyColor: scheme.onSurface,
         displayColor: scheme.onSurface,
       ),
-      scaffoldBackgroundColor:
-          isDark ? AppColors.darkBackground : AppColors.background,
+      scaffoldBackgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.background,
       primaryColor: AppColors.brand,
       splashColor: AppColors.brand.withValues(alpha: 0.08),
       highlightColor: AppColors.brand.withValues(alpha: 0.04),
@@ -261,12 +265,8 @@ class SpendSenseApp extends StatelessWidget {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surface,
-        hintStyle: TextStyle(
-          color: AppColors.textTertiaryFor(isDark),
-        ),
-        labelStyle: TextStyle(
-          color: AppColors.textSecondaryFor(isDark),
-        ),
+        hintStyle: TextStyle(color: AppColors.textTertiaryFor(isDark)),
+        labelStyle: TextStyle(color: AppColors.textSecondaryFor(isDark)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.lg,
@@ -291,7 +291,8 @@ class SpendSenseApp extends StatelessWidget {
       // colour: on a navy dialog the raw blue brand measured under 3:1.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-            foregroundColor: AppColors.brandInkFor(isDark)),
+          foregroundColor: AppColors.brandInkFor(isDark),
+        ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -380,10 +381,12 @@ class SpendSenseApp extends StatelessWidget {
         menuStyle: MenuStyle(
           backgroundColor: WidgetStatePropertyAll(overlaySurface),
           surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            side: overlayEdge,
-          )),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              side: overlayEdge,
+            ),
+          ),
         ),
       ),
       datePickerTheme: DatePickerThemeData(
@@ -502,10 +505,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: AppBackground(
-        child: FadeIndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
+        child: FadeIndexedStack(index: _currentIndex, children: _screens),
       ),
       bottomNavigationBar: FloatingNavBar(
         items: _navItems,

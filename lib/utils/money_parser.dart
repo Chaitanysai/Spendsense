@@ -80,7 +80,8 @@ class AmountInputFormatter extends TextInputFormatter {
 int roundPaiseDivision(int amountMinor, int divisor) {
   if (amountMinor < 0 || divisor <= 0) {
     throw ArgumentError(
-        'amountMinor must be non-negative and divisor positive.');
+      'amountMinor must be non-negative and divisor positive.',
+    );
   }
   return (amountMinor + divisor ~/ 2) ~/ divisor;
 }

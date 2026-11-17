@@ -70,11 +70,14 @@ class FinancialSummary {
       incomeMinor: income,
       expenseMinor: expense,
       transactionCount: count,
-      topCategories: SpendingInsights.categoryBreakdown(transactions, range)
-          .take(3)
-          .toList(),
-      budget:
-          BudgetProgress(spentMinor: expense, budgetMinor: monthlyBudgetMinor),
+      topCategories: SpendingInsights.categoryBreakdown(
+        transactions,
+        range,
+      ).take(3).toList(),
+      budget: BudgetProgress(
+        spentMinor: expense,
+        budgetMinor: monthlyBudgetMinor,
+      ),
       overBudgetCategories: over,
     );
   }
@@ -93,15 +96,18 @@ class FinancialSummary {
       b.writeln('Top categories:');
       for (final c in topCategories) {
         b.writeln(
-            '  ${c.category}: ${money(c.amountMinor)} (${(c.shareTenths / 10).toStringAsFixed(1)}%)');
+          '  ${c.category}: ${money(c.amountMinor)} (${(c.shareTenths / 10).toStringAsFixed(1)}%)',
+        );
       }
     }
     if (budget.hasBudget) {
-      b.writeln(budget.isOver
-          ? 'Budget: ${money(budget.overMinor)} over '
-              '${money(budget.budgetMinor)} (${budget.percentUsed}% used)'
-          : 'Budget: ${money(budget.remainingMinor)} left of '
-              '${money(budget.budgetMinor)} (${budget.percentUsed}% used)');
+      b.writeln(
+        budget.isOver
+            ? 'Budget: ${money(budget.overMinor)} over '
+                  '${money(budget.budgetMinor)} (${budget.percentUsed}% used)'
+            : 'Budget: ${money(budget.remainingMinor)} left of '
+                  '${money(budget.budgetMinor)} (${budget.percentUsed}% used)',
+      );
     }
     if (overBudgetCategories.isNotEmpty) {
       b.writeln('Over budget: ${overBudgetCategories.join(', ')}');

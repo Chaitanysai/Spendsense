@@ -77,8 +77,10 @@ class AnimatedProgressBar extends StatefulWidget {
 
 class _AnimatedProgressBarState extends State<AnimatedProgressBar>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: widget.duration);
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+  );
 
   Timer? _delayTimer;
   double _from = 0;
@@ -197,7 +199,8 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
 
   @override
   Widget build(BuildContext context) {
-    final track = widget.trackColor ??
+    final track =
+        widget.trackColor ??
         Theme.of(context).colorScheme.surfaceContainerHighest;
     final fill = widget.color ?? Theme.of(context).colorScheme.primary;
     final radius = BorderRadius.circular(widget.radius);

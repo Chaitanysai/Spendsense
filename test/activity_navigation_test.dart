@@ -24,17 +24,17 @@ class _CountingProvider extends TransactionProvider {
 }
 
 TransactionModel _tx(String id) => TransactionModel(
-      id: id,
-      amountMinor: 1200,
-      type: TransactionType.expense,
-      merchant: 'Cafe',
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 20),
-      time: '09:00',
-      originalSms: '',
-      isExcluded: false,
-    );
+  id: id,
+  amountMinor: 1200,
+  type: TransactionType.expense,
+  merchant: 'Cafe',
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: DateTime(2026, 10, 20),
+  time: '09:00',
+  originalSms: '',
+  isExcluded: false,
+);
 
 Widget _harness(_CountingProvider provider, {bool reduceMotion = false}) {
   return ChangeNotifierProvider<TransactionProvider>.value(
@@ -42,8 +42,8 @@ Widget _harness(_CountingProvider provider, {bool reduceMotion = false}) {
     child: MaterialApp(
       home: Builder(
         builder: (context) => MediaQuery(
-          data:
-              MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+          data: MediaQuery.of(context)
+              .copyWith(disableAnimations: reduceMotion),
           child: Scaffold(
             body: Center(
               child: ElevatedButton(
@@ -96,8 +96,9 @@ void main() {
     expect(route.settings.name, ActivityScreen.routeName);
   });
 
-  testWidgets('a rapid double tap cannot stack two Activity screens',
-      (tester) async {
+  testWidgets('a rapid double tap cannot stack two Activity screens', (
+    tester,
+  ) async {
     await tester.pumpWidget(_harness(provider));
 
     // Two taps inside one frame window, before the first push completes.
@@ -113,23 +114,31 @@ void main() {
     expect(find.text('See all'), findsOneWidget);
   });
 
-  testWidgets('the automatic SMS scan waits for the transition to finish',
-      (tester) async {
+  testWidgets('the automatic SMS scan waits for the transition to finish', (
+    tester,
+  ) async {
     await tester.pumpWidget(_harness(provider));
     await tester.tap(find.byKey(const Key('open')));
 
     // First frame of the push: the route is animating, the scan must not run.
     await tester.pump();
-    expect(provider.syncs, 0,
-        reason: 'starting the scan here is what made the push feel slow');
+    expect(
+      provider.syncs,
+      0,
+      reason: 'starting the scan here is what made the push feel slow',
+    );
 
     await tester.pumpAndSettle();
-    expect(provider.syncs, 1,
-        reason: 'the scan starts when the route animation completes');
+    expect(
+      provider.syncs,
+      1,
+      reason: 'the scan starts when the route animation completes',
+    );
   });
 
-  testWidgets('reduced motion completes the route and starts one scan',
-      (tester) async {
+  testWidgets('reduced motion completes the route and starts one scan', (
+    tester,
+  ) async {
     await tester.pumpWidget(_harness(provider, reduceMotion: true));
     await tester.tap(find.byKey(const Key('open')));
     await tester.pumpAndSettle();
@@ -151,19 +160,21 @@ void main() {
     expect(provider.syncs, 0);
   });
 
-  testWidgets('seeded transactions render without rebuilding the filter twice',
-      (tester) async {
-    await tester.runAsync(() => provider.ready);
-    provider.debugSeed([_tx('a'), _tx('b'), _tx('c')]);
+  testWidgets(
+    'seeded transactions render without rebuilding the filter twice',
+    (tester) async {
+      await tester.runAsync(() => provider.ready);
+      provider.debugSeed([_tx('a'), _tx('b'), _tx('c')]);
 
-    await tester.pumpWidget(_harness(provider));
-    await tester.tap(find.byKey(const Key('open')));
-    await _settleRoute(tester);
+      await tester.pumpWidget(_harness(provider));
+      await tester.tap(find.byKey(const Key('open')));
+      await _settleRoute(tester);
 
-    expect(find.text('3 transactions'), findsOneWidget);
-    // A rebuild triggered from outside the filter (e.g. a parent setState)
-    // must not change the rendered result.
-    await tester.pump();
-    expect(find.text('3 transactions'), findsOneWidget);
-  });
+      expect(find.text('3 transactions'), findsOneWidget);
+      // A rebuild triggered from outside the filter (e.g. a parent setState)
+      // must not change the rendered result.
+      await tester.pump();
+      expect(find.text('3 transactions'), findsOneWidget);
+    },
+  );
 }

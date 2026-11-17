@@ -14,8 +14,7 @@ class _NoopEncryption extends LedgerEncryptionService {
   Future<String> decryptText(
     String encoded, {
     String? expectedRecordId,
-  }) async =>
-      encoded;
+  }) async => encoded;
 
   @override
   Future<String> encryptText(String plaintext, {String? recordId}) async =>
@@ -23,7 +22,8 @@ class _NoopEncryption extends LedgerEncryptionService {
 }
 
 Future<(PlannerProvider, TransactionProvider)> _pumpBudgets(
-    WidgetTester tester) async {
+  WidgetTester tester,
+) async {
   SharedPreferences.setMockInitialValues({});
   final planner = PlannerProvider(encryption: _NoopEncryption());
   final tx = TransactionProvider();
@@ -50,8 +50,9 @@ void main() {
   setUp(() => AppTypography.debugSkipFontLoading = true);
   tearDown(() => AppTypography.debugSkipFontLoading = false);
 
-  testWidgets('delete asks for confirmation and Cancel preserves the budget',
-      (tester) async {
+  testWidgets('delete asks for confirmation and Cancel preserves the budget', (
+    tester,
+  ) async {
     final (planner, _) = await _pumpBudgets(tester);
     expect(planner.categoryBudgets.containsKey('Food'), isTrue);
     await tester.tap(find.byTooltip('Remove Food budget'));
@@ -65,8 +66,9 @@ void main() {
     expect(planner.categoryBudgets.containsKey('Food'), isTrue);
   });
 
-  testWidgets('delete confirmation Remove deletes the category budget',
-      (tester) async {
+  testWidgets('delete confirmation Remove deletes the category budget', (
+    tester,
+  ) async {
     final (planner, _) = await _pumpBudgets(tester);
     final deleteButton = find.byTooltip('Remove Travel budget');
     await tester.scrollUntilVisible(

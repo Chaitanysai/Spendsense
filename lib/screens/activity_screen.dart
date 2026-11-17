@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/app_sheet.dart';
+
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
 import '../services/sound_service.dart';
@@ -169,7 +172,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<TransactionProvider>(context);
     final displayList = _getProcessedList(provider.transactions);
-    final hasFilters = _selectedCategory != null ||
+    final hasFilters =
+        _selectedCategory != null ||
         _selectedType != null ||
         _selectedDateRange != null ||
         _activePreset != null ||
@@ -222,7 +226,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 ? content
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [header, Expanded(child: content)],
+                    children: [
+                      header,
+                      Expanded(child: content),
+                    ],
                   );
           },
         ),
@@ -241,7 +248,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return PageEntrance(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
+          AppSpacing.page,
+          AppSpacing.md,
+          AppSpacing.page,
+          0,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -355,7 +366,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
             label: _sortMode == 'Date' ? 'By date' : 'By amount',
             leading: Icons.sort_rounded,
             onTap: () => setState(
-                () => _sortMode = _sortMode == 'Date' ? 'Amount' : 'Date'),
+              () => _sortMode = _sortMode == 'Date' ? 'Amount' : 'Date',
+            ),
             semanticLabel:
                 'Sorted by ${_sortMode == 'Date' ? 'date' : 'amount'}. '
                 'Tap to sort by ${_sortMode == 'Date' ? 'amount' : 'date'}',
@@ -393,13 +405,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
     // A ledger that failed closed must never look like an empty ledger.
     if (provider.hasLedgerInitError) {
       return [
-        fill(AppErrorState(
-          title: "Couldn't load your transactions",
-          message: 'Your transactions are still saved and encrypted on this '
-              'device, but the ledger could not be read '
-              '(${provider.ledgerInitErrorCode}). Nothing was deleted.',
-          onRetry: provider.retryLedgerInit,
-        )),
+        fill(
+          AppErrorState(
+            title: "Couldn't load your transactions",
+            message:
+                'Your transactions are still saved and encrypted on this '
+                'device, but the ledger could not be read '
+                '(${provider.ledgerInitErrorCode}). Nothing was deleted.',
+            onRetry: provider.retryLedgerInit,
+          ),
+        ),
       ];
     }
     // Unchanged from the original rule: a skeleton only while a sync runs. Home
@@ -417,31 +432,33 @@ class _ActivityScreenState extends State<ActivityScreen> {
     if (displayList.isEmpty) {
       if (hasFilters) {
         return [
-          fill(AppEmptyState(
-            icon: Icons.search_off_rounded,
-            title: 'No matching transactions',
-            message: _noMatchMessage(),
-            actionLabel: 'Clear all filters',
-            onAction: _clearFilters,
-          )),
+          fill(
+            AppEmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'No matching transactions',
+              message: _noMatchMessage(),
+              actionLabel: 'Clear all filters',
+              onAction: _clearFilters,
+            ),
+          ),
         ];
       }
       return [
-        fill(provider.hasSmsScanStartDate
-            ? const AppEmptyState(
-                icon: Icons.receipt_long_rounded,
-                title: 'Nothing here yet',
-                message:
-                    'No transactions were found after your selected SMS start date.',
-              )
-            : AppEmptyState(
-                icon: Icons.sms_rounded,
-                title: 'No transactions yet',
-                message:
-                    'Pick an SMS start date and SpendSense will build your transactions automatically.',
-                actionLabel: 'Choose start date',
-                onAction: () => SmsImportPrompt.show(context),
-              )),
+        fill(
+          provider.hasSmsScanStartDate
+              ? const AppEmptyState(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'Nothing here yet',
+                  message: 'No transactions were found after your selected SMS start date.',
+                )
+              : AppEmptyState(
+                  icon: Icons.sms_rounded,
+                  title: 'No transactions yet',
+                  message: 'Pick an SMS start date and SpendSense will build your transactions automatically.',
+                  actionLabel: 'Choose start date',
+                  onAction: () => SmsImportPrompt.show(context),
+                ),
+        ),
       ];
     }
 
@@ -455,21 +472,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
           AppSpacing.tabBottomInset(context),
         ),
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final group = groups[index];
-              return PageEntrance(
-                index: index,
-                offset: 0.04,
-                child: _DayGroup(
-                  title: group.title,
-                  total: group.total,
-                  transactions: group.transactions,
-                ),
-              );
-            },
-            childCount: groups.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final group = groups[index];
+            return PageEntrance(
+              index: index,
+              offset: 0.04,
+              child: _DayGroup(
+                title: group.title,
+                total: group.total,
+                transactions: group.transactions,
+              ),
+            );
+          }, childCount: groups.length),
         ),
       ),
     ];
@@ -503,20 +517,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
   /// header over an amount-ordered list would repeat and mislead.
   List<_Group> _groupByDay(List<TransactionModel> list) {
     if (_sortMode != 'Date') {
-      return [
-        _Group(title: null, transactions: list, total: _netMinor(list)),
-      ];
+      return [_Group(title: null, transactions: list, total: _netMinor(list))];
     }
     final groups = <_Group>[];
     var run = <TransactionModel>[];
     DateTime? day;
     void flush() {
       if (run.isEmpty) return;
-      groups.add(_Group(
-        title: _dayTitle(day!),
-        transactions: run,
-        total: _netMinor(run),
-      ));
+      groups.add(
+        _Group(
+          title: _dayTitle(day!),
+          transactions: run,
+          total: _netMinor(run),
+        ),
+      );
       run = <TransactionModel>[];
     }
 
@@ -583,13 +597,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
       maxAmountMinor: _maxAmountMinor,
     ).apply(all);
     if (_sortMode == 'Amount') {
-      list.sort((a, b) => _sortDescending
-          ? b.amountMinor.compareTo(a.amountMinor)
-          : a.amountMinor.compareTo(b.amountMinor));
+      list.sort(
+        (a, b) => _sortDescending
+            ? b.amountMinor.compareTo(a.amountMinor)
+            : a.amountMinor.compareTo(b.amountMinor),
+      );
     } else {
-      list.sort((a, b) => _sortDescending
-          ? b.date.compareTo(a.date)
-          : a.date.compareTo(b.date));
+      list.sort(
+        (a, b) => _sortDescending
+            ? b.date.compareTo(a.date)
+            : a.date.compareTo(b.date),
+      );
     }
 
     _cachedSource = all;
@@ -643,8 +661,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(AppRadius.card))),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.card),
+        ),
+      ),
       builder: (ctx) => _AmountSheet(
         initialMin: _minAmountMinor,
         initialMax: _maxAmountMinor,
@@ -671,9 +691,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
               subtitle: preset != _DatePreset.custom
                   ? _rangeSubtitle(preset)
                   : (_selectedDateRange != null &&
-                          _activePreset == _DatePreset.custom
-                      ? _formatRange(_selectedDateRange!)
-                      : 'Pick start & end dates'),
+                            _activePreset == _DatePreset.custom
+                        ? _formatRange(_selectedDateRange!)
+                        : 'Pick start & end dates'),
               leadingIcon: _presetIcon(preset),
               selected: _activePreset == preset,
               onTap: () async {
@@ -717,7 +737,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
       firstDate: DateTime(now.year - 2),
       lastDate: now,
       initialEntryMode: DatePickerEntryMode.input,
-      initialDateRange: _selectedDateRange ??
+      initialDateRange:
+          _selectedDateRange ??
           DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
       helpText: 'SELECT DATE RANGE',
       saveText: 'APPLY',
@@ -763,8 +784,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
       context: context,
       backgroundColor: AppColors.surfaceColor(context),
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(AppRadius.card))),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.card),
+        ),
+      ),
       builder: (ctx) => ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(ctx).height * 0.86,
@@ -775,8 +798,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
           children: [
             const _SheetGrabber(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.xs,
-                  AppSpacing.page, AppSpacing.sm),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                AppSpacing.xs,
+                AppSpacing.page,
+                AppSpacing.sm,
+              ),
               child: Semantics(
                 header: true,
                 child: Text(title, style: AppText.h2(ctx)),
@@ -785,14 +812,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.page, 0, AppSpacing.page, AppSpacing.xl),
+                  AppSpacing.page,
+                  0,
+                  AppSpacing.page,
+                  AppSpacing.xl,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (hint != null) ...[
-                      Text(hint,
-                          style: AppText.bodySmall(ctx)
-                              .copyWith(color: AppColors.textSecondary(ctx))),
+                      Text(
+                        hint,
+                        style: AppText.bodySmall(ctx)
+                            .copyWith(color: AppColors.textSecondary(ctx)),
+                      ),
                       const SizedBox(height: AppSpacing.md),
                     ],
                     ...rows,
@@ -812,21 +845,23 @@ class _ActivityScreenState extends State<ActivityScreen> {
     // Every row goes through the same constructor, the last one included: a row
     // passed through untouched kept its default chevron and the last choice of
     // each sheet looked different from the rest.
-    return AppListGroup(rows: [
-      for (var i = 0; i < rows.length; i++)
-        AppListRow(
-          title: rows[i].title,
-          subtitle: rows[i].subtitle,
-          leadingIcon: rows[i].leadingIcon,
-          leadingTone: rows[i].leadingTone,
-          selected: rows[i].selected,
-          destructive: rows[i].destructive,
-          onTap: rows[i].onTap,
-          semanticLabel: rows[i].semanticLabel,
-          showDivider: i != rows.length - 1,
-          showChevron: false,
-        ),
-    ]);
+    return AppListGroup(
+      rows: [
+        for (var i = 0; i < rows.length; i++)
+          AppListRow(
+            title: rows[i].title,
+            subtitle: rows[i].subtitle,
+            leadingIcon: rows[i].leadingIcon,
+            leadingTone: rows[i].leadingTone,
+            selected: rows[i].selected,
+            destructive: rows[i].destructive,
+            onTap: rows[i].onTap,
+            semanticLabel: rows[i].semanticLabel,
+            showDivider: i != rows.length - 1,
+            showChevron: false,
+          ),
+      ],
+    );
   }
 
   void _showCategorySheet(TransactionProvider provider) {
@@ -957,8 +992,10 @@ class _SheetGrabber extends StatelessWidget {
         child: Container(
           width: 40,
           height: 4,
-          margin:
-              const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.md),
+          margin: const EdgeInsets.only(
+            top: AppSpacing.md,
+            bottom: AppSpacing.md,
+          ),
           decoration: BoxDecoration(
             color: AppColors.border(context),
             borderRadius: BorderRadius.circular(2),
@@ -998,8 +1035,11 @@ class _SearchField extends StatelessWidget {
           children: [
             const SizedBox(width: AppSpacing.md),
             ExcludeSemantics(
-              child: Icon(Icons.search_rounded,
-                  size: 20, color: AppColors.textTertiary(context)),
+              child: Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: AppColors.textTertiary(context),
+              ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -1010,18 +1050,23 @@ class _SearchField extends StatelessWidget {
                 autocorrect: false,
                 enableSuggestions: false,
                 style: AppText.body(context).copyWith(
-                    color: AppColors.textPrimary(context), fontSize: 14.5),
+                  color: AppColors.textPrimary(context),
+                  fontSize: 14.5,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Search transactions',
                   hintStyle: AppText.body(context).copyWith(
-                      color: AppColors.textTertiary(context), fontSize: 14.5),
+                    color: AppColors.textTertiary(context),
+                    fontSize: 14.5,
+                  ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   filled: false,
                   isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.md,
+                  ),
                 ),
               ),
             ),
@@ -1079,7 +1124,7 @@ class _ResultSummary extends StatelessWidget {
     final spoken = n == 0
         ? 'No transactions'
         : '$countText. $inText in, $outText out'
-            '${excluded > 0 ? '. $excluded excluded from totals' : ''}';
+              '${excluded > 0 ? '. $excluded excluded from totals' : ''}';
 
     return Semantics(
       liveRegion: true,
@@ -1100,22 +1145,22 @@ class _ResultSummary extends StatelessWidget {
                 Text(
                   '$inText in',
                   style: muted.copyWith(
-                      color: AppColors.incomeGreen,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()]),
+                    color: AppColors.incomeGreen,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
                 Text(
                   '$outText out',
                   style: muted.copyWith(
-                      color: AppColors.expenseRed,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()]),
+                    color: AppColors.expenseRed,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
                 // Listed but not summed. Without this the line reads as a
                 // total over all N rows and quietly disagrees with the list.
-                if (excluded > 0) ...[
-                  Text('$excluded excluded', style: muted),
-                ],
+                if (excluded > 0) ...[Text('$excluded excluded', style: muted)],
               ],
             ),
     );
@@ -1148,14 +1193,14 @@ class _DayGroup extends StatelessWidget {
     final netText = allExcluded
         ? 'Excluded'
         : '${net < 0 ? '−' : (net > 0 ? '+' : '')} ${Formatters.currency.format(net.abs())}'
-            .trim();
+              .trim();
     final netColor = allExcluded
         ? AppColors.textTertiary(context)
         : (net < 0
-            ? AppColors.expenseRed
-            : (net > 0
-                ? AppColors.incomeGreen
-                : AppColors.textTertiary(context)));
+              ? AppColors.expenseRed
+              : (net > 0
+                    ? AppColors.incomeGreen
+                    : AppColors.textTertiary(context)));
 
     final rows = <Widget>[
       for (var i = 0; i < transactions.length; i++) ...[
@@ -1177,7 +1222,9 @@ class _DayGroup extends StatelessWidget {
           if (title != null)
             Padding(
               padding: const EdgeInsets.only(
-                  top: AppSpacing.sm, bottom: AppSpacing.sm),
+                top: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+              ),
               child: Semantics(
                 header: true,
                 label: allExcluded
@@ -1191,11 +1238,14 @@ class _DayGroup extends StatelessWidget {
                         title!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.weight(
-                                AppText.title(context), FontWeight.w600)
-                            .copyWith(
-                                fontSize: 13.5,
-                                color: AppColors.textSecondary(context)),
+                        style:
+                            AppText.weight(
+                              AppText.title(context),
+                              FontWeight.w600,
+                            ).copyWith(
+                              fontSize: 13.5,
+                              color: AppColors.textSecondary(context),
+                            ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -1248,7 +1298,9 @@ class _ActivitySkeleton extends StatelessWidget {
                 for (var i = 0; i < 4; i++) ...[
                   const Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.md,
+                    ),
                     child: Row(
                       children: [
                         SkeletonBox(height: 44, width: 44, radius: 22),
@@ -1293,13 +1345,15 @@ class _AmountSheet extends StatefulWidget {
 
 class _AmountSheetState extends State<_AmountSheet> {
   late final TextEditingController _min = TextEditingController(
-      text: widget.initialMin == null
-          ? ''
-          : formatPaise(widget.initialMin!, trimZeroPaise: true));
+    text: widget.initialMin == null
+        ? ''
+        : formatPaise(widget.initialMin!, trimZeroPaise: true),
+  );
   late final TextEditingController _max = TextEditingController(
-      text: widget.initialMax == null
-          ? ''
-          : formatPaise(widget.initialMax!, trimZeroPaise: true));
+    text: widget.initialMax == null
+        ? ''
+        : formatPaise(widget.initialMax!, trimZeroPaise: true),
+  );
   String? _error;
 
   @override
@@ -1348,9 +1402,11 @@ class _AmountSheetState extends State<_AmountSheet> {
             child: Text('Filter by amount', style: AppText.h2(context)),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text('In rupees. Leave a side empty for no limit.',
-              style: AppText.bodySmall(context)
-                  .copyWith(color: AppColors.textSecondary(context))),
+          Text(
+            'In rupees. Leave a side empty for no limit.',
+            style: AppText.bodySmall(context)
+                .copyWith(color: AppColors.textSecondary(context)),
+          ),
           const SizedBox(height: AppSpacing.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1364,8 +1420,9 @@ class _AmountSheetState extends State<_AmountSheet> {
                     padding: EdgeInsets.only(right: last ? 0 : AppSpacing.sm),
                     child: TextField(
                       controller: controller,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: const [AmountInputFormatter()],
                       onChanged: (_) {
                         if (_error != null) setState(() => _error = null);
@@ -1389,13 +1446,18 @@ class _AmountSheetState extends State<_AmountSheet> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.error_outline_rounded,
-                        size: 16, color: AppColors.danger),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      size: 16,
+                      color: AppColors.danger,
+                    ),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
-                      child: Text(error,
-                          style: AppText.label(context)
-                              .copyWith(color: AppColors.danger)),
+                      child: Text(
+                        error,
+                        style: AppText.label(context)
+                            .copyWith(color: AppColors.danger),
+                      ),
                     ),
                   ],
                 ),
@@ -1407,8 +1469,9 @@ class _AmountSheetState extends State<_AmountSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context, (lo: null, hi: null)),
-                  style:
-                      OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                  ),
                   child: const Text('Clear'),
                 ),
               ),

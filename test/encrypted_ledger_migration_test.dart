@@ -49,13 +49,10 @@ void main() {
     // Sync metadata migration reads each payload during init, so tampering may
     // fail closed there; if it does not, loadAll must fail instead. Either way
     // no plaintext/corrupt record may be surfaced.
-    await expectLater(
-      () async {
-        await cache.init();
-        await cache.loadAll();
-      },
-      throwsA(isA<LedgerMigrationException>()),
-    );
+    await expectLater(() async {
+      await cache.init();
+      await cache.loadAll();
+    }, throwsA(isA<LedgerMigrationException>()));
   });
 
   test('encryption uses a fresh nonce for each payload', () async {

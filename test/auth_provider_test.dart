@@ -43,7 +43,8 @@ void main() {
     test('maps the codes a person can act on', () {
       expect(
         authMessageForError(
-            FirebaseAuthException(code: 'email-already-in-use')),
+          FirebaseAuthException(code: 'email-already-in-use'),
+        ),
         contains('already exists'),
       );
       expect(
@@ -66,13 +67,15 @@ void main() {
       expect(authMessageForError(StateError('boom')), isNotEmpty);
     });
 
-    test('reports that accounts are unavailable rather than blaming the user',
-        () {
-      expect(
-        authMessageForError(const AuthUnavailableException()),
-        contains('offline'),
-      );
-    });
+    test(
+      'reports that accounts are unavailable rather than blaming the user',
+      () {
+        expect(
+          authMessageForError(const AuthUnavailableException()),
+          contains('offline'),
+        );
+      },
+    );
   });
 
   group('AuthProvider without Firebase', () {
@@ -94,23 +97,25 @@ void main() {
       expect(provider.hasProfileImage, isFalse);
     });
 
-    test('a failed sign-in surfaces one message and clears the busy flag',
-        () async {
-      final provider = AuthProvider(auth: const _UnavailableAuthService());
-      addTearDown(provider.dispose);
+    test(
+      'a failed sign-in surfaces one message and clears the busy flag',
+      () async {
+        final provider = AuthProvider(auth: const _UnavailableAuthService());
+        addTearDown(provider.dispose);
 
-      final ok = await provider.signIn(
-        email: 'person@example.com',
-        password: 'correct horse',
-      );
+        final ok = await provider.signIn(
+          email: 'person@example.com',
+          password: 'correct horse',
+        );
 
-      expect(ok, isFalse);
-      expect(provider.isSignedIn, isFalse);
-      expect(provider.isBusy, isFalse);
-      expect(provider.errorMessage, isNotNull);
+        expect(ok, isFalse);
+        expect(provider.isSignedIn, isFalse);
+        expect(provider.isBusy, isFalse);
+        expect(provider.errorMessage, isNotNull);
 
-      provider.clearError();
-      expect(provider.errorMessage, isNull);
-    });
+        provider.clearError();
+        expect(provider.errorMessage, isNull);
+      },
+    );
   });
 }

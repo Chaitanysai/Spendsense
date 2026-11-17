@@ -58,8 +58,7 @@ void main() {
 
   for (final dark in [false, true]) {
     for (final (name, w, h, scale) in cases) {
-      testWidgets(
-          'Home scrolls end to end without a layout error: $name '
+      testWidgets('Home scrolls end to end without a layout error: $name '
           '${dark ? 'dark' : 'light'}', (tester) async {
         tester.view.physicalSize = Size(w * 3, h * 3);
         tester.view.devicePixelRatio = 3;
@@ -102,13 +101,18 @@ void main() {
             TransactionModel(
               id: 'x$i',
               amountMinor: 1234567800 + i * 500,
-              type:
-                  i % 4 == 0 ? TransactionType.income : TransactionType.expense,
+              type: i % 4 == 0
+                  ? TransactionType.income
+                  : TransactionType.expense,
               merchant: 'A very long merchant name number $i Pvt Ltd',
               category: categories[i % categories.length],
               paymentMethod: 'UPI',
-              date: DateTime(now.year, now.month, now.day, 10)
-                  .subtract(Duration(days: i % 6)),
+              date: DateTime(
+                now.year,
+                now.month,
+                now.day,
+                10,
+              ).subtract(Duration(days: i % 6)),
               time: '10:00',
               originalSms: '',
               isExcluded: false,
@@ -150,8 +154,9 @@ void endClearanceTests() {
     ('411x860 at 2.0x', 411, 860, 2.0),
     ('landscape 844x390', 844, 390, 1.0),
   ]) {
-    testWidgets('Home end of scroll clears the navigation bar: $name',
-        (tester) async {
+    testWidgets('Home end of scroll clears the navigation bar: $name', (
+      tester,
+    ) async {
       tester.view.physicalSize = Size(w * 3, h * 3);
       tester.view.devicePixelRatio = 3;
       tester.platformDispatcher.textScaleFactorTestValue = scale;
@@ -162,15 +167,17 @@ void endClearanceTests() {
         'name': 'Asha',
       });
       final tx = TransactionProvider();
-      await tester.pumpWidget(MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: tx),
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
-          ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ],
-        child: const SpendSenseApp(),
-      ));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: tx),
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => PeriodProvider()..init()),
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ],
+          child: const SpendSenseApp(),
+        ),
+      );
       await tester.pump(const Duration(seconds: 3));
       await tester.runAsync(() => tx.ready);
       final now = DateTime.now();
@@ -183,8 +190,12 @@ void endClearanceTests() {
             merchant: 'Shop $i',
             category: 'Food',
             paymentMethod: 'UPI',
-            date: DateTime(now.year, now.month, now.day, 10)
-                .subtract(Duration(days: i % 5)),
+            date: DateTime(
+              now.year,
+              now.month,
+              now.day,
+              10,
+            ).subtract(Duration(days: i % 5)),
             time: '10:00',
             originalSms: '',
             isExcluded: false,
@@ -194,7 +205,9 @@ void endClearanceTests() {
       await tester.pump(const Duration(seconds: 2));
       final scroller = find
           .descendant(
-              of: find.byType(HomeScreen), matching: find.byType(Scrollable))
+            of: find.byType(HomeScreen),
+            matching: find.byType(Scrollable),
+          )
           .first;
       // Rows build lazily, so the true end is only known after the list has
       // been walked. Jump to the current max until it stops growing.
@@ -214,17 +227,27 @@ void endClearanceTests() {
       for (final e in tiles.evaluate()) {
         final ro = e.renderObject! as RenderBox;
         final r = MatrixUtils.transformRect(
-            ro.getTransformTo(null), Offset.zero & ro.size);
+          ro.getTransformTo(null),
+          Offset.zero & ro.size,
+        );
         if (r.bottom > lowest) lowest = r.bottom;
       }
-      expect(lowest, greaterThan(bar.top - 400),
-          reason: 'measured row is nowhere near the bottom of the screen');
+      expect(
+        lowest,
+        greaterThan(bar.top - 400),
+        reason: 'measured row is nowhere near the bottom of the screen',
+      );
       // ignore: avoid_print
-      print('END $name barTop=${bar.top.toStringAsFixed(1)} '
-          'lastRowBottom=${lowest.toStringAsFixed(1)} '
-          'gap=${(bar.top - lowest).toStringAsFixed(1)}');
-      expect(lowest, lessThanOrEqualTo(bar.top + 0.5),
-          reason: 'content ends under the bar at $name');
+      print(
+        'END $name barTop=${bar.top.toStringAsFixed(1)} '
+        'lastRowBottom=${lowest.toStringAsFixed(1)} '
+        'gap=${(bar.top - lowest).toStringAsFixed(1)}',
+      );
+      expect(
+        lowest,
+        lessThanOrEqualTo(bar.top + 0.5),
+        reason: 'content ends under the bar at $name',
+      );
     });
   }
 }

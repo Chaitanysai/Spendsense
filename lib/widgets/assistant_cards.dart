@@ -22,12 +22,17 @@ class AssistantSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.summarize_rounded,
-                  size: 18, color: AppColors.brandInk(context)),
+              Icon(
+                Icons.summarize_rounded,
+                size: 18,
+                color: AppColors.brandInk(context),
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text('Summary · ${summary.label}',
-                    style: AppText.bodyStrong(context)),
+                child: Text(
+                  'Summary · ${summary.label}',
+                  style: AppText.bodyStrong(context),
+                ),
               ),
             ],
           ),
@@ -42,8 +47,10 @@ class AssistantSummaryCard extends StatelessWidget {
               style: AppText.amount(context, size: 28),
             ),
           ),
-          Text('Spending (excluded rows not counted)',
-              style: AppText.caption(context)),
+          Text(
+            'Spending (excluded rows not counted)',
+            style: AppText.caption(context),
+          ),
           const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.lg,
@@ -124,23 +131,27 @@ class _Metric extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.label(context).copyWith(fontSize: 10.5)),
-                Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        AppText.weight(AppText.title(context), FontWeight.w700)
-                            .copyWith(
-                      fontSize: 13,
-                      color: color,
-                    )),
-                Text(detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.body(context).copyWith(fontSize: 10)),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(context).copyWith(fontSize: 10.5),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.weight(
+                    AppText.title(context),
+                    FontWeight.w700,
+                  ).copyWith(fontSize: 13, color: color),
+                ),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body(context).copyWith(fontSize: 10),
+                ),
               ],
             ),
           ),
@@ -170,8 +181,10 @@ class AssistantSectionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(section.title,
-                        style: AppText.title(context).copyWith(fontSize: 15)),
+                    Text(
+                      section.title,
+                      style: AppText.title(context).copyWith(fontSize: 15),
+                    ),
                     if (section.subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(section.subtitle!, style: AppText.caption(context)),
@@ -192,11 +205,12 @@ class AssistantSectionCard extends StatelessWidget {
                       style: AppText.amount(context, size: 15),
                     ),
                     Text(
-                        '${section.matchedCount} match'
-                        '${section.matchedCount == 1 ? '' : 'es'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.label(context).copyWith(fontSize: 10)),
+                      '${section.matchedCount} match'
+                      '${section.matchedCount == 1 ? '' : 'es'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.label(context).copyWith(fontSize: 10),
+                    ),
                   ],
                 ),
               ),
@@ -207,7 +221,8 @@ class AssistantSectionCard extends StatelessWidget {
             _InlineNote(
               icon: Icons.trending_up_rounded,
               color: AppColors.warning,
-              text: '${Formatters.currency.format(section.investmentMinor)} is '
+              text:
+                  '${Formatters.currency.format(section.investmentMinor)} is '
                   'money moved to investments/transfers, not consumption.',
             ),
           ],
@@ -216,7 +231,8 @@ class AssistantSectionCard extends StatelessWidget {
             _InlineNote(
               icon: Icons.visibility_off_outlined,
               color: AppColors.textTertiary(context),
-              text: '${section.excludedCount} excluded '
+              text:
+                  '${section.excludedCount} excluded '
                   '(${Formatters.currency.format(section.excludedMinor)}) '
                   'not counted in spending.',
             ),
@@ -257,10 +273,11 @@ class AssistantTransactionRow extends StatelessWidget {
     final amountColor = excluded
         ? AppColors.textTertiary(context)
         : isIncome
-            ? AppColors.incomeGreen
-            : AppColors.textPrimary(context);
+        ? AppColors.incomeGreen
+        : AppColors.textPrimary(context);
     return Semantics(
-      label: '${transaction.merchant}, ${transaction.dateLabel}, '
+      label:
+          '${transaction.merchant}, ${transaction.dateLabel}, '
           '${transaction.kind.label}, ${transaction.signedLabel}'
           '${excluded ? ', excluded from spending' : ''}',
       excludeSemantics: true,
@@ -313,10 +330,7 @@ class AssistantTransactionRow extends StatelessWidget {
                     spacing: 5,
                     runSpacing: 4,
                     children: [
-                      _Badge(
-                        label: transaction.kind.label,
-                        color: color,
-                      ),
+                      _Badge(label: transaction.kind.label, color: color),
                       if (excluded)
                         _Badge(
                           label: 'Excluded',
@@ -332,8 +346,9 @@ class AssistantTransactionRow extends StatelessWidget {
                         transaction.signedLabel,
                         style: AppText.amount(context, size: 13).copyWith(
                           color: amountColor,
-                          decoration:
-                              excluded ? TextDecoration.lineThrough : null,
+                          decoration: excluded
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       ),
                     ),
@@ -385,10 +400,10 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppText.weight(AppText.label(context), FontWeight.w700).copyWith(
-          fontSize: 9.5,
-          color: AppColors.inkOnWash(context, color),
-        ),
+        style: AppText.weight(
+          AppText.label(context),
+          FontWeight.w700,
+        ).copyWith(fontSize: 9.5, color: AppColors.inkOnWash(context, color)),
       ),
     );
   }
@@ -413,8 +428,10 @@ class _InlineNote extends StatelessWidget {
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 6),
         Expanded(
-          child:
-              Text(text, style: AppText.body(context).copyWith(fontSize: 10.5)),
+          child: Text(
+            text,
+            style: AppText.body(context).copyWith(fontSize: 10.5),
+          ),
         ),
       ],
     );
@@ -435,8 +452,10 @@ class AssistantComparisonCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Month comparison',
-              style: AppText.title(context).copyWith(fontSize: 15)),
+          Text(
+            'Month comparison',
+            style: AppText.title(context).copyWith(fontSize: 15),
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -447,11 +466,7 @@ class AssistantComparisonCard extends StatelessWidget {
                   accent: AppColors.brandInk(context),
                 ),
               ),
-              Container(
-                width: 1,
-                height: 44,
-                color: AppColors.border(context),
-              ),
+              Container(width: 1, height: 44, color: AppColors.border(context)),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _CompareColumn(
@@ -465,7 +480,9 @@ class AssistantComparisonCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: 8),
+              horizontal: AppSpacing.md,
+              vertical: 8,
+            ),
             decoration: BoxDecoration(
               color: AppColors.wash(context, deltaColor),
               borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -485,11 +502,13 @@ class AssistantComparisonCard extends StatelessWidget {
                     '${Formatters.currency.format(comparison.deltaMinor.abs())} '
                     '(${comparison.percentChange.abs().toStringAsFixed(1)}%)',
                     style:
-                        AppText.weight(AppText.label(context), FontWeight.w700)
-                            .copyWith(
-                      fontSize: 11.5,
-                      color: AppColors.inkOnWash(context, deltaColor),
-                    ),
+                        AppText.weight(
+                          AppText.label(context),
+                          FontWeight.w700,
+                        ).copyWith(
+                          fontSize: 11.5,
+                          color: AppColors.inkOnWash(context, deltaColor),
+                        ),
                   ),
                 ),
               ],
@@ -501,7 +520,9 @@ class AssistantComparisonCard extends StatelessWidget {
             const SizedBox(height: 6),
             for (final driver in comparison.categoryDrivers.take(3))
               _DriverRow(
-                  driver: driver, icon: CategoryStyle.icon(driver.label)),
+                driver: driver,
+                icon: CategoryStyle.icon(driver.label),
+              ),
           ],
           if (comparison.merchantDrivers.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -532,15 +553,19 @@ class _CompareColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.body(context).copyWith(fontSize: 10.5)),
+        Text(
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.body(context).copyWith(fontSize: 10.5),
+        ),
         const SizedBox(height: 2),
-        Text(Formatters.currency.format(amount),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.amount(context, size: 17).copyWith(color: accent)),
+        Text(
+          Formatters.currency.format(amount),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.amount(context, size: 17).copyWith(color: accent),
+        ),
       ],
     );
   }
@@ -563,18 +588,19 @@ class _DriverRow extends StatelessWidget {
           Icon(icon, size: 14, color: AppColors.textTertiary(context)),
           const SizedBox(width: 7),
           Expanded(
-            child: Text(driver.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.caption(context)),
+            child: Text(
+              driver.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.caption(context),
+            ),
           ),
           Text(
             '${positive ? '+' : '−'}${Formatters.currency.format(driver.deltaMinor.abs())}',
-            style: AppText.weight(AppText.label(context), FontWeight.w700)
-                .copyWith(
-              fontSize: 10.5,
-              color: color,
-            ),
+            style: AppText.weight(
+              AppText.label(context),
+              FontWeight.w700,
+            ).copyWith(fontSize: 10.5, color: color),
           ),
         ],
       ),
@@ -597,8 +623,10 @@ class AssistantBillsCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Unpaid bills',
-                    style: AppText.title(context).copyWith(fontSize: 15)),
+                child: Text(
+                  'Unpaid bills',
+                  style: AppText.title(context).copyWith(fontSize: 15),
+                ),
               ),
               Text(
                 Formatters.currency.format(
@@ -609,8 +637,10 @@ class AssistantBillsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
-          Text('Derived from your local plans and transactions',
-              style: AppText.caption(context)),
+          Text(
+            'Derived from your local plans and transactions',
+            style: AppText.caption(context),
+          ),
           const SizedBox(height: AppSpacing.sm),
           for (final bill in bills)
             Padding(
@@ -622,24 +652,31 @@ class AssistantBillsCard extends StatelessWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       color: AppColors.wash(
-                          context, _statusColor(context, bill.status)),
+                        context,
+                        _statusColor(context, bill.status),
+                      ),
                       borderRadius: BorderRadius.circular(AppRadius.icon),
                     ),
-                    child: Icon(Icons.receipt_long_rounded,
-                        size: 16,
-                        color: AppColors.inkOnWash(
-                            context, _statusColor(context, bill.status))),
+                    child: Icon(
+                      Icons.receipt_long_rounded,
+                      size: 16,
+                      color: AppColors.inkOnWash(
+                        context,
+                        _statusColor(context, bill.status),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(bill.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                AppText.title(context).copyWith(fontSize: 13)),
+                        Text(
+                          bill.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.title(context).copyWith(fontSize: 13),
+                        ),
                         Text(
                           '${bill.status} · ${bill.dueLabel}'
                           '${bill.isRecurring ? ' · recurring' : ''}',
@@ -649,8 +686,10 @@ class AssistantBillsCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(Formatters.currency.format(bill.amountMinor),
-                      style: AppText.amount(context, size: 13)),
+                  Text(
+                    Formatters.currency.format(bill.amountMinor),
+                    style: AppText.amount(context, size: 13),
+                  ),
                 ],
               ),
             ),
@@ -687,12 +726,16 @@ class AssistantPendingActionCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       // Same panel as every card; only the border carries the warning/danger
       // hue, so the confirmation reads as urgent without a coloured halo.
-      decoration: AppColors.panelDecoration(
-        context,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ).copyWith(
-        border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.4),
-      ),
+      decoration:
+          AppColors.panelDecoration(
+            context,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+          ).copyWith(
+            border: Border.all(
+              color: accent.withValues(alpha: 0.55),
+              width: 1.4,
+            ),
+          ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -718,12 +761,14 @@ class AssistantPendingActionCard extends StatelessWidget {
                   color: AppColors.wash(context, accent),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text('NOT APPLIED',
-                    style:
-                        AppText.weight(AppText.label(context), FontWeight.w800)
-                            .copyWith(
-                                fontSize: 9,
-                                color: AppColors.inkOnWash(context, accent))),
+                child: Text(
+                  'NOT APPLIED',
+                  style: AppText.weight(AppText.label(context), FontWeight.w800)
+                      .copyWith(
+                        fontSize: 9,
+                        color: AppColors.inkOnWash(context, accent),
+                      ),
+                ),
               ),
             ],
           ),
@@ -735,9 +780,10 @@ class AssistantPendingActionCard extends StatelessWidget {
             style: AppText.title(context).copyWith(fontSize: 13),
           ),
           const SizedBox(height: 4),
-          Text(action.explanation,
-              style:
-                  AppText.body(context).copyWith(fontSize: 11.5, height: 1.4)),
+          Text(
+            action.explanation,
+            style: AppText.body(context).copyWith(fontSize: 11.5, height: 1.4),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
@@ -748,19 +794,20 @@ class AssistantPendingActionCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Spending · ${action.spendingScopeLabel}',
-                      style: AppText.body(context).copyWith(fontSize: 10.5)),
+                  child: Text(
+                    'Spending · ${action.spendingScopeLabel}',
+                    style: AppText.body(context).copyWith(fontSize: 10.5),
+                  ),
                 ),
                 Flexible(
                   child: Text(
                     '${Formatters.currency.format(action.spendingBeforeMinor)} → '
                     '${Formatters.currency.format(action.spendingAfterMinor)}',
                     textAlign: TextAlign.right,
-                    style:
-                        AppText.weight(AppText.label(context), FontWeight.w700)
-                            .copyWith(
-                      fontSize: 11,
-                    ),
+                    style: AppText.weight(
+                      AppText.label(context),
+                      FontWeight.w700,
+                    ).copyWith(fontSize: 11),
                   ),
                 ),
               ],
@@ -823,7 +870,11 @@ class _ConfirmSheet extends StatelessWidget {
           child: ListView(
             controller: scrollController,
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.page, AppSpacing.lg, AppSpacing.page, AppSpacing.xl),
+              AppSpacing.page,
+              AppSpacing.lg,
+              AppSpacing.page,
+              AppSpacing.xl,
+            ),
             children: [
               Row(
                 children: [
@@ -846,11 +897,11 @@ class _ConfirmSheet extends StatelessWidget {
               Text(
                 danger
                     ? 'This removes ${action.expectedCount} records from your '
-                        'encrypted ledger. It is only reversible while the '
-                        'assistant audit copy is available.'
+                          'encrypted ledger. It is only reversible while the '
+                          'assistant audit copy is available.'
                     : 'This keeps ${action.expectedCount} records in your ledger '
-                        'and removes them from spending, Insights, budgets and '
-                        'instrument totals. You can undo it.',
+                          'and removes them from spending, Insights, budgets and '
+                          'instrument totals. You can undo it.',
                 style: AppText.body(context),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -869,8 +920,9 @@ class _ConfirmSheet extends StatelessWidget {
                     ),
                     _SheetRow(
                       label: 'Total',
-                      value:
-                          Formatters.currency.format(action.expectedTotalMinor),
+                      value: Formatters.currency.format(
+                        action.expectedTotalMinor,
+                      ),
                     ),
                     _SheetRow(
                       label: 'Spending · ${action.spendingScopeLabel}',
@@ -891,8 +943,9 @@ class _ConfirmSheet extends StatelessWidget {
                 height: 50,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        danger ? AppColors.danger : AppColors.filledBrand,
+                    backgroundColor: danger
+                        ? AppColors.danger
+                        : AppColors.filledBrand,
                   ),
                   onPressed: () => Navigator.pop(context, true),
                   icon: const Icon(Icons.check_rounded),
@@ -927,18 +980,16 @@ class _SheetRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(label, style: AppText.caption(context)),
-          ),
+          Expanded(child: Text(label, style: AppText.caption(context))),
           const SizedBox(width: AppSpacing.sm),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: AppText.weight(AppText.label(context), FontWeight.w700)
-                  .copyWith(
-                fontSize: 11.5,
-              ),
+              style: AppText.weight(
+                AppText.label(context),
+                FontWeight.w700,
+              ).copyWith(fontSize: 11.5),
             ),
           ),
         ],

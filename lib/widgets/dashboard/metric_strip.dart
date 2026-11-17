@@ -109,11 +109,7 @@ class _MetricCell extends StatelessWidget {
   final Color? labelColor;
   final Color? valueColor;
 
-  const _MetricCell({
-    required this.item,
-    this.labelColor,
-    this.valueColor,
-  });
+  const _MetricCell({required this.item, this.labelColor, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +138,8 @@ class _MetricCell extends StatelessWidget {
               context,
               size: 15,
               weight: FontWeight.w700,
-              color: item.valueColor ??
+              color:
+                  item.valueColor ??
                   valueColor ??
                   AppColors.textPrimary(context),
             ),
@@ -158,11 +155,7 @@ class _MetricRow extends StatelessWidget {
   final Color? labelColor;
   final Color? valueColor;
 
-  const _MetricRow({
-    required this.item,
-    this.labelColor,
-    this.valueColor,
-  });
+  const _MetricRow({required this.item, this.labelColor, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +184,8 @@ class _MetricRow extends StatelessWidget {
               context,
               size: 15,
               weight: FontWeight.w700,
-              color: item.valueColor ??
+              color:
+                  item.valueColor ??
                   valueColor ??
                   AppColors.textPrimary(context),
             ),

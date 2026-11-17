@@ -7,17 +7,25 @@ void main() {
   group('AmountInputFormatter', () {
     const formatter = AmountInputFormatter();
 
-    TextEditingValue fmt(String oldT, String newT,
-        {int oldBase = 0, int newBase = 0}) {
+    TextEditingValue fmt(
+      String oldT,
+      String newT, {
+      int oldBase = 0,
+      int newBase = 0,
+    }) {
       return formatter.formatEditUpdate(
         TextEditingValue(
-            text: oldT,
-            selection: TextSelection.collapsed(
-                offset: oldBase == 0 ? oldT.length : oldBase)),
+          text: oldT,
+          selection: TextSelection.collapsed(
+            offset: oldBase == 0 ? oldT.length : oldBase,
+          ),
+        ),
         TextEditingValue(
-            text: newT,
-            selection: TextSelection.collapsed(
-                offset: newBase == 0 ? newT.length : newBase)),
+          text: newT,
+          selection: TextSelection.collapsed(
+            offset: newBase == 0 ? newT.length : newBase,
+          ),
+        ),
       );
     }
 
@@ -70,10 +78,14 @@ void main() {
       expect(parseRupeesToPaise('12.34'), 1234);
       expect(parseRupeesToPaise('12.00'), 1200);
       // Multiple dots must be rejected by the parser even if formatter slipped
-      expect(() => parseRupeesToPaise('12..3'),
-          throwsA(isA<MoneyParseException>()));
-      expect(() => parseRupeesToPaise('12.345'),
-          throwsA(isA<MoneyParseException>()));
+      expect(
+        () => parseRupeesToPaise('12..3'),
+        throwsA(isA<MoneyParseException>()),
+      );
+      expect(
+        () => parseRupeesToPaise('12.345'),
+        throwsA(isA<MoneyParseException>()),
+      );
       expect(() => parseRupeesToPaise(''), throwsA(isA<MoneyParseException>()));
     });
   });

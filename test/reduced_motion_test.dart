@@ -89,8 +89,9 @@ void main() {
   setUp(AppPageRoute.debugResetInFlight);
 
   group('SkeletonBox reduced motion', () {
-    testWidgets('renders a stable placeholder when animations are disabled',
-        (tester) async {
+    testWidgets('renders a stable placeholder when animations are disabled', (
+      tester,
+    ) async {
       _setReducedMotion(tester, enabled: true);
       await tester.pumpWidget(
         const MaterialApp(
@@ -120,12 +121,10 @@ void main() {
   });
 
   group('assistant auto-scroll reduced motion', () {
-    testWidgets('jumps immediately when animations are disabled',
-        (tester) async {
-      final controller = await _openAssistant(
-        tester,
-        reducedMotion: true,
-      );
+    testWidgets('jumps immediately when animations are disabled', (
+      tester,
+    ) async {
+      final controller = await _openAssistant(tester, reducedMotion: true);
       final previousOffset = controller.offset;
 
       await _submitAssistantQuery(tester);
@@ -137,12 +136,10 @@ void main() {
       );
     });
 
-    testWidgets('keeps animated scrolling when animations are enabled',
-        (tester) async {
-      final controller = await _openAssistant(
-        tester,
-        reducedMotion: false,
-      );
+    testWidgets('keeps animated scrolling when animations are enabled', (
+      tester,
+    ) async {
+      final controller = await _openAssistant(tester, reducedMotion: false);
       final previousOffset = controller.offset;
 
       await _submitAssistantQuery(tester);

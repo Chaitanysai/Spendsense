@@ -43,15 +43,13 @@ enum SoundCategory {
 
 extension SoundEventTypeCategory on SoundEventType {
   SoundCategory get category => switch (this) {
-        SoundEventType.buttonTap ||
-        SoundEventType.selectionChanged =>
-          SoundCategory.ui,
-        SoundEventType.transactionSaved ||
-        SoundEventType.actionSucceeded ||
-        SoundEventType.actionFailed ||
-        SoundEventType.milestoneReached =>
-          SoundCategory.transaction,
-      };
+    SoundEventType.buttonTap ||
+    SoundEventType.selectionChanged => SoundCategory.ui,
+    SoundEventType.transactionSaved ||
+    SoundEventType.actionSucceeded ||
+    SoundEventType.actionFailed ||
+    SoundEventType.milestoneReached => SoundCategory.transaction,
+  };
 
   /// Minimum gap before the same event may fire again.
   ///
@@ -59,9 +57,9 @@ extension SoundEventTypeCategory on SoundEventType {
   /// and its child both accepting one tap) and against rapid-fire re-taps
   /// stacking the same cue on top of itself.
   Duration get repeatWindow => switch (category) {
-        SoundCategory.ui => const Duration(milliseconds: 70),
-        SoundCategory.transaction => const Duration(milliseconds: 300),
-      };
+    SoundCategory.ui => const Duration(milliseconds: 70),
+    SoundCategory.transaction => const Duration(milliseconds: 300),
+  };
 }
 
 /// Immutable snapshot of the user's audio preferences.
@@ -97,12 +95,11 @@ class SoundPreferences {
     bool? masterEnabled,
     bool? uiEnabled,
     bool? transactionsEnabled,
-  }) =>
-      SoundPreferences(
-        masterEnabled: masterEnabled ?? this.masterEnabled,
-        uiEnabled: uiEnabled ?? this.uiEnabled,
-        transactionsEnabled: transactionsEnabled ?? this.transactionsEnabled,
-      );
+  }) => SoundPreferences(
+    masterEnabled: masterEnabled ?? this.masterEnabled,
+    uiEnabled: uiEnabled ?? this.uiEnabled,
+    transactionsEnabled: transactionsEnabled ?? this.transactionsEnabled,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -116,7 +113,8 @@ class SoundPreferences {
       Object.hash(masterEnabled, uiEnabled, transactionsEnabled);
 
   @override
-  String toString() => 'SoundPreferences(master: $masterEnabled, '
+  String toString() =>
+      'SoundPreferences(master: $masterEnabled, '
       'ui: $uiEnabled, transactions: $transactionsEnabled)';
 }
 
@@ -148,8 +146,8 @@ abstract interface class SoundPlayer {
 /// never be able to break navigation, a transaction, or startup.
 class SoundService {
   SoundService({SoundPlayer? player, DateTime Function()? clock})
-      : _player = player ?? AudioPlayersSoundPlayer(),
-        _clock = clock ?? DateTime.now;
+    : _player = player ?? AudioPlayersSoundPlayer(),
+      _clock = clock ?? DateTime.now;
 
   /// Asset paths are relative to the `assets/` prefix the player adds, so
   /// `sounds/ui_tap.wav` resolves to `assets/sounds/ui_tap.wav`.

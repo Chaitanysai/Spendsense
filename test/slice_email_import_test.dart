@@ -18,7 +18,8 @@ import 'package:spendsense/services/smart_parser.dart';
 /// was enough to drop it silently.
 void main() {
   const from = 'slice <noreply@slice.bank.in>';
-  const body = 'Hi KANDULA, \u20B9100 was debited from your slice bank account '
+  const body =
+      'Hi KANDULA, \u20B9100 was debited from your slice bank account '
       'ending in 3317 via UPI. Transaction date 01-Nov-26 '
       'To K Venkata Ravi Prasad';
   final when = DateTime(2026, 11, 1, 10, 24);
@@ -26,18 +27,22 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('Slice sender allowlist', () {
-    test('the real sender domain is a default, so it works untouched',
-        () async {
-      final domains = await GmailEmailSource().senderDomains();
-      expect(domains, contains('slice.bank.in'));
-      expect(GmailEmailSource.isAllowedSender(from, domains), isTrue);
-    });
+    test(
+      'the real sender domain is a default, so it works untouched',
+      () async {
+        final domains = await GmailEmailSource().senderDomains();
+        expect(domains, contains('slice.bank.in'));
+        expect(GmailEmailSource.isAllowedSender(from, domains), isTrue);
+      },
+    );
 
     test('a look-alike Slice domain is still refused', () async {
       final domains = await GmailEmailSource().senderDomains();
       expect(
         GmailEmailSource.isAllowedSender(
-            'slice <x@evil.slice.bank.in>', domains),
+          'slice <x@evil.slice.bank.in>',
+          domains,
+        ),
         isFalse,
       );
     });

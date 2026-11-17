@@ -20,10 +20,10 @@ class LedgerTombstone {
   });
 
   Map<String, dynamic> toJson() => {
-        'syncId': syncId,
-        'id': id,
-        'deletedAtMs': deletedAtMs,
-      };
+    'syncId': syncId,
+    'id': id,
+    'deletedAtMs': deletedAtMs,
+  };
 
   static LedgerTombstone? tryParse(Object? raw) {
     if (raw is! Map) return null;
@@ -61,7 +61,7 @@ class LedgerTombstoneStore {
   Object? lastError;
 
   LedgerTombstoneStore({LedgerEncryptionService? encryption})
-      : _encryption = encryption ?? LedgerEncryptionService();
+    : _encryption = encryption ?? LedgerEncryptionService();
 
   /// Appends [tombstones], skipping entries whose [LedgerTombstone.syncId] is
   /// already recorded. Returns how many new entries were written.
@@ -119,11 +119,12 @@ class LedgerTombstoneStore {
   }) async {
     final all = await readAll();
     if (all.isEmpty) return 0;
-    final cutoff = (now ?? DateTime.now()).millisecondsSinceEpoch -
+    final cutoff =
+        (now ?? DateTime.now()).millisecondsSinceEpoch -
         retention.inMilliseconds;
     final kept = [
       for (final t in all)
-        if (t.deletedAtMs >= cutoff) t
+        if (t.deletedAtMs >= cutoff) t,
     ];
     if (kept.length == all.length) return 0;
     await _writeAll(kept);

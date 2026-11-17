@@ -19,8 +19,11 @@ final _config = UpdateConfig(
   approvedHosts: const {'updates.example.com'},
 );
 
-String _body(
-        {String latest = '2.0.1', int build = 21, String minimum = '2.0.0'}) =>
+String _body({
+  String latest = '2.0.1',
+  int build = 21,
+  String minimum = '2.0.0',
+}) =>
     '''
 {
   "schemaVersion": 1,

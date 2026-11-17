@@ -3,17 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:spendsense/widgets/animated_progress_bar.dart';
 
-Widget _host(
-  Widget child, {
-  bool reduceMotion = false,
-  double width = 240,
-}) {
+Widget _host(Widget child, {bool reduceMotion = false, double width = 240}) {
   return MaterialApp(
     home: Builder(
       builder: (context) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
         child: Scaffold(
-          body: Center(child: SizedBox(width: width, child: child)),
+          body: Center(
+            child: SizedBox(width: width, child: child),
+          ),
         ),
       ),
     ),
@@ -32,14 +30,17 @@ double _fill(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('grows from zero and settles exactly on the target',
-      (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.6,
-        duration: Duration(milliseconds: 400),
+  testWidgets('grows from zero and settles exactly on the target', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0.6,
+          duration: Duration(milliseconds: 400),
+        ),
       ),
-    ));
+    );
 
     await tester.pump();
     expect(_fill(tester), 0.0, reason: 'starts empty');
@@ -51,27 +52,34 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
-    expect(_fill(tester), closeTo(0.6, 1e-9),
-        reason: 'must settle on the exact target, not near it');
+    expect(
+      _fill(tester),
+      closeTo(0.6, 1e-9),
+      reason: 'must settle on the exact target, not near it',
+    );
   });
 
   testWidgets('a data change continues from the painted value', (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.8,
-        duration: Duration(milliseconds: 300),
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0.8,
+          duration: Duration(milliseconds: 300),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
     expect(_fill(tester), closeTo(0.8, 1e-9));
 
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.4,
-        duration: Duration(milliseconds: 300),
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0.4,
+          duration: Duration(milliseconds: 300),
+        ),
       ),
-    ));
+    );
     await tester.pump();
     // The first frame of the change must start from 0.8, not from zero.
     expect(_fill(tester), closeTo(0.8, 1e-6));
@@ -81,16 +89,17 @@ void main() {
     expect(_fill(tester), closeTo(0.4, 1e-9));
   });
 
-  testWidgets('an unrelated rebuild does not replay the animation',
-      (tester) async {
+  testWidgets('an unrelated rebuild does not replay the animation', (
+    tester,
+  ) async {
     Widget build(String marker) => _host(
-          AnimatedProgressBar(
-            key: const ValueKey('bar'),
-            fraction: 0.55,
-            duration: const Duration(milliseconds: 300),
-            semanticLabel: marker,
-          ),
-        );
+      AnimatedProgressBar(
+        key: const ValueKey('bar'),
+        fraction: 0.55,
+        duration: const Duration(milliseconds: 300),
+        semanticLabel: marker,
+      ),
+    );
 
     await tester.pumpWidget(build('first'));
     await tester.pump(const Duration(milliseconds: 400));
@@ -99,19 +108,24 @@ void main() {
 
     await tester.pumpWidget(build('second'));
     await tester.pump();
-    expect(_fill(tester), closeTo(settled, 1e-9),
-        reason: 'same target, different parent build: value must not reset');
+    expect(
+      _fill(tester),
+      closeTo(settled, 1e-9),
+      reason: 'same target, different parent build: value must not reset',
+    );
   });
 
   testWidgets('clamps out-of-range and non-finite values', (tester) async {
     for (final value in <double>[0, -0.5, 2.5, double.nan, double.infinity]) {
-      await tester.pumpWidget(_host(
-        AnimatedProgressBar(
-          key: ValueKey(value),
-          fraction: value,
-          duration: const Duration(milliseconds: 100),
+      await tester.pumpWidget(
+        _host(
+          AnimatedProgressBar(
+            key: ValueKey(value),
+            fraction: value,
+            duration: const Duration(milliseconds: 100),
+          ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pump();
       final painted = _fill(tester);
@@ -122,10 +136,14 @@ void main() {
   });
 
   testWidgets('a zero target paints nothing and never throws', (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-          fraction: 0, duration: Duration(milliseconds: 200)),
-    ));
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0,
+          duration: Duration(milliseconds: 200),
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(_fill(tester), 0.0, reason: 'zero paints an empty bar');
@@ -133,27 +151,32 @@ void main() {
   });
 
   testWidgets('reduced motion settles immediately', (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.75,
-        duration: Duration(milliseconds: 600),
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0.75,
+          duration: Duration(milliseconds: 600),
+        ),
+        reduceMotion: true,
       ),
-      reduceMotion: true,
-    ));
+    );
     await tester.pump();
 
     expect(_fill(tester), closeTo(0.75, 1e-9));
   });
 
-  testWidgets('a stagger delay postpones the start, then completes',
-      (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.5,
-        delay: Duration(milliseconds: 120),
-        duration: Duration(milliseconds: 200),
+  testWidgets('a stagger delay postpones the start, then completes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(
+          fraction: 0.5,
+          delay: Duration(milliseconds: 120),
+          duration: Duration(milliseconds: 200),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 60));
     expect(_fill(tester), 0.0, reason: 'still waiting for its turn');
 
@@ -163,15 +186,15 @@ void main() {
     expect(_fill(tester), closeTo(0.5, 1e-9));
   });
 
-  testWidgets('exposes a label and a numeric value to accessibility',
-      (tester) async {
+  testWidgets('exposes a label and a numeric value to accessibility', (
+    tester,
+  ) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.42,
-        semanticLabel: 'Food share',
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(fraction: 0.42, semanticLabel: 'Food share'),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 800));
 
     final node = tester.getSemantics(find.bySemanticsLabel('Food share'));
@@ -181,12 +204,11 @@ void main() {
   });
 
   testWidgets('a timer is cancelled when the bar is disposed', (tester) async {
-    await tester.pumpWidget(_host(
-      const AnimatedProgressBar(
-        fraction: 0.9,
-        delay: Duration(seconds: 5),
+    await tester.pumpWidget(
+      _host(
+        const AnimatedProgressBar(fraction: 0.9, delay: Duration(seconds: 5)),
       ),
-    ));
+    );
     // Replace the tree before the delay fires; no pending-timer failure.
     await tester.pumpWidget(_host(const SizedBox()));
     await tester.pump(const Duration(seconds: 6));

@@ -19,37 +19,43 @@ import 'package:spendsense/services/transaction_cache_service.dart';
 //
 // Synthetic fixtures only. No real SMS text or financial data.
 
-TransactionModel _tx(String id, int amount,
-        {TransactionType type = TransactionType.expense, String? merchant}) =>
-    TransactionModel(
-      id: id,
-      amount: amount,
-      type: type,
-      merchant: merchant ?? 'Merchant $id',
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 12, 9, 30),
-      time: '09:30',
-      originalSms: 'synthetic body $id',
-      isExcluded: false,
-      source: 'Manual',
-    );
+TransactionModel _tx(
+  String id,
+  int amount, {
+  TransactionType type = TransactionType.expense,
+  String? merchant,
+}) => TransactionModel(
+  id: id,
+  amount: amount,
+  type: type,
+  merchant: merchant ?? 'Merchant $id',
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: DateTime(2026, 10, 12, 9, 30),
+  time: '09:30',
+  originalSms: 'synthetic body $id',
+  isExcluded: false,
+  source: 'Manual',
+);
 
-Map<String, dynamic> _rec(String id, Object? amount,
-        {Object? type = 'expense', Object? date = '2026-10-12T09:30:00.000'}) =>
-    {
-      'id': id,
-      'amount': amount,
-      'type': type,
-      'merchant': 'Merchant $id',
-      'category': 'Food',
-      'paymentMethod': 'UPI',
-      'date': date,
-      'time': '09:30',
-      'originalSms': 'synthetic body $id',
-      'isExcluded': false,
-      'source': 'Manual',
-    };
+Map<String, dynamic> _rec(
+  String id,
+  Object? amount, {
+  Object? type = 'expense',
+  Object? date = '2026-10-12T09:30:00.000',
+}) => {
+  'id': id,
+  'amount': amount,
+  'type': type,
+  'merchant': 'Merchant $id',
+  'category': 'Food',
+  'paymentMethod': 'UPI',
+  'date': date,
+  'time': '09:30',
+  'originalSms': 'synthetic body $id',
+  'isExcluded': false,
+  'source': 'Manual',
+};
 
 String _envelope(List<Object?> txs, {Object? version = '2.0', Object? count}) =>
     jsonEncode({
@@ -87,7 +93,8 @@ Future<_Ledger> _snapshot(TransactionCacheService cache) async {
           prefs.get(k) is String)
         // Encrypted envelopes (records, index, migration journal) use a fresh
         // nonce per write by design, so only their presence is comparable.
-        k: (k.startsWith('txe_') ||
+        k:
+            (k.startsWith('txe_') ||
                 k == 'tx_cache_ids_v2' ||
                 k == 'tx_money_migration_v2')
             ? '<encrypted>'
@@ -99,8 +106,10 @@ Future<_Ledger> _snapshot(TransactionCacheService cache) async {
 
 /// Seeds WITHOUT the hook, then arms it, so injected failures only ever hit
 /// the import under test and never the fixture setup.
-Future<TransactionCacheService> _freshService(
-    {WriteHook? hook, List<TransactionModel>? seed}) async {
+Future<TransactionCacheService> _freshService({
+  WriteHook? hook,
+  List<TransactionModel>? seed,
+}) async {
   final cache = TransactionCacheService();
   await cache.init();
   if (seed != null) await cache.putAll(seed);
@@ -134,22 +143,26 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('REPRODUCTION (audit R1)', () {
-    test('replace:true with one malformed element keeps the old ledger',
-        () async {
-      final cache = await _freshService(seed: _oldLedger);
-      final before = await _snapshot(cache);
+    test(
+      'replace:true with one malformed element keeps the old ledger',
+      () async {
+        final cache = await _freshService(seed: _oldLedger);
+        final before = await _snapshot(cache);
 
-      await expectLater(
-        cache.importFromJsonString(_envelope([_rec('new-1', 500), 42]),
-            replace: true),
-        throwsA(isA<LedgerImportException>()),
-      );
+        await expectLater(
+          cache.importFromJsonString(
+            _envelope([_rec('new-1', 500), 42]),
+            replace: true,
+          ),
+          throwsA(isA<LedgerImportException>()),
+        );
 
-      final after = await _snapshot(cache);
-      expect(after, before);
-      expect(after.ids, ['keep-1', 'keep-2']);
-      expect(after.total, 33300);
-    });
+        final after = await _snapshot(cache);
+        expect(after, before);
+        expect(after.ids, ['keep-1', 'keep-2']);
+        expect(after.total, 33300);
+      },
+    );
   });
 
   group('validation happens before any mutation', () {
@@ -164,21 +177,22 @@ void main() {
       'unsupported version text': _envelope([_rec('n1', 5)], version: 'beta'),
       'element is not an object': _envelope([_rec('n1', 5), 'oops']),
       'missing id': _envelope([
-        {..._rec('x', 5)}..remove('id')
+        {..._rec('x', 5)}..remove('id'),
       ]),
       'empty id': _envelope([_rec('', 5)]),
       // `tx_` + id is the storage key, so these ids would overwrite the ledger
       // index / rejected-set / sync metadata themselves.
-      'reserved id cache_ids (collides with the ledger index key)':
-          _envelope([_rec('cache_ids', 5)]),
+      'reserved id cache_ids (collides with the ledger index key)': _envelope([
+        _rec('cache_ids', 5),
+      ]),
       'reserved id rejected_ids': _envelope([_rec('rejected_ids', 5)]),
       'reserved id cache_meta': _envelope([_rec('cache_meta', 5)]),
       'id longer than 200 characters': _envelope([_rec('x' * 201, 5)]),
       'non-string id': _envelope([
-        {..._rec('x', 5), 'id': 7}
+        {..._rec('x', 5), 'id': 7},
       ]),
       'missing amount': _envelope([
-        {..._rec('n1', 5)}..remove('amount')
+        {..._rec('n1', 5)}..remove('amount'),
       ]),
       'string amount': _envelope([_rec('n1', '450')]),
       'fractional amount': _envelope([_rec('n1', 450.5)]),
@@ -188,54 +202,64 @@ void main() {
       'amount above the supported ceiling': _envelope([_rec('n1', 1e15)]),
       'invalid type': _envelope([_rec('n1', 5, type: 'refund')]),
       'missing type': _envelope([
-        {..._rec('n1', 5)}..remove('type')
+        {..._rec('n1', 5)}..remove('type'),
       ]),
       'missing date': _envelope([
-        {..._rec('n1', 5)}..remove('date')
+        {..._rec('n1', 5)}..remove('date'),
       ]),
       'unparseable date': _envelope([_rec('n1', 5, date: 'yesterday')]),
       'wrong field type (isExcluded)': _envelope([
-        {..._rec('n1', 5), 'isExcluded': 'yes'}
+        {..._rec('n1', 5), 'isExcluded': 'yes'},
       ]),
-      'duplicate ids inside the file':
-          _envelope([_rec('dup', 5), _rec('dup', 6)]),
-      'count larger than the records (truncated file)':
-          _envelope([_rec('n1', 5)], count: 3),
+      'duplicate ids inside the file': _envelope([
+        _rec('dup', 5),
+        _rec('dup', 6),
+      ]),
+      'count larger than the records (truncated file)': _envelope([
+        _rec('n1', 5),
+      ], count: 3),
       'count smaller than the records': _envelope([_rec('n1', 5)], count: 0),
       'count is not an integer': _envelope([_rec('n1', 5)], count: 'one'),
     };
 
     for (final replace in [false, true]) {
       for (final entry in cases.entries) {
-        test('${replace ? 'replace' : 'merge'}: rejects ${entry.key}',
-            () async {
-          final cache = await _freshService(seed: _oldLedger);
-          final before = await _snapshot(cache);
+        test(
+          '${replace ? 'replace' : 'merge'}: rejects ${entry.key}',
+          () async {
+            final cache = await _freshService(seed: _oldLedger);
+            final before = await _snapshot(cache);
 
-          await expectLater(
-            cache.importFromJsonString(entry.value, replace: replace),
-            throwsA(isA<LedgerImportException>()),
-          );
+            await expectLater(
+              cache.importFromJsonString(entry.value, replace: replace),
+              throwsA(isA<LedgerImportException>()),
+            );
 
-          expect(await _snapshot(cache), before,
-              reason: 'ids, total and every persisted byte must be unchanged');
-          // And the in-memory state a restart would rebuild is the same.
-          final restarted = await _freshService();
-          expect(await _snapshot(restarted), before);
-        });
+            expect(
+              await _snapshot(cache),
+              before,
+              reason: 'ids, total and every persisted byte must be unchanged',
+            );
+            // And the in-memory state a restart would rebuild is the same.
+            final restarted = await _freshService();
+            expect(await _snapshot(restarted), before);
+          },
+        );
       }
     }
 
-    test('replace: an empty payload would erase the ledger, so it is rejected',
-        () async {
-      final cache = await _freshService(seed: _oldLedger);
-      final before = await _snapshot(cache);
-      await expectLater(
-        cache.importFromJsonString(_envelope([]), replace: true),
-        throwsA(isA<LedgerImportException>()),
-      );
-      expect(await _snapshot(cache), before);
-    });
+    test(
+      'replace: an empty payload would erase the ledger, so it is rejected',
+      () async {
+        final cache = await _freshService(seed: _oldLedger);
+        final before = await _snapshot(cache);
+        await expectLater(
+          cache.importFromJsonString(_envelope([]), replace: true),
+          throwsA(isA<LedgerImportException>()),
+        );
+        expect(await _snapshot(cache), before);
+      },
+    );
 
     test('merge: an empty payload is a harmless no-op returning 0', () async {
       final cache = await _freshService(seed: _oldLedger);
@@ -248,7 +272,7 @@ void main() {
       final cache = await _freshService(seed: _oldLedger);
       final secret = 'SENSITIVE-MERCHANT-MARKER';
       final payload = _envelope([
-        {..._rec('n1', -5), 'merchant': secret, 'originalSms': secret}
+        {..._rec('n1', -5), 'merchant': secret, 'originalSms': secret},
       ]);
       try {
         await cache.importFromJsonString(payload, replace: true);
@@ -265,24 +289,27 @@ void main() {
   group('accepted inputs', () {
     test('bare list (legacy) is accepted', () async {
       final cache = await _freshService();
-      final n = await cache
-          .importFromJsonString(jsonEncode([_rec('a', 10), _rec('b', 20)]));
+      final n = await cache.importFromJsonString(
+        jsonEncode([_rec('a', 10), _rec('b', 20)]),
+      );
       expect(n, 2);
       expect((await _snapshot(cache)).total, 3000);
     });
 
     test('unversioned envelope (legacy) is accepted', () async {
       final cache = await _freshService();
-      await cache
-          .importFromJsonString(_envelope([_rec('a', 10)], version: null));
+      await cache.importFromJsonString(
+        _envelope([_rec('a', 10)], version: null),
+      );
       expect((await _snapshot(cache)).ids, ['a']);
     });
 
     for (final v in <Object>[2, '2', '2.0', 2.0]) {
       test('version ${jsonEncode(v)} is accepted', () async {
         final cache = await _freshService();
-        await cache
-            .importFromJsonString(_envelope([_rec('a', 10)], version: v));
+        await cache.importFromJsonString(
+          _envelope([_rec('a', 10)], version: v),
+        );
         expect((await _snapshot(cache)).ids, ['a']);
       });
     }
@@ -296,7 +323,8 @@ void main() {
     test('a matching count field is accepted', () async {
       final cache = await _freshService();
       final n = await cache.importFromJsonString(
-          _envelope([_rec('a', 1), _rec('b', 2)], count: 2));
+        _envelope([_rec('a', 1), _rec('b', 2)], count: 2),
+      );
       expect(n, 2);
     });
   });
@@ -305,7 +333,8 @@ void main() {
     test('merge upserts by id: imported wins, others are kept', () async {
       final cache = await _freshService(seed: _oldLedger);
       final n = await cache.importFromJsonString(
-          _envelope([_rec('keep-2', 999), _rec('new-1', 5)]));
+        _envelope([_rec('keep-2', 999), _rec('new-1', 5)]),
+      );
       expect(n, 2);
 
       final s = await _snapshot(cache);
@@ -316,14 +345,18 @@ void main() {
     test('replace makes the ledger exactly the imported set', () async {
       final cache = await _freshService(seed: _oldLedger);
       await cache.importFromJsonString(
-          _envelope([_rec('keep-2', 999), _rec('new-1', 5)]),
-          replace: true);
+        _envelope([_rec('keep-2', 999), _rec('new-1', 5)]),
+        replace: true,
+      );
 
       final s = await _snapshot(cache);
       expect(s.ids, ['keep-2', 'new-1']);
       expect(s.total, (999 + 5) * 100);
-      expect(s.raw.keys.where((k) => k == 'tx_keep-1'), isEmpty,
-          reason: 'the removed transaction must not linger as a payload');
+      expect(
+        s.raw.keys.where((k) => k == 'tx_keep-1'),
+        isEmpty,
+        reason: 'the removed transaction must not linger as a payload',
+      );
     });
 
     test('retrying the same merge is idempotent (no duplicates)', () async {
@@ -348,17 +381,21 @@ void main() {
 
     test('a successful import survives a restart', () async {
       final cache = await _freshService(seed: _oldLedger);
-      await cache.importFromJsonString(_envelope([_rec('new-1', 5)]),
-          replace: true);
+      await cache.importFromJsonString(
+        _envelope([_rec('new-1', 5)]),
+        replace: true,
+      );
       final live = await _snapshot(cache);
       expect(await _snapshot(await _freshService()), live);
     });
 
     test('export then replace-import round-trips exactly', () async {
-      final source = await _freshService(seed: [
-        _tx('a', 450),
-        _tx('b', 1200, type: TransactionType.income),
-      ]);
+      final source = await _freshService(
+        seed: [
+          _tx('a', 450),
+          _tx('b', 1200, type: TransactionType.income),
+        ],
+      );
       final exported = await source.exportToJsonString();
       final before = await _snapshot(source);
 
@@ -369,16 +406,16 @@ void main() {
       final after = await _snapshot(fresh);
       expect(after.ids, before.ids);
       expect(after.total, before.total);
-      final types =
-          (await fresh.loadAll()).map((t) => '${t.id}:${t.type.name}');
+      final types = (await fresh.loadAll()).map(
+        (t) => '${t.id}:${t.type.name}',
+      );
       expect(types.toSet(), {'a:expense', 'b:income'});
     });
   });
 
   group('interrupted writes (failure after every single write)', () {
     for (final replace in [false, true]) {
-      test(
-          '${replace ? 'replace' : 'merge'}: every interruption point is '
+      test('${replace ? 'replace' : 'merge'}: every interruption point is '
           'all-or-nothing', () async {
         final file = _envelope([
           _rec('keep-2', 999), // overlaps an existing id
@@ -420,13 +457,22 @@ void main() {
           // Raw bytes are compared only for the rolled-back case below: after
           // a committed import, an unreferenced payload awaiting cleanup is
           // invisible and is removed by the next start.
-          expect(restarted.ids, after.ids,
-              reason: 'write #$n: memory and storage must agree');
-          expect(restarted.total, after.total,
-              reason: 'write #$n: memory and storage must agree');
+          expect(
+            restarted.ids,
+            after.ids,
+            reason: 'write #$n: memory and storage must agree',
+          );
+          expect(
+            restarted.total,
+            after.total,
+            reason: 'write #$n: memory and storage must agree',
+          );
           if (threw) {
-            expect(after, before,
-                reason: 'write #$n failed, so nothing may have changed');
+            expect(
+              after,
+              before,
+              reason: 'write #$n failed, so nothing may have changed',
+            );
           } else {
             // Only the post-commit cleanup of replaced payloads may fail
             // quietly; the visible ledger must already be the final one.
@@ -440,8 +486,7 @@ void main() {
 
   group('process dies mid-import (every later write fails too)', () {
     for (final replace in [false, true]) {
-      test(
-          '${replace ? 'replace' : 'merge'}: the ledger is never a partial '
+      test('${replace ? 'replace' : 'merge'}: the ledger is never a partial '
           'import, and a retry completes it exactly once', () async {
         final file = _envelope([
           _rec('keep-2', 999),
@@ -477,7 +522,8 @@ void main() {
             visible.ids.toString() == oldIds.toString() ||
                 visible.ids.toString() == finalState.ids.toString(),
             isTrue,
-            reason: 'write #$n: visible ids ${visible.ids} must be exactly the '
+            reason:
+                'write #$n: visible ids ${visible.ids} must be exactly the '
                 'old ledger $oldIds or the finished one ${finalState.ids}',
           );
           expect(visible.ids.toSet().length, visible.ids.length);

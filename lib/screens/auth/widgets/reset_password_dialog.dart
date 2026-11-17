@@ -105,9 +105,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
           ? null
           : [
               TextButton(
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(64, 48),
-                ),
+                style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),

@@ -84,10 +84,9 @@ class _CategorySpendingBarsState extends State<CategorySpendingBars>
 
   @override
   Widget build(BuildContext context) {
-    final entries = widget.totalsMinor.entries
-        .where((e) => e.value > 0)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final entries =
+        widget.totalsMinor.entries.where((e) => e.value > 0).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     if (entries.isEmpty) return const _EmptyBars();
 
@@ -122,10 +121,10 @@ class _CategorySpendingBarsState extends State<CategorySpendingBars>
             onTap: widget.onSelect == null
                 ? null
                 : () => widget.onSelect!(
-                      shown[i].key == widget.selectedCategory
-                          ? null
-                          : shown[i].key,
-                    ),
+                    shown[i].key == widget.selectedCategory
+                        ? null
+                        : shown[i].key,
+                  ),
           ),
         if (hidden > 0)
           Padding(
@@ -154,12 +153,14 @@ class _CategorySpendingBarsState extends State<CategorySpendingBars>
                     ),
                     child: Text(
                       'Show all',
-                      style: AppText.weight(
-                              AppText.label(context), FontWeight.w700)
-                          .copyWith(
-                        fontSize: 11.5,
-                        color: AppColors.brandInk(context),
-                      ),
+                      style:
+                          AppText.weight(
+                            AppText.label(context),
+                            FontWeight.w700,
+                          ).copyWith(
+                            fontSize: 11.5,
+                            color: AppColors.brandInk(context),
+                          ),
                     ),
                   ),
               ],
@@ -217,7 +218,8 @@ class _CompositionStrip extends StatelessWidget {
             SizedBox(
               width: raw[i] * factor,
               child: Semantics(
-                label: '${entry.key}, '
+                label:
+                    '${entry.key}, '
                     '${(entry.value * 100 / total).round()} percent',
                 child: Opacity(
                   opacity: dimmed ? 0.45 : 1,
@@ -418,8 +420,11 @@ class _EmptyBars extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
         children: [
-          Icon(Icons.pie_chart_outline_rounded,
-              size: 18, color: AppColors.textTertiary(context)),
+          Icon(
+            Icons.pie_chart_outline_rounded,
+            size: 18,
+            color: AppColors.textTertiary(context),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Flexible(
             child: Text(

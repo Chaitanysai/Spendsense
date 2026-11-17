@@ -186,8 +186,8 @@ class AppMotion {
   /// Returns [duration] unless the platform disables animations.
   static Duration respect(BuildContext context, Duration duration) =>
       MediaQuery.maybeDisableAnimationsOf(context) == true
-          ? Duration.zero
-          : duration;
+      ? Duration.zero
+      : duration;
 }
 
 /// Spring descriptions for motion that has to feel physical rather than timed.

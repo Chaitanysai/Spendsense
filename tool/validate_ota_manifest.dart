@@ -54,16 +54,20 @@ void main(List<String> args) {
 
   stdout.writeln('Validating ${options.manifestPath}');
 
-  check(manifest['schemaVersion'] == _schemaVersion,
-      'schemaVersion is $_schemaVersion');
+  check(
+    manifest['schemaVersion'] == _schemaVersion,
+    'schemaVersion is $_schemaVersion',
+  );
   check(manifest['appId'] == _appId, 'appId is $_appId');
 
   final digest = sha256.convert(apkFile.readAsBytesSync()).toString();
   final claimed = manifest['sha256'];
   check(claimed == digest, 'manifest sha256 matches the APK ($digest)');
 
-  check(manifest['signingCertSha256'] == _pinnedCertSha256,
-      'signingCertSha256 equals the pinned release certificate');
+  check(
+    manifest['signingCertSha256'] == _pinnedCertSha256,
+    'signingCertSha256 equals the pinned release certificate',
+  );
 
   final rawUrl = manifest['downloadUrl'];
   final url = rawUrl is String ? Uri.tryParse(rawUrl) : null;
@@ -72,13 +76,19 @@ void main(List<String> args) {
     check(url.scheme == 'https', 'downloadUrl uses HTTPS');
     check(url.host.isNotEmpty, 'downloadUrl has a host');
     check(url.userInfo.isEmpty, 'downloadUrl carries no credentials');
-    check(!url.pathSegments.any((s) => s == '..' || s == '.' || s.isEmpty),
-        'downloadUrl has no traversal or empty segments');
-    check(url.path.toLowerCase().endsWith('.apk'),
-        'downloadUrl points at an .apk');
+    check(
+      !url.pathSegments.any((s) => s == '..' || s == '.' || s.isEmpty),
+      'downloadUrl has no traversal or empty segments',
+    );
+    check(
+      url.path.toLowerCase().endsWith('.apk'),
+      'downloadUrl points at an .apk',
+    );
     if (options.expectHost != null) {
-      check(url.host.toLowerCase() == options.expectHost!.toLowerCase(),
-          'downloadUrl host is ${options.expectHost}');
+      check(
+        url.host.toLowerCase() == options.expectHost!.toLowerCase(),
+        'downloadUrl host is ${options.expectHost}',
+      );
     }
     if (options.expectPath != null) {
       // A prefix test would accept "/stagingevil/..." for --expect-path
@@ -86,23 +96,31 @@ void main(List<String> args) {
       final want = options.expectPath!.toLowerCase();
       final got = url.path.toLowerCase();
       final normalised = want.endsWith('/') ? want : '$want/';
-      check(got.startsWith(normalised),
-          'downloadUrl path starts with $normalised');
+      check(
+        got.startsWith(normalised),
+        'downloadUrl path starts with $normalised',
+      );
     }
     final expectedName = apkFile.uri.pathSegments.last;
-    check(url.pathSegments.last == expectedName,
-        'downloadUrl filename matches the staged APK ($expectedName)');
+    check(
+      url.pathSegments.last == expectedName,
+      'downloadUrl filename matches the staged APK ($expectedName)',
+    );
   }
 
   final version = manifest['latestVersion'];
   final build = manifest['latestBuildNumber'];
-  check(version is String && RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version),
-      'latestVersion is a numeric semantic version');
+  check(
+    version is String && RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version),
+    'latestVersion is a numeric semantic version',
+  );
   check(build is int && build > 0, 'latestBuildNumber is a positive integer');
 
   final minimum = manifest['minimumSupportedVersion'];
-  check(minimum is String && RegExp(r'^\d+\.\d+\.\d+$').hasMatch(minimum),
-      'minimumSupportedVersion is a numeric semantic version');
+  check(
+    minimum is String && RegExp(r'^\d+\.\d+\.\d+$').hasMatch(minimum),
+    'minimumSupportedVersion is a numeric semantic version',
+  );
 
   stdout.writeln('');
   if (failures.isNotEmpty) {
@@ -154,7 +172,12 @@ class _Options {
     }
     if (manifest == null) _fail('--manifest is required');
     if (apk == null) _fail('--apk is required');
-    return _Options(manifestPath: manifest, apkPath: apk, expectHost: host, expectPath: path);
+    return _Options(
+      manifestPath: manifest,
+      apkPath: apk,
+      expectHost: host,
+      expectPath: path,
+    );
   }
 
   static String _value(List<String> args, int index, String flag) {

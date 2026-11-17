@@ -83,20 +83,26 @@ void main() {
       expect(style.fontSize, 16);
       expect(style.fontWeight, FontWeight.w600);
       expect(
-          AppTypography.textTheme(ThemeData.light().textTheme, preset: broken),
-          isA<TextTheme>());
+        AppTypography.textTheme(ThemeData.light().textTheme, preset: broken),
+        isA<TextTheme>(),
+      );
     });
 
-    testWidgets('weights and tabular figures are preserved for amounts',
-        (tester) async {
+    testWidgets('weights and tabular figures are preserved for amounts', (
+      tester,
+    ) async {
       AppTypography.active = FontPreset.standard;
       late TextStyle style;
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(builder: (context) {
-          style = AppText.amount(context, size: 24);
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              style = AppText.amount(context, size: 24);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
       expect(style.fontWeight, FontWeight.w800);
       expect(style.fontFeatures, isNotEmpty);
       expect(style.fontFamily, 'Inter');
@@ -148,24 +154,27 @@ void main() {
       expect(theme.fontScale, FontScale.max);
     });
 
-    test('dashboard sections can be hidden, persist, and ignore bad ids',
-        () async {
-      final theme = await _loaded();
-      expect(theme.isSectionVisible(DashboardSection.weekly), isTrue);
-      await theme.setSectionVisible(DashboardSection.weekly, false);
-      await theme.setSectionVisible('not_a_section', false);
-      expect(theme.hiddenSections, {DashboardSection.weekly});
+    test(
+      'dashboard sections can be hidden, persist, and ignore bad ids',
+      () async {
+        final theme = await _loaded();
+        expect(theme.isSectionVisible(DashboardSection.weekly), isTrue);
+        await theme.setSectionVisible(DashboardSection.weekly, false);
+        await theme.setSectionVisible('not_a_section', false);
+        expect(theme.hiddenSections, {DashboardSection.weekly});
 
-      final reloaded = await _loaded();
-      expect(reloaded.isSectionVisible(DashboardSection.weekly), isFalse);
-      await reloaded.setSectionVisible(DashboardSection.weekly, true);
-      expect(reloaded.hiddenSections, isEmpty);
-    });
+        final reloaded = await _loaded();
+        expect(reloaded.isSectionVisible(DashboardSection.weekly), isFalse);
+        await reloaded.setSectionVisible(DashboardSection.weekly, true);
+        expect(reloaded.hiddenSections, isEmpty);
+      },
+    );
   });
 
   group('Typography screen', () {
-    testWidgets('previews first, applies on request, and resets',
-        (tester) async {
+    testWidgets('previews first, applies on request, and resets', (
+      tester,
+    ) async {
       late ThemeProvider theme;
       await tester.runAsync(() async => theme = await _loaded());
       tester.view.physicalSize = const Size(800, 2600);
@@ -186,15 +195,20 @@ void main() {
 
       await tester.tap(find.textContaining('Apply'));
       await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump();
       expect(theme.fontPreset.id, FontPreset.dotMatrix.id);
 
-      await tester.scrollUntilVisible(find.text('Reset'), 200,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('Reset'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Reset'));
       await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump();
       expect(theme.fontPreset.id, FontPreset.standard.id);
       expect(tester.takeException(), isNull);
@@ -203,14 +217,9 @@ void main() {
 
   group('QuickActionGrid', () {
     List<QuickAction> actions() => [
-          for (final label in [
-            'Add expense',
-            'Add income',
-            'Sync SMS',
-            'Activity',
-          ])
-            QuickAction(label: label, icon: Icons.add, onTap: () {}),
-        ];
+      for (final label in ['Add expense', 'Add income', 'Sync SMS', 'Activity'])
+        QuickAction(label: label, icon: Icons.add, onTap: () {}),
+    ];
 
     test('column choice follows width and text scale, not device size', () {
       int cols(double w, double s) =>
@@ -262,21 +271,30 @@ void main() {
       (width: 800.0, scale: 1.0),
     ]) {
       testWidgets(
-          'tiles are identical in size at ${scenario.width}dp / ${scenario.scale}x',
-          (tester) async {
-        final sizes = await pumpAndMeasure(
-          tester,
-          width: scenario.width,
-          textScale: scenario.scale,
-        );
-        expect(sizes, hasLength(4));
-        expect({for (final s in sizes) s.height.roundToDouble()}, hasLength(1),
-            reason: 'equal heights: $sizes');
-        expect({for (final s in sizes) s.width.roundToDouble()}, hasLength(1),
-            reason: 'equal widths: $sizes');
-        expect(
-            sizes.first.height, greaterThanOrEqualTo(AppSpacing.tileMinHeight));
-      });
+        'tiles are identical in size at ${scenario.width}dp / ${scenario.scale}x',
+        (tester) async {
+          final sizes = await pumpAndMeasure(
+            tester,
+            width: scenario.width,
+            textScale: scenario.scale,
+          );
+          expect(sizes, hasLength(4));
+          expect(
+            {for (final s in sizes) s.height.roundToDouble()},
+            hasLength(1),
+            reason: 'equal heights: $sizes',
+          );
+          expect(
+            {for (final s in sizes) s.width.roundToDouble()},
+            hasLength(1),
+            reason: 'equal widths: $sizes',
+          );
+          expect(
+            sizes.first.height,
+            greaterThanOrEqualTo(AppSpacing.tileMinHeight),
+          );
+        },
+      );
     }
   });
 }

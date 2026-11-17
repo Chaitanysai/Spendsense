@@ -28,12 +28,18 @@ void main() {
       expect(SoundEventType.buttonTap.category, SoundCategory.ui);
       expect(SoundEventType.selectionChanged.category, SoundCategory.ui);
       expect(
-          SoundEventType.transactionSaved.category, SoundCategory.transaction);
+        SoundEventType.transactionSaved.category,
+        SoundCategory.transaction,
+      );
       expect(
-          SoundEventType.actionSucceeded.category, SoundCategory.transaction);
+        SoundEventType.actionSucceeded.category,
+        SoundCategory.transaction,
+      );
       expect(SoundEventType.actionFailed.category, SoundCategory.transaction);
       expect(
-          SoundEventType.milestoneReached.category, SoundCategory.transaction);
+        SoundEventType.milestoneReached.category,
+        SoundCategory.transaction,
+      );
     });
 
     test('master mute blocks every category', () {
@@ -95,15 +101,17 @@ void main() {
       expect(service.isReady, isTrue);
     });
 
-    test('a prefs-allowed event plays its asset at a restrained volume',
-        () async {
-      await service.init();
-      await service.play(SoundEventType.buttonTap, SoundPreferences.defaults);
+    test(
+      'a prefs-allowed event plays its asset at a restrained volume',
+      () async {
+        await service.init();
+        await service.play(SoundEventType.buttonTap, SoundPreferences.defaults);
 
-      expect(player.played, [kAssets[SoundEventType.buttonTap]]);
-      expect(player.volumes.single, SoundService.defaultVolume);
-      expect(SoundService.defaultVolume, lessThan(0.5));
-    });
+        expect(player.played, [kAssets[SoundEventType.buttonTap]]);
+        expect(player.volumes.single, SoundService.defaultVolume);
+        expect(SoundService.defaultVolume, lessThan(0.5));
+      },
+    );
 
     test('a disallowed event is never handed to the player', () async {
       await service.init();
@@ -124,8 +132,11 @@ void main() {
 
       await service.play(SoundEventType.buttonTap, prefs);
       await service.play(SoundEventType.buttonTap, prefs);
-      expect(player.played, hasLength(1),
-          reason: 'a double-fired tap must not play twice');
+      expect(
+        player.played,
+        hasLength(1),
+        reason: 'a double-fired tap must not play twice',
+      );
 
       clock.advance(const Duration(milliseconds: 120));
       await service.play(SoundEventType.buttonTap, prefs);
@@ -150,8 +161,10 @@ void main() {
         SoundEventType.transactionSaved.repeatWindow,
         greaterThan(SoundEventType.buttonTap.repeatWindow),
       );
-      expect(SoundEventType.actionFailed.repeatWindow,
-          SoundEventType.transactionSaved.repeatWindow);
+      expect(
+        SoundEventType.actionFailed.repeatWindow,
+        SoundEventType.transactionSaved.repeatWindow,
+      );
     });
   });
 
@@ -163,12 +176,15 @@ void main() {
       final service = SoundService(player: player);
       await service.init();
 
-      expect(service.loadedAssets,
-          {SoundService.assets[SoundEventType.buttonTap]});
+      expect(service.loadedAssets, {
+        SoundService.assets[SoundEventType.buttonTap],
+      });
 
       await service.play(SoundEventType.buttonTap, SoundPreferences.defaults);
       await service.play(
-          SoundEventType.transactionSaved, SoundPreferences.defaults);
+        SoundEventType.transactionSaved,
+        SoundPreferences.defaults,
+      );
 
       expect(player.played, [SoundService.assets[SoundEventType.buttonTap]]);
     });
@@ -331,8 +347,11 @@ void main() {
 
       await provider.setMasterEnabled(false);
       await provider.play(SoundEventType.actionSucceeded);
-      expect(player.played, hasLength(1),
-          reason: 'muted: the second cue must not reach the player');
+      expect(
+        player.played,
+        hasLength(1),
+        reason: 'muted: the second cue must not reach the player',
+      );
     });
 
     test('turning off interaction sounds keeps transaction sounds', () async {

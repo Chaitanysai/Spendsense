@@ -98,8 +98,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     setState(() {
       _isConnected = result != ConnectivityResult.none;
-      _connectionType =
-          _isConnected ? _getConnectionLabel(result) : 'No Connection';
+      _connectionType = _isConnected
+          ? _getConnectionLabel(result)
+          : 'No Connection';
     });
   }
 
@@ -424,7 +425,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: transactions.skippedMessageCount == 0
                     ? 'No messages are being skipped'
                     : 'Scan ${transactions.skippedMessageCount} skipped '
-                        'messages again',
+                          'messages again',
                 onTap: transactions.skippedMessageCount == 0
                     ? null
                     : () => _recheckSkipped(context, transactions),
@@ -542,8 +543,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: update == null
                     ? null
                     : () => Navigator.of(context).push(
-                          AppPageRoute(builder: (_) => const UpdateScreen()),
-                        ),
+                        AppPageRoute(builder: (_) => const UpdateScreen()),
+                      ),
               ),
               _divider(context),
               _SettingsTile(
@@ -598,18 +599,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: AppSpacing.xxl),
         _sectionLabel(label),
         const SizedBox(height: AppSpacing.sm),
-        _SettingsCard(
-          entranceIndex: entranceIndex,
-          children: children,
-        ),
+        _SettingsCard(entranceIndex: entranceIndex, children: children),
       ],
     );
   }
 
   Widget _sectionLabel(String label) => Padding(
-        padding: const EdgeInsets.only(left: 2),
-        child: Text(label.toUpperCase(), style: AppText.overline(context)),
-      );
+    padding: const EdgeInsets.only(left: 2),
+    child: Text(label.toUpperCase(), style: AppText.overline(context)),
+  );
 
   /// One-line state for the Settings tile, so the current sound mode is legible
   /// without opening the sub-screen.
@@ -678,18 +676,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       UpdateUiState.verifying => 'Verifying the download…',
       UpdateUiState.upToDate => 'Up to date',
       UpdateUiState.error => 'Last check failed — tap to retry',
-      UpdateUiState.idle => update.isConfigured
-          ? 'Check for the latest release'
-          : 'Release channel not configured',
+      UpdateUiState.idle =>
+        update.isConfigured
+            ? 'Check for the latest release'
+            : 'Release channel not configured',
     };
   }
 
   /// The divider aligns with the text column: tile padding, one well, one gap.
   Widget _divider(BuildContext context) => Divider(
-        height: 1,
-        indent: AppSpacing.lg + AppSpacing.wellSize + AppSpacing.md,
-        color: AppColors.border(context),
-      );
+    height: 1,
+    indent: AppSpacing.lg + AppSpacing.wellSize + AppSpacing.md,
+    color: AppColors.border(context),
+  );
 
   Future<void> _editName(BuildContext context, AuthProvider auth) async {
     final controller = TextEditingController(text: auth.greetingName);

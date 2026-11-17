@@ -75,17 +75,19 @@ void main() {
       expect(audit.entries, isEmpty);
     });
 
-    test('food last month uses an exact range and deterministic total',
-        () async {
-      final orchestrator = build();
-      final reply = await orchestrator.handle(
-        'How much did I spend on food last month?',
-      );
-      expect(reply.summary, isNotNull);
-      expect(reply.summary!.spendingMinor, 0);
-      expect(reply.text, contains('₹0'));
-      expect(reply.pendingAction, isNull);
-    });
+    test(
+      'food last month uses an exact range and deterministic total',
+      () async {
+        final orchestrator = build();
+        final reply = await orchestrator.handle(
+          'How much did I spend on food last month?',
+        );
+        expect(reply.summary, isNotNull);
+        expect(reply.summary!.spendingMinor, 0);
+        expect(reply.text, contains('₹0'));
+        expect(reply.pendingAction, isNull);
+      },
+    );
   });
 
   group('exclusion confirmation and undo', () {
@@ -108,28 +110,32 @@ void main() {
       expect(ledger.exclusionWrites, 0);
     });
 
-    test('confirm applies exclusion, records audit, and duplicate fails',
-        () async {
-      final orchestrator = build();
-      final preview = await orchestrator.handle(
-        'Exclude Groww transactions from my spending calculations.',
-      );
-      final action = preview.pendingAction!;
-      final applied = await orchestrator.confirmPending(action.id);
-      expect(applied.isError, false);
-      expect(applied.summary!.spendingMinor, 350000);
-      expect(ledger.exclusionWrites, 1);
-      final groww = ledger.transactions.where((t) => t.id.startsWith('groww'));
-      expect(groww.every((t) => t.isExcluded), true);
-      expect(audit.entries, hasLength(1));
-      expect(audit.entries.single.type, AssistantChangeType.exclusion);
-      expect(audit.entries.single.affectedCount, 2);
+    test(
+      'confirm applies exclusion, records audit, and duplicate fails',
+      () async {
+        final orchestrator = build();
+        final preview = await orchestrator.handle(
+          'Exclude Groww transactions from my spending calculations.',
+        );
+        final action = preview.pendingAction!;
+        final applied = await orchestrator.confirmPending(action.id);
+        expect(applied.isError, false);
+        expect(applied.summary!.spendingMinor, 350000);
+        expect(ledger.exclusionWrites, 1);
+        final groww = ledger.transactions.where(
+          (t) => t.id.startsWith('groww'),
+        );
+        expect(groww.every((t) => t.isExcluded), true);
+        expect(audit.entries, hasLength(1));
+        expect(audit.entries.single.type, AssistantChangeType.exclusion);
+        expect(audit.entries.single.affectedCount, 2);
 
-      final duplicate = await orchestrator.confirmPending(action.id);
-      expect(duplicate.isError, true);
-      expect(ledger.exclusionWrites, 1);
-      expect(audit.entries, hasLength(1));
-    });
+        final duplicate = await orchestrator.confirmPending(action.id);
+        expect(duplicate.isError, true);
+        expect(ledger.exclusionWrites, 1);
+        expect(audit.entries, hasLength(1));
+      },
+    );
 
     test('undo restores the previous exclusion flags and totals', () async {
       final orchestrator = build();
@@ -179,31 +185,33 @@ void main() {
   });
 
   group('deletion confirmation and undo', () {
-    test('explicit deletion removes exact records and undo restores them',
-        () async {
-      final orchestrator = build();
-      final preview = await orchestrator.handle(
-        'Delete my Groww transactions.',
-      );
-      final action = preview.pendingAction!;
-      expect(action.isDeletion, true);
-      expect(action.expectedCount, 2);
-      expect(ledger.transactions.length, 4);
+    test(
+      'explicit deletion removes exact records and undo restores them',
+      () async {
+        final orchestrator = build();
+        final preview = await orchestrator.handle(
+          'Delete my Groww transactions.',
+        );
+        final action = preview.pendingAction!;
+        expect(action.isDeletion, true);
+        expect(action.expectedCount, 2);
+        expect(ledger.transactions.length, 4);
 
-      final applied = await orchestrator.confirmPending(action.id);
-      expect(applied.isError, false);
-      expect(ledger.transactions.length, 2);
-      expect(ledger.deletionWrites, 1);
-      expect(audit.entries.single.deletedSnapshots, hasLength(2));
+        final applied = await orchestrator.confirmPending(action.id);
+        expect(applied.isError, false);
+        expect(ledger.transactions.length, 2);
+        expect(ledger.deletionWrites, 1);
+        expect(audit.entries.single.deletedSnapshots, hasLength(2));
 
-      final undo = await orchestrator.undoLast();
-      expect(undo.isError, false);
-      expect(ledger.transactions.length, 4);
-      expect(
-        ledger.transactions.map((t) => t.id),
-        containsAll(['groww-1', 'groww-2']),
-      );
-    });
+        final undo = await orchestrator.undoLast();
+        expect(undo.isError, false);
+        expect(ledger.transactions.length, 4);
+        expect(
+          ledger.transactions.map((t) => t.id),
+          containsAll(['groww-1', 'groww-2']),
+        );
+      },
+    );
   });
 
   group('remote function calling', () {
@@ -220,44 +228,49 @@ void main() {
       expect(remote.calls, isEmpty);
     });
 
-    test('read-only Gemini calls execute locally and results are returned',
-        () async {
-      final remote = ScriptedRemote(turns: const [
-        RemoteAssistantTurn(
-          text: '',
-          functionCalls: [
-            RemoteToolCall('search_transactions', {
-              'brand': 'groww',
-              'includeExcluded': true,
-            }),
+    test(
+      'read-only Gemini calls execute locally and results are returned',
+      () async {
+        final remote = ScriptedRemote(
+          turns: const [
+            RemoteAssistantTurn(
+              text: '',
+              functionCalls: [
+                RemoteToolCall('search_transactions', {
+                  'brand': 'groww',
+                  'includeExcluded': true,
+                }),
+              ],
+            ),
+            RemoteAssistantTurn(text: 'You have two Groww transfers.'),
           ],
-        ),
-        RemoteAssistantTurn(text: 'You have two Groww transfers.'),
-      ]);
-      final orchestrator = build(remote: remote);
-      final reply = await orchestrator.handle(
-        'What patterns do you notice in my investments?',
-      );
-      expect(reply.text, contains('two Groww'));
-      expect(reply.sections, hasLength(1));
-      expect(reply.sections.single.matchedCount, 2);
-      expect(remote.calls, hasLength(2));
-      expect(remote.calls[1].toolExchanges, hasLength(1));
-      expect(remote.calls[1].toolExchanges.single.calls.single.name,
-          'search_transactions');
-      expect(ledger.exclusionWrites, 0);
-      expect(ledger.deletionWrites, 0);
-    });
+        );
+        final orchestrator = build(remote: remote);
+        final reply = await orchestrator.handle(
+          'What patterns do you notice in my investments?',
+        );
+        expect(reply.text, contains('two Groww'));
+        expect(reply.sections, hasLength(1));
+        expect(reply.sections.single.matchedCount, 2);
+        expect(remote.calls, hasLength(2));
+        expect(remote.calls[1].toolExchanges, hasLength(1));
+        expect(
+          remote.calls[1].toolExchanges.single.calls.single.name,
+          'search_transactions',
+        );
+        expect(ledger.exclusionWrites, 0);
+        expect(ledger.deletionWrites, 0);
+      },
+    );
 
     test('identical tool calls are deduplicated within a model turn', () async {
       const call = RemoteToolCall('search_transactions', {'limit': 5});
-      final remote = ScriptedRemote(turns: const [
-        RemoteAssistantTurn(
-          text: '',
-          functionCalls: [call, call],
-        ),
-        RemoteAssistantTurn(text: 'Answer.'),
-      ]);
+      final remote = ScriptedRemote(
+        turns: const [
+          RemoteAssistantTurn(text: '', functionCalls: [call, call]),
+          RemoteAssistantTurn(text: 'Answer.'),
+        ],
+      );
       final orchestrator = build(remote: remote);
       await orchestrator.handle('Give me a pattern summary.');
       final exchange = remote.calls[1].toolExchanges.single;
@@ -266,15 +279,17 @@ void main() {
     });
 
     test('malformed tool arguments return an error and do not crash', () async {
-      final remote = ScriptedRemote(turns: const [
-        RemoteAssistantTurn(
-          text: '',
-          functionCalls: [
-            RemoteToolCall('search_transactions', {'limit': 9999}),
-          ],
-        ),
-        RemoteAssistantTurn(text: 'I could not run that search.'),
-      ]);
+      final remote = ScriptedRemote(
+        turns: const [
+          RemoteAssistantTurn(
+            text: '',
+            functionCalls: [
+              RemoteToolCall('search_transactions', {'limit': 9999}),
+            ],
+          ),
+          RemoteAssistantTurn(text: 'I could not run that search.'),
+        ],
+      );
       final orchestrator = build(remote: remote);
       final reply = await orchestrator.handle('Give me a pattern summary.');
       expect(reply.isError, false);
@@ -284,51 +299,57 @@ void main() {
       expect((response['response'] as Map)['error'], 'invalid_argument');
     });
 
-    test('remote preview still requires explicit in-app confirmation',
-        () async {
-      final remote = ScriptedRemote(turns: const [
-        RemoteAssistantTurn(
-          text: '',
-          functionCalls: [
-            RemoteToolCall('search_transactions', {'brand': 'groww'}),
-            RemoteToolCall('preview_transaction_exclusion', {
-              'transactionIds': ['groww-1', 'groww-2'],
-            }),
+    test(
+      'remote preview still requires explicit in-app confirmation',
+      () async {
+        final remote = ScriptedRemote(
+          turns: const [
+            RemoteAssistantTurn(
+              text: '',
+              functionCalls: [
+                RemoteToolCall('search_transactions', {'brand': 'groww'}),
+                RemoteToolCall('preview_transaction_exclusion', {
+                  'transactionIds': ['groww-1', 'groww-2'],
+                }),
+              ],
+            ),
+            RemoteAssistantTurn(text: 'Preview prepared. Nothing was applied.'),
           ],
-        ),
-        RemoteAssistantTurn(text: 'Preview prepared. Nothing was applied.'),
-      ]);
-      final orchestrator = build(remote: remote);
-      final reply = await orchestrator.handle(
-        'Please prepare a reversible Groww adjustment.',
-      );
-      expect(reply.pendingAction, isNotNull);
-      expect(reply.text, contains('no change has been applied'));
-      expect(ledger.exclusionWrites, 0);
-      expect(audit.entries, isEmpty);
+        );
+        final orchestrator = build(remote: remote);
+        final reply = await orchestrator.handle(
+          'Please prepare a reversible Groww adjustment.',
+        );
+        expect(reply.pendingAction, isNotNull);
+        expect(reply.text, contains('no change has been applied'));
+        expect(ledger.exclusionWrites, 0);
+        expect(audit.entries, isEmpty);
 
-      final applied = await orchestrator.confirmPending(
-        reply.pendingAction!.id,
-      );
-      expect(applied.isError, false);
-      expect(ledger.exclusionWrites, 1);
-    });
+        final applied = await orchestrator.confirmPending(
+          reply.pendingAction!.id,
+        );
+        expect(applied.isError, false);
+        expect(ledger.exclusionWrites, 1);
+      },
+    );
 
-    test('network/model errors degrade to a clear error with no mutation',
-        () async {
-      final remote = ScriptedRemote(
-        error: const AssistantRemoteException(
-          'offline',
-          'You appear to be offline.',
-          retryable: true,
-        ),
-      );
-      final orchestrator = build(remote: remote);
-      final reply = await orchestrator.handle('Give me a pattern summary.');
-      expect(reply.isError, true);
-      expect(reply.text, contains('offline'));
-      expect(ledger.exclusionWrites, 0);
-    });
+    test(
+      'network/model errors degrade to a clear error with no mutation',
+      () async {
+        final remote = ScriptedRemote(
+          error: const AssistantRemoteException(
+            'offline',
+            'You appear to be offline.',
+            retryable: true,
+          ),
+        );
+        final orchestrator = build(remote: remote);
+        final reply = await orchestrator.handle('Give me a pattern summary.');
+        expect(reply.isError, true);
+        expect(reply.text, contains('offline'));
+        expect(ledger.exclusionWrites, 0);
+      },
+    );
   });
 
   test('undo with no audit returns a safe message', () async {

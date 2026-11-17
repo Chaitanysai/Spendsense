@@ -14,11 +14,7 @@ class AuthNotice extends StatelessWidget {
   final AuthNoticeKind kind;
   final String text;
 
-  const AuthNotice({
-    super.key,
-    required this.kind,
-    required this.text,
-  });
+  const AuthNotice({super.key, required this.kind, required this.text});
 
   @override
   Widget build(BuildContext context) {

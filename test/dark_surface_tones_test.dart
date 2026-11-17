@@ -49,10 +49,16 @@ void main() {
   test('glass palettes use their designed dark surfaces verbatim', () {
     for (final p in AppPalette.all.where((p) => p.glass)) {
       AppColors.applyPalette(p);
-      expect(AppColors.darkSurface, p.darkSurface,
-          reason: '${p.id} card surface was re-tinted');
-      expect(AppColors.darkSurfaceAlt, p.darkSurfaceAlt,
-          reason: '${p.id} raised surface was re-tinted');
+      expect(
+        AppColors.darkSurface,
+        p.darkSurface,
+        reason: '${p.id} card surface was re-tinted',
+      );
+      expect(
+        AppColors.darkSurfaceAlt,
+        p.darkSurfaceAlt,
+        reason: '${p.id} raised surface was re-tinted',
+      );
     }
   });
 
@@ -79,21 +85,29 @@ void main() {
       final chroma = (card.computeLuminance() <= 0
           ? 0.0
           : ((math.max(card.r, math.max(card.g, card.b)) -
-                      math.min(card.r, math.min(card.g, card.b))) *
-                  255) /
-              255);
+                        math.min(card.r, math.min(card.g, card.b))) *
+                    255) /
+                255);
       // ignore: avoid_print
-      print('${p.id.padRight(16)} bg=${hex(bg)} card=${hex(card)} '
-          'dL*=${step.toStringAsFixed(1)} '
-          'chroma=${(chroma * 100).toStringAsFixed(1)}%');
+      print(
+        '${p.id.padRight(16)} bg=${hex(bg)} card=${hex(card)} '
+        'dL*=${step.toStringAsFixed(1)} '
+        'chroma=${(chroma * 100).toStringAsFixed(1)}%',
+      );
 
       // Below ~2 L* the card edge is not perceptible; ~4+ reads as a surface.
-      expect(step, greaterThan(2.0),
-          reason: '${p.id}: card does not separate from the canvas');
+      expect(
+        step,
+        greaterThan(2.0),
+        reason: '${p.id}: card does not separate from the canvas',
+      );
       // A dark card that is more than a fifth colourful reads as paint rather
       // than glass. premium_blue shipped at 27% and looked like a blue slab.
-      expect(chroma, lessThan(0.22),
-          reason: '${p.id}: dark card is too saturated to read as a surface');
+      expect(
+        chroma,
+        lessThan(0.22),
+        reason: '${p.id}: dark card is too saturated to read as a surface',
+      );
     }
   });
 
@@ -113,10 +127,15 @@ void main() {
       }.entries) {
         final ratio = contrast(entry.value, card);
         // ignore: avoid_print
-        print('${p.id.padRight(16)} ${entry.key.padRight(9)} on card '
-            '${ratio.toStringAsFixed(2)}:1');
-        expect(ratio, greaterThanOrEqualTo(4.5),
-            reason: '${p.id}: ${entry.key} text fails AA on the dark card');
+        print(
+          '${p.id.padRight(16)} ${entry.key.padRight(9)} on card '
+          '${ratio.toStringAsFixed(2)}:1',
+        );
+        expect(
+          ratio,
+          greaterThanOrEqualTo(4.5),
+          reason: '${p.id}: ${entry.key} text fails AA on the dark card',
+        );
       }
     }
   });
@@ -126,10 +145,15 @@ void main() {
       AppColors.applyPalette(p);
       final ratio = contrast(AppColors.borderDark, AppColors.darkSurface);
       // ignore: avoid_print
-      print('${p.id.padRight(16)} border-vs-card '
-          '${ratio.toStringAsFixed(2)}:1');
-      expect(ratio, greaterThan(1.1),
-          reason: '${p.id}: border is invisible on the card');
+      print(
+        '${p.id.padRight(16)} border-vs-card '
+        '${ratio.toStringAsFixed(2)}:1',
+      );
+      expect(
+        ratio,
+        greaterThan(1.1),
+        reason: '${p.id}: border is invisible on the card',
+      );
     }
   });
 }

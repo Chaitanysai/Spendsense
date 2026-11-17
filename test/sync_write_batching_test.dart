@@ -16,16 +16,11 @@ import 'package:spendsense/services/sms_service.dart';
 /// is written once no matter how many messages were imported, and the skipped
 /// list is flushed once no matter how many were skipped.
 
-SmsMessageModel _sms(String id, String body) => SmsMessageModel(
-      id: id,
-      body: body,
-      date: DateTime(2026, 10, 12),
-    );
+SmsMessageModel _sms(String id, String body) =>
+    SmsMessageModel(id: id, body: body, date: DateTime(2026, 10, 12));
 
-SmsMessageModel _debit(String id) => _sms(
-      id,
-      'Rs 450 debited from A/c XX1234 to Zomato on 12-10-26',
-    );
+SmsMessageModel _debit(String id) =>
+    _sms(id, 'Rs 450 debited from A/c XX1234 to Zomato on 12-10-26');
 
 Future<TransactionProvider> _provider(List<SmsMessageModel> inbox) async {
   SharedPreferences.setMockInitialValues({
@@ -43,29 +38,34 @@ Future<TransactionProvider> _provider(List<SmsMessageModel> inbox) async {
 }
 
 void main() {
-  test('a scan writes the ledger index once, however many it imports',
-      () async {
-    final provider = await _provider([
-      _debit('sms-1'),
-      _debit('sms-2'),
-      _debit('sms-3'),
-    ]);
-    final writes = <String>[];
-    provider.debugSetCacheWriteHook((op, key) async => writes.add('$op $key'));
+  test(
+    'a scan writes the ledger index once, however many it imports',
+    () async {
+      final provider = await _provider([
+        _debit('sms-1'),
+        _debit('sms-2'),
+        _debit('sms-3'),
+      ]);
+      final writes = <String>[];
+      provider.debugSetCacheWriteHook(
+        (op, key) async => writes.add('$op $key'),
+      );
 
-    await provider.syncFromSms(userInitiated: true);
+      await provider.syncFromSms(userInitiated: true);
 
-    expect(
-      provider.transactions.map((t) => t.id).toSet(),
-      {'sms-1', 'sms-2', 'sms-3'},
-    );
-    expect(
-      writes.where((w) => w == 'set tx_cache_ids_v2').length,
-      1,
-      reason: 'one index commit per scan, not one per message',
-    );
-    provider.dispose();
-  });
+      expect(provider.transactions.map((t) => t.id).toSet(), {
+        'sms-1',
+        'sms-2',
+        'sms-3',
+      });
+      expect(
+        writes.where((w) => w == 'set tx_cache_ids_v2').length,
+        1,
+        reason: 'one index commit per scan, not one per message',
+      );
+      provider.dispose();
+    },
+  );
 
   test('a scan flushes the skipped-message list once', () async {
     final provider = await _provider([

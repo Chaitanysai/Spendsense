@@ -27,17 +27,17 @@ TransactionModel _tx(String id, int amountMinor, DateTime date) =>
     );
 
 Map<String, dynamic> _legacy(String id, int amount) => {
-      'id': id,
-      'amount': amount,
-      'type': 'expense',
-      'merchant': 'Legacy merchant',
-      'category': 'Food',
-      'paymentMethod': 'UPI',
-      'date': '2026-10-23T10:00:00.000',
-      'time': '10:00',
-      'originalSms': '',
-      'isExcluded': false,
-    };
+  'id': id,
+  'amount': amount,
+  'type': 'expense',
+  'merchant': 'Legacy merchant',
+  'category': 'Food',
+  'paymentMethod': 'UPI',
+  'date': '2026-10-23T10:00:00.000',
+  'time': '10:00',
+  'originalSms': '',
+  'isExcluded': false,
+};
 
 class _FakeKeyStore implements LedgerKeyStore {
   String? value;
@@ -106,51 +106,50 @@ void main() {
     envelope['recordId'] = 'r2';
 
     expect(
-      encryption.decryptText(
-        jsonEncode(envelope),
-        expectedRecordId: 'r1',
-      ),
+      encryption.decryptText(jsonEncode(envelope), expectedRecordId: 'r1'),
       throwsA(isA<LedgerKeyUnavailableException>()),
     );
   });
 
-  test('key failures preserve encrypted records and never empty the ledger',
-      () async {
-    final validStore = _FakeKeyStore(
-      value: base64UrlEncode(List<int>.filled(32, 0x55)),
-    );
-    final writer = LedgerEncryptionService(keyStore: validStore);
-    final tx = _tx('key-protected', 23950, DateTime(2026, 10, 1));
-    final payload = await writer.encryptText(
-      jsonEncode(tx.toJson()),
-      recordId: tx.id,
-    );
-    final index = await writer.encryptText(
-      jsonEncode([tx.id]),
-      recordId: '__ledger_index__',
-    );
-
-    Future<void> expectFailure(_FakeKeyStore store) async {
-      SharedPreferences.setMockInitialValues({
-        'tx_cache_ids_v2': index,
-        'txe_key-protected': payload,
-      });
-      // Must await: a bare expect() on a Future only checks that a matcher
-      // object was created, so the fail-closed assertion never ran.
-      await expectLater(
-        TransactionCacheService(
-          encryption: LedgerEncryptionService(keyStore: store),
-        ).init(),
-        throwsA(isA<LedgerKeyUnavailableException>()),
+  test(
+    'key failures preserve encrypted records and never empty the ledger',
+    () async {
+      final validStore = _FakeKeyStore(
+        value: base64UrlEncode(List<int>.filled(32, 0x55)),
       );
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('txe_key-protected'), payload);
-      expect(prefs.getString('tx_cache_ids_v2'), index);
-    }
+      final writer = LedgerEncryptionService(keyStore: validStore);
+      final tx = _tx('key-protected', 23950, DateTime(2026, 10, 1));
+      final payload = await writer.encryptText(
+        jsonEncode(tx.toJson()),
+        recordId: tx.id,
+      );
+      final index = await writer.encryptText(
+        jsonEncode([tx.id]),
+        recordId: '__ledger_index__',
+      );
 
-    await expectFailure(_FakeKeyStore());
-    await expectFailure(_FakeKeyStore()..throwOnRead = true);
-  });
+      Future<void> expectFailure(_FakeKeyStore store) async {
+        SharedPreferences.setMockInitialValues({
+          'tx_cache_ids_v2': index,
+          'txe_key-protected': payload,
+        });
+        // Must await: a bare expect() on a Future only checks that a matcher
+        // object was created, so the fail-closed assertion never ran.
+        await expectLater(
+          TransactionCacheService(
+            encryption: LedgerEncryptionService(keyStore: store),
+          ).init(),
+          throwsA(isA<LedgerKeyUnavailableException>()),
+        );
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('txe_key-protected'), payload);
+        expect(prefs.getString('tx_cache_ids_v2'), index);
+      }
+
+      await expectFailure(_FakeKeyStore());
+      await expectFailure(_FakeKeyStore()..throwOnRead = true);
+    },
+  );
 
   test('an unindexed orphan record is set aside, not resurrected', () async {
     final encryption = LedgerEncryptionService();
@@ -183,9 +182,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('txe_orphan'), isNull);
     expect(
-      prefs
-          .getKeys()
-          .where((k) => k.startsWith('txq_') && k.endsWith('_txe_orphan')),
+      prefs.getKeys().where(
+        (k) => k.startsWith('txq_') && k.endsWith('_txe_orphan'),
+      ),
       isNotEmpty,
     );
   });
@@ -194,10 +193,9 @@ void main() {
     final encryption = LedgerEncryptionService();
     await encryption.createKeyIfMissing();
     final tx = _tx('poisoned', 12500, DateTime(2026, 10, 1));
-    final payload = jsonDecode(await encryption.encryptText(
-      jsonEncode(tx.toJson()),
-      recordId: tx.id,
-    )) as Map<String, dynamic>;
+    final payload = jsonDecode(
+      await encryption.encryptText(jsonEncode(tx.toJson()), recordId: tx.id),
+    ) as Map<String, dynamic>;
     final ciphertext = payload['ciphertext'] as String;
     payload['ciphertext'] =
         (ciphertext.startsWith('A') ? 'B' : 'A') + ciphertext.substring(1);
@@ -216,12 +214,15 @@ void main() {
     expect(await cache.loadAll(), isEmpty);
 
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('txe_poisoned'), isNull,
-        reason: 'an unauthenticated record cannot enter the ledger');
     expect(
-      prefs
-          .getKeys()
-          .where((k) => k.startsWith('txq_') && k.endsWith('_txe_poisoned')),
+      prefs.getString('txe_poisoned'),
+      isNull,
+      reason: 'an unauthenticated record cannot enter the ledger',
+    );
+    expect(
+      prefs.getKeys().where(
+        (k) => k.startsWith('txq_') && k.endsWith('_txe_poisoned'),
+      ),
       isNotEmpty,
       reason: 'its bytes are kept aside for diagnosis, not deleted',
     );
@@ -252,9 +253,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('tx_legacy'), isNull);
     expect(
-      prefs
-          .getKeys()
-          .where((k) => k.startsWith('txq_') && k.endsWith('_tx_legacy')),
+      prefs.getKeys().where(
+        (k) => k.startsWith('txq_') && k.endsWith('_tx_legacy'),
+      ),
       isNotEmpty,
     );
   });
@@ -398,37 +399,46 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('tx_cache_ids', jsonEncode(['legacy-after-v2']));
     await prefs.setString(
-        'tx_legacy-after-v2', jsonEncode(_legacy('legacy-after-v2', 239)));
+      'tx_legacy-after-v2',
+      jsonEncode(_legacy('legacy-after-v2', 239)),
+    );
 
     final restarted = TransactionCacheService();
     await restarted.init();
     final records = await restarted.loadAll();
     expect(records.map((tx) => tx.id).toSet(), {'v2', 'legacy-after-v2'});
-    expect(records.singleWhere((tx) => tx.id == 'legacy-after-v2').amountMinor,
-        23900);
+    expect(
+      records.singleWhere((tx) => tx.id == 'legacy-after-v2').amountMinor,
+      23900,
+    );
     expect(prefs.getString('tx_money_migration_v2'), isNull);
   });
 
-  test('a stale legacy source never overrides or blocks its encrypted record',
-      () async {
-    final cache = TransactionCacheService();
-    await cache.init();
-    await cache.put(_tx('same-id', 10000, DateTime(2026, 10, 1)));
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('tx_cache_ids', jsonEncode(['same-id']));
-    await prefs.setString('tx_same-id', jsonEncode(_legacy('same-id', 239)));
+  test(
+    'a stale legacy source never overrides or blocks its encrypted record',
+    () async {
+      final cache = TransactionCacheService();
+      await cache.init();
+      await cache.put(_tx('same-id', 10000, DateTime(2026, 10, 1)));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('tx_cache_ids', jsonEncode(['same-id']));
+      await prefs.setString('tx_same-id', jsonEncode(_legacy('same-id', 239)));
 
-    // The encrypted record is authoritative. Comparing the two on every start
-    // made this conflict permanent: once the sync stamped `updatedAtMs` the
-    // comparison could never match, so init failed on every launch.
-    final restarted = TransactionCacheService();
-    await restarted.init();
-    final records = await restarted.loadAll();
+      // The encrypted record is authoritative. Comparing the two on every start
+      // made this conflict permanent: once the sync stamped `updatedAtMs` the
+      // comparison could never match, so init failed on every launch.
+      final restarted = TransactionCacheService();
+      await restarted.init();
+      final records = await restarted.loadAll();
 
-    expect(records.single.amountMinor, 10000);
-    expect(prefs.getString('tx_same-id'), isNull,
-        reason: 'the superseded plaintext source is retired');
-  });
+      expect(records.single.amountMinor, 10000);
+      expect(
+        prefs.getString('tx_same-id'),
+        isNull,
+        reason: 'the superseded plaintext source is retired',
+      );
+    },
+  );
 
   test('legacy reconciliation resumes after index interruption', () async {
     final seed = TransactionCacheService();
@@ -436,16 +446,22 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('tx_cache_ids', jsonEncode(['resume-legacy']));
     await prefs.setString(
-        'tx_resume-legacy', jsonEncode(_legacy('resume-legacy', 239)));
+      'tx_resume-legacy',
+      jsonEncode(_legacy('resume-legacy', 239)),
+    );
 
-    final interrupted = TransactionCacheService(writeHook: (op, key) async {
-      if (op == 'set' && key == 'tx_cache_ids_v2') {
-        throw StateError('index interruption');
-      }
-    });
+    final interrupted = TransactionCacheService(
+      writeHook: (op, key) async {
+        if (op == 'set' && key == 'tx_cache_ids_v2') {
+          throw StateError('index interruption');
+        }
+      },
+    );
     await expectLater(interrupted.init(), throwsA(isA<StateError>()));
-    expect(prefs.getString('tx_money_migration_v2'),
-        isNot(contains('resume-legacy')));
+    expect(
+      prefs.getString('tx_money_migration_v2'),
+      isNot(contains('resume-legacy')),
+    );
 
     final restarted = TransactionCacheService();
     await restarted.init();

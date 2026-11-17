@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'app_sheet.dart';
+
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -56,7 +58,8 @@ class _PlanEditorState extends State<_PlanEditor> {
     _title = TextEditingController(text: p?.title ?? t?.merchant ?? '');
     final minor = p?.amountMinor ?? t?.amountMinor;
     _amount = TextEditingController(
-        text: minor == null ? '' : formatPaise(minor, trimZeroPaise: true));
+      text: minor == null ? '' : formatPaise(minor, trimZeroPaise: true),
+    );
     _category =
         p?.category ?? t?.category ?? CategoryStyle.pickerCategories.first;
     _frequency = p?.frequency ?? PlanFrequency.monthly;
@@ -141,10 +144,7 @@ class _PlanEditorState extends State<_PlanEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = {
-      ...CategoryStyle.pickerCategories,
-      _category,
-    }.toList();
+    final categories = {...CategoryStyle.pickerCategories, _category}.toList();
     return Padding(
       padding: EdgeInsets.fromLTRB(
         AppSpacing.xl,
@@ -157,8 +157,10 @@ class _PlanEditorState extends State<_PlanEditor> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.plan == null ? 'Plan a bill' : 'Edit bill',
-                style: AppText.h2(context)),
+            Text(
+              widget.plan == null ? 'Plan a bill' : 'Edit bill',
+              style: AppText.h2(context),
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'A plan is a reminder of what you expect to pay. It never adds '
@@ -175,13 +177,16 @@ class _PlanEditorState extends State<_PlanEditor> {
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _amount,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
-              decoration:
-                  const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                prefixText: '₹ ',
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<String>(
@@ -218,9 +223,11 @@ class _PlanEditorState extends State<_PlanEditor> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Text(_error!,
-                    style: AppText.label(context)
-                        .copyWith(color: AppColors.expenseRed)),
+                child: Text(
+                  _error!,
+                  style: AppText.label(context)
+                      .copyWith(color: AppColors.expenseRed),
+                ),
               ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton(

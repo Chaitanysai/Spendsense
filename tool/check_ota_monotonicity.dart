@@ -143,8 +143,9 @@ void main(List<String> args) async {
   final options = _Options.parse(args);
 
   final candidate = _AppVersion.parseOrFail(
-      _readVersion(options.candidatePath, '--candidate'),
-      options.candidatePath);
+    _readVersion(options.candidatePath, '--candidate'),
+    options.candidatePath,
+  );
 
   String? liveRaw;
   if (options.liveFile != null) {
@@ -162,17 +163,22 @@ void main(List<String> args) async {
     // that has never had one. Say so loudly, because it also covers a typo in
     // --live-url, and a URL that 404s must not read as "nothing to compare".
     stdout.writeln(
-        'note: no live manifest at ${options.source}; nothing to compare against.');
+      'note: no live manifest at ${options.source}; nothing to compare against.',
+    );
     stdout.writeln(
-        '      A first publish on a new channel is expected to land here — but so is a');
+      '      A first publish on a new channel is expected to land here — but so is a',
+    );
     stdout.writeln(
-        '      mistyped --live-url, so confirm the channel has genuinely never been published.');
+      '      mistyped --live-url, so confirm the channel has genuinely never been published.',
+    );
     stdout.writeln('OK: monotonicity not applicable (no live manifest)');
     return;
   }
 
   final live = _AppVersion.parseOrFail(
-      _readLiveVersion(liveRaw, options.source), options.source);
+    _readLiveVersion(liveRaw, options.source),
+    options.source,
+  );
 
   final cmp = candidate.compareTo(live);
   stdout.writeln('live      : $live');
@@ -185,25 +191,33 @@ void main(List<String> args) async {
 
   if (cmp == 0) {
     stderr.writeln(
-        'error: candidate $candidate is the same version+build as the live manifest.');
+      'error: candidate $candidate is the same version+build as the live manifest.',
+    );
     stderr.writeln(
-        '       Every gate would pass and the publish would succeed, but no installed');
+      '       Every gate would pass and the publish would succeed, but no installed',
+    );
     stderr.writeln(
-        '       build would ever see an update: UpdatePolicy compares with isNewerThan,');
+      '       build would ever see an update: UpdatePolicy compares with isNewerThan,',
+    );
     stderr.writeln('       which requires strictly greater.');
     stderr.writeln(
-        '       Bump the build number (pubspec version -> x.y.z+<next build>) and rebuild.');
+      '       Bump the build number (pubspec version -> x.y.z+<next build>) and rebuild.',
+    );
     exit(1);
   }
 
   stderr.writeln(
-      'error: candidate $candidate is OLDER than the live manifest $live.');
+    'error: candidate $candidate is OLDER than the live manifest $live.',
+  );
   stderr.writeln(
-      '       Publishing it would move the channel backwards. Android also refuses to');
+    '       Publishing it would move the channel backwards. Android also refuses to',
+  );
   stderr.writeln(
-      '       install a lower versionCode over a higher one, so even a forced download');
+    '       install a lower versionCode over a higher one, so even a forced download',
+  );
   stderr.writeln(
-      '       could not be applied. Never reuse or lower a build number.');
+    '       could not be applied. Never reuse or lower a build number.',
+  );
   exit(1);
 }
 
@@ -214,8 +228,10 @@ String _readVersion(String path, String flag) {
   final text = file.readAsStringSync();
 
   if (path.endsWith('.yaml') || path.endsWith('.yml')) {
-    final match =
-        RegExp(r'^version:\s*(\S+)\s*$', multiLine: true).firstMatch(text);
+    final match = RegExp(
+      r'^version:\s*(\S+)\s*$',
+      multiLine: true,
+    ).firstMatch(text);
     if (match == null) {
       _fail('$path has no top-level `version:` line');
     }
@@ -243,7 +259,8 @@ String _manifestVersion(String raw, String source) {
   final build = decoded['latestBuildNumber'];
   if (name is! String || build is! int) {
     _fail(
-        '$source has no usable latestVersion/latestBuildNumber; is it an OTA manifest?');
+      '$source has no usable latestVersion/latestBuildNumber; is it an OTA manifest?',
+    );
   }
   return '$name+$build';
 }
@@ -287,11 +304,7 @@ class _Options {
   final String? liveFile;
   final String? liveUrl;
 
-  const _Options({
-    required this.candidatePath,
-    this.liveFile,
-    this.liveUrl,
-  });
+  const _Options({required this.candidatePath, this.liveFile, this.liveUrl});
 
   String get source => liveFile ?? liveUrl!;
 

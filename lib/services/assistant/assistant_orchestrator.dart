@@ -48,11 +48,11 @@ class AssistantOrchestrator {
   }
 
   FinanceToolEngine _engine() => FinanceToolEngine(
-        transactions: ledger.transactions,
-        plans: ledger.plans,
-        hiddenBillKeys: ledger.hiddenBillKeys,
-        now: clock(),
-      );
+    transactions: ledger.transactions,
+    plans: ledger.plans,
+    hiddenBillKeys: ledger.hiddenBillKeys,
+    now: clock(),
+  );
 
   AssistantComposer _composer() => AssistantComposer(_engine());
 
@@ -73,7 +73,8 @@ class AssistantOrchestrator {
     }
     if (action.id != actionId) {
       return const AssistantReply(
-        text: 'That confirmation does not match the current preview. '
+        text:
+            'That confirmation does not match the current preview. '
             'Nothing was changed; review the latest preview.',
         isError: true,
       );
@@ -81,7 +82,8 @@ class AssistantOrchestrator {
     if (action.isExpiredAt(clock())) {
       _pending = null;
       return const AssistantReply(
-        text: 'That preview expired, so nothing was changed. Ask again to '
+        text:
+            'That preview expired, so nothing was changed. Ask again to '
             'create a fresh preview.',
         isError: true,
       );
@@ -93,7 +95,8 @@ class AssistantOrchestrator {
       if (tx == null) {
         _pending = null;
         return const AssistantReply(
-          text: 'The ledger changed after this preview was created, so the '
+          text:
+              'The ledger changed after this preview was created, so the '
               'change was not applied. Ask again for a fresh preview.',
           isError: true,
         );
@@ -101,7 +104,8 @@ class AssistantOrchestrator {
       if (action.expectedFingerprints[id] != action.fingerprintOf(tx)) {
         _pending = null;
         return const AssistantReply(
-          text: 'One of the previewed transactions changed, so the change was '
+          text:
+              'One of the previewed transactions changed, so the change was '
               'not applied. Ask again for a fresh preview.',
           isError: true,
         );
@@ -111,7 +115,8 @@ class AssistantOrchestrator {
         action.transactionIds.any((id) => byId[id]!.isExcluded)) {
       _pending = null;
       return const AssistantReply(
-        text: 'Some of those transactions are already excluded. Nothing was '
+        text:
+            'Some of those transactions are already excluded. Nothing was '
             'changed. Ask again for a fresh preview.',
         isError: true,
       );
@@ -133,7 +138,8 @@ class AssistantOrchestrator {
           await ledger.restoreExclusionStates(previousExcluded);
           _pending = null;
           return const AssistantReply(
-            text: 'The ledger did not match the preview exactly, so the change '
+            text:
+                'The ledger did not match the preview exactly, so the change '
                 'was rolled back. Nothing was changed. Ask again.',
             isError: true,
           );
@@ -148,7 +154,8 @@ class AssistantOrchestrator {
           }
           _pending = null;
           return const AssistantReply(
-            text: 'The ledger did not match the preview exactly, so the '
+            text:
+                'The ledger did not match the preview exactly, so the '
                 'deletion was rolled back. Nothing was changed.',
             isError: true,
           );
@@ -163,9 +170,7 @@ class AssistantOrchestrator {
         totalMinor: action.expectedTotalMinor,
         transactionIds: action.transactionIds,
         previousExcluded: previousExcluded,
-        deletedSnapshots: [
-          for (final tx in removed) auditSnapshot(tx),
-        ],
+        deletedSnapshots: [for (final tx in removed) auditSnapshot(tx)],
       );
       try {
         await audit.append(entry);
@@ -188,9 +193,9 @@ class AssistantOrchestrator {
         return AssistantReply(
           text: rolledBack
               ? 'The change was not applied because its audit record could not '
-                  'be saved. Nothing was changed.'
+                    'be saved. Nothing was changed.'
               : 'The change could not be audited and the automatic rollback '
-                  'also failed. Review your transactions before trying again.',
+                    'also failed. Review your transactions before trying again.',
           isError: true,
         );
       }
@@ -199,7 +204,8 @@ class AssistantOrchestrator {
       return _appliedReply(action);
     } catch (_) {
       return const AssistantReply(
-        text: 'The change could not be completed. Your existing transactions '
+        text:
+            'The change could not be completed. Your existing transactions '
             'were left in place. Nothing was changed.',
         isError: true,
       );
@@ -251,14 +257,16 @@ class AssistantOrchestrator {
         }
       } catch (_) {
         return const AssistantReply(
-          text: 'The audit copy of that deletion is unreadable, so it was not '
+          text:
+              'The audit copy of that deletion is unreadable, so it was not '
               'restored. Nothing was changed.',
           isError: true,
         );
       }
       if (snapshots.isEmpty) {
         return const AssistantReply(
-          text: 'The audit copy of that deletion is empty, so it was not '
+          text:
+              'The audit copy of that deletion is empty, so it was not '
               'restored. Nothing was changed.',
           isError: true,
         );
@@ -267,13 +275,15 @@ class AssistantOrchestrator {
       await audit.markUndone(last.id);
       _pending = null;
       return AssistantReply(
-        text: 'Undone. Restored $restored deleted transaction'
+        text:
+            'Undone. Restored $restored deleted transaction'
             '${restored == 1 ? '' : 's'}. Search, Home, Insights, budgets and '
             'instrument totals are recalculated from the restored ledger.',
       );
     } catch (_) {
       return const AssistantReply(
-        text: 'Undo could not be completed. No records were changed by the '
+        text:
+            'Undo could not be completed. No records were changed by the '
             'undo attempt.',
         isError: true,
       );
@@ -287,12 +297,14 @@ class AssistantOrchestrator {
     final text = message.trim();
     if (text.isEmpty) {
       return const AssistantReply(
-          text: 'Ask a question about your transactions.');
+        text: 'Ask a question about your transactions.',
+      );
     }
     // A vague acknowledgement must never apply a pending change.
     if (pending != null && _isVagueConfirmation(text)) {
       return const AssistantReply(
-        text: 'There is a pending preview, but it is not applied from a chat '
+        text:
+            'There is a pending preview, but it is not applied from a chat '
             'message. Open the preview card and tap Review & confirm, or tap '
             'Cancel. Nothing has changed.',
       );
@@ -319,7 +331,8 @@ class AssistantOrchestrator {
 
     if (remoteClient == null) {
       return const AssistantReply(
-        text: 'I can run core requests fully on this device — for example: '
+        text:
+            'I can run core requests fully on this device — for example: '
             'list Groww and Zerodha transactions, spending by category, '
             'biggest expenses, unpaid bills, month comparisons, exclusions, '
             'deletions and undo.\n\n'
@@ -331,7 +344,8 @@ class AssistantOrchestrator {
 
     if (!await consent.hasCloudConsent()) {
       return const AssistantReply(
-        text: 'That question needs Gemini. Cloud assistance is currently off, '
+        text:
+            'That question needs Gemini. Cloud assistance is currently off, '
             'so nothing was sent. You can review exactly what would be shared '
             'and enable it in Assistant privacy. Core commands keep working '
             'offline.',
@@ -351,13 +365,16 @@ class AssistantOrchestrator {
     final composer = AssistantComposer(engine);
     final remote = remoteClient!;
     final remoteHistory = [
-      for (final turn in history
-          .where((m) => !m.isLoading && !m.isError && m.text.trim().isNotEmpty)
-          .toList()
-          .reversed
-          .take(GeminiProxyClient.maxHistoryTurns)
-          .toList()
-          .reversed)
+      for (final turn
+          in history
+              .where(
+                (m) => !m.isLoading && !m.isError && m.text.trim().isNotEmpty,
+              )
+              .toList()
+              .reversed
+              .take(GeminiProxyClient.maxHistoryTurns)
+              .toList()
+              .reversed)
         RemoteHistoryTurn(
           role: turn.isUser ? 'user' : 'model',
           text: turn.text,
@@ -383,7 +400,8 @@ class AssistantOrchestrator {
         }
         if (round == GeminiProxyClient.maxToolRounds) {
           return const AssistantReply(
-            text: 'The assistant needed too many steps. Try a narrower '
+            text:
+                'The assistant needed too many steps. Try a narrower '
                 'question. Nothing was changed.',
             isError: true,
           );
@@ -407,8 +425,7 @@ class AssistantOrchestrator {
                       result.pending!.transactionIds.join(',')) {
                 const error = {
                   'error': 'conflicting_preview',
-                  'message':
-                      'Only one pending preview is allowed. Ask the user to confirm or cancel the existing preview first.',
+                  'message': 'Only one pending preview is allowed. Ask the user to confirm or cancel the existing preview first.',
                 };
                 seenCalls[signature] = error;
                 calls.add(call);
@@ -434,7 +451,8 @@ class AssistantOrchestrator {
 
       if (finalText == null) {
         return const AssistantReply(
-          text: 'The assistant stopped before producing an answer. Nothing was '
+          text:
+              'The assistant stopped before producing an answer. Nothing was '
               'changed.',
           isError: true,
         );
@@ -458,7 +476,8 @@ class AssistantOrchestrator {
       );
     } catch (_) {
       return const AssistantReply(
-        text: 'Gemini is unavailable right now. Local commands still work. '
+        text:
+            'Gemini is unavailable right now. Local commands still work. '
             'Nothing was changed.',
         isError: true,
         suggestions: _suggestions,
@@ -493,10 +512,11 @@ class AssistantOrchestrator {
     final change = action.spendingBeforeMinor == summary.spendingMinor
         ? 'Spending in ${window.preciseLabel} is unchanged.'
         : 'Spending in ${window.preciseLabel} changed from '
-            '${Formatters.currency.format(action.spendingBeforeMinor)} to '
-            '${Formatters.currency.format(summary.spendingMinor)}.';
+              '${Formatters.currency.format(action.spendingBeforeMinor)} to '
+              '${Formatters.currency.format(summary.spendingMinor)}.';
     return AssistantReply(
-      text: '$verb ${action.expectedCount} transaction'
+      text:
+          '$verb ${action.expectedCount} transaction'
           '${action.expectedCount == 1 ? '' : 's'} totaling '
           '${Formatters.currency.format(action.expectedTotalMinor)}. $kept '
           '$change Home, Insights, budgets and payment-instrument totals now '
@@ -539,8 +559,10 @@ class AssistantOrchestrator {
   }
 
   bool _isVagueConfirmation(String message) {
-    final normalized =
-        message.toLowerCase().replaceAll(RegExp(r'[^a-z ]'), ' ').trim();
+    final normalized = message
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z ]'), ' ')
+        .trim();
     final compact = normalized.replaceAll(RegExp(r'\s+'), ' ');
     return const {
       'ok',

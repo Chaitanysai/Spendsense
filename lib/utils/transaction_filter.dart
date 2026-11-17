@@ -57,17 +57,18 @@ class TransactionFilter {
     bool clearType = false,
     bool clearDateRange = false,
     bool clearAmountRange = false,
-  }) =>
-      TransactionFilter(
-        query: query ?? this.query,
-        category: clearCategory ? null : (category ?? this.category),
-        type: clearType ? null : (type ?? this.type),
-        dateRange: clearDateRange ? null : (dateRange ?? this.dateRange),
-        minAmountMinor:
-            clearAmountRange ? null : (minAmountMinor ?? this.minAmountMinor),
-        maxAmountMinor:
-            clearAmountRange ? null : (maxAmountMinor ?? this.maxAmountMinor),
-      );
+  }) => TransactionFilter(
+    query: query ?? this.query,
+    category: clearCategory ? null : (category ?? this.category),
+    type: clearType ? null : (type ?? this.type),
+    dateRange: clearDateRange ? null : (dateRange ?? this.dateRange),
+    minAmountMinor: clearAmountRange
+        ? null
+        : (minAmountMinor ?? this.minAmountMinor),
+    maxAmountMinor: clearAmountRange
+        ? null
+        : (maxAmountMinor ?? this.maxAmountMinor),
+  );
 
   bool matches(TransactionModel t) {
     if (category != null && t.category != category) return false;
@@ -82,9 +83,9 @@ class TransactionFilter {
   }
 
   List<TransactionModel> apply(Iterable<TransactionModel> all) => [
-        for (final t in all)
-          if (matches(t)) t
-      ];
+    for (final t in all)
+      if (matches(t)) t,
+  ];
 
   bool _matchesQuery(TransactionModel t) {
     final q = query.trim().toLowerCase();

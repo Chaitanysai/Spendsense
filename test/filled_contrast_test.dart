@@ -26,69 +26,97 @@ void main() {
         AppColors.applyPalette(palette);
         // Filled/Elevated use the derived filledBrand + white foreground.
         final filled = palette.filledBrand;
-        expect(_contrast(filled, Colors.white), greaterThanOrEqualTo(4.5),
-            reason: '${palette.label} filled $filled vs white');
+        expect(
+          _contrast(filled, Colors.white),
+          greaterThanOrEqualTo(4.5),
+          reason: '${palette.label} filled $filled vs white',
+        );
       });
 
-      test('${palette.label}: filledBrand keeps hue, only darkens toward deep',
-          () {
-        AppColors.applyPalette(palette);
-        if (_rawBrandAlreadyPasses(palette)) {
-          // palettes that already cleared keep raw brand
-          expect(palette.filledBrand, palette.brand, reason: palette.label);
-        } else {
-          // the two that needed darkening keep the same hue family
-          final hOrig = HSLColor.fromColor(palette.brand).hue;
-          final hFilled = HSLColor.fromColor(palette.filledBrand).hue;
-          // circular hue distance
-          double diff = (hFilled - hOrig).abs();
-          if (diff > 180) diff = 360 - diff;
-          expect(diff, lessThanOrEqualTo(8), reason: palette.label);
-          expect(palette.filledBrand.computeLuminance(),
+      test(
+        '${palette.label}: filledBrand keeps hue, only darkens toward deep',
+        () {
+          AppColors.applyPalette(palette);
+          if (_rawBrandAlreadyPasses(palette)) {
+            // palettes that already cleared keep raw brand
+            expect(palette.filledBrand, palette.brand, reason: palette.label);
+          } else {
+            // the two that needed darkening keep the same hue family
+            final hOrig = HSLColor.fromColor(palette.brand).hue;
+            final hFilled = HSLColor.fromColor(palette.filledBrand).hue;
+            // circular hue distance
+            double diff = (hFilled - hOrig).abs();
+            if (diff > 180) diff = 360 - diff;
+            expect(diff, lessThanOrEqualTo(8), reason: palette.label);
+            expect(
+              palette.filledBrand.computeLuminance(),
               lessThan(palette.brand.computeLuminance()),
-              reason: '${palette.label} must darken, not lighten');
-        }
-      });
+              reason: '${palette.label} must darken, not lighten',
+            );
+          }
+        },
+      );
 
-      test('${palette.label}: actionGradient lightest stop >=4.5:1 on white',
-          () {
-        AppColors.applyPalette(palette);
-        final top = palette.actionTop;
-        expect(_contrast(top, Colors.white), greaterThanOrEqualTo(4.5),
-            reason: '${palette.label} actionTop $top');
-      });
+      test(
+        '${palette.label}: actionGradient lightest stop >=4.5:1 on white',
+        () {
+          AppColors.applyPalette(palette);
+          final top = palette.actionTop;
+          expect(
+            _contrast(top, Colors.white),
+            greaterThanOrEqualTo(4.5),
+            reason: '${palette.label} actionTop $top',
+          );
+        },
+      );
 
-      test('${palette.label}: theme FilledButton background == filledBrand',
-          () {
-        AppColors.applyPalette(palette);
-        for (final brightness in Brightness.values) {
-          final theme =
-              const SpendSenseApp().themeFor(brightness, FontPreset.standard);
-          final bg = theme.filledButtonTheme.style!.backgroundColor!
-              .resolve(<WidgetState>{})!;
-          expect(bg, palette.filledBrand,
-              reason: '${palette.label} $brightness filled theme');
-          expect(_contrast(bg, Colors.white), greaterThanOrEqualTo(4.5));
-          final elevatedBg = theme.elevatedButtonTheme.style!.backgroundColor!
-              .resolve(<WidgetState>{})!;
-          expect(elevatedBg, palette.filledBrand);
-        }
-      });
+      test(
+        '${palette.label}: theme FilledButton background == filledBrand',
+        () {
+          AppColors.applyPalette(palette);
+          for (final brightness in Brightness.values) {
+            final theme = const SpendSenseApp().themeFor(
+              brightness,
+              FontPreset.standard,
+            );
+            final bg = theme.filledButtonTheme.style!.backgroundColor!.resolve(
+              <WidgetState>{},
+            )!;
+            expect(
+              bg,
+              palette.filledBrand,
+              reason: '${palette.label} $brightness filled theme',
+            );
+            expect(_contrast(bg, Colors.white), greaterThanOrEqualTo(4.5));
+            final elevatedBg = theme.elevatedButtonTheme.style!.backgroundColor!
+                .resolve(<WidgetState>{})!;
+            expect(elevatedBg, palette.filledBrand);
+          }
+        },
+      );
     }
 
-    test('spot: Emerald before would be 3.37, after >=4.5 (regression guard)',
-        () {
-      // Raw emerald brand vs white is the reported failure value.
-      const rawEmeraldBrand = Color(0xFF12A150);
-      expect(_contrast(rawEmeraldBrand, Colors.white), lessThan(4.5));
-      expect(_contrast(const Color(0xFF12A150), Colors.white),
-          closeTo(3.37, 0.08));
-      // Derived filledBrand must pass.
-      expect(_contrast(AppPalette.emerald.filledBrand, Colors.white),
-          greaterThanOrEqualTo(4.5));
-      expect(_contrast(AppPalette.teal.filledBrand, Colors.white),
-          greaterThanOrEqualTo(4.5));
-    });
+    test(
+      'spot: Emerald before would be 3.37, after >=4.5 (regression guard)',
+      () {
+        // Raw emerald brand vs white is the reported failure value.
+        const rawEmeraldBrand = Color(0xFF12A150);
+        expect(_contrast(rawEmeraldBrand, Colors.white), lessThan(4.5));
+        expect(
+          _contrast(const Color(0xFF12A150), Colors.white),
+          closeTo(3.37, 0.08),
+        );
+        // Derived filledBrand must pass.
+        expect(
+          _contrast(AppPalette.emerald.filledBrand, Colors.white),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          _contrast(AppPalette.teal.filledBrand, Colors.white),
+          greaterThanOrEqualTo(4.5),
+        );
+      },
+    );
   });
 }
 

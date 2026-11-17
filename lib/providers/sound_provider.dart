@@ -13,8 +13,8 @@ import '../services/sound_service.dart';
 /// concept enters the codebase.
 class SoundProvider extends ChangeNotifier with WidgetsBindingObserver {
   SoundProvider({SoundService? service, bool observeLifecycle = true})
-      : _service = service ?? SoundService(),
-        _observeLifecycle = observeLifecycle {
+    : _service = service ?? SoundService(),
+      _observeLifecycle = observeLifecycle {
     initialized = _restore();
   }
 
@@ -52,7 +52,8 @@ class SoundProvider extends ChangeNotifier with WidgetsBindingObserver {
         masterEnabled:
             prefs.getBool(masterKey) ?? SoundPreferences.defaults.masterEnabled,
         uiEnabled: prefs.getBool(uiKey) ?? SoundPreferences.defaults.uiEnabled,
-        transactionsEnabled: prefs.getBool(transactionsKey) ??
+        transactionsEnabled:
+            prefs.getBool(transactionsKey) ??
             SoundPreferences.defaults.transactionsEnabled,
       );
     } catch (error) {
@@ -87,10 +88,10 @@ class SoundProvider extends ChangeNotifier with WidgetsBindingObserver {
       _update(_prefs.copyWith(uiEnabled: value), uiKey, value);
 
   Future<void> setTransactionsEnabled(bool value) => _update(
-        _prefs.copyWith(transactionsEnabled: value),
-        transactionsKey,
-        value,
-      );
+    _prefs.copyWith(transactionsEnabled: value),
+    transactionsKey,
+    value,
+  );
 
   Future<void> _update(SoundPreferences next, String key, bool value) async {
     if (next == _prefs) return;

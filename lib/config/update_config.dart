@@ -52,8 +52,8 @@ class UpdateConfig {
     // rather than silently polluting the approved-host list.
     final usableManifestUri =
         (manifestUri != null && manifestUri.scheme.toLowerCase() == 'https')
-            ? manifestUri
-            : null;
+        ? manifestUri
+        : null;
 
     final hosts = <String>{};
     if (usableManifestUri != null && usableManifestUri.host.isNotEmpty) {

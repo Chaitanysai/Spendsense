@@ -23,8 +23,9 @@ Widget _host(
   bool dark = false,
   Color? splashColor,
 }) {
-  final theme =
-      ThemeData(brightness: dark ? Brightness.dark : Brightness.light);
+  final theme = ThemeData(
+    brightness: dark ? Brightness.dark : Brightness.light,
+  );
   return MaterialApp(
     theme: theme.copyWith(
       splashFactory: InkRipple.splashFactory,
@@ -95,20 +96,20 @@ Offset _centerOf(WidgetTester tester, GlobalKey key) {
 
 void main() {
   group('Pressable', () {
-    testWidgets('feeds back on touch-down, settles at 0.97, then fires once',
-        (tester) async {
+    testWidgets('feeds back on touch-down, settles at 0.97, then fires once', (
+      tester,
+    ) async {
       var taps = 0;
       const key = Key('pressable');
-      await tester.pumpWidget(_host(Pressable(
-        key: key,
-        onTap: () => taps++,
-        child: _box,
-      )));
+      await tester.pumpWidget(
+        _host(Pressable(key: key, onTap: () => taps++, child: _box)),
+      );
 
       expect(_scaleOf(tester, find.byKey(key)), 1.0);
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(key)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(key)),
+      );
       expect(
         tester.binding.hasScheduledFrame,
         isTrue,
@@ -141,17 +142,21 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('reduced motion keeps the control flat but still taps',
-        (tester) async {
+    testWidgets('reduced motion keeps the control flat but still taps', (
+      tester,
+    ) async {
       var taps = 0;
       const key = Key('pressable');
-      await tester.pumpWidget(_host(
-        Pressable(key: key, onTap: () => taps++, child: _box),
-        disableAnimations: true,
-      ));
+      await tester.pumpWidget(
+        _host(
+          Pressable(key: key, onTap: () => taps++, child: _box),
+          disableAnimations: true,
+        ),
+      );
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(key)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(key)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       expect(_scaleOf(tester, find.byKey(key)), 1.0);
@@ -174,18 +179,18 @@ void main() {
       );
     });
 
-    testWidgets('a drag past the touch slop releases the press, no tap fires',
-        (tester) async {
+    testWidgets('a drag past the touch slop releases the press, no tap fires', (
+      tester,
+    ) async {
       var taps = 0;
       const key = Key('pressable');
-      await tester.pumpWidget(_host(Pressable(
-        key: key,
-        onTap: () => taps++,
-        child: _box,
-      )));
+      await tester.pumpWidget(
+        _host(Pressable(key: key, onTap: () => taps++, child: _box)),
+      );
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(key)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(key)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       expect(_scaleOf(tester, find.byKey(key)), closeTo(0.97, 0.0001));
@@ -204,36 +209,39 @@ void main() {
       expect(taps, 0);
     });
 
-    testWidgets('a drag inside a real scrollable scrolls it without tapping',
-        (tester) async {
+    testWidgets('a drag inside a real scrollable scrolls it without tapping', (
+      tester,
+    ) async {
       var taps = 0;
       const key = Key('row');
-      await tester.pumpWidget(_host(SizedBox(
-        height: 200,
-        child: ListView(
-          children: [
-            Pressable(
-              key: key,
-              onTap: () => taps++,
-              child: const SizedBox(
-                height: 80,
-                child: Center(child: Text('ROW')),
-              ),
+      await tester.pumpWidget(
+        _host(
+          SizedBox(
+            height: 200,
+            child: ListView(
+              children: [
+                Pressable(
+                  key: key,
+                  onTap: () => taps++,
+                  child: const SizedBox(
+                    height: 80,
+                    child: Center(child: Text('ROW')),
+                  ),
+                ),
+                for (var i = 0; i < 8; i++)
+                  SizedBox(height: 80, child: Center(child: Text('FILLER $i'))),
+              ],
             ),
-            for (var i = 0; i < 8; i++)
-              SizedBox(
-                height: 80,
-                child: Center(child: Text('FILLER $i')),
-              ),
-          ],
+          ),
         ),
-      )));
+      );
 
       final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
       expect(scrollable.position.pixels, 0);
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.text('ROW')));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('ROW')),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       expect(_scaleOf(tester, find.byKey(key)), closeTo(0.97, 0.0001));
@@ -261,15 +269,14 @@ void main() {
       expect(taps, 0, reason: 'a scroll must never become a tap');
     });
 
-    testWidgets('the tap callback and its sound stay single-shot',
-        (tester) async {
+    testWidgets('the tap callback and its sound stay single-shot', (
+      tester,
+    ) async {
       var taps = 0;
       const key = Key('pressable');
-      await tester.pumpWidget(_host(Pressable(
-        key: key,
-        onTap: () => taps++,
-        child: _box,
-      )));
+      await tester.pumpWidget(
+        _host(Pressable(key: key, onTap: () => taps++, child: _box)),
+      );
 
       await tester.tap(find.byKey(key));
       await tester.pumpAndSettle();
@@ -280,33 +287,37 @@ void main() {
   group('PressFeedback', () {
     testWidgets('a child-owned long press is not stolen', (tester) async {
       var longPresses = 0;
-      await tester.pumpWidget(_host(PressFeedback(
-        child: GestureDetector(
-          onLongPress: () => longPresses++,
-          child: const SizedBox(
-            width: 160,
-            height: 48,
-            child: Text('HOLD'),
+      await tester.pumpWidget(
+        _host(
+          PressFeedback(
+            child: GestureDetector(
+              onLongPress: () => longPresses++,
+              child: const SizedBox(
+                width: 160,
+                height: 48,
+                child: Text('HOLD'),
+              ),
+            ),
           ),
         ),
-      )));
+      );
 
       await tester.longPress(find.text('HOLD'));
       await tester.pump();
       expect(longPresses, 1);
     });
 
-    testWidgets('a disabled control stays flat and fires nothing',
-        (tester) async {
+    testWidgets('a disabled control stays flat and fires nothing', (
+      tester,
+    ) async {
       const key = Key('feedback');
-      await tester.pumpWidget(_host(const PressFeedback(
-        key: key,
-        enabled: false,
-        child: _box,
-      )));
+      await tester.pumpWidget(
+        _host(const PressFeedback(key: key, enabled: false, child: _box)),
+      );
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(key)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(key)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       expect(_scaleOf(tester, find.byKey(key)), 1.0);
@@ -316,8 +327,9 @@ void main() {
       expect(_scaleOf(tester, find.byKey(key)), 1.0);
     });
 
-    testWidgets('feedback emits no platform sounds and no haptics',
-        (tester) async {
+    testWidgets('feedback emits no platform sounds and no haptics', (
+      tester,
+    ) async {
       final calls = <MethodCall>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
@@ -327,23 +339,29 @@ void main() {
         },
       );
       addTearDown(() {
-        tester.binding.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null);
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
       });
 
       const key = Key('feedback');
-      await tester
-          .pumpWidget(_host(const PressFeedback(key: key, child: _box)));
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(key)));
+      await tester.pumpWidget(
+        _host(const PressFeedback(key: key, child: _box)),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(key)),
+      );
       await tester.pump(const Duration(milliseconds: 120));
       await gesture.up();
       await tester.pumpAndSettle();
 
       expect(
-        calls.where((c) =>
-            c.method == 'SystemSound.play' ||
-            c.method == 'HapticFeedback.vibrate'),
+        calls.where(
+          (c) =>
+              c.method == 'SystemSound.play' ||
+              c.method == 'HapticFeedback.vibrate',
+        ),
         isEmpty,
         reason: 'the press layer must not add audible or tactile feedback',
       );
@@ -351,8 +369,9 @@ void main() {
   });
 
   group('shared buttons', () {
-    testWidgets('primary button has one ink owner and presses in',
-        (tester) async {
+    testWidgets('primary button has one ink owner and presses in', (
+      tester,
+    ) async {
       var taps = 0;
       await tester.pumpWidget(
         _host(AppPrimaryButton(label: 'SAVE', onPressed: () => taps++)),
@@ -362,12 +381,16 @@ void main() {
         of: find.byType(AppPrimaryButton),
         matching: find.byType(InkWell),
       );
-      expect(inks, findsOneWidget,
-          reason: 'the ripple must have exactly one ink layer');
+      expect(
+        inks,
+        findsOneWidget,
+        reason: 'the ripple must have exactly one ink layer',
+      );
       expect(tester.widget<InkWell>(inks).onTap, isNotNull);
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.text('SAVE')));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('SAVE')),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       expect(
@@ -418,21 +441,28 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('a loading button shows no feedback and ignores taps',
-        (tester) async {
+    testWidgets('a loading button shows no feedback and ignores taps', (
+      tester,
+    ) async {
       var taps = 0;
-      await tester.pumpWidget(_host(AppPrimaryButton(
-        label: 'SAVE',
-        loading: true,
-        onPressed: () => taps++,
-      )));
+      await tester.pumpWidget(
+        _host(
+          AppPrimaryButton(
+            label: 'SAVE',
+            loading: true,
+            onPressed: () => taps++,
+          ),
+        ),
+      );
 
       expect(
         tester
-            .widget<InkWell>(find.descendant(
-              of: find.byType(AppPrimaryButton),
-              matching: find.byType(InkWell),
-            ))
+            .widget<InkWell>(
+              find.descendant(
+                of: find.byType(AppPrimaryButton),
+                matching: find.byType(InkWell),
+              ),
+            )
             .onTap,
         isNull,
         reason: 'a loading button must not accept taps',
@@ -457,16 +487,21 @@ void main() {
       expect(taps, 0);
     });
 
-    testWidgets('disabled primary and ghost buttons ignore taps',
-        (tester) async {
+    testWidgets('disabled primary and ghost buttons ignore taps', (
+      tester,
+    ) async {
       var taps = 0;
-      await tester.pumpWidget(_host(Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          AppPrimaryButton(label: 'SAVE', onPressed: null),
-          AppGhostButton(label: 'CANCEL', onPressed: null),
-        ],
-      )));
+      await tester.pumpWidget(
+        _host(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              AppPrimaryButton(label: 'SAVE', onPressed: null),
+              AppGhostButton(label: 'CANCEL', onPressed: null),
+            ],
+          ),
+        ),
+      );
 
       await tester.tap(find.text('SAVE'));
       await tester.pump();
@@ -475,10 +510,9 @@ void main() {
       expect(taps, 0);
 
       // Counter wiring is live for an enabled ghost button.
-      await tester.pumpWidget(_host(AppGhostButton(
-        label: 'CANCEL',
-        onPressed: () => taps++,
-      )));
+      await tester.pumpWidget(
+        _host(AppGhostButton(label: 'CANCEL', onPressed: () => taps++)),
+      );
       await tester.tap(find.text('CANCEL'));
       await tester.pump();
       expect(taps, 1);
@@ -486,24 +520,28 @@ void main() {
   });
 
   group('glass card', () {
-    testWidgets('paints its ripple above the fill in light mode',
-        (tester) async {
+    testWidgets('paints its ripple above the fill in light mode', (
+      tester,
+    ) async {
       final key = GlobalKey();
       var taps = 0;
-      await tester.pumpWidget(_host(
-        RepaintBoundary(
-          key: key,
-          child: GlassCard(onTap: () => taps++, child: _tallBox),
+      await tester.pumpWidget(
+        _host(
+          RepaintBoundary(
+            key: key,
+            child: GlassCard(onTap: () => taps++, child: _tallBox),
+          ),
+          splashColor: const Color(0x66000000),
         ),
-        splashColor: const Color(0x66000000),
-      ));
+      );
       await tester.pumpAndSettle();
 
       final at = _centerOf(tester, key);
       final before = await _pixelAt(tester, key, at);
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byType(GlassCard)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(GlassCard)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 150));
       await tester.pump(const Duration(milliseconds: 100));
@@ -521,24 +559,28 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('paints its ripple above the fill in dark mode',
-        (tester) async {
+    testWidgets('paints its ripple above the fill in dark mode', (
+      tester,
+    ) async {
       final key = GlobalKey();
-      await tester.pumpWidget(_host(
-        RepaintBoundary(
-          key: key,
-          child: GlassCard(onTap: () {}, child: _tallBox),
+      await tester.pumpWidget(
+        _host(
+          RepaintBoundary(
+            key: key,
+            child: GlassCard(onTap: () {}, child: _tallBox),
+          ),
+          dark: true,
+          splashColor: const Color(0x66FFFFFF),
         ),
-        dark: true,
-        splashColor: const Color(0x66FFFFFF),
-      ));
+      );
       await tester.pumpAndSettle();
 
       final at = _centerOf(tester, key);
       final before = await _pixelAt(tester, key, at);
 
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byType(GlassCard)));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(GlassCard)),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 150));
       await tester.pump(const Duration(milliseconds: 100));
@@ -555,11 +597,12 @@ void main() {
       );
     });
 
-    testWidgets('a static card stays static and keeps its padding',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        const GlassCard(child: SizedBox(width: 100, height: 40)),
-      ));
+    testWidgets('a static card stays static and keeps its padding', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(const GlassCard(child: SizedBox(width: 100, height: 40))),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(InkWell), findsNothing);
@@ -581,10 +624,14 @@ void main() {
 
     testWidgets('a tappable card keeps padding and fires once', (tester) async {
       var taps = 0;
-      await tester.pumpWidget(_host(GlassCard(
-        onTap: () => taps++,
-        child: const SizedBox(width: 100, height: 40),
-      )));
+      await tester.pumpWidget(
+        _host(
+          GlassCard(
+            onTap: () => taps++,
+            child: const SizedBox(width: 100, height: 40),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(tester.getSize(find.byType(GlassCard)), const Size(142, 82));
@@ -596,23 +643,26 @@ void main() {
   });
 
   group('floating navigation', () {
-    Widget bar(List<int> taps, int index) => _host(FloatingNavBar(
-          items: const [
-            NavItem(Icons.home_rounded, 'Home'),
-            NavItem(Icons.settings_rounded, 'Settings'),
-          ],
-          currentIndex: index,
-          onTap: taps.add,
-        ));
+    Widget bar(List<int> taps, int index) => _host(
+      FloatingNavBar(
+        items: const [
+          NavItem(Icons.home_rounded, 'Home'),
+          NavItem(Icons.settings_rounded, 'Settings'),
+        ],
+        currentIndex: index,
+        onTap: taps.add,
+      ),
+    );
 
-    testWidgets('only the pressed slot scales and one index is reported',
-        (tester) async {
+    testWidgets('only the pressed slot scales and one index is reported', (
+      tester,
+    ) async {
       final taps = <int>[];
       await tester.pumpWidget(bar(taps, 0));
 
-      final gesture =
-          await tester.startGesture(
-              tester.getCenter(find.byKey(const ValueKey('nav:Settings'))));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('nav:Settings'))),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
 
@@ -625,16 +675,20 @@ void main() {
           )
           .map((t) => t.transform.storage[0])
           .toList();
-      expect(scales.where((s) => s < 1.0), hasLength(1),
-          reason: 'only the touched slot may shrink');
+      expect(
+        scales.where((s) => s < 1.0),
+        hasLength(1),
+        reason: 'only the touched slot may shrink',
+      );
 
       await gesture.up();
       await tester.pumpAndSettle();
       expect(taps, [1]);
     });
 
-    testWidgets('keeps the 48dp target, its colours and its semantics',
-        (tester) async {
+    testWidgets('keeps the 48dp target, its colours and its semantics', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       final taps = <int>[];
       await tester.pumpWidget(bar(taps, 0));
@@ -653,15 +707,19 @@ void main() {
 
       for (final label in ['Home', 'Settings']) {
         final slot = tester.getSize(find.byKey(ValueKey('nav:$label')));
-        expect(slot.height, greaterThanOrEqualTo(48),
-            reason: '$label must keep a 48dp tap target');
+        expect(
+          slot.height,
+          greaterThanOrEqualTo(48),
+          reason: '$label must keep a 48dp tap target',
+        );
       }
 
       final settingsSemantics = find.byWidgetPredicate(
         (w) => w is Semantics && w.properties.label == 'Settings',
       );
-      var data =
-          tester.getSemantics(settingsSemantics.first).getSemanticsData();
+      var data = tester
+          .getSemantics(settingsSemantics.first)
+          .getSemanticsData();
       expect(data.flagsCollection.isButton, isTrue);
       expect(data.flagsCollection.isSelected, Tristate.isFalse);
 

@@ -24,16 +24,20 @@ void main() {
 
   /// The dock surface and plate fills exactly as the widget resolves them.
   Future<({Color surface, Color quiet, Color primary, Color primaryInk})>
-      resolve(WidgetTester tester, bool dark) async {
+  resolve(WidgetTester tester, bool dark) async {
     late Color surface, quiet;
-    await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
-      home: Builder(builder: (c) {
-        surface = HomeActionDock.dockSurface(c);
-        quiet = HomeActionDock.quietPlate(c, dark);
-        return const SizedBox();
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+        home: Builder(
+          builder: (c) {
+            surface = HomeActionDock.dockSurface(c);
+            quiet = HomeActionDock.quietPlate(c, dark);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
     return (
       surface: surface,
       quiet: quiet,
@@ -46,18 +50,25 @@ void main() {
     for (final dark in [false, true]) {
       final mode = dark ? 'dark' : 'light';
 
-      testWidgets('dock plates and glyphs hold up (${palette.id} $mode)',
-          (tester) async {
+      testWidgets('dock plates and glyphs hold up (${palette.id} $mode)', (
+        tester,
+      ) async {
         AppColors.applyPalette(palette);
         final p = await resolve(tester, dark);
         final reason = '${palette.label} $mode';
 
         // The primary is a solid ink disc: it must stand off the card clearly
         // and its glyph must clear the same 7:1 the navigation pill does.
-        expect(contrast(p.primary, p.surface), greaterThanOrEqualTo(7),
-            reason: '$reason: primary disc vs dock');
-        expect(contrast(p.primaryInk, p.primary), greaterThanOrEqualTo(7),
-            reason: '$reason: primary glyph vs disc');
+        expect(
+          contrast(p.primary, p.surface),
+          greaterThanOrEqualTo(7),
+          reason: '$reason: primary disc vs dock',
+        );
+        expect(
+          contrast(p.primaryInk, p.primary),
+          greaterThanOrEqualTo(7),
+          reason: '$reason: primary glyph vs disc',
+        );
 
         // A quiet plate is a faint step in tone; the hairline around it carries
         // the shape. Opaque, and never the same colour as the card.
@@ -66,8 +77,11 @@ void main() {
 
         // Its glyph is the primary text ink, measured on the plate it sits on.
         final ink = AppColors.textPrimaryFor(dark);
-        expect(contrast(ink, p.quiet), greaterThanOrEqualTo(4.5),
-            reason: '$reason: quiet glyph vs plate');
+        expect(
+          contrast(ink, p.quiet),
+          greaterThanOrEqualTo(4.5),
+          reason: '$reason: quiet glyph vs plate',
+        );
       });
     }
   }

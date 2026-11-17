@@ -54,12 +54,12 @@ class _AuthFailingSource extends GmailEmailSource {
 }
 
 GmailAlert _alert(String id, String text, DateTime date) => GmailAlert(
-      id: id,
-      subject: 'Transaction alert',
-      from: 'HDFC Bank <alerts@hdfcbank.net>',
-      text: text,
-      date: date,
-    );
+  id: id,
+  subject: 'Transaction alert',
+  from: 'HDFC Bank <alerts@hdfcbank.net>',
+  text: text,
+  date: date,
+);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -123,8 +123,7 @@ void main() {
     expect(source.seenIds, contains('gmail:good'));
   });
 
-  test('a rejected message is not fetched again, but a recheck frees it',
-      () async {
+  test('a rejected message is not fetched again, but a recheck frees it', () async {
     final provider = TransactionProvider();
     await provider.ready;
     final broken = _alert(
@@ -152,8 +151,11 @@ void main() {
 
     final third = _RecordingSource([broken]);
     await provider.importFromGmail(source: third);
-    expect(third.seenIds, isNot(contains('gmail:broken')),
-        reason: 'after a recheck the message must be eligible again');
+    expect(
+      third.seenIds,
+      isNot(contains('gmail:broken')),
+      reason: 'after a recheck the message must be eligible again',
+    );
   });
 
   test('an auth failure surfaces instead of reading as "no mail"', () async {

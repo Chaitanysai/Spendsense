@@ -37,8 +37,11 @@ class ProfileAvatar extends StatelessWidget {
   }
 
   String _initials(String name) {
-    final parts =
-        name.trim().split(' ').where((part) => part.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return '${parts.first[0]}${parts[1][0]}'.toUpperCase();

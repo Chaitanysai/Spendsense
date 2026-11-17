@@ -134,32 +134,46 @@ class FinanceToolEngine {
       'sort',
     });
     final window = _window(args);
-    final limit =
-        _intArg(args, 'limit', fallback: 20, min: 1, max: maxSearchLimit);
+    final limit = _intArg(
+      args,
+      'limit',
+      fallback: 20,
+      min: 1,
+      max: maxSearchLimit,
+    );
     final offset = _intArg(args, 'offset', fallback: 0, min: 0, max: 100000);
     final sort = _stringArg(args, 'sort', fallback: 'date_desc');
-    if (!const {'date_desc', 'date_asc', 'amount_desc', 'amount_asc'}
-        .contains(sort)) {
+    if (!const {
+      'date_desc',
+      'date_asc',
+      'amount_desc',
+      'amount_asc',
+    }.contains(sort)) {
       throw const FinanceToolException(
-          'invalid_argument', 'The sort order is not supported.');
+        'invalid_argument',
+        'The sort order is not supported.',
+      );
     }
     final matched = _filter(args, window, defaultIncludeExcluded: true);
     final sorted = [...matched]..sort(_comparator(sort));
     final page = sorted.skip(offset).take(limit).toList();
     final totals = _totals(matched);
-    return FinanceToolResult(tool: 'search_transactions', data: {
-      'range': _windowJson(window),
-      'matchedCount': matched.length,
-      'returnedCount': page.length,
-      'offset': offset,
-      'limit': limit,
-      'totals': totals,
-      'transactions': [
-        for (final tx in page)
-          AssistantTransactionView.fromTransaction(tx).toToolJson(),
-      ],
-      if (page.isEmpty) 'empty': true,
-    });
+    return FinanceToolResult(
+      tool: 'search_transactions',
+      data: {
+        'range': _windowJson(window),
+        'matchedCount': matched.length,
+        'returnedCount': page.length,
+        'offset': offset,
+        'limit': limit,
+        'totals': totals,
+        'transactions': [
+          for (final tx in page)
+            AssistantTransactionView.fromTransaction(tx).toToolJson(),
+        ],
+        if (page.isEmpty) 'empty': true,
+      },
+    );
   }
 
   FinanceToolResult _spendingSummary(Map<String, dynamic> args) {
@@ -177,21 +191,23 @@ class FinanceToolEngine {
     // intentionally not user/model controlled.
     final matched = _filter(args, window, defaultIncludeExcluded: true);
     final totals = _totals(matched);
-    return FinanceToolResult(tool: 'get_spending_summary', data: {
-      'range': _windowJson(window),
-      'spendingMinor': totals['expenseMinor'],
-      'incomeMinor': totals['incomeMinor'],
-      'excludedMinor': totals['excludedMinor'],
-      'investmentMinor': totals['investmentMinor'],
-      'transferMinor': totals['transferMinor'],
-      'expenseCount': totals['expenseCount'],
-      'incomeCount': totals['incomeCount'],
-      'excludedCount': totals['excludedCount'],
-      'transactionCount': totals['totalCount'],
-      'transactionsIncludedInSpending': totals['spendingCount'],
-      'note':
-          'Spending counts non-excluded expense rows only. Investment transfers are shown separately and remain part of spending unless the user excludes them.',
-    });
+    return FinanceToolResult(
+      tool: 'get_spending_summary',
+      data: {
+        'range': _windowJson(window),
+        'spendingMinor': totals['expenseMinor'],
+        'incomeMinor': totals['incomeMinor'],
+        'excludedMinor': totals['excludedMinor'],
+        'investmentMinor': totals['investmentMinor'],
+        'transferMinor': totals['transferMinor'],
+        'expenseCount': totals['expenseCount'],
+        'incomeCount': totals['incomeCount'],
+        'excludedCount': totals['excludedCount'],
+        'transactionCount': totals['totalCount'],
+        'transactionsIncludedInSpending': totals['spendingCount'],
+        'note': 'Spending counts non-excluded expense rows only. Investment transfers are shown separately and remain part of spending unless the user excludes them.',
+      },
+    );
   }
 
   FinanceToolResult _merchantGroups(Map<String, dynamic> args) {
@@ -206,8 +222,13 @@ class FinanceToolEngine {
       'limit',
     });
     final window = _window(args);
-    final limit =
-        _intArg(args, 'limit', fallback: 20, min: 1, max: maxSearchLimit);
+    final limit = _intArg(
+      args,
+      'limit',
+      fallback: 20,
+      min: 1,
+      max: maxSearchLimit,
+    );
     final includeExcluded = _boolArg(args, 'includeExcluded', fallback: false);
     final matched = _filter(
       args,
@@ -227,26 +248,29 @@ class FinanceToolEngine {
     final sorted = groups.values.toList()
       ..sort((a, b) => b.expenseMinor.compareTo(a.expenseMinor));
     final page = sorted.take(limit).toList();
-    return FinanceToolResult(tool: 'group_transactions_by_merchant', data: {
-      'range': _windowJson(window),
-      'matchedCount': matched.length,
-      'groupCount': sorted.length,
-      'returnedCount': page.length,
-      'groups': [
-        for (final g in page)
-          {
-            'merchant': g.label,
-            'count': g.count,
-            'expenseMinor': g.expenseMinor,
-            'incomeMinor': g.incomeMinor,
-            'excludedCount': g.excludedCount,
-            'excludedMinor': g.excludedMinor,
-            'investmentMinor': g.investmentMinor,
-            'firstDate': DateFormat('yyyy-MM-dd').format(g.firstDate),
-            'lastDate': DateFormat('yyyy-MM-dd').format(g.lastDate),
-          },
-      ],
-    });
+    return FinanceToolResult(
+      tool: 'group_transactions_by_merchant',
+      data: {
+        'range': _windowJson(window),
+        'matchedCount': matched.length,
+        'groupCount': sorted.length,
+        'returnedCount': page.length,
+        'groups': [
+          for (final g in page)
+            {
+              'merchant': g.label,
+              'count': g.count,
+              'expenseMinor': g.expenseMinor,
+              'incomeMinor': g.incomeMinor,
+              'excludedCount': g.excludedCount,
+              'excludedMinor': g.excludedMinor,
+              'investmentMinor': g.investmentMinor,
+              'firstDate': DateFormat('yyyy-MM-dd').format(g.firstDate),
+              'lastDate': DateFormat('yyyy-MM-dd').format(g.lastDate),
+            },
+        ],
+      },
+    );
   }
 
   FinanceToolResult _categorySummary(Map<String, dynamic> args) {
@@ -271,22 +295,26 @@ class FinanceToolEngine {
     final entries = totals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final allSpending = totals.values.fold<int>(0, (a, b) => a + b);
-    return FinanceToolResult(tool: 'get_category_summary', data: {
-      'range': _windowJson(window),
-      'totalSpendingMinor': allSpending,
-      'categories': [
-        for (final e in entries.take(limit))
-          {
-            'category': e.key,
-            'amountMinor': e.value,
-            'count': counts[e.key] ?? 0,
-            'sharePercent': allSpending == 0
-                ? 0.0
-                : double.parse(
-                    ((e.value * 100) / allSpending).toStringAsFixed(1)),
-          },
-      ],
-    });
+    return FinanceToolResult(
+      tool: 'get_category_summary',
+      data: {
+        'range': _windowJson(window),
+        'totalSpendingMinor': allSpending,
+        'categories': [
+          for (final e in entries.take(limit))
+            {
+              'category': e.key,
+              'amountMinor': e.value,
+              'count': counts[e.key] ?? 0,
+              'sharePercent': allSpending == 0
+                  ? 0.0
+                  : double.parse(
+                      ((e.value * 100) / allSpending).toStringAsFixed(1),
+                    ),
+            },
+        ],
+      },
+    );
   }
 
   FinanceToolResult _monthlyComparison(Map<String, dynamic> args) {
@@ -304,15 +332,20 @@ class FinanceToolEngine {
       final month = parsed == null ? null : int.tryParse(parsed.group(2)!);
       if (parsed == null || month == null || month < 1 || month > 12) {
         throw const FinanceToolException(
-            'invalid_argument', 'month must use YYYY-MM.');
+          'invalid_argument',
+          'month must use YYYY-MM.',
+        );
       }
       currentStart = DateTime(int.parse(parsed.group(1)!), month, 1);
     } else {
       currentStart = DateTime(now.year, now.month, 1);
     }
     final currentEnd = _monthEnd(currentStart, now);
-    final previousStart =
-        DateTime(currentStart.year, currentStart.month - 1, 1);
+    final previousStart = DateTime(
+      currentStart.year,
+      currentStart.month - 1,
+      1,
+    );
     final previousEnd = DateTime(currentStart.year, currentStart.month, 0);
     final currentWindow = AssistantDateWindow.range(
       start: currentStart,
@@ -324,16 +357,18 @@ class FinanceToolEngine {
       end: previousEnd,
       label: DateFormat('MMMM yyyy').format(previousStart),
     );
-    final current =
-        _totals(_filter(args, currentWindow, defaultIncludeExcluded: false));
-    final previous =
-        _totals(_filter(args, previousWindow, defaultIncludeExcluded: false));
+    final current = _totals(
+      _filter(args, currentWindow, defaultIncludeExcluded: false),
+    );
+    final previous = _totals(
+      _filter(args, previousWindow, defaultIncludeExcluded: false),
+    );
     final delta =
         (current['expenseMinor'] as int) - (previous['expenseMinor'] as int);
     final percent = (previous['expenseMinor'] as int) == 0
         ? (current['expenseMinor'] as int) == 0
-            ? 0.0
-            : 100.0
+              ? 0.0
+              : 100.0
         : (delta * 100.0) / (previous['expenseMinor'] as int);
 
     final currentByCategory = _categoryTotals(currentWindow);
@@ -343,38 +378,41 @@ class FinanceToolEngine {
     final previousByMerchant = _merchantTotals(previousWindow);
     final merchantDrivers = _drivers(currentByMerchant, previousByMerchant);
 
-    return FinanceToolResult(tool: 'get_monthly_comparison', data: {
-      'current': {
-        'label': currentWindow.preciseLabel,
-        'spendingMinor': current['expenseMinor'],
-        'incomeMinor': current['incomeMinor'],
+    return FinanceToolResult(
+      tool: 'get_monthly_comparison',
+      data: {
+        'current': {
+          'label': currentWindow.preciseLabel,
+          'spendingMinor': current['expenseMinor'],
+          'incomeMinor': current['incomeMinor'],
+        },
+        'previous': {
+          'label': previousWindow.preciseLabel,
+          'spendingMinor': previous['expenseMinor'],
+          'incomeMinor': previous['incomeMinor'],
+        },
+        'deltaMinor': delta,
+        'percentChange': double.parse(percent.toStringAsFixed(2)),
+        'categoryDrivers': [
+          for (final d in categoryDrivers.take(5))
+            {
+              'category': d.label,
+              'currentMinor': d.currentMinor,
+              'previousMinor': d.previousMinor,
+              'deltaMinor': d.deltaMinor,
+            },
+        ],
+        'merchantDrivers': [
+          for (final d in merchantDrivers.take(5))
+            {
+              'merchant': d.label,
+              'currentMinor': d.currentMinor,
+              'previousMinor': d.previousMinor,
+              'deltaMinor': d.deltaMinor,
+            },
+        ],
       },
-      'previous': {
-        'label': previousWindow.preciseLabel,
-        'spendingMinor': previous['expenseMinor'],
-        'incomeMinor': previous['incomeMinor'],
-      },
-      'deltaMinor': delta,
-      'percentChange': double.parse(percent.toStringAsFixed(2)),
-      'categoryDrivers': [
-        for (final d in categoryDrivers.take(5))
-          {
-            'category': d.label,
-            'currentMinor': d.currentMinor,
-            'previousMinor': d.previousMinor,
-            'deltaMinor': d.deltaMinor,
-          },
-      ],
-      'merchantDrivers': [
-        for (final d in merchantDrivers.take(5))
-          {
-            'merchant': d.label,
-            'currentMinor': d.currentMinor,
-            'previousMinor': d.previousMinor,
-            'deltaMinor': d.deltaMinor,
-          },
-      ],
-    });
+    );
   }
 
   FinanceToolResult _listBills(Map<String, dynamic> args) {
@@ -382,7 +420,9 @@ class FinanceToolEngine {
     final status = _stringArg(args, 'status', fallback: 'unpaid');
     if (!const {'unpaid', 'paid', 'all'}.contains(status)) {
       throw const FinanceToolException(
-          'invalid_argument', 'status must be unpaid, paid or all.');
+        'invalid_argument',
+        'status must be unpaid, paid or all.',
+      );
     }
     final limit = _intArg(args, 'limit', fallback: 20, min: 1, max: 50);
     final views = billDetector.detect(
@@ -399,25 +439,28 @@ class FinanceToolEngine {
         })
         .take(limit)
         .toList();
-    return FinanceToolResult(tool: 'list_bills', data: {
-      'status': status,
-      'count': filtered.length,
-      'bills': [
-        for (final view in filtered)
-          {
-            'title': view.title,
-            'category': view.category,
-            'amountMinor': view.amountMinor,
-            'dueDate': view.dueDate == null
-                ? null
-                : DateFormat('yyyy-MM-dd').format(view.dueDate!),
-            'state': view.state.label,
-            'isRecurring':
-                view.plan != null || (view.autoBill?.isRecurring ?? false),
-            'confidence': view.confidence,
-          },
-      ],
-    });
+    return FinanceToolResult(
+      tool: 'list_bills',
+      data: {
+        'status': status,
+        'count': filtered.length,
+        'bills': [
+          for (final view in filtered)
+            {
+              'title': view.title,
+              'category': view.category,
+              'amountMinor': view.amountMinor,
+              'dueDate': view.dueDate == null
+                  ? null
+                  : DateFormat('yyyy-MM-dd').format(view.dueDate!),
+              'state': view.state.label,
+              'isRecurring':
+                  view.plan != null || (view.autoBill?.isRecurring ?? false),
+              'confidence': view.confidence,
+            },
+        ],
+      },
+    );
   }
 
   FinanceToolResult _details(Map<String, dynamic> args) {
@@ -436,15 +479,20 @@ class FinanceToolEngine {
     }
     if (found.isEmpty) {
       throw const FinanceToolException(
-          'transaction_not_found', 'No transaction matches those ids.');
+        'transaction_not_found',
+        'No transaction matches those ids.',
+      );
     }
-    return FinanceToolResult(tool: 'get_transaction_details', data: {
-      'transactions': [
-        for (final tx in found)
-          AssistantTransactionView.fromTransaction(tx).toToolJson(),
-      ],
-      'missingIds': missing,
-    });
+    return FinanceToolResult(
+      tool: 'get_transaction_details',
+      data: {
+        'transactions': [
+          for (final tx in found)
+            AssistantTransactionView.fromTransaction(tx).toToolJson(),
+        ],
+        'missingIds': missing,
+      },
+    );
   }
 
   FinanceToolResult _duplicates(Map<String, dynamic> args) {
@@ -479,28 +527,32 @@ class FinanceToolEngine {
                   ? g.first.amountMinor
                   : 0),
     );
-    return FinanceToolResult(tool: 'find_duplicate_transactions', data: {
-      'range': _windowJson(window),
-      'groupCount': duplicates.length,
-      'extraCopyCount': extraCopies,
-      'potentialDuplicateExpenseMinor': extraAmount,
-      'groups': [
-        for (final group in duplicates.take(limit))
-          {
-            'merchant': group.first.merchant,
-            'date': DateFormat('yyyy-MM-dd').format(group.first.date.toLocal()),
-            'amountMinor': group.first.amountMinor,
-            'type': group.first.type == TransactionType.income
-                ? 'income'
-                : 'expense',
-            'count': group.length,
-            'transactions': [
-              for (final tx in group)
-                AssistantTransactionView.fromTransaction(tx).toToolJson(),
-            ],
-          },
-      ],
-    });
+    return FinanceToolResult(
+      tool: 'find_duplicate_transactions',
+      data: {
+        'range': _windowJson(window),
+        'groupCount': duplicates.length,
+        'extraCopyCount': extraCopies,
+        'potentialDuplicateExpenseMinor': extraAmount,
+        'groups': [
+          for (final group in duplicates.take(limit))
+            {
+              'merchant': group.first.merchant,
+              'date': DateFormat('yyyy-MM-dd')
+                  .format(group.first.date.toLocal()),
+              'amountMinor': group.first.amountMinor,
+              'type': group.first.type == TransactionType.income
+                  ? 'income'
+                  : 'expense',
+              'count': group.length,
+              'transactions': [
+                for (final tx in group)
+                  AssistantTransactionView.fromTransaction(tx).toToolJson(),
+              ],
+            },
+        ],
+      },
+    );
   }
 
   // ── Preview tools ─────────────────────────────────────────────────────────
@@ -509,11 +561,7 @@ class FinanceToolEngine {
     Map<String, dynamic> args,
     AssistantChangeType type,
   ) {
-    _rejectUnknownKeys(args, const {
-      'transactionIds',
-      'startDate',
-      'endDate',
-    });
+    _rejectUnknownKeys(args, const {'transactionIds', 'startDate', 'endDate'});
     final ids = _stringListArg(
       args,
       'transactionIds',
@@ -524,7 +572,7 @@ class FinanceToolEngine {
     final byId = {for (final tx in transactions) tx.id: tx};
     final missing = [
       for (final id in ids)
-        if (!byId.containsKey(id)) id
+        if (!byId.containsKey(id)) id,
     ];
     if (missing.isNotEmpty) {
       throw FinanceToolException(
@@ -572,8 +620,10 @@ class FinanceToolEngine {
         for (final tx in effective) tx.id: _fingerprint(tx),
       },
       expectedCount: effective.length,
-      expectedTotalMinor:
-          effective.fold<int>(0, (sum, tx) => sum + tx.amountMinor),
+      expectedTotalMinor: effective.fold<int>(
+        0,
+        (sum, tx) => sum + tx.amountMinor,
+      ),
       spendingBeforeMinor: spendingBefore,
       spendingAfterMinor: spendingAfter,
       spendingScopeLabel: window.preciseLabel,
@@ -583,10 +633,10 @@ class FinanceToolEngine {
       expiresAt: nowValue.add(AssistantPendingAction.lifetime),
       explanation: type == AssistantChangeType.exclusion
           ? 'Excluded transactions stay in your ledger and can be restored. '
-              'They stop counting in spending totals, Insights, budgets and '
-              'payment-instrument summaries.'
+                'They stop counting in spending totals, Insights, budgets and '
+                'payment-instrument summaries.'
           : 'Deleting removes these records from the encrypted ledger. It cannot '
-              'be undone unless the assistant audit copy is still available.',
+                'be undone unless the assistant audit copy is still available.',
     );
 
     return FinanceToolResult(
@@ -604,9 +654,7 @@ class FinanceToolEngine {
         'spendingAfterMinor': spendingAfter,
         'spendingScope': window.preciseLabel,
         'expiresAt': pending.expiresAt.toIso8601String(),
-        'records': [
-          for (final tx in pending.transactions) tx.toToolJson(),
-        ],
+        'records': [for (final tx in pending.transactions) tx.toToolJson()],
       },
     );
   }
@@ -621,20 +669,28 @@ class FinanceToolEngine {
     final merchant = _optionalString(args, 'merchant');
     final aliases = _optionalStringList(args, 'merchantAliases');
     final brandKey = _optionalString(args, 'brand');
-    final brand =
-        brandKey == null ? null : MerchantMatcher.brandByKey(brandKey);
+    final brand = brandKey == null
+        ? null
+        : MerchantMatcher.brandByKey(brandKey);
     if (brandKey != null && brand == null) {
       throw const FinanceToolException(
-          'invalid_argument', 'brand must be groww or zerodha.');
+        'invalid_argument',
+        'brand must be groww or zerodha.',
+      );
     }
     final category = _optionalString(args, 'category');
     final typeFilter = _stringArg(args, 'type', fallback: 'all');
     if (!const {'expense', 'income', 'all'}.contains(typeFilter)) {
       throw const FinanceToolException(
-          'invalid_argument', 'type must be expense, income or all.');
+        'invalid_argument',
+        'type must be expense, income or all.',
+      );
     }
-    final includeExcluded =
-        _boolArg(args, 'includeExcluded', fallback: defaultIncludeExcluded);
+    final includeExcluded = _boolArg(
+      args,
+      'includeExcluded',
+      fallback: defaultIncludeExcluded,
+    );
 
     return [
       for (final tx in transactions)
@@ -792,19 +848,25 @@ class FinanceToolEngine {
     }
     if (startRaw == null || endRaw == null) {
       throw const FinanceToolException(
-          'invalid_date_range', 'Both startDate and endDate are required.');
+        'invalid_date_range',
+        'Both startDate and endDate are required.',
+      );
     }
     final start = DateTime.tryParse(startRaw);
     final end = DateTime.tryParse(endRaw);
     if (start == null || end == null) {
       throw const FinanceToolException(
-          'invalid_date_range', 'Dates must use YYYY-MM-DD.');
+        'invalid_date_range',
+        'Dates must use YYYY-MM-DD.',
+      );
     }
     final startDay = PeriodMath.dateOnly(start);
     final endDay = PeriodMath.dateOnly(end);
     if (endDay.isBefore(startDay)) {
       throw const FinanceToolException(
-          'invalid_date_range', 'The end date is before the start date.');
+        'invalid_date_range',
+        'The end date is before the start date.',
+      );
     }
     return AssistantDateWindow.range(
       start: startDay,
@@ -814,15 +876,14 @@ class FinanceToolEngine {
   }
 
   Map<String, dynamic> _windowJson(AssistantDateWindow window) => {
-        'label': window.preciseLabel,
-        'startDate': window.startIso,
-        'endDate': window.endIso,
-        'allTime': window.isAllTime,
-      };
+    'label': window.preciseLabel,
+    'startDate': window.startIso,
+    'endDate': window.endIso,
+    'allTime': window.isAllTime,
+  };
 
-  Map<String, dynamic> get emptyRangeJson => _windowJson(
-        const AssistantDateWindow.allTime(),
-      );
+  Map<String, dynamic> get emptyRangeJson =>
+      _windowJson(const AssistantDateWindow.allTime());
 
   static DateTime _monthEnd(DateTime start, DateTime now) {
     final isCurrent = start.year == now.year && start.month == now.month;
@@ -836,8 +897,10 @@ class FinanceToolEngine {
 
   static String _newActionId(DateTime now) {
     final random = Random.secure();
-    final suffix =
-        List.generate(8, (_) => random.nextInt(16).toRadixString(16)).join();
+    final suffix = List.generate(
+      8,
+      (_) => random.nextInt(16).toRadixString(16),
+    ).join();
     return 'act_${now.microsecondsSinceEpoch}_$suffix';
   }
 
@@ -891,7 +954,9 @@ class FinanceToolEngine {
     if (value == null) return fallback;
     if (value is! bool) {
       throw FinanceToolException(
-          'invalid_argument', '$key must be true or false.');
+        'invalid_argument',
+        '$key must be true or false.',
+      );
     }
     return value;
   }
@@ -907,7 +972,9 @@ class FinanceToolEngine {
     if (value == null) return fallback;
     if (value is! int || value < min || value > max) {
       throw FinanceToolException(
-          'invalid_argument', '$key must be between $min and $max.');
+        'invalid_argument',
+        '$key must be between $min and $max.',
+      );
     }
     return value;
   }
@@ -924,12 +991,16 @@ class FinanceToolEngine {
         value.length > max ||
         value.any((v) => v is! String || v.isEmpty || v.length > 200)) {
       throw FinanceToolException(
-          'invalid_argument', '$key must contain $min–$max transaction ids.');
+        'invalid_argument',
+        '$key must contain $min–$max transaction ids.',
+      );
     }
     final list = value.cast<String>();
     if (list.toSet().length != list.length) {
       throw const FinanceToolException(
-          'duplicate_argument', 'The same transaction id was supplied twice.');
+        'duplicate_argument',
+        'The same transaction id was supplied twice.',
+      );
     }
     return list;
   }
@@ -941,7 +1012,9 @@ class FinanceToolEngine {
         value.length > maxAliases ||
         value.any((v) => v is! String || v.isEmpty || v.length > 100)) {
       throw FinanceToolException(
-          'invalid_argument', '$key must contain at most $maxAliases aliases.');
+        'invalid_argument',
+        '$key must contain at most $maxAliases aliases.',
+      );
     }
     return value.cast<String>();
   }

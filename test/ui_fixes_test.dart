@@ -22,23 +22,31 @@ void main() {
       // looked identical to one from four minutes ago.
       expect(Formatters.relativeTime(now, now: now), 'just now');
       expect(
-        Formatters.relativeTime(now.subtract(const Duration(seconds: 30)),
-            now: now),
+        Formatters.relativeTime(
+          now.subtract(const Duration(seconds: 30)),
+          now: now,
+        ),
         'just now',
       );
       expect(
-        Formatters.relativeTime(now.subtract(const Duration(minutes: 4)),
-            now: now),
+        Formatters.relativeTime(
+          now.subtract(const Duration(minutes: 4)),
+          now: now,
+        ),
         '4m ago',
       );
       expect(
-        Formatters.relativeTime(now.subtract(const Duration(hours: 3)),
-            now: now),
+        Formatters.relativeTime(
+          now.subtract(const Duration(hours: 3)),
+          now: now,
+        ),
         '3h ago',
       );
       expect(
-        Formatters.relativeTime(now.subtract(const Duration(days: 2)),
-            now: now),
+        Formatters.relativeTime(
+          now.subtract(const Duration(days: 2)),
+          now: now,
+        ),
         '2d ago',
       );
     });
@@ -100,8 +108,9 @@ void main() {
       );
     });
 
-    testWidgets('a static Pressable still adds no feedback layer',
-        (tester) async {
+    testWidgets('a static Pressable still adds no feedback layer', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(const Pressable(child: Text('STATIC'))));
       expect(find.byType(FocusableActionDetector), findsNothing);
       expect(find.byType(PressFeedback), findsNothing);
@@ -150,8 +159,9 @@ void main() {
       return () => result!;
     }
 
-    testWidgets('an empty amount shows an inline error and keeps the dialog',
-        (tester) async {
+    testWidgets('an empty amount shows an inline error and keeps the dialog', (
+      tester,
+    ) async {
       final result = await openDialog(tester);
 
       await tester.tap(find.text('Save'));
@@ -160,8 +170,11 @@ void main() {
       // Regression: this used to close the dialog and SnackBar the failure,
       // losing the typed text and detaching the message from the field.
       expect(find.text('Enter an amount.'), findsOneWidget);
-      expect(find.byType(AlertDialog), findsOneWidget,
-          reason: 'the dialog must stay open so the amount can be corrected');
+      expect(
+        find.byType(AlertDialog),
+        findsOneWidget,
+        reason: 'the dialog must stay open so the amount can be corrected',
+      );
       expect(find.byType(SnackBar), findsNothing);
 
       // Cancel resolves the future with null.
@@ -185,8 +198,11 @@ void main() {
     });
 
     testWidgets('an over-limit amount is rejected inline', (tester) async {
-      final result =
-          await openDialog(tester, initial: '999999999', maxMinor: 100000);
+      final result = await openDialog(
+        tester,
+        initial: '999999999',
+        maxMinor: 100000,
+      );
 
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
@@ -209,8 +225,11 @@ void main() {
       await tester.enterText(find.byType(TextField), '500');
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter an amount.'), findsNothing,
-          reason: 'the message must not sit against corrected text');
+      expect(
+        find.text('Enter an amount.'),
+        findsNothing,
+        reason: 'the message must not sit against corrected text',
+      );
       expect(find.byType(AlertDialog), findsOneWidget);
 
       await tester.tap(find.text('Cancel'));

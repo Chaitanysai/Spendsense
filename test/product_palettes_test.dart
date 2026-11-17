@@ -67,10 +67,16 @@ void main() {
           orElse: () => fail('palette "${spec.id}" is missing'),
         );
         expect(palette.label, spec.label);
-        expect(palette.brand.toARGB32(), spec.brand.toARGB32(),
-            reason: 'primary drifted from the supplied value');
-        expect(palette.background.toARGB32(), spec.neutral.toARGB32(),
-            reason: 'light neutral drifted from the supplied value');
+        expect(
+          palette.brand.toARGB32(),
+          spec.brand.toARGB32(),
+          reason: 'primary drifted from the supplied value',
+        );
+        expect(
+          palette.background.toARGB32(),
+          spec.neutral.toARGB32(),
+          reason: 'light neutral drifted from the supplied value',
+        );
       });
 
       test('${spec.label}: dark mode is a tinted glass canvas', () {
@@ -81,10 +87,16 @@ void main() {
         expect(palette.glass, isTrue);
         // Hue-tinted near-black rather than the shared AMOLED black, so the
         // theme is visible in dark mode and not just in light mode.
-        expect(palette.isAmoled, isFalse,
-            reason: 'dark canvas should carry the palette hue');
-        expect(palette.darkBackground.computeLuminance(), lessThan(0.02),
-            reason: 'dark canvas should stay dark');
+        expect(
+          palette.isAmoled,
+          isFalse,
+          reason: 'dark canvas should carry the palette hue',
+        );
+        expect(
+          palette.darkBackground.computeLuminance(),
+          lessThan(0.02),
+          reason: 'dark canvas should stay dark',
+        );
       });
     }
 
@@ -94,8 +106,11 @@ void main() {
         final provider = ThemeProvider();
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
-        expect(provider.palette.id, spec.id,
-            reason: '${spec.id} did not survive a restart');
+        expect(
+          provider.palette.id,
+          spec.id,
+          reason: '${spec.id} did not survive a restart',
+        );
         // The mirrored tokens must follow the palette, not the previous one.
         expect(AppColors.palette.id, spec.id);
         expect(AppColors.brand, provider.palette.brand);
@@ -108,8 +123,9 @@ void main() {
       final provider = ThemeProvider();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      final target =
-          AppPalette.all.firstWhere((p) => p.id == 'midnight_indigo_vanilla');
+      final target = AppPalette.all.firstWhere(
+        (p) => p.id == 'midnight_indigo_vanilla',
+      );
       await provider.setPalette(target);
 
       final prefs = await SharedPreferences.getInstance();
@@ -129,8 +145,11 @@ void main() {
 
       for (final mode in ThemeMode.values) {
         await provider.setThemeMode(mode);
-        expect(provider.palette.id, 'cherry_alabaster',
-            reason: 'switching to $mode changed the palette');
+        expect(
+          provider.palette.id,
+          'cherry_alabaster',
+          reason: 'switching to $mode changed the palette',
+        );
       }
     });
 

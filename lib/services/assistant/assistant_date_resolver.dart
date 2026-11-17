@@ -10,11 +10,7 @@ class AssistantDateWindow {
   final DateTime? end;
   final String label;
 
-  const AssistantDateWindow._({
-    required this.label,
-    this.start,
-    this.end,
-  });
+  const AssistantDateWindow._({required this.label, this.start, this.end});
 
   const AssistantDateWindow.allTime() : this._(label: 'All time');
 
@@ -22,12 +18,11 @@ class AssistantDateWindow {
     required DateTime start,
     required DateTime end,
     required String label,
-  }) =>
-      AssistantDateWindow._(
-        start: PeriodMath.dateOnly(start),
-        end: PeriodMath.dateOnly(end),
-        label: label,
-      );
+  }) => AssistantDateWindow._(
+    start: PeriodMath.dateOnly(start),
+    end: PeriodMath.dateOnly(end),
+    label: label,
+  );
 
   bool get isAllTime => start == null || end == null;
 
@@ -144,8 +139,10 @@ class AssistantDateResolver {
     }
 
     if (_has(q, 'last week') || _has(q, 'previous week')) {
-      final startOfThisWeek =
-          PeriodMath.addDays(reference, -(reference.weekday - 1));
+      final startOfThisWeek = PeriodMath.addDays(
+        reference,
+        -(reference.weekday - 1),
+      );
       final start = PeriodMath.addDays(startOfThisWeek, -7);
       final end = PeriodMath.addDays(startOfThisWeek, -1);
       return AssistantDateWindow.range(
@@ -177,8 +174,9 @@ class AssistantDateResolver {
     }
 
     final yearMatch = RegExp(r'\b(20\d{2})\b').firstMatch(q);
-    final explicitYear =
-        yearMatch == null ? null : int.parse(yearMatch.group(1)!);
+    final explicitYear = yearMatch == null
+        ? null
+        : int.parse(yearMatch.group(1)!);
 
     for (var i = 0; i < _monthNames.length; i++) {
       final month = i + 1;
@@ -246,8 +244,10 @@ class AssistantDateResolver {
   }
 
   static bool _has(String normalizedQuery, String phrase) {
-    final normalized =
-        normalizedQuery.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+    final normalized = normalizedQuery.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]+'),
+      ' ',
+    );
     final padded = ' ${normalized.replaceAll(RegExp(r'\s+'), ' ').trim()} ';
     return padded.contains(' $phrase ');
   }

@@ -11,20 +11,28 @@ const _debit =
     'Rs 450 debited from A/c XX1234 to Zomato on 12-10-26. Avl Bal Rs 12,340.50';
 
 void main() {
-  test('a parsed record keeps the derived fields but not the raw body',
-      () async {
-    final tx =
-        await SmartParser().parse(_debit, 'sms-1', DateTime(2026, 10, 12));
+  test(
+    'a parsed record keeps the derived fields but not the raw body',
+    () async {
+      final tx = await SmartParser().parse(
+        _debit,
+        'sms-1',
+        DateTime(2026, 10, 12),
+      );
 
-    expect(tx, isNotNull);
-    expect(tx!.originalSms, isEmpty,
-        reason: 'the raw bank SMS must not be retained on new records');
-    // The derived data the user actually sees is unaffected.
-    expect(tx.amountMinor, 45000);
-    expect(tx.type, TransactionType.expense);
-    expect(tx.merchant.toLowerCase(), contains('zomato'));
-    expect(tx.id, 'sms-1');
-  });
+      expect(tx, isNotNull);
+      expect(
+        tx!.originalSms,
+        isEmpty,
+        reason: 'the raw bank SMS must not be retained on new records',
+      );
+      // The derived data the user actually sees is unaffected.
+      expect(tx.amountMinor, 45000);
+      expect(tx.type, TransactionType.expense);
+      expect(tx.merchant.toLowerCase(), contains('zomato'));
+      expect(tx.id, 'sms-1');
+    },
+  );
 
   test('a manually added record still uses an empty body', () {
     final tx = TransactionModel(
@@ -44,26 +52,31 @@ void main() {
     expect(tx.source, 'Manual');
   });
 
-  test('an existing record with a stored body is still readable unchanged',
-      () async {
-    // Simulate a record persisted before the policy change.
-    final legacy = TransactionModel.fromJson({
-      'id': 'old-1',
-      'amount': 450,
-      'type': 'expense',
-      'merchant': 'Zomato',
-      'category': 'Food',
-      'paymentMethod': 'UPI',
-      'date': '2026-10-12T09:30:00.000',
-      'time': '09:30',
-      'originalSms': _debit,
-      'isExcluded': false,
-      'source': 'SMS-Parser',
-    });
-    expect(legacy.originalSms, _debit,
-        reason: 'existing bodies must not be rewritten by this change');
-    expect(legacy.originalSms, isNotEmpty);
-  });
+  test(
+    'an existing record with a stored body is still readable unchanged',
+    () async {
+      // Simulate a record persisted before the policy change.
+      final legacy = TransactionModel.fromJson({
+        'id': 'old-1',
+        'amount': 450,
+        'type': 'expense',
+        'merchant': 'Zomato',
+        'category': 'Food',
+        'paymentMethod': 'UPI',
+        'date': '2026-10-12T09:30:00.000',
+        'time': '09:30',
+        'originalSms': _debit,
+        'isExcluded': false,
+        'source': 'SMS-Parser',
+      });
+      expect(
+        legacy.originalSms,
+        _debit,
+        reason: 'existing bodies must not be rewritten by this change',
+      );
+      expect(legacy.originalSms, isNotEmpty);
+    },
+  );
 
   test('round-tripping an existing record preserves its stored body', () {
     final legacy = TransactionModel(

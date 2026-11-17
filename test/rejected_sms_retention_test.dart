@@ -15,18 +15,18 @@ import 'package:spendsense/services/transaction_cache_service.dart';
 // Synthetic fixtures only.
 
 TransactionModel _tx(String id, int amount) => TransactionModel(
-      id: id,
-      amount: amount,
-      type: TransactionType.expense,
-      merchant: 'Merchant $id',
-      category: 'Food',
-      paymentMethod: 'UPI',
-      date: DateTime(2026, 10, 12),
-      time: '09:30',
-      originalSms: 'debit notice $id',
-      isExcluded: false,
-      source: 'SMS-Parser',
-    );
+  id: id,
+  amount: amount,
+  type: TransactionType.expense,
+  merchant: 'Merchant $id',
+  category: 'Food',
+  paymentMethod: 'UPI',
+  date: DateTime(2026, 10, 12),
+  time: '09:30',
+  originalSms: 'debit notice $id',
+  isExcluded: false,
+  source: 'SMS-Parser',
+);
 
 Future<TransactionCacheService> _service() async {
   final c = TransactionCacheService();
@@ -42,18 +42,20 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('only the minimum metadata is stored', () {
-    test('a skipped message records exactly id, reason and firstSeen',
-        () async {
-      final cache = await _service();
-      await cache.markRejected('sms-1', reason: 'PROMO');
+    test(
+      'a skipped message records exactly id, reason and firstSeen',
+      () async {
+        final cache = await _service();
+        await cache.markRejected('sms-1', reason: 'PROMO');
 
-      final prefs = await SharedPreferences.getInstance();
-      final entry = _firstStored(prefs);
-      expect(entry.keys.toSet(), {'id', 'reason', 'firstSeen'});
-      expect(entry['id'], 'sms-1');
-      expect(entry['reason'], 'PROMO');
-      expect(DateTime.tryParse(entry['firstSeen'] as String), isNotNull);
-    });
+        final prefs = await SharedPreferences.getInstance();
+        final entry = _firstStored(prefs);
+        expect(entry.keys.toSet(), {'id', 'reason', 'firstSeen'});
+        expect(entry['id'], 'sms-1');
+        expect(entry['reason'], 'PROMO');
+        expect(DateTime.tryParse(entry['firstSeen'] as String), isNotNull);
+      },
+    );
 
     test('no message text, merchant, amount or account is written', () async {
       final cache = await _service();
@@ -68,13 +70,15 @@ void main() {
       expect(stored.contains('XX1234'), isFalse);
     });
 
-    test('the default reason is a code, not a copied rejection message',
-        () async {
-      final cache = await _service();
-      await cache.markRejected('sms-1');
-      final prefs = await SharedPreferences.getInstance();
-      expect(_firstStored(prefs)['reason'], 'UNKNOWN');
-    });
+    test(
+      'the default reason is a code, not a copied rejection message',
+      () async {
+        final cache = await _service();
+        await cache.markRejected('sms-1');
+        final prefs = await SharedPreferences.getInstance();
+        expect(_firstStored(prefs)['reason'], 'UNKNOWN');
+      },
+    );
   });
 
   group('90-day expiry', () {
@@ -85,7 +89,7 @@ void main() {
           {
             'id': 'stale',
             'reason': 'PROMO',
-            'firstSeen': old.toIso8601String()
+            'firstSeen': old.toIso8601String(),
           },
           {
             'id': 'fresh',
@@ -98,8 +102,11 @@ void main() {
       });
 
       final cache = await _service();
-      expect(cache.contains('stale'), isFalse,
-          reason: 'expired metadata must not keep suppressing a message');
+      expect(
+        cache.contains('stale'),
+        isFalse,
+        reason: 'expired metadata must not keep suppressing a message',
+      );
       expect(cache.contains('fresh'), isTrue);
       expect(cache.rejectedCount, 1);
 
@@ -111,54 +118,66 @@ void main() {
       expect(ids, ['fresh']);
     });
 
-    test('a record at exactly 90 days is kept; one second older is not',
-        () async {
-      final now = DateTime.now();
-      final cache = await _service();
-      await cache.markRejected('at-boundary', reason: 'CREDIT');
-      await cache.markRejected('past-boundary', reason: 'CREDIT');
+    test(
+      'a record at exactly 90 days is kept; one second older is not',
+      () async {
+        final now = DateTime.now();
+        final cache = await _service();
+        await cache.markRejected('at-boundary', reason: 'CREDIT');
+        await cache.markRejected('past-boundary', reason: 'CREDIT');
 
-      // Age them by rewriting firstSeen through the public pruning seam.
-      await cache.pruneExpiredRejected(
-          now: now.add(const Duration(days: 90) - const Duration(seconds: 1)));
-      expect(cache.rejectedCount, 2, reason: 'nothing has expired yet');
+        // Age them by rewriting firstSeen through the public pruning seam.
+        await cache.pruneExpiredRejected(
+          now: now.add(const Duration(days: 90) - const Duration(seconds: 1)),
+        );
+        expect(cache.rejectedCount, 2, reason: 'nothing has expired yet');
 
-      await cache.pruneExpiredRejected(
-          now: now.add(const Duration(days: 90, seconds: 1)));
-      expect(cache.contains('at-boundary') || cache.contains('past-boundary'),
-          isFalse);
-    });
+        await cache.pruneExpiredRejected(
+          now: now.add(const Duration(days: 90, seconds: 1)),
+        );
+        expect(
+          cache.contains('at-boundary') || cache.contains('past-boundary'),
+          isFalse,
+        );
+      },
+    );
 
-    test('re-marking an already-skipped message does not extend its window',
-        () async {
-      final cache = await _service();
-      await cache.markRejected('sms-1', reason: 'PROMO');
-      final first = cache.rejectedMessages.single.firstSeen;
+    test(
+      're-marking an already-skipped message does not extend its window',
+      () async {
+        final cache = await _service();
+        await cache.markRejected('sms-1', reason: 'PROMO');
+        final first = cache.rejectedMessages.single.firstSeen;
 
-      await cache.markRejected('sms-1', reason: 'PROMO');
-      await cache.markRejected('sms-1', reason: 'UNKNOWN');
+        await cache.markRejected('sms-1', reason: 'PROMO');
+        await cache.markRejected('sms-1', reason: 'UNKNOWN');
 
-      expect(cache.rejectedCount, 1);
-      expect(cache.rejectedMessages.single.firstSeen, first);
-      expect(cache.rejectedMessages.single.reason, 'PROMO',
-          reason: 'the first recorded reason wins');
-    });
+        expect(cache.rejectedCount, 1);
+        expect(cache.rejectedMessages.single.firstSeen, first);
+        expect(
+          cache.rejectedMessages.single.reason,
+          'PROMO',
+          reason: 'the first recorded reason wins',
+        );
+      },
+    );
 
     test('an explicit prune with a future clock removes everything', () async {
       final cache = await _service();
       await cache.markRejected('a', reason: 'PROMO');
       await cache.markRejected('b', reason: 'CREDIT');
       expect(
-          await cache.pruneExpiredRejected(
-              now: DateTime.now().add(const Duration(days: 91))),
-          2);
+        await cache.pruneExpiredRejected(
+          now: DateTime.now().add(const Duration(days: 91)),
+        ),
+        2,
+      );
       expect(cache.rejectedCount, 0);
     });
   });
 
   group('retry idempotency', () {
-    test('a recheck, a resync and repeated marks never duplicate a row',
-        () async {
+    test('a recheck, a resync and repeated marks never duplicate a row', () async {
       final cache = await _service();
       await cache.markRejected('sms-1', reason: 'PROMO');
       await cache.clearRejected();
@@ -209,24 +228,31 @@ void main() {
   });
 
   group('legacy upgrade', () {
-    test('a legacy list of bare ids is accepted and migrated on write',
-        () async {
-      SharedPreferences.setMockInitialValues({
-        'tx_rejected_ids': jsonEncode(['old-1', 'old-2']),
-      });
-      final cache = await _service();
-      expect(cache.rejectedCount, 2);
-      expect(cache.contains('old-1'), isTrue);
-      expect(
-          cache.rejectedMessages.every((r) => r.reason == 'UNKNOWN'), isTrue);
+    test(
+      'a legacy list of bare ids is accepted and migrated on write',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'tx_rejected_ids': jsonEncode(['old-1', 'old-2']),
+        });
+        final cache = await _service();
+        expect(cache.rejectedCount, 2);
+        expect(cache.contains('old-1'), isTrue);
+        expect(
+          cache.rejectedMessages.every((r) => r.reason == 'UNKNOWN'),
+          isTrue,
+        );
 
-      // Recording a new one rewrites the list in the current format.
-      await cache.markRejected('new-1', reason: 'PROMO');
-      final prefs = await SharedPreferences.getInstance();
-      final list = jsonDecode(prefs.getString('tx_rejected_ids')!) as List;
-      expect(list.whereType<Map>().length, 3);
-      expect(prefs.getString('tx_rejected_ids')!.contains('"reason"'), isTrue);
-    });
+        // Recording a new one rewrites the list in the current format.
+        await cache.markRejected('new-1', reason: 'PROMO');
+        final prefs = await SharedPreferences.getInstance();
+        final list = jsonDecode(prefs.getString('tx_rejected_ids')!) as List;
+        expect(list.whereType<Map>().length, 3);
+        expect(
+          prefs.getString('tx_rejected_ids')!.contains('"reason"'),
+          isTrue,
+        );
+      },
+    );
 
     test('malformed entries are ignored rather than crashing init', () async {
       SharedPreferences.setMockInitialValues({
@@ -234,7 +260,7 @@ void main() {
           {
             'id': 'ok',
             'reason': 'PROMO',
-            'firstSeen': '2026-10-01T00:00:00.000'
+            'firstSeen': '2026-10-01T00:00:00.000',
           },
           {'no_id': true},
           42,
@@ -245,8 +271,10 @@ void main() {
       // jsonEncode can't carry bare nulls inside a typed list, so build the raw
       // string to be sure the parser is defensive.
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('tx_rejected_ids',
-          '[{"id":"ok","reason":"PROMO","firstSeen":"2026-10-01T00:00:00.000"},{"no_id":true},42,null,""]');
+      await prefs.setString(
+        'tx_rejected_ids',
+        '[{"id":"ok","reason":"PROMO","firstSeen":"2026-10-01T00:00:00.000"},{"no_id":true},42,null,""]',
+      );
       SharedPreferences.resetStatic();
       final cache = await _service();
       expect(cache.rejectedCount, 1);
@@ -255,27 +283,30 @@ void main() {
   });
 
   group('nothing sensitive is logged', () {
-    test('mark, prune, recheck and clear never print record contents',
-        () async {
-      final printed = <String>[];
-      final original = debugPrint;
-      debugPrint = (String? message, {int? wrapWidth}) {
-        if (message != null) printed.add(message);
-      };
-      addTearDown(() => debugPrint = original);
+    test(
+      'mark, prune, recheck and clear never print record contents',
+      () async {
+        final printed = <String>[];
+        final original = debugPrint;
+        debugPrint = (String? message, {int? wrapWidth}) {
+          if (message != null) printed.add(message);
+        };
+        addTearDown(() => debugPrint = original);
 
-      final cache = await _service();
-      await cache.putAll([_tx('sms-saved', 987654)]);
-      await cache.markRejected('sms-1', reason: 'PROMO');
-      await cache.pruneExpiredRejected(
-          now: DateTime.now().add(const Duration(days: 200)));
-      await cache.clearRejected();
-      await cache.clearAll();
+        final cache = await _service();
+        await cache.putAll([_tx('sms-saved', 987654)]);
+        await cache.markRejected('sms-1', reason: 'PROMO');
+        await cache.pruneExpiredRejected(
+          now: DateTime.now().add(const Duration(days: 200)),
+        );
+        await cache.clearRejected();
+        await cache.clearAll();
 
-      final joined = printed.join('\n');
-      expect(joined.contains('Merchant'), isFalse);
-      expect(joined.contains('debit notice'), isFalse);
-      expect(joined.contains('987654'), isFalse);
-    });
+        final joined = printed.join('\n');
+        expect(joined.contains('Merchant'), isFalse);
+        expect(joined.contains('debit notice'), isFalse);
+        expect(joined.contains('987654'), isFalse);
+      },
+    );
   });
 }

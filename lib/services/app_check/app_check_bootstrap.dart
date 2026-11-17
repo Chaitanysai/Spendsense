@@ -50,12 +50,13 @@ class AppCheckBootstrap implements AppCheckGate {
     bool? debugBuild,
     String? debugToken,
     bool Function()? firebaseAvailable,
-  })  : _activation = activation ?? _activateWithSdk,
-        _debugBuild = debugBuild ?? kDebugMode,
-        _debugToken = debugToken ??
-            const String.fromEnvironment('FIREBASE_APP_CHECK_DEBUG_TOKEN'),
-        _firebaseAvailable =
-            firebaseAvailable ?? (() => Firebase.apps.isNotEmpty);
+  }) : _activation = activation ?? _activateWithSdk,
+       _debugBuild = debugBuild ?? kDebugMode,
+       _debugToken =
+           debugToken ??
+           const String.fromEnvironment('FIREBASE_APP_CHECK_DEBUG_TOKEN'),
+       _firebaseAvailable =
+           firebaseAvailable ?? (() => Firebase.apps.isNotEmpty);
 
   /// The process-wide instance used by startup and the assistant provider.
   static final AppCheckBootstrap shared = AppCheckBootstrap();
@@ -113,8 +114,6 @@ class AppCheckBootstrap implements AppCheckGate {
   static Future<void> _activateWithSdk({
     required AndroidAppCheckProvider providerAndroid,
   }) {
-    return FirebaseAppCheck.instance.activate(
-      providerAndroid: providerAndroid,
-    );
+    return FirebaseAppCheck.instance.activate(providerAndroid: providerAndroid);
   }
 }

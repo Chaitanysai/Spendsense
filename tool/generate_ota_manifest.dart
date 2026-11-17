@@ -58,9 +58,11 @@ void main(List<String> args) {
   // a deliberate choice on every publish.
   final minimum = options.minimumVersion;
   if (minimum == null) {
-    _fail('--minimum is required. Pass the oldest version still supported '
-        '(x.y.z); refusing to default the floor to $versionName, which would '
-        'force-block every existing install.');
+    _fail(
+      '--minimum is required. Pass the oldest version still supported '
+      '(x.y.z); refusing to default the floor to $versionName, which would '
+      'force-block every existing install.',
+    );
   }
   if (!RegExp(r'^\d+\.\d+\.\d+$').hasMatch(minimum)) {
     _fail('--minimum must be x.y.z: $minimum');
@@ -76,7 +78,8 @@ void main(List<String> args) {
       baseUrl.hasQuery ||
       baseUrl.hasFragment) {
     _fail(
-        '--base-url must be a plain HTTPS origin, e.g. https://spendsense.example');
+      '--base-url must be a plain HTTPS origin, e.g. https://spendsense.example',
+    );
   }
   final base = options.baseUrl.replaceAll(RegExp(r'/+$'), '');
   final downloadUrl = '$base/releases/spendsense-$versionName+$buildNumber.apk';
@@ -225,10 +228,10 @@ class _Options {
           sha = valueOf(i, arg).toLowerCase();
           i++;
         case '--cert':
-          cert = valueOf(i, arg)
-              .replaceAll(':', '')
-              .replaceAll(RegExp(r'\s'), '')
-              .toLowerCase();
+          cert = valueOf(
+            i,
+            arg,
+          ).replaceAll(':', '').replaceAll(RegExp(r'\s'), '').toLowerCase();
           i++;
         case '--published-at':
           published = valueOf(i, arg);

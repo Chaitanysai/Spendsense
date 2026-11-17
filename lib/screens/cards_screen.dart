@@ -53,7 +53,8 @@ class CardsScreen extends StatelessWidget {
               AppEmptyState(
                 icon: Icons.credit_card_off_rounded,
                 title: 'No instruments yet',
-                message: 'Once SpendSense has parsed transactions, this screen '
+                message:
+                    'Once SpendSense has parsed transactions, this screen '
                     'will group your spending by how you paid.',
               ),
             ],
@@ -65,15 +66,19 @@ class CardsScreen extends StatelessWidget {
     // Canonical scope: the same rows and the same filter Home's cycle card
     // uses, so "Total spend" here reconciles with Home by construction rather
     // than by coincidence. See [TransactionProvider.spendingStatsForPeriod].
-    final byMethod =
-        provider.spendingStatsForPeriod(period, (t) => t.paymentMethod);
+    final byMethod = provider.spendingStatsForPeriod(
+      period,
+      (t) => t.paymentMethod,
+    );
     final byBank = provider.spendingStatsForPeriod(period, (t) => t.bank);
     final byAccount = provider.spendingStatsForPeriod(period, (t) => t.account);
     final totalSpent = provider.spendingTotalForPeriod(period);
     // Count the same rows the total sums, so "12 transactions, ₹X" cannot mix
     // a transfer into the count while leaving it out of the money.
-    final expenseCount =
-        byMethod.values.fold<int>(0, (count, stat) => count + stat.count);
+    final expenseCount = byMethod.values.fold<int>(
+      0,
+      (count, stat) => count + stat.count,
+    );
     final periodLabel = _periodLabel(period);
 
     return Scaffold(
@@ -128,8 +133,10 @@ class CardsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('No spending in this period',
-                            style: AppText.title(context)),
+                        Text(
+                          'No spending in this period',
+                          style: AppText.title(context),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Transactions outside $periodLabel are not included. '
@@ -147,7 +154,9 @@ class CardsScreen extends StatelessWidget {
                   PageEntrance(
                     index: 1,
                     child: _InstrumentCard(
-                        stats: byMethod, kind: _InstrumentKind.method),
+                      stats: byMethod,
+                      kind: _InstrumentKind.method,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   const PageEntrance(
@@ -157,7 +166,9 @@ class CardsScreen extends StatelessWidget {
                   PageEntrance(
                     index: 2,
                     child: _InstrumentCard(
-                        stats: byBank, kind: _InstrumentKind.bank),
+                      stats: byBank,
+                      kind: _InstrumentKind.bank,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   const PageEntrance(
@@ -167,7 +178,9 @@ class CardsScreen extends StatelessWidget {
                   PageEntrance(
                     index: 3,
                     child: _InstrumentCard(
-                        stats: byAccount, kind: _InstrumentKind.account),
+                      stats: byAccount,
+                      kind: _InstrumentKind.account,
+                    ),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xxl),
@@ -231,10 +244,7 @@ class _HeroSummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Container(
-            height: 1,
-            color: AppColors.onHero(context, alpha: 0.18),
-          ),
+          Container(height: 1, color: AppColors.onHero(context, alpha: 0.18)),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -266,8 +276,11 @@ class _HeroStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle,
-            size: 6, color: AppColors.onHero(context, alpha: 0.7)),
+        Icon(
+          Icons.circle,
+          size: 6,
+          color: AppColors.onHero(context, alpha: 0.7),
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -420,11 +433,10 @@ class _InstrumentRow extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               '${(share * 100).toStringAsFixed(1)}%',
-              style: AppText.weight(AppText.label(context), FontWeight.w700)
-                  .copyWith(
-                fontSize: 11,
-                color: color,
-              ),
+              style: AppText.weight(
+                AppText.label(context),
+                FontWeight.w700,
+              ).copyWith(fontSize: 11, color: color),
             ),
           ],
         ),
@@ -451,8 +463,11 @@ class _SourceNote extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.info_outline_rounded,
-                size: 17, color: AppColors.textSecondary(context)),
+            Icon(
+              Icons.info_outline_rounded,
+              size: 17,
+              color: AppColors.textSecondary(context),
+            ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(

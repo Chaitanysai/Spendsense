@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'app_sheet.dart';
+
 import 'package:provider/provider.dart';
+
 import '../providers/period_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/sound_service.dart';
@@ -48,8 +51,9 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceColor(context),
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xl),
+        ),
       ),
       padding: EdgeInsets.only(
         left: AppSpacing.page,
@@ -120,8 +124,9 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
                       duration: AppMotion.respect(context, AppMotion.fast),
                       decoration: BoxDecoration(
                         gradient: isSelected ? AppColors.brandGradient : null,
-                        color:
-                            isSelected ? null : AppColors.surfaceAlt(context),
+                        color: isSelected
+                            ? null
+                            : AppColors.surfaceAlt(context),
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                         border: Border.all(
                           color: isSelected
@@ -192,7 +197,7 @@ class _SalaryDaySheetState extends State<_SalaryDaySheet> {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return 'Current period: ${s.day} ${months[s.month]} – ${e.day} ${months[e.month]}';
   }

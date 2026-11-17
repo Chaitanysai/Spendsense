@@ -138,21 +138,27 @@ class _ComparisonCard extends StatelessWidget {
   }
 
   Widget _line(
-      BuildContext context, String title, PeriodComparison c, String basis) {
+    BuildContext context,
+    String title,
+    PeriodComparison c,
+    String basis,
+  ) {
     final tenths = c.changeTenthsOfPercent;
     final tone = tenths == null || tenths == 0
         ? AppColors.textSecondary(context)
         : tenths > 0
-            ? AppColors.expenseRed
-            : AppColors.incomeGreen;
+        ? AppColors.expenseRed
+        : AppColors.incomeGreen;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(child: Text(title, style: AppText.label(context))),
-            Text(Formatters.currency.format(c.currentMinor),
-                style: AppText.amount(context, size: 16)),
+            Text(
+              Formatters.currency.format(c.currentMinor),
+              style: AppText.amount(context, size: 16),
+            ),
           ],
         ),
         Text(
@@ -160,8 +166,10 @@ class _ComparisonCard extends StatelessWidget {
           '(${Formatters.currency.format(c.previousMinor)})',
           style: AppText.caption(context),
         ),
-        Text(describeChange(tenths, basis: basis),
-            style: AppText.label(context).copyWith(color: tone)),
+        Text(
+          describeChange(tenths, basis: basis),
+          style: AppText.label(context).copyWith(color: tone),
+        ),
       ],
     );
   }
@@ -181,8 +189,11 @@ class _BreakdownCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: Text('Category breakdown',
-                      style: AppText.title(context))),
+                child: Text(
+                  'Category breakdown',
+                  style: AppText.title(context),
+                ),
+              ),
               Text('THIS MONTH', style: AppText.overline(context)),
             ],
           ),
@@ -195,21 +206,28 @@ class _BreakdownCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Row(
                   children: [
-                    Icon(CategoryStyle.icon(s.category),
-                        size: 16, color: CategoryStyle.color(s.category)),
+                    Icon(
+                      CategoryStyle.icon(s.category),
+                      size: 16,
+                      color: CategoryStyle.color(s.category),
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: Text(s.category,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.label(context)),
+                      child: Text(
+                        s.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(context),
+                      ),
                     ),
                     Text(
                       '${(s.shareTenths / 10).toStringAsFixed(1)}%  ',
                       style: AppText.label(context),
                     ),
-                    Text(Formatters.currency.format(s.amountMinor),
-                        style: AppText.amount(context, size: 13)),
+                    Text(
+                      Formatters.currency.format(s.amountMinor),
+                      style: AppText.amount(context, size: 13),
+                    ),
                   ],
                 ),
               ),
@@ -233,8 +251,8 @@ class _LargestCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child:
-                      Text('Largest expenses', style: AppText.title(context))),
+                child: Text('Largest expenses', style: AppText.title(context)),
+              ),
               Text('THIS MONTH', style: AppText.overline(context)),
             ],
           ),
@@ -251,11 +269,14 @@ class _LargestCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.merchant,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.label(context).copyWith(
-                                  color: AppColors.textPrimary(context))),
+                          Text(
+                            t.merchant,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(
+                              context,
+                            ).copyWith(color: AppColors.textPrimary(context)),
+                          ),
                           Text(
                             '${t.category} · ${DateFormat('d MMM').format(t.date)}',
                             style: AppText.caption(context),
@@ -263,8 +284,10 @@ class _LargestCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Text(Formatters.currency.format(t.amountMinor),
-                        style: AppText.amount(context, size: 14)),
+                    Text(
+                      Formatters.currency.format(t.amountMinor),
+                      style: AppText.amount(context, size: 14),
+                    ),
                   ],
                 ),
               ),
@@ -281,8 +304,10 @@ class _TrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxMinor =
-        months.fold<int>(0, (m, e) => e.amountMinor > m ? e.amountMinor : m);
+    final maxMinor = months.fold<int>(
+      0,
+      (m, e) => e.amountMinor > m ? e.amountMinor : m,
+    );
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,14 +315,17 @@ class _TrendCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: Text('Spending trend', style: AppText.title(context))),
+                child: Text('Spending trend', style: AppText.title(context)),
+              ),
               Text('6 MONTHS', style: AppText.overline(context)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           if (maxMinor == 0)
-            Text('No spending recorded in the last six months.',
-                style: AppText.body(context))
+            Text(
+              'No spending recorded in the last six months.',
+              style: AppText.body(context),
+            )
           else
             for (final (i, m) in months.indexed)
               Padding(
@@ -306,8 +334,10 @@ class _TrendCard extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 44,
-                      child: Text(DateFormat('MMM').format(m.month),
-                          style: AppText.label(context)),
+                      child: Text(
+                        DateFormat('MMM').format(m.month),
+                        style: AppText.label(context),
+                      ),
                     ),
                     Expanded(
                       child: AnimatedProgressBar(

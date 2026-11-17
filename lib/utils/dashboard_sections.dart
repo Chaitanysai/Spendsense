@@ -16,12 +16,12 @@ class DashboardSection {
   static const List<String> ids = [budget, categories, weekly, recent];
 
   static String label(String id) => switch (id) {
-        budget => 'Monthly budget',
-        categories => 'Spending by category',
-        weekly => 'Spending trend',
-        recent => 'Recent transactions',
-        _ => id,
-      };
+    budget => 'Monthly budget',
+    categories => 'Spending by category',
+    weekly => 'Spending trend',
+    recent => 'Recent transactions',
+    _ => id,
+  };
 
   /// Turns anything stored (null, wrong type, duplicates, unknown or removed
   /// ids, missing ids) into a complete, duplicate-free order. Known ids keep
@@ -42,13 +42,10 @@ class DashboardSection {
   }
 
   /// The sections to draw: [order] without the [hidden] ones.
-  static List<String> visibleInOrder(
-    List<String> order,
-    Set<String> hidden,
-  ) =>
+  static List<String> visibleInOrder(List<String> order, Set<String> hidden) =>
       [
         for (final id in order)
-          if (!hidden.contains(id)) id
+          if (!hidden.contains(id)) id,
       ];
 
   /// Moves one *visible* section and returns the new full order. Hidden
@@ -71,8 +68,6 @@ class DashboardSection {
 
     // Visible ids fill, in the new order, the slots visible ids occupied.
     var next = 0;
-    return [
-      for (final id in order) hidden.contains(id) ? id : visible[next++],
-    ];
+    return [for (final id in order) hidden.contains(id) ? id : visible[next++]];
   }
 }

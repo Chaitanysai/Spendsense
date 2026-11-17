@@ -85,20 +85,22 @@ class AppListRow extends StatelessWidget {
     final tone = destructive
         ? AppColors.danger
         : (leadingTone ?? AppColors.brandInk(context));
-    final titleStyle = AppText.weight(
-      AppText.title(context),
-      FontWeight.w600,
-    ).copyWith(
-      fontSize: 15,
-      color: destructive ? AppColors.danger : AppColors.textPrimary(context),
-    );
+    final titleStyle = AppText.weight(AppText.title(context), FontWeight.w600)
+        .copyWith(
+          fontSize: 15,
+          color: destructive
+              ? AppColors.danger
+              : AppColors.textPrimary(context),
+        );
 
-    final lead = leading ??
+    final lead =
+        leading ??
         (leadingIcon == null
             ? null
             : IconWell(icon: leadingIcon!, color: tone));
 
-    final tail = trailing ??
+    final tail =
+        trailing ??
         (trailingText != null
             ? Text(
                 trailingText!,
@@ -112,14 +114,14 @@ class AppListRow extends StatelessWidget {
                 ),
               )
             : (selected
-                ? Icon(Icons.check_circle_rounded, size: 22, color: tone)
-                : (onTap == null || !showChevron
-                    ? null
-                    : Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: AppColors.textTertiary(context),
-                      ))));
+                  ? Icon(Icons.check_circle_rounded, size: 22, color: tone)
+                  : (onTap == null || !showChevron
+                        ? null
+                        : Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: AppColors.textTertiary(context),
+                          ))));
 
     final content = ConstrainedBox(
       constraints: BoxConstraints(
@@ -132,10 +134,7 @@ class AppListRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            if (lead != null) ...[
-              lead,
-              const SizedBox(width: AppSpacing.md),
-            ],
+            if (lead != null) ...[lead, const SizedBox(width: AppSpacing.md)],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,10 +161,7 @@ class AppListRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (tail != null) ...[
-              const SizedBox(width: AppSpacing.md),
-              tail,
-            ],
+            if (tail != null) ...[const SizedBox(width: AppSpacing.md), tail],
           ],
         ),
       ),
@@ -186,10 +182,7 @@ class AppListRow extends StatelessWidget {
               borderRadius: BorderRadius.zero,
               child: Material(
                 color: Colors.transparent,
-                child: InkWell(
-                  onTap: onTap,
-                  child: content,
-                ),
+                child: InkWell(onTap: onTap, child: content),
               ),
             ),
           );
@@ -202,8 +195,9 @@ class AppListRow extends StatelessWidget {
         // Indented past the well so the hairline starts under the text, the
         // same rhythm the transaction feed uses.
         AppListDivider(
-          indent:
-              lead == null ? AppSpacing.lg : AppSpacing.lg + 40 + AppSpacing.md,
+          indent: lead == null
+              ? AppSpacing.lg
+              : AppSpacing.lg + 40 + AppSpacing.md,
         ),
       ],
     );
@@ -218,12 +212,12 @@ class AppListDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Divider(
-        height: 1,
-        thickness: 1,
-        indent: indent,
-        endIndent: AppSpacing.md,
-        color: AppColors.border(context).withValues(alpha: 0.72),
-      );
+    height: 1,
+    thickness: 1,
+    indent: indent,
+    endIndent: AppSpacing.md,
+    color: AppColors.border(context).withValues(alpha: 0.72),
+  );
 }
 
 /// A stack of [AppListRow]s on one raised surface.
@@ -239,11 +233,7 @@ class AppListGroup extends StatelessWidget {
   /// screen's own section header does that).
   final String? semanticLabel;
 
-  const AppListGroup({
-    super.key,
-    required this.rows,
-    this.semanticLabel,
-  });
+  const AppListGroup({super.key, required this.rows, this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {

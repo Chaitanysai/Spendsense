@@ -34,7 +34,10 @@ class AIService {
 
     if (lastMessage.contains('yesterday')) {
       return _handleSpecificDate(
-          expenses, PeriodMath.addDays(DateTime.now(), -1), "yesterday");
+        expenses,
+        PeriodMath.addDays(DateTime.now(), -1),
+        "yesterday",
+      );
     }
 
     if (lastMessage.contains('today')) {
@@ -49,7 +52,7 @@ class AIService {
       'utilities',
       'entertainment',
       'health',
-      'fuel'
+      'fuel',
     ]) {
       if (lastMessage.contains(cat)) {
         return _handleCategoryTotal(expenses, cat);
@@ -87,8 +90,10 @@ class AIService {
     final calendarDays = now.day;
 
     final calendarAverage = roundPaiseDivision(total, calendarDays);
-    final activeAverage =
-        roundPaiseDivision(total, activeDays > 0 ? activeDays : 1);
+    final activeAverage = roundPaiseDivision(
+      total,
+      activeDays > 0 ? activeDays : 1,
+    );
     return "This month, you spent an average of ${Formatters.currency.format(calendarAverage)} per calendar day (${Formatters.currency.format(activeAverage)} per active spending day).";
   }
 
@@ -128,12 +133,17 @@ class AIService {
   }
 
   String _handleSpecificDate(
-      List<TransactionModel> txs, DateTime date, String alias) {
+    List<TransactionModel> txs,
+    DateTime date,
+    String alias,
+  ) {
     final dayTxs = txs
-        .where((t) =>
-            t.date.year == date.year &&
-            t.date.month == date.month &&
-            t.date.day == date.day)
+        .where(
+          (t) =>
+              t.date.year == date.year &&
+              t.date.month == date.month &&
+              t.date.day == date.day,
+        )
         .toList();
     if (dayTxs.isEmpty) return "You didn't spend anything $alias.";
 

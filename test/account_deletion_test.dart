@@ -46,9 +46,12 @@ void main() {
       await provider.deleteAccount(
         clearLocalLedger: () async {
           // The account must already be gone when this runs.
-          expect(auth.deleteCount, 1,
-              reason:
-                  'local data must not be wiped before the account is deleted');
+          expect(
+            auth.deleteCount,
+            1,
+            reason:
+                'local data must not be wiped before the account is deleted',
+          );
           ledgerCleared = true;
         },
       );
@@ -76,22 +79,24 @@ void main() {
       );
     });
 
-    test('a stale session surfaces as reauthentication, not deletion',
-        () async {
-      final auth = _FakeAuth(requiresReauth: true);
-      final provider = AuthProvider(auth: auth);
-      var ledgerCleared = false;
+    test(
+      'a stale session surfaces as reauthentication, not deletion',
+      () async {
+        final auth = _FakeAuth(requiresReauth: true);
+        final provider = AuthProvider(auth: auth);
+        var ledgerCleared = false;
 
-      await expectLater(
-        provider.deleteAccount(
-          clearLocalLedger: () async => ledgerCleared = true,
-        ),
-        throwsA(isA<ReauthenticationRequiredException>()),
-      );
+        await expectLater(
+          provider.deleteAccount(
+            clearLocalLedger: () async => ledgerCleared = true,
+          ),
+          throwsA(isA<ReauthenticationRequiredException>()),
+        );
 
-      expect(ledgerCleared, isFalse);
-      expect(provider.errorMessage, contains('password'));
-    });
+        expect(ledgerCleared, isFalse);
+        expect(provider.errorMessage, contains('password'));
+      },
+    );
 
     test('supplying a password re-authenticates first', () async {
       final auth = _FakeAuth();

@@ -20,8 +20,8 @@ import '../services/auth/user_profile_repository.dart';
 /// app falls back to its offline-only behaviour instead of failing.
 class AuthProvider with ChangeNotifier {
   AuthProvider({AuthService? auth, UserProfileRepository? profiles})
-      : _auth = auth ?? const AuthService(),
-        _profiles = profiles ?? const UserProfileRepository() {
+    : _auth = auth ?? const AuthService(),
+      _profiles = profiles ?? const UserProfileRepository() {
     // A persisted session is known synchronously, so the first frame already
     // renders the right tree instead of flashing the sign-in screen.
     final user = _auth.currentUser;
@@ -137,11 +137,7 @@ class AuthProvider with ChangeNotifier {
     return _run(() async {
       final trimmedName = displayName.trim();
       final user = await _auth
-          .signUp(
-            email: email,
-            password: password,
-            displayName: trimmedName,
-          )
+          .signUp(email: email, password: password, displayName: trimmedName)
           .timeout(_requestTimeout);
       _name = trimmedName;
       _email = user.email ?? email.trim();
@@ -282,8 +278,9 @@ class AuthProvider with ChangeNotifier {
     if (_name.trim().isEmpty || _email.trim().isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       _name = _name.trim().isEmpty ? (prefs.getString(_nameKey) ?? '') : _name;
-      _email =
-          _email.trim().isEmpty ? (prefs.getString(_emailKey) ?? '') : _email;
+      _email = _email.trim().isEmpty
+          ? (prefs.getString(_emailKey) ?? '')
+          : _email;
     }
     if (persistLocal) {
       await _cacheProfile(name: _name, email: _email);

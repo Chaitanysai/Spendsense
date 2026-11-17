@@ -66,11 +66,15 @@ class BillTextRedactor {
     out = out.replaceAll(RegExp(r'(?:\+91[\s-]?)?[6-9]\d{9}\b'), '[phone]');
     // Email addresses (not needed for bill classification).
     out = out.replaceAll(
-        RegExp(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'), '[email]');
+      RegExp(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'),
+      '[email]',
+    );
     // Balance / available-limit clauses, which are irrelevant to a bill type.
     out = out.replaceAll(
-      RegExp(r'(?:avl|available|closing)\s*(?:bal|balance)[^.]*',
-          caseSensitive: false),
+      RegExp(
+        r'(?:avl|available|closing)\s*(?:bal|balance)[^.]*',
+        caseSensitive: false,
+      ),
       '[balance]',
     );
     return out;

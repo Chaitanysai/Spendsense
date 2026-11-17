@@ -48,48 +48,50 @@ class _ProbeState extends State<_Probe> {
 void main() {
   group('tab stack rebuild cost', () {
     testWidgets(
-        'switching tabs never re-creates or disposes a tab (no keys needed)',
-        (tester) async {
-      final log = <String>[];
-      final children = [_Probe('A', log), _Probe('B', log), _Probe('C', log)];
+      'switching tabs never re-creates or disposes a tab (no keys needed)',
+      (tester) async {
+        final log = <String>[];
+        final children = [_Probe('A', log), _Probe('B', log), _Probe('C', log)];
 
-      Widget host(int index) => MaterialApp(
-            home: FadeIndexedStack(index: index, children: children),
-          );
+        Widget host(int index) => MaterialApp(
+          home: FadeIndexedStack(index: index, children: children),
+        );
 
-      await tester.pumpWidget(host(0));
-      await tester.pumpAndSettle();
-      final afterFirstBuild = List<String>.of(log);
+        await tester.pumpWidget(host(0));
+        await tester.pumpAndSettle();
+        final afterFirstBuild = List<String>.of(log);
 
-      for (final i in [1, 2, 0, 2, 1, 0]) {
-        await tester.pumpWidget(host(i));
-        await tester.pump(const Duration(milliseconds: 40));
-      }
-      await tester.pumpAndSettle();
+        for (final i in [1, 2, 0, 2, 1, 0]) {
+          await tester.pumpWidget(host(i));
+          await tester.pump(const Duration(milliseconds: 40));
+        }
+        await tester.pumpAndSettle();
 
-      expect(
-        log.where((e) => e.startsWith('dispose')),
-        isEmpty,
-        reason: 'a tab that is switched away from must stay alive',
-      );
-      expect(
-        log.where((e) => e.startsWith('init')).length,
-        afterFirstBuild.where((e) => e.startsWith('init')).length,
-        reason: 'a tab must not run initState again on every switch',
-      );
-    });
+        expect(
+          log.where((e) => e.startsWith('dispose')),
+          isEmpty,
+          reason: 'a tab that is switched away from must stay alive',
+        );
+        expect(
+          log.where((e) => e.startsWith('init')).length,
+          afterFirstBuild.where((e) => e.startsWith('init')).length,
+          reason: 'a tab must not run initState again on every switch',
+        );
+      },
+    );
 
     testWidgets('reduced motion also keeps every tab alive', (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
-          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
 
       final log = <String>[];
       final children = [_Probe('A', log), _Probe('B', log)];
       Widget host(int index) => MaterialApp(
-            home: FadeIndexedStack(index: index, children: children),
-          );
+        home: FadeIndexedStack(index: index, children: children),
+      );
 
       await tester.pumpWidget(host(0));
       for (final i in [1, 0, 1]) {
@@ -103,12 +105,14 @@ void main() {
 
     testWidgets('only the visible tab is laid out and painted', (tester) async {
       final log = <String>[];
-      await tester.pumpWidget(MaterialApp(
-        home: FadeIndexedStack(
-          index: 1,
-          children: [_Probe('A', log), _Probe('B', log)],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FadeIndexedStack(
+            index: 1,
+            children: [_Probe('A', log), _Probe('B', log)],
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('B'), findsOneWidget);
@@ -116,19 +120,21 @@ void main() {
       expect(find.text('A', skipOffstage: false), findsOneWidget);
     });
 
-    testWidgets('FadeSlideIn reaches rest and stops its ticker',
-        (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: FadeSlideIn(child: Text('x')),
-      ));
+    testWidgets('FadeSlideIn reaches rest and stops its ticker', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: FadeSlideIn(child: Text('x'))),
+      );
       await tester.pumpAndSettle();
       expect(tester.binding.hasScheduledFrame, isFalse);
     });
   });
 
   group('tab stack animation behaviour', () {
-    testWidgets('rapid switching ends with no running tickers or layers',
-        (tester) async {
+    testWidgets('rapid switching ends with no running tickers or layers', (
+      tester,
+    ) async {
       final log = <String>[];
       final children = [
         _Probe('A', log),
@@ -136,8 +142,8 @@ void main() {
         _Probe('C', log),
       ];
       Widget host(int index) => MaterialApp(
-            home: FadeIndexedStack(index: index, children: children),
-          );
+        home: FadeIndexedStack(index: index, children: children),
+      );
 
       await tester.pumpWidget(host(0));
       for (final i in [1, 2, 0, 1, 2, 1, 0, 2, 0]) {
@@ -146,33 +152,39 @@ void main() {
       }
       await tester.pumpAndSettle();
 
-      expect(tester.binding.hasScheduledFrame, isFalse,
-          reason: 'nothing may keep ticking once the last fade finished');
+      expect(
+        tester.binding.hasScheduledFrame,
+        isFalse,
+        reason: 'nothing may keep ticking once the last fade finished',
+      );
       expect(log.where((e) => e.startsWith('dispose')), isEmpty);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a retained tab does NOT replay its entrance when re-selected',
-        (tester) async {
+    testWidgets('a retained tab does NOT replay its entrance when re-selected', (
+      tester,
+    ) async {
       final children = [
         const Text('A'),
         const FadeSlideIn(child: Text('B-content')),
       ];
       Widget host(int index) => MaterialApp(
-            home: FadeIndexedStack(index: index, children: children),
-          );
+        home: FadeIndexedStack(index: index, children: children),
+      );
 
       await tester.pumpWidget(host(0));
       await tester.pumpWidget(host(1));
       await tester.pumpAndSettle();
 
       double entranceOpacity() => tester
-          .widget<FadeTransition>(find
-              .descendant(
-                of: find.byType(PageEntrance),
-                matching: find.byType(FadeTransition),
-              )
-              .first)
+          .widget<FadeTransition>(
+            find
+                .descendant(
+                  of: find.byType(PageEntrance),
+                  matching: find.byType(FadeTransition),
+                )
+                .first,
+          )
           .opacity
           .value;
       expect(entranceOpacity(), 1.0);
@@ -188,8 +200,11 @@ void main() {
       // page-entry generation — the hero balance counting up from zero, budget
       // bars refilling from empty. A page the user returns to is already
       // familiar; it must appear at rest.
-      expect(entranceOpacity(), 1.0,
-          reason: 'returning to a retained tab must not replay its entrance');
+      expect(
+        entranceOpacity(),
+        1.0,
+        reason: 'returning to a retained tab must not replay its entrance',
+      );
 
       await tester.pump(const Duration(milliseconds: 500));
       expect(entranceOpacity(), 1.0);
@@ -197,8 +212,11 @@ void main() {
       // An unrelated rebuild must not start it either.
       await tester.pumpWidget(host(1));
       await tester.pump();
-      expect(entranceOpacity(), 1.0,
-          reason: 'only a first entry may play an entrance animation');
+      expect(
+        entranceOpacity(),
+        1.0,
+        reason: 'only a first entry may play an entrance animation',
+      );
     });
   });
 
@@ -240,26 +258,32 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('the shell syncs once on launch, and tab navigation never does',
-        (tester) async {
-      final provider = await pumpShell(tester, withStartDate: true);
+    testWidgets(
+      'the shell syncs once on launch, and tab navigation never does',
+      (tester) async {
+        final provider = await pumpShell(tester, withStartDate: true);
 
-      // The shell owns the launch sync now: it fires once, after the first
-      // frame, regardless of which tab is showing.
-      expect(provider.syncs, 1, reason: 'launch performs exactly one scan');
+        // The shell owns the launch sync now: it fires once, after the first
+        // frame, regardless of which tab is showing.
+        expect(provider.syncs, 1, reason: 'launch performs exactly one scan');
 
-      await goTo(tester, 'Bills');
-      expect(provider.syncs, 1,
-          reason: 'passive navigation must not scan SMS or ask permission');
+        await goTo(tester, 'Bills');
+        expect(
+          provider.syncs,
+          1,
+          reason: 'passive navigation must not scan SMS or ask permission',
+        );
 
-      await goTo(tester, 'Home');
-      await goTo(tester, 'Bills');
-      await goTo(tester, 'Insights');
-      expect(provider.syncs, 1, reason: 'no tab switch adds a scan');
-    });
+        await goTo(tester, 'Home');
+        await goTo(tester, 'Bills');
+        await goTo(tester, 'Insights');
+        expect(provider.syncs, 1, reason: 'no tab switch adds a scan');
+      },
+    );
 
-    testWidgets('a running sync is not restarted by visiting Bills',
-        (tester) async {
+    testWidgets('a running sync is not restarted by visiting Bills', (
+      tester,
+    ) async {
       final provider = await pumpShell(tester, withStartDate: true);
       final afterLaunch = provider.syncs;
       provider.syncing = true;
@@ -269,8 +293,11 @@ void main() {
       await goTo(tester, 'Home');
       await goTo(tester, 'Bills');
 
-      expect(provider.syncs, afterLaunch,
-          reason: 'Bills never starts or joins a scan');
+      expect(
+        provider.syncs,
+        afterLaunch,
+        reason: 'Bills never starts or joins a scan',
+      );
     });
 
     testWidgets('Bills stays alive across tab switches', (tester) async {
@@ -280,17 +307,23 @@ void main() {
       expect(find.byType(BillsScreen, skipOffstage: false), findsOneWidget);
     });
 
-    testWidgets('Settings re-checks the connection each time it is shown',
-        (tester) async {
+    testWidgets('Settings re-checks the connection each time it is shown', (
+      tester,
+    ) async {
       var checks = 0;
       const channel = MethodChannel('dev.fluttercommunity.plus/connectivity');
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel,
-          (call) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
         if (call.method == 'check') checks++;
         return 'wifi';
       });
-      addTearDown(() => tester.binding.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, null));
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
 
       await pumpShell(tester, withStartDate: true);
       final atLaunch = checks;
@@ -307,19 +340,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-        'Settings ignores a connection check that finishes after it '
+    testWidgets('Settings ignores a connection check that finishes after it '
         'was disposed', (tester) async {
       final gate = Completer<void>();
       var hold = false;
       const channel = MethodChannel('dev.fluttercommunity.plus/connectivity');
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel,
-          (call) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
         if (hold) await gate.future;
         return 'wifi';
       });
-      addTearDown(() => tester.binding.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, null));
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
 
       await pumpShell(tester, withStartDate: true);
       hold = true;
@@ -332,8 +369,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Insights rebuilds when its tab is shown again',
-        (tester) async {
+    testWidgets('Insights rebuilds when its tab is shown again', (
+      tester,
+    ) async {
       final provider = await pumpShell(tester, withStartDate: true);
       await goTo(tester, 'Insights');
       await goTo(tester, 'Home');
@@ -341,19 +379,22 @@ void main() {
       provider.transactionReads = 0;
       await goTo(tester, 'Insights');
 
-      expect(provider.transactionReads, greaterThan(0),
-          reason: 'month totals use DateTime.now(), so a return must refresh');
+      expect(
+        provider.transactionReads,
+        greaterThan(0),
+        reason: 'month totals use DateTime.now(), so a return must refresh',
+      );
     });
 
-    testWidgets('Home asks for the SMS start date when none is set',
-        (tester) async {
+    testWidgets('Home asks for the SMS start date when none is set', (
+      tester,
+    ) async {
       await pumpShell(tester, withStartDate: false);
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Check SMS from when?'), findsOneWidget);
     });
 
-    testWidgets(
-        'a dismissed start-date prompt comes back on return to Home, '
+    testWidgets('a dismissed start-date prompt comes back on return to Home, '
         'but never opens twice at once', (tester) async {
       await pumpShell(tester, withStartDate: false);
       await tester.pump(const Duration(milliseconds: 400));
@@ -372,12 +413,16 @@ void main() {
       await goTo(tester, 'Insights');
       await goTo(tester, 'Home');
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Check SMS from when?'), findsOneWidget,
-          reason: 'same as before: an unset date is asked again on return');
+      expect(
+        find.text('Check SMS from when?'),
+        findsOneWidget,
+        reason: 'same as before: an unset date is asked again on return',
+      );
     });
 
-    testWidgets('Home does not ask when a start date already exists',
-        (tester) async {
+    testWidgets('Home does not ask when a start date already exists', (
+      tester,
+    ) async {
       await pumpShell(tester, withStartDate: true);
       await goTo(tester, 'Insights');
       await goTo(tester, 'Home');

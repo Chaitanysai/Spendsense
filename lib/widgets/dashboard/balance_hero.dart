@@ -179,8 +179,8 @@ class BalanceHero extends StatelessWidget {
                         : 'Expenses in $periodLabel',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        AppText.caption(context).copyWith(color: inkTertiary),
+                    style: AppText.caption(context)
+                        .copyWith(color: inkTertiary),
                   ),
                   // The gap exists only when something follows it. A bare spacer
                   // left 12dp of dead space under the caption on every Home
@@ -346,10 +346,8 @@ class _SetBudgetButton extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 'Set a budget',
-                style: AppText.label(context).copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: inkColor,
-                ),
+                style: AppText.label(context)
+                    .copyWith(fontWeight: FontWeight.w600, color: inkColor),
               ),
             ],
           ),

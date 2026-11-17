@@ -68,14 +68,16 @@ class AppLogo extends StatelessWidget {
             children: [
               Text(
                 'SpendSense',
-                style: titleStyle ??
+                style:
+                    titleStyle ??
                     theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
               ),
               Text(
                 'Smart money copilot',
-                style: subtitleStyle ??
+                style:
+                    subtitleStyle ??
                     theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary(context),
                       letterSpacing: 0.2,

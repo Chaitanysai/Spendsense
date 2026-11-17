@@ -42,28 +42,28 @@ class AssistantAuditEntry {
   });
 
   AssistantAuditEntry copyWith({bool? undone}) => AssistantAuditEntry(
-        id: id,
-        type: type,
-        createdAt: createdAt,
-        affectedCount: affectedCount,
-        totalMinor: totalMinor,
-        transactionIds: transactionIds,
-        previousExcluded: previousExcluded,
-        deletedSnapshots: deletedSnapshots,
-        undone: undone ?? this.undone,
-      );
+    id: id,
+    type: type,
+    createdAt: createdAt,
+    affectedCount: affectedCount,
+    totalMinor: totalMinor,
+    transactionIds: transactionIds,
+    previousExcluded: previousExcluded,
+    deletedSnapshots: deletedSnapshots,
+    undone: undone ?? this.undone,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'createdAt': createdAt.toIso8601String(),
-        'affectedCount': affectedCount,
-        'totalMinor': totalMinor,
-        'transactionIds': transactionIds,
-        'previousExcluded': previousExcluded,
-        'deletedSnapshots': deletedSnapshots,
-        'undone': undone,
-      };
+    'id': id,
+    'type': type.name,
+    'createdAt': createdAt.toIso8601String(),
+    'affectedCount': affectedCount,
+    'totalMinor': totalMinor,
+    'transactionIds': transactionIds,
+    'previousExcluded': previousExcluded,
+    'deletedSnapshots': deletedSnapshots,
+    'undone': undone,
+  };
 
   static AssistantAuditEntry fromJson(Map<String, dynamic> json) {
     final type = AssistantChangeType.values
@@ -80,14 +80,16 @@ class AssistantAuditEntry {
         json['previousExcluded'] is! Map ||
         json['deletedSnapshots'] is! List) {
       throw const AssistantAuditException(
-          'The assistant audit record is invalid.');
+        'The assistant audit record is invalid.',
+      );
     }
     final ids = (json['transactionIds'] as List).whereType<String>().toList();
     final previous = <String, bool>{};
     for (final entry in (json['previousExcluded'] as Map).entries) {
       if (entry.key is! String || entry.value is! bool) {
         throw const AssistantAuditException(
-            'The assistant audit record is invalid.');
+          'The assistant audit record is invalid.',
+        );
       }
       previous[entry.key as String] = entry.value as bool;
     }
@@ -95,7 +97,8 @@ class AssistantAuditEntry {
     for (final snapshot in json['deletedSnapshots'] as List) {
       if (snapshot is! Map) {
         throw const AssistantAuditException(
-            'The assistant audit record is invalid.');
+          'The assistant audit record is invalid.',
+        );
       }
       snapshots.add(Map<String, dynamic>.from(snapshot));
     }
@@ -134,7 +137,7 @@ class EncryptedAssistantAuditRepository implements AssistantAuditRepository {
   Future<void> _lock = Future.value();
 
   EncryptedAssistantAuditRepository({LedgerEncryptionService? encryption})
-      : _encryption = encryption ?? LedgerEncryptionService();
+    : _encryption = encryption ?? LedgerEncryptionService();
 
   Future<T> _serialized<T>(Future<T> Function() action) {
     final run = _lock.then((_) => action());
@@ -159,13 +162,15 @@ class EncryptedAssistantAuditRepository implements AssistantAuditRepository {
           decoded['schemaVersion'] != 1 ||
           decoded['entries'] is! List) {
         throw const AssistantAuditException(
-            'The assistant audit record is invalid.');
+          'The assistant audit record is invalid.',
+        );
       }
       final entries = <AssistantAuditEntry>[];
       for (final item in decoded['entries'] as List) {
         if (item is! Map) {
           throw const AssistantAuditException(
-              'The assistant audit record is invalid.');
+            'The assistant audit record is invalid.',
+          );
         }
         entries.add(
           AssistantAuditEntry.fromJson(Map<String, dynamic>.from(item)),
@@ -177,37 +182,39 @@ class EncryptedAssistantAuditRepository implements AssistantAuditRepository {
       rethrow;
     } catch (_) {
       throw const AssistantAuditException(
-          'The assistant audit record could not be read.');
+        'The assistant audit record could not be read.',
+      );
     }
   }
 
   @override
   Future<void> append(AssistantAuditEntry entry) => _serialized(() async {
-        final entries = await load();
-        entries.add(entry);
-        final retained = entries.length <= maxEntries
-            ? entries
-            : entries.sublist(entries.length - maxEntries);
-        await _write(retained);
-      });
+    final entries = await load();
+    entries.add(entry);
+    final retained = entries.length <= maxEntries
+        ? entries
+        : entries.sublist(entries.length - maxEntries);
+    await _write(retained);
+  });
 
   @override
   Future<void> markUndone(String id) => _serialized(() async {
-        final entries = await load();
-        final index = entries.indexWhere((e) => e.id == id);
-        if (index == -1) {
-          throw const AssistantAuditException(
-              'That change is no longer available to undo.');
-        }
-        entries[index] = entries[index].copyWith(undone: true);
-        await _write(entries);
-      });
+    final entries = await load();
+    final index = entries.indexWhere((e) => e.id == id);
+    if (index == -1) {
+      throw const AssistantAuditException(
+        'That change is no longer available to undo.',
+      );
+    }
+    entries[index] = entries[index].copyWith(undone: true);
+    await _write(entries);
+  });
 
   @override
   Future<void> clear() => _serialized(() async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(prefsKey);
-      });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(prefsKey);
+  });
 
   Future<void> _write(List<AssistantAuditEntry> entries) async {
     final encoded = await _encryption.encryptText(
@@ -220,14 +227,18 @@ class EncryptedAssistantAuditRepository implements AssistantAuditRepository {
     final prefs = await SharedPreferences.getInstance();
     if (!await prefs.setString(prefsKey, encoded)) {
       throw const AssistantAuditException(
-          'The assistant audit record could not be saved.');
+        'The assistant audit record could not be saved.',
+      );
     }
     // Read back to prove the record was stored and is decryptable.
-    final check =
-        await _encryption.decryptText(encoded, expectedRecordId: recordId);
+    final check = await _encryption.decryptText(
+      encoded,
+      expectedRecordId: recordId,
+    );
     if (check.isEmpty) {
       throw const AssistantAuditException(
-          'The assistant audit record failed verification.');
+        'The assistant audit record failed verification.',
+      );
     }
   }
 }

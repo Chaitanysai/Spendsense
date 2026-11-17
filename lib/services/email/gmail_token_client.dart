@@ -11,7 +11,7 @@ class GmailTokenClient extends http.BaseClient {
   final http.Client _inner;
 
   GmailTokenClient(this.accessToken, {http.Client? inner})
-      : _inner = inner ?? http.Client();
+    : _inner = inner ?? http.Client();
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {

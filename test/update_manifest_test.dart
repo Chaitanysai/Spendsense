@@ -20,29 +20,25 @@ Map<String, dynamic> _json({
   String sha256 = '',
   String signingCertSha256 = _cert,
   Object? publishedAt = '2026-10-21T09:00:00Z',
-}) =>
-    {
-      'schemaVersion': schemaVersion,
-      'appId': appId,
-      'latestVersion': latestVersion,
-      'latestBuildNumber': latestBuildNumber,
-      'minimumSupportedVersion': minimumSupportedVersion,
-      'downloadUrl': downloadUrl,
-      'releaseNotes': releaseNotes,
-      'sha256': sha256.isEmpty ? _sha : sha256,
-      'signingCertSha256': signingCertSha256,
-      'publishedAt': publishedAt,
-    };
+}) => {
+  'schemaVersion': schemaVersion,
+  'appId': appId,
+  'latestVersion': latestVersion,
+  'latestBuildNumber': latestBuildNumber,
+  'minimumSupportedVersion': minimumSupportedVersion,
+  'downloadUrl': downloadUrl,
+  'releaseNotes': releaseNotes,
+  'sha256': sha256.isEmpty ? _sha : sha256,
+  'signingCertSha256': signingCertSha256,
+  'publishedAt': publishedAt,
+};
 
-UpdateManifest _parse(Map<String, dynamic> json) => UpdateManifest.fromMap(
-      json,
-      expectedAppId: _appId,
-      approvedHosts: _hosts,
-    );
+UpdateManifest _parse(Map<String, dynamic> json) =>
+    UpdateManifest.fromMap(json, expectedAppId: _appId, approvedHosts: _hosts);
 
 Matcher _throwsManifestError(ManifestError error) => throwsA(
-      isA<ManifestValidationException>().having((e) => e.error, 'error', error),
-    );
+  isA<ManifestValidationException>().having((e) => e.error, 'error', error),
+);
 
 void main() {
   group('AppVersion', () {
@@ -170,9 +166,7 @@ void main() {
 
     test('rejects insecure or relative download URLs', () {
       expect(
-        () => _parse(
-          _json(downloadUrl: 'http://updates.example.com/a.apk'),
-        ),
+        () => _parse(_json(downloadUrl: 'http://updates.example.com/a.apk')),
         _throwsManifestError(ManifestError.insecureDownloadUrl),
       );
       expect(
@@ -200,9 +194,7 @@ void main() {
       // download filename is generated separately and never derived from this
       // path.
       final normalised = _parse(
-        _json(
-          downloadUrl: 'https://updates.example.com/%2e%2e/secret.apk',
-        ),
+        _json(downloadUrl: 'https://updates.example.com/%2e%2e/secret.apk'),
       );
       expect(normalised.downloadUrl.path, '/secret.apk');
 
@@ -236,15 +228,17 @@ void main() {
   });
 
   group('UpdatePolicy', () {
-    UpdateManifest manifest(
-            {String latest = '2.0.1', int build = 21, String min = '2.0.0'}) =>
-        _parse(
-          _json(
-            latestVersion: latest,
-            latestBuildNumber: build,
-            minimumSupportedVersion: min,
-          ),
-        );
+    UpdateManifest manifest({
+      String latest = '2.0.1',
+      int build = 21,
+      String min = '2.0.0',
+    }) => _parse(
+      _json(
+        latestVersion: latest,
+        latestBuildNumber: build,
+        minimumSupportedVersion: min,
+      ),
+    );
 
     test('up to date when installed equals latest', () {
       final decision = UpdatePolicy.decide(

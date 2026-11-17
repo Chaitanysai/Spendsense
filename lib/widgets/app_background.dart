@@ -11,7 +11,7 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(color: AppColors.scaffold(context)),
-        child: child,
-      );
+    decoration: BoxDecoration(color: AppColors.scaffold(context)),
+    child: child,
+  );
 }

@@ -46,20 +46,26 @@ void main() {
           final fixed = _contrast(AppColors.inkOn(tint, tinted, base), blended);
           if (fixed < worstOverall) worstOverall = fixed;
           if (raw < 4.5) {
-            out.add('$name ${raw.toStringAsFixed(2)}'
-                '->${fixed.toStringAsFixed(2)}');
+            out.add(
+              '$name ${raw.toStringAsFixed(2)}'
+              '->${fixed.toStringAsFixed(2)}',
+            );
           }
         }
         if (out.isNotEmpty) {
           // ignore: avoid_print
-          print('${dark ? "DARK " : "LIGHT"} '
-              '${palette.id.padRight(17)} ${out.join("  ")}');
+          print(
+            '${dark ? "DARK " : "LIGHT"} '
+            '${palette.id.padRight(17)} ${out.join("  ")}',
+          );
         }
       }
     }
     // ignore: avoid_print
-    print('MINIMUM inkOn CONTRAST ACROSS ALL PALETTES/THEMES: '
-        '${worstOverall.toStringAsFixed(2)}:1');
+    print(
+      'MINIMUM inkOn CONTRAST ACROSS ALL PALETTES/THEMES: '
+      '${worstOverall.toStringAsFixed(2)}:1',
+    );
     expect(worstOverall, greaterThanOrEqualTo(4.5));
   });
 }

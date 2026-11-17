@@ -79,8 +79,11 @@ void main() {
       final stack = element.widget as Stack;
       if (stack.children.length < 2) continue;
       final first = stack.children.first;
-      expect(first, isA<Positioned>(),
-          reason: 'rule must be the first (bottom-most) child of a slot stack');
+      expect(
+        first,
+        isA<Positioned>(),
+        reason: 'rule must be the first (bottom-most) child of a slot stack',
+      );
     }
   });
 
@@ -94,8 +97,11 @@ void main() {
         'Sync SMS',
         'Activity',
       ]) {
-        expect(find.text(label), findsOneWidget,
-            reason: '$label missing at ${scale}x');
+        expect(
+          find.text(label),
+          findsOneWidget,
+          reason: '$label missing at ${scale}x',
+        );
       }
     }
   });

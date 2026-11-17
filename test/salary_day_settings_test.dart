@@ -74,32 +74,39 @@ void main() {
       final p = PeriodProvider();
       await p.init();
       expect(p.salaryDay, 1);
-      expect(p.isSetupDone, isFalse,
-          reason: 'nothing saved means setup was never completed');
-    });
-
-    test('setSalaryDay persists across a fresh provider (app restart)',
-        () async {
-      SharedPreferences.setMockInitialValues({});
-      final first = PeriodProvider();
-      await first.init();
-      await first.setSalaryDay(25);
-
-      final second = PeriodProvider();
-      await second.init();
-      expect(second.salaryDay, 25);
-      expect(second.isSetupDone, isTrue);
-    });
-
-    test('a persisted salary day drives currentPeriod, not just the field',
-        () async {
-      final p = PeriodProvider.fixedForTest(
-        salaryDay: 25,
-        now: DateTime.parse('2026-10-24T12:00:00'),
+      expect(
+        p.isSetupDone,
+        isFalse,
+        reason: 'nothing saved means setup was never completed',
       );
-      await p.init();
-      expect(_r(p.currentPeriod), '2026-09-25|2026-10-24');
     });
+
+    test(
+      'setSalaryDay persists across a fresh provider (app restart)',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final first = PeriodProvider();
+        await first.init();
+        await first.setSalaryDay(25);
+
+        final second = PeriodProvider();
+        await second.init();
+        expect(second.salaryDay, 25);
+        expect(second.isSetupDone, isTrue);
+      },
+    );
+
+    test(
+      'a persisted salary day drives currentPeriod, not just the field',
+      () async {
+        final p = PeriodProvider.fixedForTest(
+          salaryDay: 25,
+          now: DateTime.parse('2026-10-24T12:00:00'),
+        );
+        await p.init();
+        expect(_r(p.currentPeriod), '2026-09-25|2026-10-24');
+      },
+    );
 
     // Budget alerts read TransactionProvider.currentSalaryCycle, which used to
     // cache the day loaded at startup. Changing it in Settings left alerts on
@@ -110,10 +117,7 @@ void main() {
       await period.init();
       final transactions = TransactionProvider();
       await transactions.ready;
-      expect(
-        PeriodMath.dateOnly(transactions.currentSalaryCycle.start).day,
-        1,
-      );
+      expect(PeriodMath.dateOnly(transactions.currentSalaryCycle.start).day, 1);
 
       await period.setSalaryDay(25);
       await transactions.reloadSalaryDay();
@@ -126,33 +130,37 @@ void main() {
       transactions.dispose();
     });
 
-    test('setSalaryDay resets custom mode so the cycle rule applies again',
-        () async {
-      SharedPreferences.setMockInitialValues({});
-      final p = PeriodProvider();
-      await p.init();
-      p.setMode(
-        PeriodMode.custom,
-        custom: DateTimeRange(
-          start: DateTime(2026, 1, 1),
-          end: DateTime(2026, 1, 31),
-        ),
-      );
-      expect(p.mode, PeriodMode.custom);
+    test(
+      'setSalaryDay resets custom mode so the cycle rule applies again',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final p = PeriodProvider();
+        await p.init();
+        p.setMode(
+          PeriodMode.custom,
+          custom: DateTimeRange(
+            start: DateTime(2026, 1, 1),
+            end: DateTime(2026, 1, 31),
+          ),
+        );
+        expect(p.mode, PeriodMode.custom);
 
-      await p.setSalaryDay(10);
-      expect(p.mode, PeriodMode.oneMonth);
-      expect(p.customRange, isNull);
-    });
+        await p.setSalaryDay(10);
+        expect(p.mode, PeriodMode.oneMonth);
+        expect(p.customRange, isNull);
+      },
+    );
 
-    test('rejects an impossible salary day instead of normalising it',
-        () async {
-      SharedPreferences.setMockInitialValues({});
-      final p = PeriodProvider();
-      await p.init();
-      expect(() => p.setSalaryDay(0), throwsA(isA<AssertionError>()));
-      expect(() => p.setSalaryDay(32), throwsA(isA<AssertionError>()));
-    });
+    test(
+      'rejects an impossible salary day instead of normalising it',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final p = PeriodProvider();
+        await p.init();
+        expect(() => p.setSalaryDay(0), throwsA(isA<AssertionError>()));
+        expect(() => p.setSalaryDay(32), throwsA(isA<AssertionError>()));
+      },
+    );
   });
 
   group('R9 — the release-gate D1..D5 matrix (salary day 25 and 31)', () {
@@ -202,14 +210,21 @@ void main() {
         salaryDay: 25,
         now: DateTime.parse('2026-10-20'),
       );
-      expect(PeriodMath.containsLocalDate(range, DateTime(2026, 9, 25)), isTrue,
-          reason: 'the cycle start day belongs to the cycle');
       expect(
-          PeriodMath.containsLocalDate(range, DateTime(2026, 10, 24)), isTrue,
-          reason: 'the cycle end day belongs to the cycle');
+        PeriodMath.containsLocalDate(range, DateTime(2026, 9, 25)),
+        isTrue,
+        reason: 'the cycle start day belongs to the cycle',
+      );
       expect(
-          PeriodMath.containsLocalDate(range, DateTime(2026, 10, 25)), isFalse,
-          reason: 'the day after the cycle end must not count');
+        PeriodMath.containsLocalDate(range, DateTime(2026, 10, 24)),
+        isTrue,
+        reason: 'the cycle end day belongs to the cycle',
+      );
+      expect(
+        PeriodMath.containsLocalDate(range, DateTime(2026, 10, 25)),
+        isFalse,
+        reason: 'the day after the cycle end must not count',
+      );
     });
   });
 
@@ -235,8 +250,9 @@ void main() {
   });
 
   group('R9 — Settings exposes the salary-day entry point', () {
-    testWidgets('Settings shows a Salary day row with the active day',
-        (tester) async {
+    testWidgets('Settings shows a Salary day row with the active day', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({'salary_day': 25});
       final period = await _pumpSettings(tester);
 
@@ -246,8 +262,9 @@ void main() {
       expect(find.text('Cycle starts on day 25'), findsOneWidget);
     });
 
-    testWidgets('tapping the row opens the prompt, which persists the choice',
-        (tester) async {
+    testWidgets('tapping the row opens the prompt, which persists the choice', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
       final period = await _pumpSettings(tester);
       expect(period.salaryDay, 1);
@@ -262,10 +279,9 @@ void main() {
       expect(find.text('When do you get your salary?'), findsOneWidget);
 
       // Pick day 25 in the 1..31 grid, then confirm.
-      await tester.tap(find.descendant(
-        of: find.byType(GridView),
-        matching: find.text('25'),
-      ));
+      await tester.tap(
+        find.descendant(of: find.byType(GridView), matching: find.text('25')),
+      );
       await tester.pump(const Duration(milliseconds: 200));
 
       await tester.tap(find.text('Set salary day'));
@@ -276,8 +292,11 @@ void main() {
       expect(period.isSetupDone, isTrue);
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('salary_day'), 25,
-          reason: 'the choice must survive an app restart');
+      expect(
+        prefs.getInt('salary_day'),
+        25,
+        reason: 'the choice must survive an app restart',
+      );
 
       // The row reflects the new value once the sheet closes.
       expect(find.text('Cycle starts on day 25'), findsOneWidget);

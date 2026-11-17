@@ -24,29 +24,18 @@ UpdateManifest _manifest({
   String sha256 = '',
   String cert = _cert,
   Uri? downloadUrl,
-}) =>
-    UpdateManifest(
-      schemaVersion: 1,
-      appId: _appId,
-      latest: const AppVersion(
-        major: 2,
-        minor: 0,
-        patch: 1,
-        buildNumber: 21,
-      ),
-      minimum: const AppVersion(
-        major: 2,
-        minor: 0,
-        patch: 0,
-        buildNumber: 0,
-      ),
-      downloadUrl: downloadUrl ??
-          Uri.parse('https://updates.example.com/releases/app.apk'),
-      releaseNotes: const ['Test release'],
-      sha256: sha256.isEmpty ? 'a' * 64 : sha256,
-      signingCertSha256: cert,
-      publishedAt: DateTime.utc(2026, 10, 21),
-    );
+}) => UpdateManifest(
+  schemaVersion: 1,
+  appId: _appId,
+  latest: const AppVersion(major: 2, minor: 0, patch: 1, buildNumber: 21),
+  minimum: const AppVersion(major: 2, minor: 0, patch: 0, buildNumber: 0),
+  downloadUrl:
+      downloadUrl ?? Uri.parse('https://updates.example.com/releases/app.apk'),
+  releaseNotes: const ['Test release'],
+  sha256: sha256.isEmpty ? 'a' * 64 : sha256,
+  signingCertSha256: cert,
+  publishedAt: DateTime.utc(2026, 10, 21),
+);
 
 String _manifestBody({
   String sha256 = '',
@@ -163,13 +152,12 @@ void main() {
     ManifestTransport? transport,
     _FakePlatform? platform,
     http.Client Function()? clientFactory,
-  }) =>
-      UpdateService(
-        config: _config,
-        transport: transport ?? _FakeTransport(_manifestBody()),
-        platform: platform ?? _FakePlatform(),
-        clientFactory: clientFactory ?? () => _BytesClient(const [1, 2, 3]),
-      );
+  }) => UpdateService(
+    config: _config,
+    transport: transport ?? _FakeTransport(_manifestBody()),
+    platform: platform ?? _FakePlatform(),
+    clientFactory: clientFactory ?? () => _BytesClient(const [1, 2, 3]),
+  );
 
   group('checkForUpdates', () {
     test('reports up to date', () async {
@@ -189,46 +177,50 @@ void main() {
     });
 
     test('reports a required update below the minimum', () async {
-      final result = await serviceWith(
-        transport: _FakeTransport(_manifestBody(minimum: '2.0.0')),
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.8.0', buildNumber: 41)!,
-      );
+      final result =
+          await serviceWith(
+            transport: _FakeTransport(_manifestBody(minimum: '2.0.0')),
+          ).checkForUpdates(
+            installed: AppVersion.tryParse('1.8.0', buildNumber: 41)!,
+          );
       expect(result.status, UpdateCheckStatus.required);
     });
 
     test('rejects a manifest that claims an untrusted certificate', () async {
-      final result = await serviceWith(
-        transport: _FakeTransport(_manifestBody(cert: 'b' * 64)),
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
-      );
+      final result =
+          await serviceWith(
+            transport: _FakeTransport(_manifestBody(cert: 'b' * 64)),
+          ).checkForUpdates(
+            installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
+          );
       expect(result.status, UpdateCheckStatus.invalidManifest);
       expect(result.message, contains('unexpected certificate'));
     });
 
     test('maps a malformed manifest to invalidManifest', () async {
-      final result = await serviceWith(
-        transport: _FakeTransport('{"schemaVersion": 99}'),
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
-      );
+      final result =
+          await serviceWith(transport: _FakeTransport('{"schemaVersion": 99}'))
+              .checkForUpdates(
+                installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
+              );
       expect(result.status, UpdateCheckStatus.invalidManifest);
     });
 
     test('maps timeouts and client failures to networkError', () async {
-      final timeout = await serviceWith(
-        transport: _FakeTransport.error(TimeoutException('slow')),
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
-      );
+      final timeout =
+          await serviceWith(
+            transport: _FakeTransport.error(TimeoutException('slow')),
+          ).checkForUpdates(
+            installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
+          );
       expect(timeout.status, UpdateCheckStatus.networkError);
 
-      final offline = await serviceWith(
-        transport: _FakeTransport.error(http.ClientException('offline')),
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
-      );
+      final offline =
+          await serviceWith(
+            transport: _FakeTransport.error(http.ClientException('offline')),
+          ).checkForUpdates(
+            installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
+          );
       expect(offline.status, UpdateCheckStatus.networkError);
       expect(offline.message, contains('connection'));
     });
@@ -243,12 +235,13 @@ void main() {
       // A transport that counts calls: asserting only a local flag could never
       // fail because nothing set it.
       final transport = _RecordingTransport();
-      final result = await UpdateService(
-        config: unconfigured,
-        transport: transport,
-      ).checkForUpdates(
-        installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
-      );
+      final result =
+          await UpdateService(
+            config: unconfigured,
+            transport: transport,
+          ).checkForUpdates(
+            installed: AppVersion.tryParse('1.0.0', buildNumber: 1)!,
+          );
       expect(transport.calls, 0);
       expect(result.status, UpdateCheckStatus.notConfigured);
     });
@@ -286,8 +279,11 @@ void main() {
           destinationDirectory: tempDir,
         ),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'hash_mismatch'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'hash_mismatch',
+          ),
         ),
       );
 
@@ -315,8 +311,11 @@ void main() {
           destinationDirectory: tempDir,
         ),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'signature_mismatch'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'signature_mismatch',
+          ),
         ),
       );
     });
@@ -340,8 +339,11 @@ void main() {
           destinationDirectory: tempDir,
         ),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'wrong_package'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'wrong_package',
+          ),
         ),
       );
     });
@@ -354,8 +356,11 @@ void main() {
           destinationDirectory: tempDir,
         ),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'untrusted_manifest'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'untrusted_manifest',
+          ),
         ),
       );
     });
@@ -368,8 +373,11 @@ void main() {
           destinationDirectory: tempDir,
         ),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'untrusted_url'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'untrusted_url',
+          ),
         ),
       );
     });
@@ -390,10 +398,7 @@ void main() {
       );
 
       final updates = Directory('${tempDir.path}/updates');
-      expect(
-        updates.existsSync() ? updates.listSync() : const [],
-        isEmpty,
-      );
+      expect(updates.existsSync() ? updates.listSync() : const [], isEmpty);
     });
 
     test('never deletes unrelated files in the cache directory', () async {
@@ -419,13 +424,13 @@ void main() {
       final service = serviceWith(clientFactory: () => _ErroringClient());
 
       await expectLater(
-        service.downloadAndVerify(
-          _manifest(),
-          destinationDirectory: tempDir,
-        ),
+        service.downloadAndVerify(_manifest(), destinationDirectory: tempDir),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'network'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'network',
+          ),
         ),
       );
 
@@ -442,13 +447,13 @@ void main() {
         clientFactory: () => _BytesClient(const [], statusCode: 503),
       );
       await expectLater(
-        service.downloadAndVerify(
-          _manifest(),
-          destinationDirectory: tempDir,
-        ),
+        service.downloadAndVerify(_manifest(), destinationDirectory: tempDir),
         throwsA(
-          isA<UpdateDownloadException>()
-              .having((e) => e.code, 'code', 'http_503'),
+          isA<UpdateDownloadException>().having(
+            (e) => e.code,
+            'code',
+            'http_503',
+          ),
         ),
       );
     });
@@ -464,8 +469,11 @@ void main() {
       await expectLater(
         service.install(apk),
         throwsA(
-          isA<UpdateInstallException>()
-              .having((e) => e.code, 'code', 'permission_required'),
+          isA<UpdateInstallException>().having(
+            (e) => e.code,
+            'code',
+            'permission_required',
+          ),
         ),
       );
       expect(platform.installCalled, isFalse);

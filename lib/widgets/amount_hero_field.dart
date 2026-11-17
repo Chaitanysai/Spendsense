@@ -103,10 +103,9 @@ class AmountHeroField extends StatelessWidget {
             cursorColor: AppColors.brandInk(context),
             decoration: InputDecoration(
               hintText: 'Enter amount',
-              hintStyle: AppText.body(context).copyWith(
-                fontSize: 15,
-                color: AppColors.textTertiary(context),
-              ),
+              hintStyle: AppText.body(
+                context,
+              ).copyWith(fontSize: 15, color: AppColors.textTertiary(context)),
               filled: true,
               fillColor: AppColors.surfaceColor(context),
               contentPadding: const EdgeInsets.symmetric(

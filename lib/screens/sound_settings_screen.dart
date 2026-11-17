@@ -55,7 +55,9 @@ class SoundSettingsScreen extends StatelessWidget {
                       onChanged: (value) async {
                         await sound?.setMasterEnabled(value);
                         SoundScope.playOn(
-                            sound, SoundEventType.selectionChanged);
+                          sound,
+                          SoundEventType.selectionChanged,
+                        );
                       },
                     ),
                     _divider(context),
@@ -67,7 +69,9 @@ class SoundSettingsScreen extends StatelessWidget {
                       onChanged: (value) async {
                         await sound?.setUiEnabled(value);
                         SoundScope.playOn(
-                            sound, SoundEventType.selectionChanged);
+                          sound,
+                          SoundEventType.selectionChanged,
+                        );
                       },
                     ),
                     _divider(context),
@@ -79,7 +83,9 @@ class SoundSettingsScreen extends StatelessWidget {
                       onChanged: (value) async {
                         await sound?.setTransactionsEnabled(value);
                         SoundScope.playOn(
-                            sound, SoundEventType.selectionChanged);
+                          sound,
+                          SoundEventType.selectionChanged,
+                        );
                       },
                     ),
                   ],
@@ -90,18 +96,19 @@ class SoundSettingsScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 18, color: AppColors.textTertiary(context)),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: AppColors.textTertiary(context),
+                    ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
                         'Cues are short and quietly mastered, and they follow '
                         'your device volume. Interaction sounds can be turned '
                         'off on their own without affecting transaction cues.',
-                        style: AppText.body(context).copyWith(
-                          fontSize: 12.5,
-                          height: 1.5,
-                        ),
+                        style: AppText.body(context)
+                            .copyWith(fontSize: 12.5, height: 1.5),
                       ),
                     ),
                   ],
@@ -114,11 +121,8 @@ class SoundSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _divider(BuildContext context) => Divider(
-        height: 1,
-        indent: 60,
-        color: AppColors.border(context),
-      );
+  Widget _divider(BuildContext context) =>
+      Divider(height: 1, indent: 60, color: AppColors.border(context));
 }
 
 class _SoundSwitch extends StatelessWidget {
@@ -158,14 +162,8 @@ class _SoundSwitch extends StatelessWidget {
           ),
           child: Icon(icon, size: 19, color: AppColors.brand),
         ),
-        title: Text(
-          title,
-          style: AppText.bodyStrong(context),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: AppText.bodySmall(context),
-        ),
+        title: Text(title, style: AppText.bodyStrong(context)),
+        subtitle: Text(subtitle, style: AppText.bodySmall(context)),
         value: value,
         onChanged: onChanged,
       ),

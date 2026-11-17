@@ -34,42 +34,47 @@ import 'package:spendsense/services/ledger_encryption_service.dart';
 /// Long enough that BOTH the encrypt path (measured on the plaintext) and
 /// the decrypt path (measured on the ciphertext) clear the plugin's
 /// default 2000-byte dispatch threshold.
-final Uint8List _bigPayload =
-    utf8.encode('{"schemaVersion":2,"currency":"INR","amountMinor":123456,'
-        '"id":"device-1","pad":"${'x' * 2400}"}');
+final Uint8List _bigPayload = utf8.encode(
+  '{"schemaVersion":2,"currency":"INR","amountMinor":123456,'
+  '"id":"device-1","pad":"${'x' * 2400}"}',
+);
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('FlutterAesGcm uses the OS path and cross-decrypts with Dart',
-      (tester) async {
+  testWidgets('FlutterAesGcm uses the OS path and cross-decrypts with Dart', (
+    tester,
+  ) async {
     expect(
       FlutterCipher.defaultChannelPolicy.matches(length: _bigPayload.length),
       isTrue,
-      reason: 'payload must clear the plugin dispatch threshold, or this '
+      reason:
+          'payload must clear the plugin dispatch threshold, or this '
           'test silently exercises only the Dart fallback',
     );
 
     final aad = utf8.encode(
-        jsonEncode({'schemaVersion': 2, 'algorithm': 'AES-256-GCM'}));
+      jsonEncode({'schemaVersion': 2, 'algorithm': 'AES-256-GCM'}),
+    );
     final flutter = FlutterAesGcm.with256bits();
     final dart = AesGcm.with256bits();
     final key = await dart.newSecretKey();
     final keyBytes = Uint8List.fromList(await key.extractBytes());
 
     Map<String, dynamic> envelope(SecretBox box) => {
-          'schemaVersion': 2,
-          'algorithm': 'AES-256-GCM',
-          'nonce': base64UrlEncode(box.nonce),
-          'ciphertext': base64UrlEncode(box.cipherText),
-          'mac': base64UrlEncode(box.mac.bytes),
-        };
+      'schemaVersion': 2,
+      'algorithm': 'AES-256-GCM',
+      'nonce': base64UrlEncode(box.nonce),
+      'ciphertext': base64UrlEncode(box.cipherText),
+      'mac': base64UrlEncode(box.mac.bytes),
+    };
 
     // OS crypto encrypts → Dart decrypts.
-    final osBox =
-        await flutter.encrypt(_bigPayload, secretKey: key, aad: aad);
+    final osBox = await flutter.encrypt(_bigPayload, secretKey: key, aad: aad);
     expect(
-      FlutterCipher.defaultChannelPolicy.matches(length: osBox.cipherText.length),
+      FlutterCipher.defaultChannelPolicy.matches(
+        length: osBox.cipherText.length,
+      ),
       isTrue,
       reason: 'decrypt-side dispatch must also clear the threshold',
     );
@@ -81,8 +86,7 @@ void main() {
     expect(dartClear, utf8.decode(_bigPayload));
 
     // Dart encrypts → OS crypto decrypts.
-    final dartBox =
-        await dart.encrypt(_bigPayload, secretKey: key, aad: aad);
+    final dartBox = await dart.encrypt(_bigPayload, secretKey: key, aad: aad);
     final osClear = await LedgerEncryptionService.decryptWithKeyBytes(
       jsonEncode(envelope(dartBox)),
       keyBytes,
@@ -105,20 +109,26 @@ void main() {
     );
   });
 
-  testWidgets('LedgerEncryptionService round-trips through the device key store',
-      (tester) async {
-    final first = LedgerEncryptionService();
-    await first.createKeyIfMissing();
+  testWidgets(
+    'LedgerEncryptionService round-trips through the device key store',
+    (tester) async {
+      final first = LedgerEncryptionService();
+      await first.createKeyIfMissing();
 
-    const payload = '{"schemaVersion":2,"amountMinor":9900,"id":"persist-1"}';
-    final envelope = await first.encryptText(payload, recordId: 'persist-1');
-    expect(await first.decryptText(envelope, expectedRecordId: 'persist-1'),
-        payload);
+      const payload = '{"schemaVersion":2,"amountMinor":9900,"id":"persist-1"}';
+      final envelope = await first.encryptText(payload, recordId: 'persist-1');
+      expect(
+        await first.decryptText(envelope, expectedRecordId: 'persist-1'),
+        payload,
+      );
 
-    // A brand-new instance resolves the same stored key and reads the same
-    // envelope — the restart-persistence shape.
-    final second = LedgerEncryptionService();
-    expect(await second.decryptText(envelope, expectedRecordId: 'persist-1'),
-        payload);
-  });
+      // A brand-new instance resolves the same stored key and reads the same
+      // envelope — the restart-persistence shape.
+      final second = LedgerEncryptionService();
+      expect(
+        await second.decryptText(envelope, expectedRecordId: 'persist-1'),
+        payload,
+      );
+    },
+  );
 }

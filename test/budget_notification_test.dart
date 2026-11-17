@@ -19,9 +19,8 @@ class _FakeAndroidNotifications extends AndroidFlutterLocalNotificationsPlugin {
     AndroidInitializationSettings initializationSettings, {
     DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
     DidReceiveBackgroundNotificationResponseCallback?
-        onDidReceiveBackgroundNotificationResponse,
-  }) async =>
-      true;
+    onDidReceiveBackgroundNotificationResponse,
+  }) async => true;
 
   @override
   Future<bool?> requestNotificationsPermission() async => true;
@@ -71,25 +70,31 @@ void main() {
     FlutterLocalNotificationsPlatform.instance = _FakeAndroidNotifications();
   });
 
-  test('spending is measured on the salary cycle, not the calendar month',
-      () async {
-    final provider = await _provider(salaryDay: 15, budgetMinor: 10000);
-    final cycle = provider.currentSalaryCycle;
+  test(
+    'spending is measured on the salary cycle, not the calendar month',
+    () async {
+      final provider = await _provider(salaryDay: 15, budgetMinor: 10000);
+      final cycle = provider.currentSalaryCycle;
 
-    // 60% inside the cycle, 20% just before the cycle started. A calendar
-    // month sum would cross the 80% warning threshold; the salary cycle must
-    // not.
-    provider.debugSeed([
-      _tx('in-cycle', 6000, cycle.start.add(const Duration(days: 1))),
-      _tx('before-cycle', 2000, cycle.start.subtract(const Duration(days: 5))),
-    ]);
+      // 60% inside the cycle, 20% just before the cycle started. A calendar
+      // month sum would cross the 80% warning threshold; the salary cycle must
+      // not.
+      provider.debugSeed([
+        _tx('in-cycle', 6000, cycle.start.add(const Duration(days: 1))),
+        _tx(
+          'before-cycle',
+          2000,
+          cycle.start.subtract(const Duration(days: 5)),
+        ),
+      ]);
 
-    await BudgetMonitorService().checkBudgetAlert(provider);
+      await BudgetMonitorService().checkBudgetAlert(provider);
 
-    expect(shown, hasLength(1));
-    expect(shown.single, contains('Budget Check-in'));
-    expect(shown.single, isNot(contains('Budget Warning')));
-  });
+      expect(shown, hasLength(1));
+      expect(shown.single, contains('Budget Check-in'));
+      expect(shown.single, isNot(contains('Budget Warning')));
+    },
+  );
 
   test('80% of the cycle budget raises the warning', () async {
     final provider = await _provider(salaryDay: 1, budgetMinor: 10000);
@@ -130,7 +135,9 @@ void main() {
 
   group('user-chosen warning thresholds', () {
     Future<TransactionProvider> seeded(
-        int spent, List<String>? thresholds) async {
+      int spent,
+      List<String>? thresholds,
+    ) async {
       SharedPreferences.setMockInitialValues({
         'salary_day': 1,
         if (thresholds != null) 'budget_alert_thresholds': thresholds,
@@ -146,20 +153,23 @@ void main() {
     }
 
     test('only the 100% level enabled: 85% stays silent', () async {
-      await BudgetMonitorService()
-          .checkBudgetAlert(await seeded(8500, ['100']));
+      await BudgetMonitorService().checkBudgetAlert(
+        await seeded(8500, ['100']),
+      );
       expect(shown, isEmpty);
     });
 
     test('the 50% level enabled: 55% raises a check-in', () async {
-      await BudgetMonitorService()
-          .checkBudgetAlert(await seeded(5500, ['50', '100']));
+      await BudgetMonitorService().checkBudgetAlert(
+        await seeded(5500, ['50', '100']),
+      );
       expect(shown.single, contains('Budget Check-in'));
     });
 
     test('the highest crossed enabled level wins', () async {
-      await BudgetMonitorService()
-          .checkBudgetAlert(await seeded(8000, ['50', '80', '100']));
+      await BudgetMonitorService().checkBudgetAlert(
+        await seeded(8000, ['50', '80', '100']),
+      );
       expect(shown.single, contains('Budget Warning'));
     });
 

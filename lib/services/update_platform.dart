@@ -54,8 +54,9 @@ class MethodChannelUpdatePlatform implements UpdatePlatform {
 
   @override
   Future<bool> canRequestPackageInstalls() async {
-    final result =
-        await _channel.invokeMethod<bool>('canRequestPackageInstalls');
+    final result = await _channel.invokeMethod<bool>(
+      'canRequestPackageInstalls',
+    );
     return result ?? false;
   }
 
@@ -71,17 +72,14 @@ class MethodChannelUpdatePlatform implements UpdatePlatform {
       <String, dynamic>{'path': apkPath},
     );
     if (result != 'started') {
-      throw UpdateInstallException(
-        result ?? 'unknown',
-        switch (result) {
-          'permission_required' =>
-            'Install permission is required to apply this update.',
-          'missing_file' => 'The downloaded update file is missing.',
-          'untrusted_path' =>
-            'The update file is outside the app-controlled cache directory.',
-          _ => 'The Android installer could not be opened.',
-        },
-      );
+      throw UpdateInstallException(result ?? 'unknown', switch (result) {
+        'permission_required' =>
+          'Install permission is required to apply this update.',
+        'missing_file' => 'The downloaded update file is missing.',
+        'untrusted_path' =>
+          'The update file is outside the app-controlled cache directory.',
+        _ => 'The Android installer could not be opened.',
+      });
     }
   }
 }

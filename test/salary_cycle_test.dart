@@ -51,15 +51,18 @@ void main() {
     for (final day in [28, 29, 30]) {
       test('salary day $day: before it, the cycle began last month', () {
         expect(
-            _r(_cycle(day, '2026-10-01')), '2026-09-$day|2026-10-${day - 1}');
+          _r(_cycle(day, '2026-10-01')),
+          '2026-09-$day|2026-10-${day - 1}',
+        );
       });
 
       test('salary day $day: on it, a new cycle begins', () {
         final end = PeriodMath.addDays(DateTime(2026, 11, day), -1);
         expect(
-            _r(_cycle(day, '2026-10-${day.toString().padLeft(2, '0')}')),
-            '2026-10-${day.toString().padLeft(2, '0')}|'
-            '${end.toIso8601String().substring(0, 10)}');
+          _r(_cycle(day, '2026-10-${day.toString().padLeft(2, '0')}')),
+          '2026-10-${day.toString().padLeft(2, '0')}|'
+          '${end.toIso8601String().substring(0, 10)}',
+        );
       });
     }
 
@@ -125,27 +128,40 @@ void main() {
       final r = _cycle(15, '2026-10-20'); // 2026-10-15 .. 2026-11-14
       expect(_r(r), '2026-10-15|2026-11-14');
       expect(
-          PeriodMath.containsLocalDate(r, DateTime(2026, 10, 14, 23, 59, 59)),
-          isFalse);
-      expect(PeriodMath.containsLocalDate(r, DateTime(2026, 10, 15, 0, 0, 0)),
-          isTrue);
+        PeriodMath.containsLocalDate(r, DateTime(2026, 10, 14, 23, 59, 59)),
+        isFalse,
+      );
       expect(
-          PeriodMath.containsLocalDate(r, DateTime(2026, 11, 14, 23, 59, 59)),
-          isTrue);
-      expect(PeriodMath.containsLocalDate(r, DateTime(2026, 11, 15, 0, 0, 0)),
-          isFalse);
+        PeriodMath.containsLocalDate(r, DateTime(2026, 10, 15, 0, 0, 0)),
+        isTrue,
+      );
+      expect(
+        PeriodMath.containsLocalDate(r, DateTime(2026, 11, 14, 23, 59, 59)),
+        isTrue,
+      );
+      expect(
+        PeriodMath.containsLocalDate(r, DateTime(2026, 11, 15, 0, 0, 0)),
+        isFalse,
+      );
     });
 
-    test('a transaction timestamped at the last second of the cycle counts',
-        () {
-      final r = _cycle(15, '2026-10-20');
-      final lastInstant = r.end; // 2359:59 on the end day
-      expect(PeriodMath.containsLocalDate(r, lastInstant), isTrue);
-      final firstInstantOfNext =
-          DateTime(r.end.year, r.end.month, r.end.day, 23, 59, 59)
-              .add(const Duration(seconds: 1));
-      expect(PeriodMath.containsLocalDate(r, firstInstantOfNext), isFalse);
-    });
+    test(
+      'a transaction timestamped at the last second of the cycle counts',
+      () {
+        final r = _cycle(15, '2026-10-20');
+        final lastInstant = r.end; // 2359:59 on the end day
+        expect(PeriodMath.containsLocalDate(r, lastInstant), isTrue);
+        final firstInstantOfNext = DateTime(
+          r.end.year,
+          r.end.month,
+          r.end.day,
+          23,
+          59,
+          59,
+        ).add(const Duration(seconds: 1));
+        expect(PeriodMath.containsLocalDate(r, firstInstantOfNext), isFalse);
+      },
+    );
 
     test('a UTC instant is compared by its LOCAL calendar day', () {
       final r = _cycle(15, '2026-10-20'); // 2026-10-15 .. 2026-11-14
@@ -156,8 +172,7 @@ void main() {
 
   group('no gaps and no overlaps across a long range', () {
     for (final salaryDay in [1, 15, 28, 29, 30, 31]) {
-      test('salary day $salaryDay, every day from 2025-01-01 to 2030-12-31',
-          () {
+      test('salary day $salaryDay, every day from 2025-01-01 to 2030-12-31', () {
         var day = DateTime(2025, 1, 1);
         final lastDay = DateTime(2030, 12, 31);
         var r = PeriodMath.salaryCycle(salaryDay: salaryDay, now: day);
@@ -181,9 +196,14 @@ void main() {
           // Contiguity: the next cycle starts the very next day (no gap),
           // and does not contain the previous cycle's last day (no overlap).
           final next = PeriodMath.salaryCycle(
-              salaryDay: salaryDay, now: PeriodMath.addDays(r.end, 1));
-          expect(next.start, PeriodMath.addDays(r.end, 1),
-              reason: 'salary day $salaryDay: gap or overlap after ${_r(r)}');
+            salaryDay: salaryDay,
+            now: PeriodMath.addDays(r.end, 1),
+          );
+          expect(
+            next.start,
+            PeriodMath.addDays(r.end, 1),
+            reason: 'salary day $salaryDay: gap or overlap after ${_r(r)}',
+          );
           expect(PeriodMath.containsLocalDate(next, r.end), isFalse);
 
           r = next;
@@ -242,29 +262,41 @@ void main() {
       );
       expect(_r(p.previousPeriod!), '2026-08-25|2026-09-24');
       expect(p.previousPeriod!.end.isBefore(p.currentPeriod.start), isTrue);
-      expect(PeriodMath.addDays(p.previousPeriod!.end, 1),
-          PeriodMath.dateOnly(p.currentPeriod.start));
+      expect(
+        PeriodMath.addDays(p.previousPeriod!.end, 1),
+        PeriodMath.dateOnly(p.currentPeriod.start),
+      );
     });
 
-    test('salary day 31: previous cycle picks up the clamped January start',
-        () {
-      final p = PeriodProvider.fixedForTest(
-        salaryDay: 31,
-        now: DateTime(2027, 3, 10),
-      );
-      expect(_r(p.currentPeriod), '2027-02-28|2027-03-30');
-      expect(_r(p.previousPeriod!), '2027-01-31|2027-02-27');
-    });
+    test(
+      'salary day 31: previous cycle picks up the clamped January start',
+      () {
+        final p = PeriodProvider.fixedForTest(
+          salaryDay: 31,
+          now: DateTime(2027, 3, 10),
+        );
+        expect(_r(p.currentPeriod), '2027-02-28|2027-03-30');
+        expect(_r(p.previousPeriod!), '2027-01-31|2027-02-27');
+      },
+    );
 
     test('nextSalaryDate honours the salary day, clamped', () {
-      expect(PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 20)),
-          DateTime(2026, 10, 25));
-      expect(PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 25)),
-          DateTime(2026, 10, 25));
-      expect(PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 26)),
-          DateTime(2026, 11, 25));
-      expect(PeriodMath.nextSalaryDate(31, now: DateTime(2027, 2, 27)),
-          DateTime(2027, 2, 28));
+      expect(
+        PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 20)),
+        DateTime(2026, 10, 25),
+      );
+      expect(
+        PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 25)),
+        DateTime(2026, 10, 25),
+      );
+      expect(
+        PeriodMath.nextSalaryDate(25, now: DateTime(2026, 10, 26)),
+        DateTime(2026, 11, 25),
+      );
+      expect(
+        PeriodMath.nextSalaryDate(31, now: DateTime(2027, 2, 27)),
+        DateTime(2027, 2, 28),
+      );
     });
 
     test('an out-of-range salary day is rejected rather than normalised', () {
@@ -275,10 +307,14 @@ void main() {
 
   group('calendar month is a separate, explicitly named period', () {
     test('calendar month is the 1st through the last day', () {
-      expect(_r(PeriodMath.calendarMonth(DateTime(2026, 10, 12))),
-          '2026-10-01|2026-10-31');
-      expect(_r(PeriodMath.calendarMonth(DateTime(2027, 2, 10))),
-          '2027-02-01|2027-02-28');
+      expect(
+        _r(PeriodMath.calendarMonth(DateTime(2026, 10, 12))),
+        '2026-10-01|2026-10-31',
+      );
+      expect(
+        _r(PeriodMath.calendarMonth(DateTime(2027, 2, 10))),
+        '2027-02-01|2027-02-28',
+      );
     });
 
     test('with salary day 25 the calendar month differs from the cycle', () {
