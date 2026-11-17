@@ -415,20 +415,35 @@ class TransactionProvider with ChangeNotifier {
   int totalExpensesForPeriod(DateTimeRange? period) =>
       expensesInPeriod(period).fold<int>(0, (sum, t) => sum + t.amountMinor);
 
+  /// The exact rows that count as spend for [period].
+  ///
+  /// This is the single source of truth for every Home figure: the spend hero,
+  /// the Expenses KPI, the category breakdown, its per-category transaction
+  /// counts and the budget card all derive from this iterable. It starts from
+  /// [expensesInPeriod] (expense-only, non-excluded, selected window), removes
+  /// Transfer-category money movement, and collapses rows that share a sync
+  /// identity so a repeated SMS import cannot be counted twice. Legacy rows
+  /// without a `syncId` fall back to their local id.
+  Iterable<TransactionModel> spendTransactionsForPeriod(
+    DateTimeRange? period,
+  ) {
+    final seen = <String>{};
+    // Materialise the de-duplicated rows once. A lazy `where` would capture
+    // `seen` in a shared closure and return nothing on a second iteration.
+    return expensesInPeriod(period).where((transaction) {
+      if (transaction.isTransferCategory) return false;
+      final syncId = transaction.syncId.trim();
+      final identity = syncId.isNotEmpty ? 'sync:$syncId' : 'id:${transaction.id}';
+      return seen.add(identity);
+    }).toList();
+  }
+
   /// Spend for [period]: expense-only, non-excluded, non-transfer rows.
   ///
-  /// This is the single definition of "spend" for a period. The home hero, the
-  /// Expenses overview KPI, the monthly budget card, the Budgets screen, the
-  /// budget notifications and the instruments screen all derive from it, so
-  /// they agree by construction. It reuses [expensesInPeriod] so the selected
-  /// window and exclusion rules stay identical; only Transfer-category money
-  /// movement is removed, and income can never enter because the source is
-  /// expense-only.
-  int spendAmountForPeriod(DateTimeRange? period) {
-    return expensesInPeriod(period)
-        .where((t) => !t.isTransferCategory)
-        .fold<int>(0, (sum, t) => sum + t.amountMinor);
-  }
+  /// A thin sum over [spendTransactionsForPeriod], never a second filter.
+  int spendAmountForPeriod(DateTimeRange? period) =>
+      spendTransactionsForPeriod(period)
+          .fold<int>(0, (sum, t) => sum + t.amountMinor);
 
   int get totalExpenses => totalExpensesForPeriod(null);
 
@@ -624,8 +639,10 @@ class TransactionProvider with ChangeNotifier {
       spendAmountForPeriod(period);
 
   /// Spending grouped by instrument inside [period], using the *same* rows and
-  /// the *same* filter as [spendingTotalForPeriod]. Summing every `spent` in
-  /// the returned map therefore equals that total exactly.
+  /// the *same* filter as [spendingTotalForPeriod] (including sync-identity
+  /// de-duplication). Summing every `spent` in the returned map therefore
+  /// equals that total exactly, and summing every `count` gives the number of
+  /// eligible transactions.
   ///
   /// Income rows are ignored entirely: a refund credited to a card is not
   /// spending, and counting it would break the reconciliation invariant.
@@ -636,8 +653,7 @@ class TransactionProvider with ChangeNotifier {
     String? Function(TransactionModel transaction) keyOf,
   ) {
     final stats = <String, InstrumentStat>{};
-    for (final t in expensesInPeriod(period)) {
-      if (t.isTransferCategory) continue;
+    for (final t in spendTransactionsForPeriod(period)) {
       final key = _instrumentKey(keyOf(t));
       final stat = stats.putIfAbsent(key, InstrumentStat.new);
       stat.count++;

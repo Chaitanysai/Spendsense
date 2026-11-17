@@ -22,6 +22,10 @@ class CategorySpendingBars extends StatefulWidget {
   /// Category name → spending in paise.
   final Map<String, int> totalsMinor;
 
+  /// Category name → eligible transaction count. Optional; a null or zero
+  /// count simply omits the count label.
+  final Map<String, int>? counts;
+
   /// How many rows to draw before the remainder is summarised.
   final int maxRows;
 
@@ -42,6 +46,7 @@ class CategorySpendingBars extends StatefulWidget {
   const CategorySpendingBars({
     super.key,
     required this.totalsMinor,
+    this.counts,
     this.maxRows = 6,
     this.selectedCategory,
     this.onSelect,
@@ -115,6 +120,7 @@ class _CategorySpendingBarsState extends State<CategorySpendingBars>
           _CategoryBarRow(
             category: shown[i].key,
             amountMinor: shown[i].value,
+            count: widget.counts?[shown[i].key] ?? 0,
             share: shown[i].value / total,
             delay: Duration(milliseconds: 40 * i),
             selected: shown[i].key == widget.selectedCategory,
@@ -278,6 +284,7 @@ class _RevealClipper extends CustomClipper<Rect> {
 class _CategoryBarRow extends StatelessWidget {
   final String category;
   final int amountMinor;
+  final int count;
   final double share;
   final Duration delay;
   final bool selected;
@@ -286,6 +293,7 @@ class _CategoryBarRow extends StatelessWidget {
   const _CategoryBarRow({
     required this.category,
     required this.amountMinor,
+    required this.count,
     required this.share,
     required this.delay,
     required this.selected,
@@ -327,15 +335,31 @@ class _CategoryBarRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 flex: 3,
-                child: Text(
-                  category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.label(context).copyWith(
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: AppColors.textPrimary(context),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.label(context).copyWith(
+                        fontSize: 12.5,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                        color: AppColors.textPrimary(context),
+                      ),
+                    ),
+                    if (count > 0)
+                      Text(
+                        count == 1 ? '1 transaction' : '$count transactions',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.caption(context).copyWith(
+                          fontSize: 10.5,
+                          color: AppColors.textTertiary(context),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),

@@ -64,14 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // marker for the caches below.
   Object? _sortTxSource;
   List<TransactionModel>? _sortedTracked;
-  Object? _sortExSource;
-  List<TransactionModel>? _sortedExpenses;
 
   Object? _filterLedger;
   int? _filterStartMicros;
   int? _filterEndMicros;
   List<TransactionModel>? _filteredTracked;
-  List<TransactionModel>? _filteredExpenses;
 
   int _derivationComputations = 0;
 
@@ -93,27 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  List<TransactionModel> _sortedExpensesFor(TransactionProvider provider) {
-    final source = provider.trackedExpenses;
-    final cached = _sortedExpenses;
-    if (cached != null && identical(_sortExSource, source)) return cached;
-    _derivationComputations++;
-    _sortExSource = source;
-    return _sortedExpenses = source.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
   List<TransactionModel> _cycleListFor(
     TransactionProvider provider,
     PeriodProvider period, {
     required List<TransactionModel> sorted,
-    required bool expenses,
   }) {
     final current = period.currentPeriod;
     final startMicros = current.start.microsecondsSinceEpoch;
     final endMicros = current.end.microsecondsSinceEpoch;
     final ledger = provider.trackedTransactions;
-    final cached = expenses ? _filteredExpenses : _filteredTracked;
+    final cached = _filteredTracked;
     if (cached != null &&
         identical(_filterLedger, ledger) &&
         _filterStartMicros == startMicros &&
@@ -124,13 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _filterLedger = ledger;
     _filterStartMicros = startMicros;
     _filterEndMicros = endMicros;
-    final filtered = sorted
+    return _filteredTracked = sorted
         .where((t) => PeriodMath.containsLocalDate(current, t.date))
         .toList();
-    if (expenses) {
-      return _filteredExpenses = filtered;
-    }
-    return _filteredTracked = filtered;
   }
 
   @override
@@ -164,25 +146,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final period = context.watch<PeriodProvider>();
     final showHistory = prefs?.includeHistory ?? false;
 
-    // Home is a current-cycle dashboard. When history is off, every card below
-    // the hero (category mix, recent list) is filtered to the active salary
-    // cycle, so changing the cycle hides earlier transactions without deleting
-    // anything from the encrypted ledger.
-    // The sorts and the cycle filter are memoized per ledger version (see
+    // Home is a current-cycle dashboard. The history preference only affects
+    // the recent-transaction list; the spend hero, the budget card and the
+    // category breakdown always describe the selected period, from the
+    // provider's canonical spend rows, so they cannot disagree.
+    // The sort and cycle filter are memoized per ledger version (see
     // [_sortedTrackedFor]); a rebuild without a data change reuses them.
     final allTransactions = _sortedTrackedFor(provider);
-    final allExpenses = _sortedExpensesFor(provider);
     final trackedTransactions = showHistory
         ? allTransactions
-        : _cycleListFor(
-            provider,
-            period,
-            sorted: allTransactions,
-            expenses: false,
-          );
-    final trackedExpenses = showHistory
-        ? allExpenses
-        : _cycleListFor(provider, period, sorted: allExpenses, expenses: true);
+        : _cycleListFor(provider, period, sorted: allTransactions);
     // Clears the floating navigation bar *and* the Add button stacked above
     // it, using the bar's real height rather than a fixed guess.
     final scrollBottomInset = AppSpacing.tabBottomInset(context);
@@ -235,8 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             context,
                             id,
                             provider,
+                            period,
                             trackedTransactions,
-                            trackedExpenses,
                           ).map(
                             (widget) => PageEntrance(
                               index: sectionIndex + 1,
@@ -393,8 +366,8 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     String id,
     TransactionProvider provider,
+    PeriodProvider period,
     List<TransactionModel> trackedTransactions,
-    List<TransactionModel> trackedExpenses,
   ) {
     switch (id) {
       case DashboardSection.budget:
@@ -412,10 +385,19 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.categories:
-        final totals = <String, int>{};
-        for (final t in trackedExpenses) {
-          totals[t.category] = (totals[t.category] ?? 0) + t.amountMinor;
-        }
+        // The same canonical rows the hero sums. Category amounts and their
+        // transaction counts come from one stats map, so their sum equals the
+        // Spend Amount and their counts add up to the number of spend rows.
+        final byCategory = provider.spendingStatsForPeriod(
+          period.currentPeriod,
+          (t) => t.category,
+        );
+        final totals = <String, int>{
+          for (final entry in byCategory.entries) entry.key: entry.value.spent,
+        };
+        final counts = <String, int>{
+          for (final entry in byCategory.entries) entry.key: entry.value.count,
+        };
         final loading =
             provider.isLoadingCache || (provider.isSyncing && totals.isEmpty);
         return [
@@ -423,13 +405,18 @@ class _HomeScreenState extends State<HomeScreen> {
           if (loading)
             const CategoryBreakdownSkeleton()
           else
-            ContentReveal(child: CategoryBreakdownCard(totalsMinor: totals)),
+            ContentReveal(
+              child: CategoryBreakdownCard(
+                totalsMinor: totals,
+                counts: counts,
+              ),
+            ),
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];
       case DashboardSection.weekly:
         final loading =
             provider.isLoadingCache ||
-            (provider.isSyncing && trackedExpenses.isEmpty);
+            (provider.isSyncing && provider.trackedExpenses.isEmpty);
         return [
           const SectionHeader(title: 'Spending trend', large: true),
           if (loading)

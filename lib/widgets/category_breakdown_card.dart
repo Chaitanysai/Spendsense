@@ -21,12 +21,17 @@ class CategoryBreakdownCard extends StatefulWidget {
   /// Category name → spending in paise.
   final Map<String, int> totalsMinor;
 
+  /// Category name → number of eligible transactions. Optional so existing
+  /// callers that only have amounts keep working unchanged.
+  final Map<String, int>? counts;
+
   /// Rows shown before "Show all".
   final int collapsedRows;
 
   const CategoryBreakdownCard({
     super.key,
     required this.totalsMinor,
+    this.counts,
     this.collapsedRows = 5,
   });
 
@@ -133,6 +138,7 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
           const SizedBox(height: AppSpacing.md),
           CategorySpendingBars(
             totalsMinor: widget.totalsMinor,
+            counts: widget.counts,
             maxRows: _expanded ? count : widget.collapsedRows,
             selectedCategory: selected,
             // With one category the strip and its single row draw the same bar
