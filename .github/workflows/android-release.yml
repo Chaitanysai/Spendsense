@@ -86,6 +86,9 @@ jobs:
         uses: ./.github/actions/flutter-setup
         with:
           channel: 'stable'
+          # Pin the SDK the lockfile was resolved with. `stable` alone floats
+          # and can turn an unrelated release into a formatter/toolchain test.
+          flutter-version: '3.47.8'
 
       - name: Prepare Android SDK components
         # Deterministic provisioning: Gradle otherwise auto-invokes sdkmanager

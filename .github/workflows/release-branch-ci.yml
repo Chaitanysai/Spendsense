@@ -82,6 +82,76 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Repo-wide formatting gate: `dart format --set-exit-if-changed .` exactly as
+  # required, over every Dart file in the tree (lib, test, tool,
+  # integration_test) rather than a hand-picked subset.
+  #
+  # This is a separate job for two reasons. First, formatting is independent of
+  # analysis and tests, so a baseline failure cannot hide a real build result.
+  # Second, the repository currently carries a formatting baseline (see
+  # flutter-test-only.yml:88), and this job uploads the exact repair patch when
+  # the gate fails, so the baseline can be fixed without a local Flutter SDK.
+  #
+  # No secrets, no environment, no write permission.
+  format:
+    name: format
+    runs-on: ubuntu-24.04
+    needs: guard
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          channel: 'stable'
+          flutter-version: '3.47.8'
+
+      # The required gate. Deliberately no `flutter pub get`: `dart format`
+      # reads source files only, so a dependency-resolution failure must never
+      # be reported as a formatting failure.
+      - name: Check formatting (repo-wide)
+        id: format_check
+        run: dart format --set-exit-if-changed .
+
+      # `if: failure()` still runs after the gate fails. `dart format .` then
+      # writes the canonical output and the diff becomes the repair patch.
+      - name: Record formatting patch when the gate fails
+        if: failure()
+        run: |
+          set +e
+          dart format . > format-baseline.log 2>&1
+          # The `*.dart` pathspec is the guarantee, not the clean checkout: the
+          # uploaded patch can only ever touch Dart source, so it cannot carry a
+          # workflow, Gradle, manifest or asset change even if one appeared in
+          # the working tree for any reason.
+          git diff --binary -- '*.dart' > format-baseline.patch
+          {
+            echo "### Formatting baseline"
+            echo '```'
+            git diff --stat -- '*.dart'
+            echo '```'
+            if [ -f format-baseline.log ]; then
+              echo "Formatter output: $(wc -l < format-baseline.log) lines"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The patch contains source formatting only: `dart format` rewrites Dart
+      # files, and the pathspec above excludes every other path from the diff.
+      - name: Upload formatting patch
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: format-baseline-patch
+          path: format-baseline.patch
+          if-no-files-found: ignore
+          retention-days: 7
+
   security:
     name: security
     runs-on: ubuntu-24.04
@@ -214,3 +284,181 @@ jobs:
             exit 1
           fi
           echo "Executed ${executed} tests"
+
+  # Signed release-build verification.
+  #
+  # This is NOT an OTA publish. The APK is built with the real release key, its
+  # signing certificate is compared with the fingerprint the updater pins, and
+  # the artifact is then deleted. Nothing is uploaded, no manifest is written
+  # and nothing is deployed.
+  #
+  # It runs only on a `release/*` branch push. The `release` environment allows
+  # `main` and `release/*` only, so a pull-request ref could not read its
+  # secrets anyway; the job-level guard states that instead of relying on the
+  # environment to fail. The environment also requires a reviewer, so this job
+  # waits for deliberate approval before it can touch the keystore.
+  #
+  # `needs: build` means analysis and the full test suite already passed. The
+  # format gate deliberately does not block this job yet: the formatting
+  # baseline must be repaired first, and a signed build is still useful
+  # evidence while that happens.
+  release-build:
+    name: release-build
+    runs-on: ubuntu-24.04
+    needs: build
+    if: startsWith(github.ref, 'refs/heads/release/')
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          channel: 'stable'
+          flutter-version: '3.47.8'
+
+      - name: Prepare Android SDK components
+        # Same deterministic provisioning as android-release.yml: Gradle
+        # otherwise auto-invokes sdkmanager mid-build and swallows errors.
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Verify pubspec.lock was not rewritten
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Verify required signing secrets
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          missing=0
+          for var in SIGNING_KEY KEY_ALIAS KEY_PASSWORD STORE_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Required signing secret ${var} is missing or empty."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::All four signing secrets (SIGNING_KEY, KEY_ALIAS, KEY_PASSWORD, STORE_PASSWORD) must be configured before running this job."
+            exit 1
+          fi
+          echo "All required signing secrets are present."
+
+      - name: Prepare release keystore
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          set +x
+          printf '%s' "$SIGNING_KEY" | base64 --decode > android/app/upload-keystore.jks
+          chmod 600 android/app/upload-keystore.jks
+          if [ ! -s android/app/upload-keystore.jks ]; then
+            echo "::error::Decoded release keystore is empty or invalid."
+            exit 1
+          fi
+          echo "Release keystore prepared."
+
+      - name: Verify Firebase client config
+        run: |
+          # Tracked in Git, so this job needs no Firebase secret. Fail with an
+          # actionable message before Gradle does.
+          if [ ! -s android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json is missing. It is tracked in Git; restore it before building."
+            exit 1
+          fi
+          echo "Firebase client config present."
+
+      - name: Build release APK
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_PATH: upload-keystore.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+        run: |
+          # Compile the same update channel a published build would carry, so
+          # the verification build exercises the production code path. Absent
+          # the variable the build is a plain release build.
+          DEFINES=""
+          if [ -n "${OTA_BASE_URL:-}" ]; then
+            DEFINES="--dart-define=OTA_MANIFEST_URL=${OTA_BASE_URL%/}/manifest.json"
+            echo "Compiling update channel: ${OTA_BASE_URL%/}/manifest.json"
+          else
+            echo "::notice::OTA_BASE_URL is not set; this APK will have no update channel."
+          fi
+          flutter build apk --release $DEFINES
+
+      - name: Verify APK signature against the pinned certificate
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -s "$APK_PATH" ]; then
+            echo "::error::Release APK was not produced or is empty."
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$APK_PATH")
+          echo "APK size: $SIZE bytes"
+
+          BUILD_TOOLS_DIR="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* | sort -V | tail -n1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+
+          if ! "$APKSIGNER" verify --verbose "$APK_PATH"; then
+            echo "::error::APK signature verification failed."
+            exit 1
+          fi
+          "$APKSIGNER" verify --print-certs "$APK_PATH" > apk-certs.txt 2>&1
+          cat apk-certs.txt
+
+          # Fail closed: the APK must be signed by the same certificate the
+          # updater pins, never a new or debug key.
+          EXPECTED_CERT_SHA256="42c8f8765597ae0fd7c430346d1778d6f13557349577321cc8a1e798cb20d367"
+          ACTUAL_CERT_SHA256=$(grep -i "SHA-256 digest" apk-certs.txt | head -n 1 \
+            | sed -E 's/.*: *//' | tr -d '[:space:]:' | tr 'A-F' 'a-f')
+          if [ -z "$ACTUAL_CERT_SHA256" ]; then
+            echo "::error::APK signing certificate SHA-256 digest missing."
+            exit 1
+          fi
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK signing certificate does not match the pinned release certificate."
+            echo "Expected: $EXPECTED_CERT_SHA256"
+            echo "Actual:   $ACTUAL_CERT_SHA256"
+            exit 1
+          fi
+          echo "Pinned certificate match confirmed: $ACTUAL_CERT_SHA256"
+
+          {
+            echo "### Release build verification"
+            echo '```'
+            echo "apk bytes:  $SIZE"
+            echo "cert sha256: $ACTUAL_CERT_SHA256"
+            echo "version:    $(grep -m1 '^version:' pubspec.yaml)"
+            echo '```'
+            echo "The APK is discarded by the next step. It is not a publish artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Defense in depth: even if a later step is added, there is no artifact
+      # to upload and no keystore left on the runner.
+      - name: Discard build output and keystore
+        if: always()
+        run: |
+          rm -rf build
+          rm -f android/app/upload-keystore.jks apk-certs.txt
+          echo "Build output and keystore removed."
