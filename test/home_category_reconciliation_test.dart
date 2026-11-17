@@ -87,9 +87,14 @@ Future<void> _pumpHome(
 }
 
 Future<void> _showCategoryCard(WidgetTester tester) async {
-  // ensureVisible walks the actual ancestor scrollables, so it cannot bind to
-  // the horizontal KPI row the way `find.byType(Scrollable).first` could.
-  await tester.ensureVisible(find.text('Spent this cycle'));
+  // The category section is a lazily built sliver child, so it does not exist
+  // until the vertical scroller reaches it. Scroll the outer CustomScrollView
+  // (the first Scrollable, as in the sibling Home tests) to materialise it.
+  await tester.scrollUntilVisible(
+    find.text('Spent this cycle'),
+    400,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.pump(const Duration(seconds: 1));
 }
 
@@ -106,8 +111,12 @@ void main() {
     const secureStorage = MethodChannel(
       'plugins.it_nomads.com/flutter_secure_storage',
     );
-    const permissions = MethodChannel('flutter.baseflow.com/permissions/methods');
-    const connectivity = MethodChannel('dev.fluttercommunity.plus/connectivity');
+    const permissions = MethodChannel(
+      'flutter.baseflow.com/permissions/methods',
+    );
+    const connectivity = MethodChannel(
+      'dev.fluttercommunity.plus/connectivity',
+    );
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
@@ -140,8 +149,18 @@ void main() {
         _tx(id: 'food-1', amountMinor: 100000, syncId: 'f1'),
         _tx(id: 'food-2', amountMinor: 50000, syncId: 'f2'),
         _tx(id: 'bills-1', amountMinor: 25000, category: 'Bills', syncId: 'b1'),
-        _tx(id: 'transfer', amountMinor: 700000, category: 'Transfer', syncId: 't1'),
-        _tx(id: 'income', amountMinor: 900000, type: TransactionType.income, syncId: 'i1'),
+        _tx(
+          id: 'transfer',
+          amountMinor: 700000,
+          category: 'Transfer',
+          syncId: 't1',
+        ),
+        _tx(
+          id: 'income',
+          amountMinor: 900000,
+          type: TransactionType.income,
+          syncId: 'i1',
+        ),
         _tx(id: 'excluded', amountMinor: 300000, excluded: true, syncId: 'x1'),
         // A repeated SMS import: new local id, same sync identity.
         _tx(id: 'duplicate', amountMinor: 100000, syncId: 'f1'),
@@ -181,11 +200,7 @@ void main() {
       final provider = TransactionProvider();
       provider.debugSeed([
         _tx(id: 'start', amountMinor: 100, date: DateTime(2026, 11, 1)),
-        _tx(
-          id: 'end',
-          amountMinor: 200,
-          date: DateTime(2026, 11, 30, 23, 59),
-        ),
+        _tx(id: 'end', amountMinor: 200, date: DateTime(2026, 11, 30, 23, 59)),
         _tx(id: 'after', amountMinor: 400, date: DateTime(2026, 12, 1)),
       ]);
 
@@ -195,9 +210,7 @@ void main() {
 
     test('blank categories are normalised and empty categories are absent', () {
       final provider = TransactionProvider();
-      provider.debugSeed([
-        _tx(id: 'blank', amountMinor: 500, category: '   '),
-      ]);
+      provider.debugSeed([_tx(id: 'blank', amountMinor: 500, category: '   ')]);
 
       final byCategory = provider.spendingStatsForPeriod(
         period,
@@ -210,49 +223,58 @@ void main() {
   });
 
   testWidgets(
-      'Home category total equals the hero and excludes transfers and income',
-      (tester) async {
-    await _pumpHome(tester, transactions: [
-      _tx(id: 'food', amountMinor: 30000, syncId: 'f1'),
-      _tx(
-        id: 'transfer',
-        amountMinor: 50000,
-        category: 'Transfer',
-        syncId: 't1',
-      ),
-      _tx(id: 'salary', amountMinor: 100000, type: TransactionType.income, syncId: 'i1'),
-    ]);
-    await _showCategoryCard(tester);
+    'Home category total equals the hero and excludes transfers and income',
+    (tester) async {
+      await _pumpHome(
+        tester,
+        transactions: [
+          _tx(id: 'food', amountMinor: 30000, syncId: 'f1'),
+          _tx(
+            id: 'transfer',
+            amountMinor: 50000,
+            category: 'Transfer',
+            syncId: 't1',
+          ),
+          _tx(
+            id: 'salary',
+            amountMinor: 100000,
+            type: TransactionType.income,
+            syncId: 'i1',
+          ),
+        ],
+      );
+      await _showCategoryCard(tester);
 
-    final card = find.byType(CategoryBreakdownCard);
-    expect(card, findsOneWidget);
+      final card = find.byType(CategoryBreakdownCard);
+      expect(card, findsOneWidget);
 
-    // ₹300 is the spend hero / Overview figure. The old code summed ₹800 here
-    // (₹300 spend + ₹500 transfer) and offered a "Transfer" category row.
-    // With one category the card headline and the single category row both
-    // show ₹300; the old defect would have shown ₹800 in both places.
-    expect(
-      find.descendant(
-        of: card,
-        matching: find.text(Formatters.currency.format(30000)),
-      ),
-      findsNWidgets(2),
-    );
-    expect(
-      find.descendant(
-        of: card,
-        matching: find.text(Formatters.currency.format(80000)),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: card, matching: find.text('Transfer')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: card, matching: find.text('1 transaction')),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
-  });
+      // ₹300 is the spend hero / Overview figure. The old code summed ₹800 here
+      // (₹300 spend + ₹500 transfer) and offered a "Transfer" category row.
+      // With one category the card headline and the single category row both
+      // show ₹300; the old defect would have shown ₹800 in both places.
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text(Formatters.currency.format(30000)),
+        ),
+        findsNWidgets(2),
+      );
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text(Formatters.currency.format(80000)),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('Transfer')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('1 transaction')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

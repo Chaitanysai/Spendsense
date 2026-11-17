@@ -424,16 +424,16 @@ class TransactionProvider with ChangeNotifier {
   /// Transfer-category money movement, and collapses rows that share a sync
   /// identity so a repeated SMS import cannot be counted twice. Legacy rows
   /// without a `syncId` fall back to their local id.
-  Iterable<TransactionModel> spendTransactionsForPeriod(
-    DateTimeRange? period,
-  ) {
+  Iterable<TransactionModel> spendTransactionsForPeriod(DateTimeRange? period) {
     final seen = <String>{};
     // Materialise the de-duplicated rows once. A lazy `where` would capture
     // `seen` in a shared closure and return nothing on a second iteration.
     return expensesInPeriod(period).where((transaction) {
       if (transaction.isTransferCategory) return false;
       final syncId = transaction.syncId.trim();
-      final identity = syncId.isNotEmpty ? 'sync:$syncId' : 'id:${transaction.id}';
+      final identity = syncId.isNotEmpty
+          ? 'sync:$syncId'
+          : 'id:${transaction.id}';
       return seen.add(identity);
     }).toList();
   }

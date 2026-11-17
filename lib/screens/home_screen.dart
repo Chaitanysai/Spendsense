@@ -406,10 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const CategoryBreakdownSkeleton()
           else
             ContentReveal(
-              child: CategoryBreakdownCard(
-                totalsMinor: totals,
-                counts: counts,
-              ),
+              child: CategoryBreakdownCard(totalsMinor: totals, counts: counts),
             ),
           const SizedBox(height: AppSpacing.homeSectionGap),
         ];

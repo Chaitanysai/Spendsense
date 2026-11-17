@@ -345,7 +345,9 @@ class _CategoryBarRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppText.label(context).copyWith(
                         fontSize: 12.5,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         color: AppColors.textPrimary(context),
                       ),
                     ),
