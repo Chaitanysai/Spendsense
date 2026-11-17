@@ -52,9 +52,33 @@ const isGenerated = (p) => p.startsWith('/__/firebase/');
 // redirect body and SHA256SUMS would certify that as a production asset.
 const isReservedRewrite = (p) => p === '/releases/latest.apk';
 // The OTA payload. Everything else in the release is page chrome, already
-// tracked in git and rebuildable from the repository.
+// tracked in git and rebuildable from the repository. Production recognition is
+// intentionally unchanged: the recovery baseline must describe production only.
 const isProductionPayload = (p) =>
   p === '/manifest.json' || (/^\/releases\/[^/]+\.apk$/.test(p) && !isReservedRewrite(p));
+
+// The staging channel shares this site, so its two OTA files appear in the live
+// release alongside production's. Capture must *recognise* them as known (or a
+// staging publish can never produce a recovery baseline) while never capturing
+// them into production's baseline. The patterns are exact: one filename
+// segment, an alphanumeric first character, no separators, no traversal, no
+// encoded path, no arbitrary nesting. An unexpected /staging/ path still fails.
+const STAGING_MANIFEST_PATH = '/staging/manifest.json';
+const isStagingManifest = (p) => p === STAGING_MANIFEST_PATH;
+const isStagingApk = (p) =>
+  /^\/staging\/releases\/[A-Za-z0-9][A-Za-z0-9._+-]*\.apk$/.test(p);
+const isStagingPayload = (p) => isStagingManifest(p) || isStagingApk(p);
+
+// Paths that may be live without being production payload: repository-tracked
+// page chrome and the staging channel's OTA files. Both are classified and
+// accounted for, neither is captured.
+const isKnownNonPayload = (p) =>
+  p === '/index.html' ||
+  p === '/404.html' ||
+  p === '/landing.css' ||
+  p.startsWith('/legal/') ||
+  p.startsWith('/site/') ||
+  isStagingPayload(p);
 
 function fail(code, detail) {
   const err = new Error(code + (detail ? `: ${detail}` : ''));
@@ -337,10 +361,12 @@ function mainCapture(opts) {
     }
 
     // Unknown paths are tolerated only if they are page chrome already tracked
-    // in the repository. A new directory is a payload region this tool does not
-    // understand, and capturing it blindly could publish something unexpected.
-    const known = (p) => p === '/index.html' || p === '/404.html' || p === '/landing.css' || p.startsWith('/legal/') || p.startsWith('/site/');
-    const unknown = allFiles.filter((f) => !isGenerated(f.path) && !isProductionPayload(f.path) && !known(f.path));
+    // in the repository or one of the two explicitly recognised staging OTA
+    // files. A new directory is a payload region this tool does not understand,
+    // and capturing it blindly could publish something unexpected.
+    const unknown = allFiles.filter(
+      (f) => !isGenerated(f.path) && !isProductionPayload(f.path) && !isKnownNonPayload(f.path),
+    );
     if (unknown.length > 0) {
       fail('HOSTING_INVENTORY_UNEXPECTED_PATH', unknown.map((f) => f.path).join(', '));
     }
@@ -401,8 +427,14 @@ function mainCapture(opts) {
     }
 
     const capturedPaths = captured.map((f) => f.path).sort();
+    // Staging is classified separately from tracked page chrome: neither is
+    // captured, but only one of them belongs to the staging OTA channel.
+    const stagingPaths = allFiles
+      .filter((f) => isStagingPayload(f.path))
+      .map((f) => f.path)
+      .sort();
     const uncapturedTracked = allFiles
-      .filter((f) => !isGenerated(f.path) && !isProductionPayload(f.path))
+      .filter((f) => !isGenerated(f.path) && !isProductionPayload(f.path) && !isStagingPayload(f.path))
       .map((f) => f.path)
       .sort();
 
@@ -442,8 +474,9 @@ function mainCapture(opts) {
         apkCaptured: capturedPaths.includes(manifestApkPath),
         payloadFileCount: payloadFiles.length,
         capturedFileCount: captured.length,
+        stagingFileCount: stagingPaths.length,
         trackedNonPayloadFileCount: uncapturedTracked.length,
-        accountedFor: payloadFiles.length + uncapturedTracked.length + generated === allFiles.length,
+        accountedFor: payloadFiles.length + stagingPaths.length + uncapturedTracked.length + generated === allFiles.length,
       },
       manifest: {
         latestVersion: manifest.latestVersion,
@@ -461,6 +494,7 @@ function mainCapture(opts) {
         apiHash: f.apiHash,
         apiHashReproduced: f.apiHashReproduced,
       })),
+      stagingPaths,
       uncapturedTrackedPaths: uncapturedTracked,
     };
     writeJson(path.join(out, 'inventory.json'), inventory);
@@ -476,7 +510,7 @@ function mainCapture(opts) {
     const summary = [
       `RECOVERY_INVENTORY OK version=${versionId} release=${release.releaseTime}`,
       `  apk=${manifestApkPath} (${apk.bytes} bytes, sha256 ${apk.sha256.slice(0, 12)}…) matches manifest`,
-      `  captured=${captured.length} payload file(s); tracked-but-not-captured=${uncapturedTracked.length}; generated=${generated}; listed=${allFiles.length}`,
+      `  captured=${captured.length} production payload file(s); staging-not-captured=${stagingPaths.length}; tracked-but-not-captured=${uncapturedTracked.length}; generated=${generated}; listed=${allFiles.length}`,
       `  output=${out}`,
     ].join('\n');
     process.stdout.write(`${summary}\n`);
@@ -487,7 +521,7 @@ function mainCapture(opts) {
         `- release: \`${versionId}\` (\`${release.releaseTime}\`)`,
         `- APK: \`${manifestApkPath}\` (${apk.bytes} bytes)`,
         `- sha256: \`${apk.sha256}\` (matches the production manifest)`,
-        `- files captured: ${captured.length} (payload) + ${uncapturedTracked.length} tracked + ${generated} generated = ${allFiles.length}`,
+        `- files captured: ${captured.length} (production payload) + ${stagingPaths.length} staging (not captured) + ${uncapturedTracked.length} tracked + ${generated} generated = ${allFiles.length}`,
         '',
       ].join('\n'));
     }
@@ -571,4 +605,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { apiHashMatches, isProductionPayload, sha256, classifyFiles };
+module.exports = {
+  apiHashMatches,
+  isProductionPayload,
+  isStagingManifest,
+  isStagingApk,
+  isStagingPayload,
+  isKnownNonPayload,
+  sha256,
+  classifyFiles,
+};
