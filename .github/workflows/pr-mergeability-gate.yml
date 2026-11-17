@@ -1,0 +1,67 @@
+name: PR Mergeability Gate
+
+# Required checks that never run are the worst kind of green.
+#
+# `pr-build.yml` and `pr-security.yml` only start once GitHub can compute a merge
+# commit. When a pull request becomes CONFLICTING, GitHub never creates that ref,
+# so those workflows do not run and the required `build` and `security` contexts
+# are simply absent. Branch protection only enforces contexts that report, so a
+# conflicted pull request can look acceptable while nothing was tested.
+#
+# This workflow always runs on every pull request (no path filter, no merge-ref
+# dependency) and fails when the pull request is not mergeable, so a conflicted
+# PR cannot appear unproblematic. It reports a distinct `pr-mergeable` context
+# rather than impersonating `build`/`security` because a red gate must name the
+# real cause.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mergeable:
+    name: pr-mergeable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Fail when the pull request has conflicts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER:-}" ]; then
+            echo "No pull request number (workflow_dispatch); nothing to check."
+            exit 0
+          fi
+          mergeable=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.mergeable')
+          merge_state=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.merge_state_status')
+          echo "mergeable=${mergeable} merge_state_status=${merge_state}"
+          {
+            echo "### Pull request mergeability"
+            echo '```'
+            echo "number:             ${PR_NUMBER}"
+            echo "mergeable:          ${mergeable}"
+            echo "merge_state_status: ${merge_state}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$mergeable" != "true" ]; then
+            # `null` means GitHub has not finished computing the merge commit
+            # yet. Re-running the job resolves it; failing is still correct
+            # because a check that silently passes on unknown state is the bug
+            # this workflow exists to prevent.
+            echo "::error::Pull request is not mergeable (state: ${mergeable:-unknown}). Resolve conflicts; required checks cannot run against an unmergeable branch."
+            exit 1
+          fi
