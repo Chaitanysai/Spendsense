@@ -92,6 +92,26 @@ class TransactionModel {
         amountMinor = amountMinor ?? amount! * 100,
         syncId = syncId ?? '';
 
+  /// Categories that record money moving between the user's own accounts.
+  ///
+  /// A Transfer-category row is not spending, so every period total that claims
+  /// to describe "spend" must skip it. Stored lowercase; compare through
+  /// [isTransferCategory] so casing and stray whitespace from the SMS parser
+  /// cannot leak a row back into a total.
+  static const Set<String> transferCategories = {
+    'transfer',
+    'transfers',
+    'investment transfer',
+  };
+
+  /// True when this row is an internal money movement rather than spending.
+  ///
+  /// Classification is by category only, because the ledger stores both
+  /// directions as [TransactionType.expense] / [TransactionType.income] and
+  /// carries no dedicated transfer type.
+  bool get isTransferCategory =>
+      transferCategories.contains(category.trim().toLowerCase());
+
   /// Bank name for display. Falls back to [unknownBankLabel] when no bank was
   /// identified, so every caller renders the same value for the same state.
   ///

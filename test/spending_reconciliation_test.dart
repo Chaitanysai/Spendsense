@@ -126,6 +126,10 @@ void main() {
     test('Home and Instruments derive from the same total', () {
       seedCanonicalFixture();
 
+      // This fixture has no Transfer-category rows, so the raw cash-out and
+      // the canonical spend coincide. With a transfer they deliberately differ
+      // (the transfer is cash out but not spend); that case is covered by
+      // spend_amount_card_test.dart.
       expect(provider.totalExpensesForPeriod(period),
           provider.spendingTotalForPeriod(period));
     });

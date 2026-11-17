@@ -32,7 +32,6 @@ void main() {
   });
 
   BalanceHero hero({int income = 450000, int expense = 339400}) => BalanceHero(
-        balanceMinor: 110600,
         incomeMinor: income,
         expenseMinor: expense,
         previousExpenseMinor: 300000,

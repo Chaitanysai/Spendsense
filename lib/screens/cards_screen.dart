@@ -70,7 +70,10 @@ class CardsScreen extends StatelessWidget {
     final byBank = provider.spendingStatsForPeriod(period, (t) => t.bank);
     final byAccount = provider.spendingStatsForPeriod(period, (t) => t.account);
     final totalSpent = provider.spendingTotalForPeriod(period);
-    final expenseCount = provider.expensesInPeriod(period).length;
+    // Count the same rows the total sums, so "12 transactions, ₹X" cannot mix
+    // a transfer into the count while leaving it out of the money.
+    final expenseCount =
+        byMethod.values.fold<int>(0, (count, stat) => count + stat.count);
     final periodLabel = _periodLabel(period);
 
     return Scaffold(

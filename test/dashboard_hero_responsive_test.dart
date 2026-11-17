@@ -8,7 +8,7 @@ import 'package:spendsense/widgets/dashboard/balance_hero.dart';
 /// Responsive behaviour of the dashboard hero — V2 solid-surface contract.
 ///
 /// V2 replaces the gradient hero with an [AppSurface.raised] card:
-///  - Balance is a 32sp ink figure, not white-on-dark.
+///  - Spend Amount is a 32sp ink figure, not white-on-dark.
 ///  - Income, Expenses and Net/Budget are [AppKpiCard]s in an [AppKpiRow],
 ///    not a [MetricStrip]. Labels are sentence-case; values are
 ///    formatted currency or percentage.
@@ -28,7 +28,6 @@ BalanceHero _hero({
   bool ledgerError = false,
 }) =>
     BalanceHero(
-      balanceMinor: 1250000,
       incomeMinor: 2500000,
       expenseMinor: 250000,
       previousExpenseMinor: previousExpenseMinor,
@@ -71,8 +70,8 @@ void main() {
     _size(tester, const Size(2400, 1080)); // 800 × 360 logical
     await _pump(tester, _hero());
 
-    // Solid surface: balance label is sentence-case.
-    expect(find.text('Available balance'), findsOneWidget);
+    // Solid surface: the spend label uses title case.
+    expect(find.text('Spend Amount'), findsOneWidget);
     // KPI row is an AppKpiRow with AppKpiCard children.
     expect(find.byType(AppKpiRow), findsOneWidget);
     // The budget meter lives in the Monthly budget section, not the hero.
@@ -136,17 +135,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('V2: hiding the balance masks every KPI figure but keeps the labels',
+  testWidgets('V2: hiding the spend amount masks the KPI figures',
       (tester) async {
     _size(tester, const Size(1080, 2340));
     await _pump(tester, _hero(visible: false));
 
-    // The main balance.
+    // The hero spend figure.
     expect(find.text('••••••'), findsOneWidget);
     // Income, Expenses and Net are all masked.
     expect(find.text('••••'), findsNWidgets(3));
     // The labels remain.
-    expect(find.text('Available balance'), findsOneWidget);
+    expect(find.text('Spend Amount'), findsOneWidget);
     expect(find.text('Income'), findsOneWidget);
     expect(find.text('Expenses'), findsOneWidget);
   });

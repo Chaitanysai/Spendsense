@@ -69,7 +69,7 @@ void main() {
         reason: 'the local encrypted ledger needs no network to load');
     // The dashboard itself, not the auth screen: the app opens on Home in this
     // harness, so "Welcome back" was a stale marker that never rendered.
-    expect(find.text('Available balance'), findsOneWidget);
+    expect(find.text('Spend Amount'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

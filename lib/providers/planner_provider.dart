@@ -372,6 +372,10 @@ List<CategoryBudgetStatus> computeCategoryStatuses(
   final spent = <String, int>{};
   for (final t in transactions) {
     if (t.type != TransactionType.expense || t.isExcluded) continue;
+    // Transfers move money between the user's own accounts; they are not
+    // spending, so they must not consume a category budget either. This keeps
+    // the per-category rows reconciling with the overall budget card.
+    if (t.isTransferCategory) continue;
     if (!budgets.containsKey(t.category)) continue;
     if (!PeriodMath.containsLocalDate(period, t.date)) continue;
     spent[t.category] = (spent[t.category] ?? 0) + t.amountMinor;

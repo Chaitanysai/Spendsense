@@ -48,7 +48,7 @@ class BudgetMonitorService {
     await init();
 
     final budget = provider.monthlyBudgetMinor;
-    final spent = provider.totalExpensesForPeriod(provider.currentSalaryCycle);
+    final spent = provider.spendAmountForPeriod(provider.currentSalaryCycle);
     if (budget <= 0) return;
 
     // Keep threshold decisions in integer paise. Only the label is double.

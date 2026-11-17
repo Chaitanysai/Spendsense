@@ -18,6 +18,7 @@ import 'package:spendsense/utils/app_spacing.dart';
 import 'package:spendsense/utils/formatters.dart';
 import 'package:spendsense/widgets/app_button.dart';
 import 'package:spendsense/widgets/budget_summary.dart';
+import 'package:spendsense/widgets/dashboard/balance_hero.dart';
 import 'package:spendsense/utils/budget_math.dart';
 import 'package:spendsense/widgets/fade_indexed_stack.dart';
 
@@ -246,7 +247,7 @@ void main() {
     });
   });
   group('balance card', () {
-    testWidgets('leads with the available balance and still reports the cycle',
+    testWidgets('leads with Spend Amount and still reports the cycle',
         (tester) async {
       final transactions = await _pumpShell(tester);
       await _seed(
@@ -258,12 +259,34 @@ void main() {
         transactions,
       );
 
-      // availableBalance = 4000 income − 1000 expense.
-      expect(find.text(Formatters.currency.format(300000)), findsWidgets);
-      expect(find.text('Available balance'), findsOneWidget);
-      // The cycle's own figures are still on the hero, not just the balance.
-      expect(find.text(Formatters.currency.format(100000)), findsWidgets);
-      expect(find.text(Formatters.currency.format(400000)), findsWidgets);
+      // Hero and Expenses KPI both show the period's spend of ₹1,000. Scope
+      // the count to the hero: the recent feed deliberately repeats the same
+      // amount, so a whole-screen count would be brittle.
+      expect(find.text('Spend Amount'), findsOneWidget);
+      final hero = find.byType(BalanceHero);
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.text(Formatters.currency.format(100000)),
+        ),
+        findsNWidgets(2),
+      );
+      // Net is period income − period spend, not the all-time balance.
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.text(Formatters.currency.format(300000)),
+        ),
+        findsOneWidget,
+      );
+      // Income is still reported separately and never offsets the spend.
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.text(Formatters.currency.format(400000)),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the eye toggle masks the figure without touching the data',

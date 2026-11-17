@@ -19,21 +19,19 @@ import '../pressable.dart';
 /// - The containing surface is `AppSurface(raised)` — a solid, palette-aware
 ///   card that fits into the neutral visual vocabulary alongside the section
 ///   cards below it.
-/// - The balance figure is a large ink number, not white-on-dark.
+/// - The spend figure is a large ink number, not white-on-dark.
 /// - Income, Expenses and Net are shown as [AppKpiCard]s in a horizontal
 ///   scrolling [AppKpiRow] — the PanelUI `Kpi.Group` pattern from the reference.
 /// - The budget bar is not repeated here: the "Monthly budget" section below
 ///   owns it. With no budget set, the hero offers the one setup action.
 ///
-/// Nothing here touches [availableBalance], [totalIncomeForPeriod],
-/// [totalExpensesForPeriod]; all provider getters are
-/// called by [_HeroSection] in `home_screen.dart` and passed in.
+/// Nothing here recomputes a financial figure: the period spend, income and
+/// budget values are read from provider getters by [_HeroSection] in
+/// `home_screen.dart` and passed in.
 class BalanceHero extends StatelessWidget {
-  /// Net across all non-excluded transactions (income − expenses). This is the
-  /// app's existing `availableBalance` definition, not a new one.
-  final int balanceMinor;
-
-  /// Income and expenses for the selected period.
+  /// Income and spend for the selected period. [expenseMinor] is the canonical
+  /// spend figure — expense-only, non-excluded, non-transfer — and is used for
+  /// both the hero amount and the Expenses overview KPI.
   final int incomeMinor;
   final int expenseMinor;
 
@@ -60,7 +58,6 @@ class BalanceHero extends StatelessWidget {
 
   const BalanceHero({
     super.key,
-    required this.balanceMinor,
     required this.incomeMinor,
     required this.expenseMinor,
     required this.budgetMinor,
@@ -76,7 +73,12 @@ class BalanceHero extends StatelessWidget {
 
   bool get _hasBudget => budgetMinor > 0;
 
-  /// Net balance for the current period (income − expenses).
+  /// Net for the current period: income minus the spend figure shown above.
+  ///
+  /// The spend side excludes internal transfers — moving money to the user's
+  /// own account is not a loss — so a transfer cannot swing Net. Income −
+  /// Expenses = Net therefore holds for the three KPIs in this row, which is
+  /// how the card reads.
   int get _netMinor => incomeMinor - expenseMinor;
 
   /// Percentage change in expenses vs. the previous equivalent period. Null
@@ -119,7 +121,7 @@ class BalanceHero extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Available balance',
+                          'Spend Amount',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.label(context).copyWith(
@@ -151,7 +153,7 @@ class BalanceHero extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: visible
                           ? AnimatedAmount(
-                              value: balanceMinor.toDouble(),
+                              value: expenseMinor.toDouble(),
                               format: (v) => Formatters.currency.format(v),
                               style: AppText.amount(
                                 context,
@@ -174,7 +176,7 @@ class BalanceHero extends StatelessWidget {
                   Text(
                     ledgerError
                         ? 'Your saved transactions are still on this device.'
-                        : 'Net across all transactions',
+                        : 'Expenses in $periodLabel',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style:
@@ -202,8 +204,8 @@ class BalanceHero extends StatelessWidget {
             ),
             if (!ledgerError) ...[
               const SizedBox(height: AppSpacing.lg),
-              // The period belongs to the three cards below, not to the
-              // all-time balance above, so it labels them.
+              // The Overview KPI row reports income, spend and net for the
+              // selected period, which the hero above also uses.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
@@ -263,15 +265,13 @@ class BalanceHero extends StatelessWidget {
   }
 
   String _summary() {
-    if (!visible) return 'Balance hidden.';
+    if (!visible) return 'Spend Amount hidden.';
     if (ledgerError) {
-      return 'Balance unavailable. Your saved transactions could not be read.';
+      return 'Spend Amount unavailable. Your saved transactions could not be read.';
     }
-    final balance = Formatters.currency.format(balanceMinor);
     final income = Formatters.currency.format(incomeMinor);
     final expenses = Formatters.currency.format(expenseMinor);
-    final base = 'Available balance $balance. Income $income, '
-        'expenses $expenses for $periodLabel.';
+    final base = 'Spend Amount $expenses for $periodLabel. Income $income.';
     final delta = _expenseDelta;
     if (delta == null) return base;
     if (delta.abs() <= 0.05) return '$base Same as the previous period.';
@@ -292,7 +292,7 @@ class _VisibilityToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: visible ? 'Hide balance' : 'Show balance',
+      label: visible ? 'Hide spend amount' : 'Show spend amount',
       excludeSemantics: true,
       child: Pressable(
         onTap: onTap,

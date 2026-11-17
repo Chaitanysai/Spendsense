@@ -402,8 +402,29 @@ class TransactionProvider with ChangeNotifier {
     return local.year == day.year && local.month == day.month;
   }
 
+  /// Raw cash-out for [period]: every non-excluded expense magnitude,
+  /// including Transfer-category rows.
+  ///
+  /// This is an audit figure, not the number to label "spend". Budgets, the
+  /// dashboard and the instruments screen all use [spendAmountForPeriod] so a
+  /// move between the user's own accounts cannot look like spending.
   int totalExpensesForPeriod(DateTimeRange? period) =>
       expensesInPeriod(period).fold<int>(0, (sum, t) => sum + t.amountMinor);
+
+  /// Spend for [period]: expense-only, non-excluded, non-transfer rows.
+  ///
+  /// This is the single definition of "spend" for a period. The home hero, the
+  /// Expenses overview KPI, the monthly budget card, the Budgets screen, the
+  /// budget notifications and the instruments screen all derive from it, so
+  /// they agree by construction. It reuses [expensesInPeriod] so the selected
+  /// window and exclusion rules stay identical; only Transfer-category money
+  /// movement is removed, and income can never enter because the source is
+  /// expense-only.
+  int spendAmountForPeriod(DateTimeRange? period) {
+    return expensesInPeriod(period)
+        .where((t) => !t.isTransferCategory)
+        .fold<int>(0, (sum, t) => sum + t.amountMinor);
+  }
 
   int get totalExpenses => totalExpensesForPeriod(null);
 
@@ -579,13 +600,15 @@ class TransactionProvider with ChangeNotifier {
   }
 
   /// Canonical spending total for [period]: non-excluded expense magnitudes
-  /// only. Income, excluded rows and rows outside the window never count.
+  /// only, with Transfer-category rows removed. Income, excluded rows and rows
+  /// outside the window never count.
   ///
   /// Every "spent" figure that claims to describe [period] must come from this
   /// method (Home's cycle card, Payment Instruments, category bars) so the
-  /// numbers reconcile by construction instead of by coincidence.
+  /// numbers reconcile by construction instead of by coincidence. It is an
+  /// alias for [spendAmountForPeriod] rather than a second rule.
   int spendingTotalForPeriod(DateTimeRange? period) =>
-      totalExpensesForPeriod(period);
+      spendAmountForPeriod(period);
 
   /// Spending grouped by instrument inside [period], using the *same* rows and
   /// the *same* filter as [spendingTotalForPeriod]. Summing every `spent` in
@@ -593,12 +616,15 @@ class TransactionProvider with ChangeNotifier {
   ///
   /// Income rows are ignored entirely: a refund credited to a card is not
   /// spending, and counting it would break the reconciliation invariant.
+  /// Transfer-category rows are ignored for the same reason: paying your own
+  /// account is not spending on the instrument that moved the money.
   Map<String, InstrumentStat> spendingStatsForPeriod(
     DateTimeRange? period,
     String? Function(TransactionModel transaction) keyOf,
   ) {
     final stats = <String, InstrumentStat>{};
     for (final t in expensesInPeriod(period)) {
+      if (t.isTransferCategory) continue;
       final key = _instrumentKey(keyOf(t));
       final stat = stats.putIfAbsent(key, InstrumentStat.new);
       stat.count++;

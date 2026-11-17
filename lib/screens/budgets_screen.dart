@@ -35,7 +35,7 @@ class BudgetsScreen extends StatelessWidget {
     final statuses =
         planner.categoryStatuses(tx.transactions, period.currentPeriod);
     final overall = BudgetProgress(
-      spentMinor: tx.totalExpensesForPeriod(period.currentPeriod),
+      spentMinor: tx.spendAmountForPeriod(period.currentPeriod),
       budgetMinor: tx.monthlyBudgetMinor,
     );
 

@@ -741,9 +741,10 @@ class _HeaderSection extends StatelessWidget {
 
 /// Wires the provider values into the presentational [BalanceHero].
 ///
-/// Every figure comes from an existing provider getter: [availableBalance] is
-/// the app's all-time net definition, and the period figures use the same
-/// window rule as the rest of the dashboard. Nothing is recomputed here.
+/// The hero shows the selected period's spend: expense-only, non-excluded,
+/// non-transfer rows from [TransactionProvider.spendAmountForPeriod]. The same
+/// helper feeds the Expenses overview KPI inside the hero, so the two agree.
+/// Income is shown separately and never reduces the spend figure.
 class _HeroSection extends StatelessWidget {
   final TransactionProvider provider;
   final bool visible;
@@ -762,12 +763,11 @@ class _HeroSection extends StatelessWidget {
         final current = period.currentPeriod;
         final previous = period.previousPeriod;
         return BalanceHero(
-          balanceMinor: provider.availableBalance,
           incomeMinor: provider.totalIncomeForPeriod(current),
-          expenseMinor: provider.totalExpensesForPeriod(current),
+          expenseMinor: provider.spendAmountForPeriod(current),
           previousExpenseMinor: previous == null
               ? null
-              : provider.totalExpensesForPeriod(previous),
+              : provider.spendAmountForPeriod(previous),
           previousIncomeMinor:
               previous == null ? null : provider.totalIncomeForPeriod(previous),
           budgetMinor: provider.monthlyBudgetMinor,
@@ -1054,7 +1054,7 @@ class _BudgetCard extends StatelessWidget {
         builder: (context, txProvider, period, _) {
           final range = period.currentPeriod;
           final progress = BudgetProgress(
-            spentMinor: txProvider.totalExpensesForPeriod(range),
+            spentMinor: txProvider.spendAmountForPeriod(range),
             budgetMinor: txProvider.monthlyBudgetMinor,
           );
           final fmt = DateFormat('d MMM');
