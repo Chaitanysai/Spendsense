@@ -182,3 +182,11 @@ would 404:
 Release history and per-release notes live in
 [GitHub Releases](https://github.com/Chaitanysai/Spendsense/releases), which is
 also the authoritative location for downloadable APKs.
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE).
+
+Flutter's generated platform folders and third-party packages retain their
+own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
+[EXCLUSIONS.md](EXCLUSIONS.md).

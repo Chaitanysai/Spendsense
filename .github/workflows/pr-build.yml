@@ -7,6 +7,10 @@ name: Pull Request Build
 #
 # The job id is `build-verify` and the check name is `build`: branch
 # protection matches the reported check name, not the job id.
+#
+# This file is also in the path filter of `pr-security.yml`, so a change to
+# this comment makes both required checks report in pull-request context for
+# documentation-only PRs that otherwise match no trigger path.
 on:
   pull_request:
     branches:
